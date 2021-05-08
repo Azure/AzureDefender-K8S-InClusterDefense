@@ -1,1 +1,207 @@
-{"parameters": {"labels": ["gatekeeper"]}, "review": {"_unstable": {"namespace": {"apiVersion": "v1", "kind": "Namespace", "metadata": {"creationTimestamp": "2021-05-03T09:23:32Z", "labels": {"name": "default"}, "managedFields": [{"apiVersion": "v1", "fieldsType": "FieldsV1", "fieldsV1": {"f:status": {"f:phase": {}}}, "manager": "kube-apiserver", "operation": "Update", "time": "2021-05-03T09:23:32Z"}, {"apiVersion": "v1", "fieldsType": "FieldsV1", "fieldsV1": {"f:metadata": {"f:labels": {".": {}, "f:name": {}}}}, "manager": "kubectl-label", "operation": "Update", "time": "2021-05-03T22:58:26Z"}], "name": "default", "resourceVersion": "31856", "uid": "78baee4b-adad-4caf-b17a-4e1b19da6d09"}, "spec": {"finalizers": ["kubernetes"]}, "status": {"phase": "Active"}}}, "dryRun": false, "kind": {"group": "", "kind": "Pod", "version": "v1"}, "name": "alpine", "namespace": "default", "object": {"apiVersion": "v1", "kind": "Pod", "metadata": {"annotations": {"azure-denfder.io/scanInfo": "[{\"image\":\"alpine\",\"severity\":{\"High\":2,\"Low\":15,\"Medium\":10},\"status\":\"Scanned\"}]"}, "creationTimestamp": "2021-05-04T23:53:17Z", "labels": {"run": "alpine"}, "managedFields": [{"apiVersion": "v1", "fieldsType": "FieldsV1", "fieldsV1": {"f:metadata": {"f:labels": {".": {}, "f:run": {}}}, "f:spec": {"f:containers": {"k:{\"name\":\"alpine\"}": {".": {}, "f:image": {}, "f:imagePullPolicy": {}, "f:name": {}, "f:resources": {}, "f:terminationMessagePath": {}, "f:terminationMessagePolicy": {}}}, "f:dnsPolicy": {}, "f:enableServiceLinks": {}, "f:restartPolicy": {}, "f:schedulerName": {}, "f:securityContext": {}, "f:terminationGracePeriodSeconds": {}}}, "manager": "kubectl-run", "operation": "Update", "time": "2021-05-04T23:53:17Z"}], "name": "alpine", "namespace": "default", "uid": "c2e13993-eadf-434b-bf2a-f6618682aef5"}, "spec": {"containers": [{"image": "alpine", "imagePullPolicy": "Always", "name": "alpine", "resources": {}, "terminationMessagePath": "/dev/termination-log", "terminationMessagePolicy": "File", "volumeMounts": [{"mountPath": "/var/run/secrets/kubernetes.io/serviceaccount", "name": "default-token-75xw9", "readOnly": true}]}], "dnsPolicy": "ClusterFirst", "enableServiceLinks": true, "preemptionPolicy": "PreemptLowerPriority", "priority": 0, "restartPolicy": "Always", "schedulerName": "default-scheduler", "securityContext": {}, "serviceAccount": "default", "serviceAccountName": "default", "terminationGracePeriodSeconds": 30, "tolerations": [{"effect": "NoExecute", "key": "node.kubernetes.io/not-ready", "operator": "Exists", "tolerationSeconds": 300}, {"effect": "NoExecute", "key": "node.kubernetes.io/unreachable", "operator": "Exists", "tolerationSeconds": 300}], "volumes": [{"name": "default-token-75xw9", "secret": {"defaultMode": 420, "secretName": "default-token-75xw9"}}]}, "status": {"phase": "Pending", "qosClass": "BestEffort"}}, "oldObject": null, "operation": "CREATE", "options": {"apiVersion": "meta.k8s.io/v1", "fieldManager": "kubectl-run", "kind": "CreateOptions"}, "requestKind": {"group": "", "kind": "Pod", "version": "v1"}, "requestResource": {"group": "", "resource": "pods", "version": "v1"}, "resource": {"group": "", "resource": "pods", "version": "v1"}, "uid": "2d526aed-49b2-4da0-ad6a-063698f363d1", "userInfo": {"groups": ["system:masters", "system:authenticated"], "username": "minikube-user"}}}
+{
+    "parameters": {
+        "labels": [
+            "gatekeeper"
+        ]
+    },
+    "review": {
+        "_unstable": {
+            "namespace": {
+                "apiVersion": "v1",
+                "kind": "Namespace",
+                "metadata": {
+                    "creationTimestamp": "2021-05-03T09:23:32Z",
+                    "labels": {
+                        "name": "default"
+                    },
+                    "managedFields": [
+                        {
+                            "apiVersion": "v1",
+                            "fieldsType": "FieldsV1",
+                            "fieldsV1": {
+                                "f:status": {
+                                    "f:phase": {}
+                                }
+                            },
+                            "manager": "kube-apiserver",
+                            "operation": "Update",
+                            "time": "2021-05-03T09:23:32Z"
+                        },
+                        {
+                            "apiVersion": "v1",
+                            "fieldsType": "FieldsV1",
+                            "fieldsV1": {
+                                "f:metadata": {
+                                    "f:labels": {
+                                        ".": {},
+                                        "f:name": {}
+                                    }
+                                }
+                            },
+                            "manager": "kubectl-label",
+                            "operation": "Update",
+                            "time": "2021-05-03T22:58:26Z"
+                        }
+                    ],
+                    "name": "default",
+                    "resourceVersion": "31856",
+                    "uid": "78baee4b-adad-4caf-b17a-4e1b19da6d09"
+                },
+                "spec": {
+                    "finalizers": [
+                        "kubernetes"
+                    ]
+                },
+                "status": {
+                    "phase": "Active"
+                }
+            }
+        },
+        "dryRun": false,
+        "kind": {
+            "group": "",
+            "kind": "Pod",
+            "version": "v1"
+        },
+        "name": "alpine",
+        "namespace": "default",
+        "object": {
+            "apiVersion": "v1",
+            "kind": "Pod",
+            "metadata": {
+                "annotations": {
+                    "azure-denfder.io/scanInfo": "[{\"image\":\"alpine\",\"severity\":{\"High\":2,\"Low\":15,\"Medium\":10},\"status\":\"Scanned\"}]"
+                },
+                "creationTimestamp": "2021-05-04T23:53:17Z",
+                "labels": {
+                    "run": "alpine"
+                },
+                "managedFields": [
+                    {
+                        "apiVersion": "v1",
+                        "fieldsType": "FieldsV1",
+                        "fieldsV1": {
+                            "f:metadata": {
+                                "f:labels": {
+                                    ".": {},
+                                    "f:run": {}
+                                }
+                            },
+                            "f:spec": {
+                                "f:containers": {
+                                    "k:{\"name\":\"alpine\"}": {
+                                        ".": {},
+                                        "f:image": {},
+                                        "f:imagePullPolicy": {},
+                                        "f:name": {},
+                                        "f:resources": {},
+                                        "f:terminationMessagePath": {},
+                                        "f:terminationMessagePolicy": {}
+                                    }
+                                },
+                                "f:dnsPolicy": {},
+                                "f:enableServiceLinks": {},
+                                "f:restartPolicy": {},
+                                "f:schedulerName": {},
+                                "f:securityContext": {},
+                                "f:terminationGracePeriodSeconds": {}
+                            }
+                        },
+                        "manager": "kubectl-run",
+                        "operation": "Update",
+                        "time": "2021-05-04T23:53:17Z"
+                    }
+                ],
+                "name": "alpine",
+                "namespace": "default",
+                "uid": "c2e13993-eadf-434b-bf2a-f6618682aef5"
+            },
+            "spec": {
+                "containers": [
+                    {
+                        "image": "alpine",
+                        "imagePullPolicy": "Always",
+                        "name": "alpine",
+                        "resources": {},
+                        "terminationMessagePath": "/dev/termination-log",
+                        "terminationMessagePolicy": "File",
+                        "volumeMounts": [
+                            {
+                                "mountPath": "/var/run/secrets/kubernetes.io/serviceaccount",
+                                "name": "default-token-75xw9",
+                                "readOnly": true
+                            }
+                        ]
+                    }
+                ],
+                "dnsPolicy": "ClusterFirst",
+                "enableServiceLinks": true,
+                "preemptionPolicy": "PreemptLowerPriority",
+                "priority": 0,
+                "restartPolicy": "Always",
+                "schedulerName": "default-scheduler",
+                "securityContext": {},
+                "serviceAccount": "default",
+                "serviceAccountName": "default",
+                "terminationGracePeriodSeconds": 30,
+                "tolerations": [
+                    {
+                        "effect": "NoExecute",
+                        "key": "node.kubernetes.io/not-ready",
+                        "operator": "Exists",
+                        "tolerationSeconds": 300
+                    },
+                    {
+                        "effect": "NoExecute",
+                        "key": "node.kubernetes.io/unreachable",
+                        "operator": "Exists",
+                        "tolerationSeconds": 300
+                    }
+                ],
+                "volumes": [
+                    {
+                        "name": "default-token-75xw9",
+                        "secret": {
+                            "defaultMode": 420,
+                            "secretName": "default-token-75xw9"
+                        }
+                    }
+                ]
+            },
+            "status": {
+                "phase": "Pending",
+                "qosClass": "BestEffort"
+            }
+        },
+        "oldObject": null,
+        "operation": "CREATE",
+        "options": {
+            "apiVersion": "meta.k8s.io/v1",
+            "fieldManager": "kubectl-run",
+            "kind": "CreateOptions"
+        },
+        "requestKind": {
+            "group": "",
+            "kind": "Pod",
+            "version": "v1"
+        },
+        "requestResource": {
+            "group": "",
+            "resource": "pods",
+            "version": "v1"
+        },
+        "resource": {
+            "group": "",
+            "resource": "pods",
+            "version": "v1"
+        },
+        "uid": "2d526aed-49b2-4da0-ad6a-063698f363d1",
+        "userInfo": {
+            "groups": [
+                "system:masters",
+                "system:authenticated"
+            ],
+            "username": "minikube-user"
+        }
+    }
+}
