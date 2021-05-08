@@ -1,0 +1,8 @@
+src/k8s/dependencies/mutation-config-lior.yaml
+src/k8s/dependencies/mutation-configed.yaml
+src/k8s/dependencies/mutation-config-ca.yaml
+src/k8s/minikube-linux-amd64
+src/webhook/tls
+
+
+*.sha256

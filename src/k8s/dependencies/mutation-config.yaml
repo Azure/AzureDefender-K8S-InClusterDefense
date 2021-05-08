@@ -1,0 +1,32 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: "defender-webhook.azure.com"
+webhooks:
+- name: "defender-webhook.azure.com"
+  rules:
+  - apiGroups:   [""]
+    apiVersions: ["v1"]
+    operations:  ["CREATE", "UPDATE"]
+    resources:   ["pods"]
+    scope:       "Namespaced"
+  clientConfig:
+    service:
+      namespace: "default"
+      name: "defender-webhook-service"  
+      path: /mutate
+    caBundle: ${CA_BUNDLE}
+  namespaceSelector:
+    matchExpressions:
+        - key: name
+          operator: In
+          values: ["default"]
+  objectSelector:
+    matchExpressions:
+        - key: app
+          operator: NotIn
+          values: ["defender-webhook"]
+  failurePolicy: Fail
+  admissionReviewVersions: ["v1", "v1beta1"]
+  sideEffects: None
+  timeoutSeconds: 10
