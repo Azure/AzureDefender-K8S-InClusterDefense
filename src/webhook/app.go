@@ -40,11 +40,10 @@ func (app *App) HandleMutate(w http.ResponseWriter, r *http.Request) {
 	for i := 0; i < len(pod.Spec.Containers); i++ {
 		scanMap = append(scanMap, ImageScanEntry{
 			Image: pod.Spec.Containers[i].Image,
-			Severity: map[string]int{
-				"High":   2,
-				"Medium": 10,
-				"Low":    15,
-			},
+			Severity: SeverityEntry{
+				High:   2,
+				Medium: 5,
+				Low:    10},
 			Status: "Scanned",
 		})
 	}
@@ -104,7 +103,13 @@ type JSONPatchAnnotationsEntry struct {
 }
 
 type ImageScanEntry struct {
-	Image    string         `json:"image"`
-	Severity map[string]int `json:"severity"`
-	Status   string         `json:"status"`
+	Image    string        `json:"image"`
+	Severity SeverityEntry `json:"severity"`
+	Status   string        `json:"status"`
+}
+
+type SeverityEntry struct {
+	High   int `json:"high"`
+	Medium int `json:"medium"`
+	Low    int `json:"low"`
 }

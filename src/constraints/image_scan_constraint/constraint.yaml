@@ -9,5 +9,5 @@ spec:
         kinds: ["Pod"]
   parameters:
     high_severity: 10
-    medium_severity: 100
-    low_severity: 30
+    medium_severity: 4
+    low_severity: 0

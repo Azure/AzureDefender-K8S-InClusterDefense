@@ -1,0 +1,70 @@
+apiVersion: templates.gatekeeper.sh/v1beta1
+kind: ConstraintTemplate
+metadata:
+  name: k8sdenyall
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sDenyAll
+      validation:
+        openAPIV3Schema:
+          properties:
+            high_severity:
+              type: integer
+            medium_severity:
+              type: integer
+            low_severity:
+              type: integer
+            
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8sdenyall
+
+        violation[{"msg": msg}] {
+          m := input.review.object.metadata.annotations["azure-denfder.io/scanInfo"]
+          scan_info := json.unmarshal(m)[_]
+          
+          not scan_info.severity["High"] < input.parameters.high_severity
+
+          msg := sprintf("\nBlock Reason: High Severity\nLogs:%v",[get_output_msg(scan_info)])
+        }
+
+        violation[{"msg": msg}] {
+          m := input.review.object.metadata.annotations["azure-denfder.io/scanInfo"]
+          scan_info := json.unmarshal(m)[_]
+
+          not scan_info.severity["Medium"] < input.parameters.medium_severity
+
+          msg := sprintf("\nBlock Reason: Medium Severity\nLogs:%v",[get_output_msg(scan_info)])
+        }
+
+        violation[{"msg": msg}] {
+          m := input.review.object.metadata.annotations["azure-denfder.io/scanInfo"]
+          scan_info := json.unmarshal(m)[_]
+
+          not scan_info.severity["Low"] < input.parameters.low_severity
+
+          msg := sprintf("\nBlock Reason: Low Severity\nLogs:%v",[get_output_msg(scan_info)])
+        }
+
+        violation[{"msg": msg}] {
+          m := input.review.object.metadata.annotations["azure-denfder.io/scanInfo"]
+          scan_info := json.unmarshal(m)[_]
+          not is_scanned(scan_info)
+
+          msg := sprintf("\nBlock Reason: Unscanned\nLogs:%v",[get_output_msg(scan_info)])
+        }
+
+        is_scanned(scan_info) = true{
+          scan_info.status == "ssScanned"
+        }
+        
+        get_output_msg(scan_info) = output_msg{
+          image := scan_info.image
+          status := scan_info.status
+          severity := scan_info.severity
+
+          output_msg := sprintf("\nImage: %v\nStatus: %v\nSeverity: %v\n", [image,status,severity])
+        }
