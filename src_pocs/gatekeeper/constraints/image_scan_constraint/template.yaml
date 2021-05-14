@@ -8,7 +8,7 @@ spec:
       names:
         kind: K8sDenyAll
       validation:
-        openAPIV3Schema:
+         openAPIV3Schema:
           properties:
             high_severity:
               type: integer
