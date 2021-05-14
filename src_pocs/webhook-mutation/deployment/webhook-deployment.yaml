@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: defender-webhook
-        image: defender
+        image: blockimgreg.azurecr.io/azuredefender:latest
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8000
