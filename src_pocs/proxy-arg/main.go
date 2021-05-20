@@ -67,53 +67,60 @@ func handle(w http.ResponseWriter, req *http.Request) {
 		tag = strings.Split(repo, ":")[1]
 		repo = strings.Replace(repo, ":"+tag, "", 1)
 	}
-
-	getImageShaBinary := "getimagesha.sh"
-	dir, err := os.Getwd()
-	if err != nil {
-		log.Fatal(err)
-	}
-	log.Info("Registry:", registry)
-	log.Info("Repo:", repo)
-	log.Info("Tag:", tag)
-
-	cmd := exec.Command(
-		"sh",
-		getImageShaBinary,
-		registry,
-		repo,
-		tag,
-	)
-	log.Infof("cmd: %v", cmd)
-	cmd.Dir = dir
-	stdout := &bytes.Buffer{}
-	stderr := &bytes.Buffer{}
-	cmd.Stderr, cmd.Stdout = stderr, stdout
-
-	err = cmd.Run()
-	output := stdout.String()
-	log.Infof("output: %s", output)
-	if err != nil {
-		log.Errorf("error invoking cmd, err: %v, output: %v", err, stderr.String())
-	}
-	if output == "null\n" {
-		log.Infof("[error] : could not find valid digest %s", output)
-		w.WriteHeader(http.StatusForbidden)
-		json.NewEncoder(w).Encode(nil)
+	digest := ""
+	// In case that the image deploted with the digest:
+	if strings.Contains(image, "@sha256") {
+		digest = strings.Split(image, "@")[1]
+		// else, extract digest first.
 	} else {
-		digest := strings.TrimSuffix(output, "\n")
-		log.Infof("digest: %s", digest)
-
-		data, err := server.Process(ctx, digest)
+		getImageShaBinary := "getimagesha.sh"
+		dir, err := os.Getwd()
 		if err != nil {
-			log.Infof("[error] : %s", err)
+			log.Fatal(err)
+		}
+
+		cmd := exec.Command(
+			"sh",
+			getImageShaBinary,
+			registry,
+			repo,
+			tag,
+		)
+		log.Infof("cmd: %v", cmd)
+		cmd.Dir = dir
+		stdout := &bytes.Buffer{}
+		stderr := &bytes.Buffer{}
+		cmd.Stderr, cmd.Stdout = stderr, stdout
+
+		err = cmd.Run()
+		output := stdout.String()
+		log.Infof("output: %s", output)
+		if err != nil {
+			log.Errorf("error invoking cmd, err: %v, output: %v", err, stderr.String())
+		}
+		if output == "null\n" {
+			log.Infof("[error] : could not find valid digest %s", output)
 			w.WriteHeader(http.StatusForbidden)
-			json.NewEncoder(w).Encode(data)
+			json.NewEncoder(w).Encode(nil)
 		} else {
-			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(data)
+			digest = strings.TrimSuffix(output, "\n")
 		}
 	}
+	if strings.EqualFold(digest, "") {
+		log.Infof("Digest is empty.")
+		return
+	}
+	log.Infof("digest: %s", digest)
+	data, err := server.Process(ctx, digest)
+	if err != nil {
+		log.Infof("[error] : %s", err)
+		w.WriteHeader(http.StatusForbidden)
+		json.NewEncoder(w).Encode(data)
+	} else {
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(data)
+	}
+
 }
 
 // setupLogger sets up hooks to redirect stdout and stderr

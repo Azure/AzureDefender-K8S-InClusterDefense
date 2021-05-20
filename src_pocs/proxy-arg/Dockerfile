@@ -16,5 +16,6 @@ COPY --from=builder /go/src/github.com/Azure/opa-asc-proxy/opa-asc-proxy /bin/
 COPY getimagesha.sh /
 RUN chmod a+x /bin/opa-asc-proxy
 RUN chmod a+x /getimagesha.sh
+RUN sed -i -e 's/\r//g' /getimagesha.sh
 
 ENTRYPOINT ["/bin/opa-asc-proxy"]

@@ -50,6 +50,7 @@ var (
 	subscriptionID   string
 	resourceGroup    string
 	identityClientID string
+	isInitialized    bool
 )
 
 // OAuthGrantType specifies which grant type to use.
@@ -95,6 +96,16 @@ type Response struct {
 	TimeGenerated   *date.Time                                       `json:"timeGenerated,omitempty"`
 	ResourceDetails azsecurity.AzureResourceDetails                  `json:"resourceDetails,omitempty"`
 	AdditionalData  ResponseContainerRegistryVulnerabilityProperties `json:"additionalData,omitempty"`
+}
+
+// Response2
+type Response2 struct {
+	//ScanStatus
+	ImageDigest *string `json:"imageDigest,omitempty"`
+	//ScanStatus
+	ScanStatus *string `json:"scanStatus,omitempty"`
+	// SeveritySummary
+	SeveritySummary map[string]float64 `json:"severitySummary,omitempty"`
 }
 
 // ResponseContainerRegistryVulnerabilityProperties additional context fields for container registry Vulnerability
@@ -157,46 +168,53 @@ func ParseAzureEnvironment(cloudName string) (*azure.Environment, error) {
 	return &env, err
 }
 
-func (s *Server) Process(ctx context.Context, digest string) (resps []Response, err error) {
+func (s *Server) Process(ctx context.Context, digest string) (resps []Response2, err error) {
 	if digest == "" {
 		return nil, fmt.Errorf("Failed to provide digest to query")
 	}
 	//TODO fix getimage.sh script
-	digest = "sha256:f68b2ce26292e02ef3dbc6cfae17cec3d54b9afee9bf5298bf95d005c0783143"
 	myClient := azresourcegraph.New()
 	// token, tokenErr := s.GetManagementToken(AuthGrantType(), cloudName)
 	token, tokenErr := getTokenMSI()
 	if tokenErr != nil {
 		return nil, errors.Wrapf(tokenErr, "failed to get management token")
 	}
-
 	myClient.Authorizer = autorest.NewBearerAuthorizer(token)
+	// Prepare query:
 	subs := []string{s.SubscriptionID}
 	rawQuery := `
-	securityresources | where type == "microsoft.security/assessments/subassessments" 
-	| extend resourceType = tostring(properties["additionalData"].assessedResourceType) 
-	| extend status = tostring(properties["status"].code)
-	| where resourceType == "ContainerRegistryVulnerability" 
-	| extend repoName = tostring(properties["additionalData"].repositoryName) 
-	| extend imageSha = tostring(properties["additionalData"].imageDigest)
-	| where status == "Unhealthy"
-	| where imageSha == "` + digest + `"`
+	securityresources
+	| where type == 'microsoft.security/assessments/subassessments'
+	| where id matches regex '(.+?)/providers/Microsoft.Security/assessments/dbd0cb49-b563-45e7-9724-889e799fa648/'
+	//| parse id with registryResourceId '/providers/Microsoft.Security/assessments/' *
+	//| parse registryResourceId with * "/providers/Microsoft.ContainerRegistry/registries/" registryName
+	| extend imageDigest = tostring(properties.additionalData.imageDigest)
+	| where imageDigest == "` + digest + `"
+	| extend repository = tostring(properties.additionalData.repositoryName)
+	| extend scanFindingSeverity = tostring(properties.status.severity), scanStatus = tostring(properties.status.code)
+	| summarize scanFindingSeverityCount = count() by scanFindingSeverity, scanStatus, repository, imageDigest
+	| summarize severitySummary = make_bag(pack(scanFindingSeverity, scanFindingSeverityCount)) by  imageDigest, scanStatus`
 
-	options := azresourcegraph.QueryRequestOptions{
-		ResultFormat: azresourcegraph.ResultFormatObjectArray,
-	}
+	// log.Debugf("Query: %s", rawQuery)
+	options := azresourcegraph.QueryRequestOptions{ResultFormat: azresourcegraph.ResultFormatObjectArray}
 	query := azresourcegraph.QueryRequest{
 		Subscriptions: &subs,
 		Query:         &rawQuery,
 		Options:       &options,
 	}
+	//Execute query
 	results, err := myClient.Resources(ctx, query)
 	if err != nil {
 		return nil, err
 	}
-	var data []azsecurity.SubAssessment
+	//Extract results:
+	var data []Response2
 	count := *results.Count
-	resps = make([]Response, 0)
+
+	log.Debugf("results: %d", results)
+	log.Debugf("results.data: %d", results.Data)
+
+	resps = make([]Response2, 0)
 	if count > 0 {
 		raw, err := json.Marshal(results.Data)
 		if err != nil {
@@ -206,48 +224,34 @@ func (s *Server) Process(ctx context.Context, digest string) (resps []Response, 
 		if err != nil {
 			return nil, err
 		}
-
+		log.Debugf("Data: %d", data)
 		for _, v := range data {
-			rd, _ := v.SubAssessmentProperties.ResourceDetails.AsAzureResourceDetails()
-			ad, _ := v.SubAssessmentProperties.AdditionalData.AsContainerRegistryVulnerabilityProperties()
-			resp := Response{
-				ID:              v.ID,
-				DisplayName:     v.DisplayName,
-				Status:          v.Status,
-				Remediation:     v.Remediation,
-				Impact:          v.Impact,
-				Category:        v.Category,
-				Description:     v.Description,
-				TimeGenerated:   v.TimeGenerated,
-				ResourceDetails: *rd,
-				AdditionalData: ResponseContainerRegistryVulnerabilityProperties{
-					AssessedResourceType: ad.AssessedResourceType,
-					RepositoryName:       ad.RepositoryName,
-					Type:                 ad.Type,
-					Cvss:                 ad.Cvss,
-					Patchable:            ad.Patchable,
-					Cve:                  ad.Cve,
-					PublishedTime:        ad.PublishedTime,
-					VendorReferences:     ad.VendorReferences,
-					ImageDigest:          ad.ImageDigest,
-				},
+			// rd, _ := v.SubAssessmentProperties.ResourceDetails.AsAzureResourceDetails()
+			// ad, _ := v.SubAssessmentProperties.AdditionalData.AsContainerRegistryVulnerabilityProperties()
+			resp := Response2{
+				ScanStatus:      v.ScanStatus,
+				SeveritySummary: v.SeveritySummary,
 			}
 			resps = append(resps, resp)
 		}
 	}
 
 	log.Debugf("total unhealthy images: %d", count)
+	log.Debugf("Resps: %s", resps)
 
 	return resps, nil
 }
 
 func getTokenMSI() (msg *adal.Token, err error) {
-	flag.DurationVar(&period, "period", 100*time.Second, "The period that the demo is being executed")
-	flag.StringVar(&resourceName, "resource-name", "https://management.azure.com/", "The resource name to grant the access token")
-	flag.StringVar(&subscriptionID, "subscription-id", "", "The Azure subscription ID")
-	flag.StringVar(&resourceGroup, "resource-group", "", "The resource group name which the user-assigned identity read access to")
-	flag.StringVar(&identityClientID, "identity-client-id", "", "The user-assigned identity client ID")
-	flag.Parse()
+	if !isInitialized {
+		flag.DurationVar(&period, "period", 100*time.Second, "The period that the demo is being executed")
+		flag.StringVar(&resourceName, "resource-name", "https://management.azure.com/", "The resource name to grant the access token")
+		flag.StringVar(&subscriptionID, "subscription-id", "", "The Azure subscription ID")
+		flag.StringVar(&resourceGroup, "resource-group", "", "The resource group name which the user-assigned identity read access to")
+		flag.StringVar(&identityClientID, "identity-client-id", "", "The user-assigned identity client ID")
+		flag.Parse()
+		isInitialized = true
+	}
 
 	imdsTokenEndpoint, err := adal.GetMSIVMEndpoint()
 	if err != nil {
@@ -263,7 +267,7 @@ func getTokenMSI() (msg *adal.Token, err error) {
 		if t1 == nil || t2 == nil || !strings.EqualFold(t1.AccessToken, t2.AccessToken) {
 			log.Error("Tokens acquired from IMDS with and without identity client ID do not match")
 		} else {
-			log.Infof("Try decoding your token %s at https://jwt.io", t1.AccessToken)
+			// log.Infof("Try decoding your token %s at https://jwt.io", t1.AccessToken)
 			return t1, nil
 		}
 	}

@@ -26,5 +26,6 @@ if [ $? -ne 0 ] ; then
     exit 1
 else
     echo $digest
+	echo "Debug - digest was printed"
 fi
 exit 0
