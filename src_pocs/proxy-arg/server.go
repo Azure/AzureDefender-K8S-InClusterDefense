@@ -15,9 +15,8 @@ import (
 	"golang.org/x/net/context"
 
 	// yaml "gopkg.in/yaml.v2"
-	azsecurity "github.com/Azure/azure-sdk-for-go/services/preview/security/mgmt/v3.0/security"
+	// azsecurity "github.com/Azure/azure-sdk-for-go/services/preview/security/mgmt/v3.0/security"
 	azresourcegraph "github.com/Azure/azure-sdk-for-go/services/resourcegraph/mgmt/2019-04-01/resourcegraph"
-	"github.com/Azure/go-autorest/autorest/date"
 
 	//acrmgmt "github.com/Azure/azure-sdk-for-go/services/preview/containerregistry/mgmt/2018-02-01/containerregistry"
 	//acr "github.com/Azure/azure-sdk-for-go/services/preview/containerregistry/runtime/2019-08-15-preview/containerregistry"
@@ -42,6 +41,10 @@ const (
 
 const (
 	timeout = 80 * time.Second
+)
+
+var (
+	unscannedImage string = "Unscanned"
 )
 
 var (
@@ -77,29 +80,8 @@ type Server struct {
 	Scope string
 }
 
-// Response
-type Response struct {
-	// ID - Vulnerability ID
-	ID *string `json:"id,omitempty"`
-	// DisplayName - User friendly display name of the sub-assessment
-	DisplayName *string                         `json:"displayName,omitempty"`
-	Status      *azsecurity.SubAssessmentStatus `json:"status,omitempty"`
-	// Remediation - Information on how to remediate this sub-assessment
-	Remediation *string `json:"remediation,omitempty"`
-	// Impact - Description of the impact of this sub-assessment
-	Impact *string `json:"impact,omitempty"`
-	// Category - Category of the sub-assessment
-	Category *string `json:"category,omitempty"`
-	// Description - Human readable description of the assessment status
-	Description *string `json:"description,omitempty"`
-	// TimeGenerated - The date and time the sub-assessment was generated
-	TimeGenerated   *date.Time                                       `json:"timeGenerated,omitempty"`
-	ResourceDetails azsecurity.AzureResourceDetails                  `json:"resourceDetails,omitempty"`
-	AdditionalData  ResponseContainerRegistryVulnerabilityProperties `json:"additionalData,omitempty"`
-}
-
-// Response2
-type Response2 struct {
+// ScanInfo
+type ScanInfo struct {
 	//ScanStatus
 	ImageDigest *string `json:"imageDigest,omitempty"`
 	//ScanStatus
@@ -108,50 +90,11 @@ type Response2 struct {
 	SeveritySummary map[string]float64 `json:"severitySummary,omitempty"`
 }
 
-// ResponseContainerRegistryVulnerabilityProperties additional context fields for container registry Vulnerability
-// assessment
-type ResponseContainerRegistryVulnerabilityProperties struct {
-	// Type - READ-ONLY; Vulnerability Type. e.g: Vulnerability, Potential Vulnerability, Information Gathered, Vulnerability
-	Type *string `json:"type,omitempty"`
-	// Cvss - READ-ONLY; Dictionary from cvss version to cvss details object
-	Cvss map[string]*azsecurity.CVSS `json:"cvss"`
-	// Patchable - READ-ONLY; Indicates whether a patch is available or not
-	Patchable *bool `json:"patchable,omitempty"`
-	// Cve - READ-ONLY; List of CVEs
-	Cve *[]azsecurity.CVE `json:"cve,omitempty"`
-	// PublishedTime - READ-ONLY; Published time
-	PublishedTime *date.Time `json:"publishedTime,omitempty"`
-	// VendorReferences - READ-ONLY
-	VendorReferences *[]azsecurity.VendorReference `json:"vendorReferences,omitempty"`
-	// RepositoryName - READ-ONLY; Name of the repository which the vulnerable image belongs to
-	RepositoryName *string `json:"repositoryName,omitempty"`
-	// ImageDigest - READ-ONLY; Digest of the vulnerable image
-	ImageDigest *string `json:"imageDigest,omitempty"`
-	// AssessedResourceType - Possible values include: 'AssessedResourceTypeAdditionalData', 'AssessedResourceTypeSQLServerVulnerability', 'AssessedResourceTypeContainerRegistryVulnerability', 'AssessedResourceTypeServerVulnerabilityAssessment'
-	AssessedResourceType azsecurity.AssessedResourceType `json:"assessedResourceType,omitempty"`
-}
-
 // NewServer creates a new server instance.
 func NewServer() (*Server, error) {
 	log.Debugf("NewServer")
 	var s Server
 	s.SubscriptionID = "409111bf-3097-421c-ad68-a44e716edf58" // os.Getenv("SUBSCRIPTION_ID")
-	// s.AADClientID = os.Getenv("CLIENT_ID")
-	// s.AADClientSecret = os.Getenv("CLIENT_SECRET")
-	// s.TenantID = os.Getenv("TENANT_ID")
-
-	// if s.SubscriptionID == "" {
-	// 	return nil, fmt.Errorf("could not find SUBSCRIPTION_ID")
-	// }
-	// if s.AADClientID == "" {
-	// 	return nil, fmt.Errorf("could not find CLIENT_ID")
-	// }
-	// if s.AADClientSecret == "" {
-	// 	return nil, fmt.Errorf("could not find CLIENT_SECRET")
-	// }
-	// if s.TenantID == "" {
-	// 	return nil, fmt.Errorf("could not find TENANT_ID")
-	// }
 
 	return &s, nil
 }
@@ -168,53 +111,44 @@ func ParseAzureEnvironment(cloudName string) (*azure.Environment, error) {
 	return &env, err
 }
 
-func (s *Server) Process(ctx context.Context, digest string) (resps []Response2, err error) {
-	if digest == "" {
+func (s *Server) Process(ctx context.Context, image Image) (resps []ScanInfo, err error) {
+	if image.digest == "" {
 		return nil, fmt.Errorf("Failed to provide digest to query")
 	}
-	//TODO fix getimage.sh script
+	// Connect to ARG:
 	myClient := azresourcegraph.New()
-	// token, tokenErr := s.GetManagementToken(AuthGrantType(), cloudName)
 	token, tokenErr := getTokenMSI()
 	if tokenErr != nil {
 		return nil, errors.Wrapf(tokenErr, "failed to get management token")
 	}
 	myClient.Authorizer = autorest.NewBearerAuthorizer(token)
-	// Prepare query:
-	subs := []string{s.SubscriptionID}
-	rawQuery := `
-	securityresources
-	| where type == 'microsoft.security/assessments/subassessments'
-	| where id matches regex '(.+?)/providers/Microsoft.Security/assessments/dbd0cb49-b563-45e7-9724-889e799fa648/'
-	//| parse id with registryResourceId '/providers/Microsoft.Security/assessments/' *
-	//| parse registryResourceId with * "/providers/Microsoft.ContainerRegistry/registries/" registryName
-	| extend imageDigest = tostring(properties.additionalData.imageDigest)
-	| where imageDigest == "` + digest + `"
-	| extend repository = tostring(properties.additionalData.repositoryName)
-	| extend scanFindingSeverity = tostring(properties.status.severity), scanStatus = tostring(properties.status.code)
-	| summarize scanFindingSeverityCount = count() by scanFindingSeverity, scanStatus, repository, imageDigest
-	| summarize severitySummary = make_bag(pack(scanFindingSeverity, scanFindingSeverityCount)) by  imageDigest, scanStatus`
 
-	// log.Debugf("Query: %s", rawQuery)
-	options := azresourcegraph.QueryRequestOptions{ResultFormat: azresourcegraph.ResultFormatObjectArray}
-	query := azresourcegraph.QueryRequest{
-		Subscriptions: &subs,
-		Query:         &rawQuery,
-		Options:       &options,
-	}
-	//Execute query
+	// Generate Query
+	query := s.generateQuery(image.digest)
+	// Execute Query
 	results, err := myClient.Resources(ctx, query)
 	if err != nil {
 		return nil, err
 	}
-	//Extract results:
-	var data []Response2
-	count := *results.Count
+	//Parse query response:
+	resps, err2 := s.parseQueryResponse(results)
+	if err2 != nil {
+		log.Debug(err2.Error())
+		return nil, err2
+	}
 
+	return resps, nil
+}
+
+func (s *Server) parseQueryResponse(results azresourcegraph.QueryResponse) (scanInfoList []ScanInfo, err error) {
 	log.Debugf("results: %d", results)
-	log.Debugf("results.data: %d", results.Data)
 
-	resps = make([]Response2, 0)
+	var data []ScanInfo
+	count := *results.Count
+	log.Debugf("total unhealthy images: %d", count)
+
+	scanInfoList = make([]ScanInfo, 0)
+	// In case that scan info returned from ARG.
 	if count > 0 {
 		raw, err := json.Marshal(results.Data)
 		if err != nil {
@@ -226,20 +160,50 @@ func (s *Server) Process(ctx context.Context, digest string) (resps []Response2,
 		}
 		log.Debugf("Data: %d", data)
 		for _, v := range data {
-			// rd, _ := v.SubAssessmentProperties.ResourceDetails.AsAzureResourceDetails()
-			// ad, _ := v.SubAssessmentProperties.AdditionalData.AsContainerRegistryVulnerabilityProperties()
-			resp := Response2{
+			oneScanInfo := ScanInfo{
 				ScanStatus:      v.ScanStatus,
 				SeveritySummary: v.SeveritySummary,
 			}
-			resps = append(resps, resp)
+			scanInfoList = append(scanInfoList, oneScanInfo)
 		}
+		// In Caste that there are no results.
+	} else {
+		oneScanInfo := ScanInfo{
+			ScanStatus:      &unscannedImage,
+			SeveritySummary: nil,
+		}
+		scanInfoList = append(scanInfoList, oneScanInfo)
 	}
 
-	log.Debugf("total unhealthy images: %d", count)
-	log.Debugf("Resps: %s", resps)
+	log.Debugf("scanInfoList: %s", scanInfoList)
 
-	return resps, nil
+	return scanInfoList, nil
+}
+
+func (s *Server) generateQuery(digest string) azresourcegraph.QueryRequest {
+	// Prepare query:
+	subs := []string{s.SubscriptionID}
+	rawQuery := `
+		securityresources
+		| where type == 'microsoft.security/assessments/subassessments'
+		| where id matches regex '(.+?)/providers/Microsoft.Security/assessments/dbd0cb49-b563-45e7-9724-889e799fa648/'
+		//| parse id with registryResourceId '/providers/Microsoft.Security/assessments/' *
+		//| parse registryResourceId with * "/providers/Microsoft.ContainerRegistry/registries/" registryName
+		| extend imageDigest = tostring(properties.additionalData.imageDigest)
+		| where imageDigest == "` + digest + `"
+		| extend repository = tostring(properties.additionalData.repositoryName)
+		| extend scanFindingSeverity = tostring(properties.status.severity), scanStatus = tostring(properties.status.code)
+		| summarize scanFindingSeverityCount = count() by scanFindingSeverity, scanStatus, repository, imageDigest
+		| summarize severitySummary = make_bag(pack(scanFindingSeverity, scanFindingSeverityCount)) by  imageDigest, scanStatus`
+
+	log.Debugf("Query: %s", rawQuery)
+	options := azresourcegraph.QueryRequestOptions{ResultFormat: azresourcegraph.ResultFormatObjectArray}
+	query := azresourcegraph.QueryRequest{
+		Subscriptions: &subs,
+		Query:         &rawQuery,
+		Options:       &options,
+	}
+	return query
 }
 
 func getTokenMSI() (msg *adal.Token, err error) {

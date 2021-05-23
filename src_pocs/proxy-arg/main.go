@@ -29,6 +29,14 @@ type LogHook struct {
 	Loglevels []log.Level
 }
 
+// Image struct/
+type Image struct {
+	registry string
+	repo     string
+	tag      string
+	digest   string
+}
+
 func main() {
 	//pflag.Parse()
 
@@ -50,77 +58,89 @@ func main() {
 func handle(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	image := req.URL.Query().Get("image") // e.g. : oss/kubernetes/aks/etcd-operator
-	if image == "" {
+	imageStr := req.URL.Query().Get("image") // e.g. : oss/kubernetes/aks/etcd-operator
+	if imageStr == "" {
 		log.Info("Failed to provide image to query")
 		w.WriteHeader(http.StatusForbidden)
 		json.NewEncoder(w).Encode(nil)
+		return
+	}
+	image := newImage(imageStr)
+
+	scanInfo, err := server.Process(ctx, image)
+
+	if err != nil {
+		log.Infof("[error] : %s", err)
+		w.WriteHeader(http.StatusForbidden)
+		json.NewEncoder(w).Encode(scanInfo)
+	} else {
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(scanInfo)
 	}
 
+}
+
+func newImage(imageStr string) (image Image) {
 	// registry := "upstream.azurecr.io"
 	// repo := "oss/kubernetes/ingress/nginx-ingress-controller"
 	// tag := "0.16.2"
-	registry := strings.Split(image, "/")[0]
-	repo := strings.Replace(image, registry+"/", "", 1)
+	registry := strings.Split(imageStr, "/")[0]
+	repo := strings.Replace(imageStr, registry+"/", "", 1)
 	tag := "latest"
 	if strings.Contains(repo, ":") {
 		tag = strings.Split(repo, ":")[1]
 		repo = strings.Replace(repo, ":"+tag, "", 1)
 	}
-	digest := ""
+	image = Image{registry: registry, repo: repo, tag: tag, digest: ""}
 	// In case that the image deploted with the digest:
-	if strings.Contains(image, "@sha256") {
-		digest = strings.Split(image, "@")[1]
+	if strings.Contains(imageStr, "@sha256") {
+		image.digest = strings.Split(imageStr, "@")[1]
 		// else, extract digest first.
 	} else {
-		getImageShaBinary := "getimagesha.sh"
-		dir, err := os.Getwd()
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		cmd := exec.Command(
-			"sh",
-			getImageShaBinary,
-			registry,
-			repo,
-			tag,
-		)
-		log.Infof("cmd: %v", cmd)
-		cmd.Dir = dir
-		stdout := &bytes.Buffer{}
-		stderr := &bytes.Buffer{}
-		cmd.Stderr, cmd.Stdout = stderr, stdout
-
-		err = cmd.Run()
-		output := stdout.String()
-		log.Infof("output: %s", output)
-		if err != nil {
-			log.Errorf("error invoking cmd, err: %v, output: %v", err, stderr.String())
-		}
-		if output == "null\n" {
-			log.Infof("[error] : could not find valid digest %s", output)
-			w.WriteHeader(http.StatusForbidden)
-			json.NewEncoder(w).Encode(nil)
-		} else {
-			digest = strings.TrimSuffix(output, "\n")
-		}
+		image.digest = tag2Digest(image)
 	}
-	if strings.EqualFold(digest, "") {
+	if strings.EqualFold(image.digest, "") {
 		log.Infof("Digest is empty.")
-		return
 	}
-	log.Infof("digest: %s", digest)
-	data, err := server.Process(ctx, digest)
+	return image
+}
+
+func tag2Digest(image Image) (digest string) {
+	getImageShaBinary := "getimagesha.sh"
+	dir, err := os.Getwd()
 	if err != nil {
-		log.Infof("[error] : %s", err)
-		w.WriteHeader(http.StatusForbidden)
-		json.NewEncoder(w).Encode(data)
-	} else {
-		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(data)
+		log.Fatal(err)
 	}
 
+	cmd := exec.Command(
+		"sh",
+		getImageShaBinary,
+		image.registry,
+		image.repo,
+		image.tag,
+	)
+
+	log.Infof("cmd: %v", cmd)
+	cmd.Dir = dir
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	cmd.Stderr, cmd.Stdout = stderr, stdout
+
+	err = cmd.Run()
+	output := stdout.String()
+	log.Infof("output: %s", output)
+	if err != nil {
+		log.Errorf("error invoking cmd, err: %v, output: %v", err, stderr.String())
+	}
+
+	if output == "null\n" {
+		log.Infof("[error] : could not find valid digest %s", output)
+	} else {
+		digest = strings.TrimSuffix(output, "\n")
+	}
+	image.digest = digest
+	log.Infof("Digest successfully extracted: %s", digest)
+	return digest
 }
 
 // setupLogger sets up hooks to redirect stdout and stderr

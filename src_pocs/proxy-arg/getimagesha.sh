@@ -15,7 +15,7 @@ fi
 registry="$1"
 repository="$2"
 tag="$3"
-#echo $registry $repository $tag $CLIENT_ID
+#echo "Debug: " "Registry:" $registry " Repository:" $repository" Tag:" $tag
 
 credentials=$(echo -n "$CLIENT_ID:$CLIENT_SECRET" | base64)
 acr_access_token=$(curl -s -H "Content-Type: application/x-www-form-urlencoded" -H "Authorization: Basic $credentials" "https://$registry/oauth2/token?service=$registry&scope=repository:$repository:pull" | jq '.access_token' | sed -e 's/^"//' -e 's/"$//')
@@ -26,6 +26,6 @@ if [ $? -ne 0 ] ; then
     exit 1
 else
     echo $digest
-	echo "Debug - digest was printed"
+	#echo "Debug - digest was printed"
 fi
 exit 0
