@@ -18,6 +18,16 @@ spec:
         imagePullPolicy: Always
         name: demo
         env:
+        - name: SUBSCRIPTION_ID
+          valueFrom:
+            secretKeyRef:
+              name: azcred
+              key: subscriptionID
+        - name: RESOURCE_GROUP
+          valueFrom:
+            secretKeyRef: 
+              name: azcred
+              key: resource-group
         - name: CLIENT_ID
           valueFrom:
             secretKeyRef:
@@ -31,10 +41,6 @@ spec:
         ports:
         - containerPort: 8090
           protocol: TCP
-        args:
-          - --subscription-id=409111bf-3097-421c-ad68-a44e716edf58
-          - --resource-group=MC_Block-Img-Playgroung_BlockImagesPlayground_eastus2
-          - --identity-client-id=14eef188-6bd2-44d9-9756-ecfc13ab9f02
       nodeSelector:
         kubernetes.io/os: linux
 ---

@@ -17,6 +17,10 @@ import (
 	"github.com/spf13/pflag"
 )
 
+const (
+	ShellScriptFileName string = "getimagesha.sh"
+)
+
 var (
 	debug  = pflag.Bool("debug", true, "sets log to debug level")
 	server *Server
@@ -66,9 +70,12 @@ func handle(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	image := newImage(imageStr)
+	if strings.EqualFold(image.digest, "") {
+		log.Errorf("Digest is empty.")
+		return
+	}
 
 	scanInfo, err := server.Process(ctx, image)
-
 	if err != nil {
 		log.Infof("[error] : %s", err)
 		w.WriteHeader(http.StatusForbidden)
@@ -81,6 +88,7 @@ func handle(w http.ResponseWriter, req *http.Request) {
 }
 
 func newImage(imageStr string) (image Image) {
+	// e.g image fields:
 	// registry := "upstream.azurecr.io"
 	// repo := "oss/kubernetes/ingress/nginx-ingress-controller"
 	// tag := "0.16.2"
@@ -92,29 +100,29 @@ func newImage(imageStr string) (image Image) {
 		repo = strings.Replace(repo, ":"+tag, "", 1)
 	}
 	image = Image{registry: registry, repo: repo, tag: tag, digest: ""}
-	// In case that the image deploted with the digest:
+	// In case that the image was deployed with the digest:
 	if strings.Contains(imageStr, "@sha256") {
 		image.digest = strings.Split(imageStr, "@")[1]
 		// else, extract digest first.
 	} else {
 		image.digest = tag2Digest(image)
 	}
-	if strings.EqualFold(image.digest, "") {
-		log.Infof("Digest is empty.")
-	}
 	return image
 }
 
+// Convert tag to digest - using shell script (getimagesha.sh)
 func tag2Digest(image Image) (digest string) {
-	getImageShaBinary := "getimagesha.sh"
+	if image.registry == "" || image.repo == "" || image.tag == "" {
+		log.Errorf("Invalid image - registry or repo or tag are empty : registry = %s, repo = %s, tag = %s", image.registry, image.repo, image.tag)
+		return ""
+	}
 	dir, err := os.Getwd()
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	cmd := exec.Command(
 		"sh",
-		getImageShaBinary,
+		ShellScriptFileName,
 		image.registry,
 		image.repo,
 		image.tag,
@@ -138,6 +146,7 @@ func tag2Digest(image Image) (digest string) {
 	} else {
 		digest = strings.TrimSuffix(output, "\n")
 	}
+	//TODO Check that the digest is valid.
 	image.digest = digest
 	log.Infof("Digest successfully extracted: %s", digest)
 	return digest
