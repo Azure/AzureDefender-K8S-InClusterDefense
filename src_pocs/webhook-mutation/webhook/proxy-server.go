@@ -39,7 +39,7 @@ const (
 	timeout = 80 * time.Second
 )
 
-var (
+const (
 	unscannedImage string = "Unscanned"
 )
 
@@ -73,7 +73,7 @@ type ScanInfo struct {
 	//ScanStatus
 	ScanStatus *string `json:"scanStatus,omitempty"`
 	// SeveritySummary
-	SeveritySummary map[string]float64 `json:"severitySummary,omitempty"`
+	SeveritySummary map[string]int `json:"severitySummary,omitempty"`
 }
 
 // NewServer creates a new server instance.
@@ -139,8 +139,9 @@ func (s *Server) parseQueryResponse(results azresourcegraph.QueryResponse) (scan
 		}
 		// In case that there are no results of scan.
 	} else {
+		unScannedImageForAssignment := unscannedImage // Can't assign pointer of constant.
 		oneScanInfo := ScanInfo{
-			ScanStatus:      &unscannedImage,
+			ScanStatus:      &unScannedImageForAssignment,
 			SeveritySummary: nil,
 		}
 		scanInfoList = append(scanInfoList, oneScanInfo)
@@ -163,7 +164,7 @@ func (s *Server) generateQuery(digest string) azresourcegraph.QueryRequest {
 		//| parse id with registryResourceId '/providers/Microsoft.Security/assessments/' *
 		//| parse registryResourceId with * "/providers/Microsoft.ContainerRegistry/registries/" registryName
 		| extend imageDigest = tostring(properties.additionalData.imageDigest)
-		| where imageDigest == "` + digest + `"
+		| where imageDigest == '` + digest + `'
 		| extend repository = tostring(properties.additionalData.repositoryName)
 		| extend scanFindingSeverity = tostring(properties.status.severity), scanStatus = tostring(properties.status.code)
 		| summarize scanFindingSeverityCount = count() by scanFindingSeverity, scanStatus, repository, imageDigest
@@ -189,7 +190,6 @@ func (s *Server) createARGClient() (azresourcegraph.BaseClient, error) {
 	}
 	// [4. creates a BearerAuthorizer using the given token provider]
 	argClient.Authorizer = autorest.NewBearerAuthorizer(token)
-	log.Debugf("argClient.Authorizer: %s", argClient.Authorizer)
 	return argClient, nil
 }
 

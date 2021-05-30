@@ -14,10 +14,17 @@ ADD . .
 # build the source
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main
 
+COPY getimagesha.sh /app
+RUN chmod a+x /app/getimagesha.sh
+RUN sed -i -e 's/\r//g' /app/getimagesha.sh
+
 # Final Image
 FROM alpine:3.12
 # add ca-certificates
-RUN apk update && apk --no-cache  add ca-certificates
+RUN apk update && apk --no-cache  add ca-certificates \
+    bash \
+    curl \
+    jq
 # set working directory
 WORKDIR /app
 # copy the binary from builder

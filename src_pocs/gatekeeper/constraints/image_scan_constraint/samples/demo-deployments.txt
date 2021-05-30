@@ -1,0 +1,6 @@
+Valid: kubectl run demo-valid --image=nivsregistry.azurecr.io/nivsimage10:72@sha256:a4ea01d861ba4c3866048d5a045b2a76aab51c77eb21056b60cf144b1a878051
+Not valid - medium :  kubectl run demo-not-valid-medium --image=nivsregistry.azurecr.io/nivsimage7:oms80@sha256:840006e7bf6d104ccf07db5f8503e8a4f77ac6f3c086194f24c9a796e698d806
+Unscanned (tag2digest): kubectl run demo-unscanned --image=upstream.azurecr.io/oss/kubernetes/ingress/nginx-ingress-controller:0.16.2
+
+
+Verify the annotations of valid: kubectl get pod alpine -o jsonpath='{.metadata.annotations}'

@@ -5,4 +5,5 @@ src_pocs/webhook-mutation/scripts/minikube-linux-amd64
 src_pocs/webhook-mutation/webhook/tls
 src_pocs/proxy-arg/getimagesha.sh
 
+*.exe
 *.sha256

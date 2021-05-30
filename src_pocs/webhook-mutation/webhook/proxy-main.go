@@ -3,19 +3,14 @@ package main
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 
 	//"fmt"
 	"io"
 	"io/ioutil"
-	"net/http"
 	"os"
 	"os/exec"
 	"strings"
 
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/containerregistry/mgmt/containerregistry"
-	"github.com/Azure/azure-sdk-for-go/services/keyvault/auth"
-	"github.com/Azure/go-autorest/autorest"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
 )
@@ -44,49 +39,36 @@ type Image struct {
 	digest   string
 }
 
-func main() {
-	//pflag.Parse()
-
-	var err error
-
+func GetScanInfo(imageAsString string) (scanInfo []ScanInfo, err error) {
 	setupLogger()
-
 	ctx = context.Background()
 	server, err = NewServer()
 	if err != nil {
 		log.Fatalf("[error] : %v", err)
 	}
-	http.HandleFunc("/process", handle)
-	http.ListenAndServe(":8090", nil)
 
-	os.Exit(0)
+	scanInfo, err = handle(imageAsString)
+	return scanInfo, err
 }
 
-func handle(w http.ResponseWriter, req *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
+func handle(imageAsString string) (resps []ScanInfo, err error) {
 
-	imageStr := req.URL.Query().Get("image") // e.g. : oss/kubernetes/aks/etcd-operator
-	if imageStr == "" {
+	if imageAsString == "" {
 		log.Info("Failed to provide image to query")
-		w.WriteHeader(http.StatusForbidden)
-		json.NewEncoder(w).Encode(nil)
-		return
+		return nil, err
 	}
-	image := newImage(imageStr)
+	image := newImage(imageAsString)
 	if strings.EqualFold(image.digest, "") {
 		log.Errorf("Digest is empty.")
-		return
+		return nil, err
 	}
 
 	scanInfo, err := server.Process(ctx, image)
 	if err != nil {
 		log.Infof("[error] : %s", err)
-		w.WriteHeader(http.StatusForbidden)
-		json.NewEncoder(w).Encode(scanInfo)
-	} else {
-		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(scanInfo)
+		return nil, err
 	}
+	return scanInfo, nil
 
 }
 
@@ -200,16 +182,4 @@ func (hook *LogHook) Fire(entry *log.Entry) error {
 // Levels defines log levels at which hook is triggered
 func (hook *LogHook) Levels() []log.Level {
 	return hook.Loglevels
-}
-
-func tag2DigestSDK(image Image) {
-	authorizer, err := auth.NewAuthorizerFromEnvironment()
-	containerRegistryClient := containerregistry.NewRegistriesClient(os.Getenv("SubscriptionID"))
-	containerRegistryClient.Authorizer = authorizer
-	containerRegistryCredential, err := containerRegistryClient.ListCredentials(context.Background(), os.Getenv("ResourceGroupName"), os.Getenv("Registry"))
-
-	basicAuthorizer := autorest.NewBasicAuthorizer("<userName>", "<password>")
-	tagClient := repository.NewTagClient("https://" + "<loginServer>")
-	tagClient.Authorizer = basicAuthorizer
-	repositoryTagDetails, err := tagClient.GetList(context.Background(), " <repositoryName>", "", nil, "", "")
 }
