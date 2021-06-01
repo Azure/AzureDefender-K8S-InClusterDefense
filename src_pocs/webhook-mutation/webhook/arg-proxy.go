@@ -17,7 +17,7 @@ const (
 	timeout = 80 * time.Second
 )
 
-var (
+const (
 	unscannedImage string = "Unscanned"
 )
 
@@ -26,8 +26,9 @@ var (
 	resourceName string        = "https://management.azure.com/"
 )
 
-// Server
-type Server struct {
+// Server for arg client.
+type ARGProxy struct {
+	ctx context.Context
 	// subscriptionId to azure
 	SubscriptionID string
 	// resource-group
@@ -36,72 +37,70 @@ type Server struct {
 	IdentityClientID string
 }
 
-// ScanInfo
-type ScanInfo struct {
-	//ScanStatus
-	ImageDigest *string `json:"imageDigest,omitempty"`
+type QueryResponse struct {
 	//ScanStatus
 	ScanStatus *string `json:"scanStatus,omitempty"`
 	// SeveritySummary
-	SeveritySummary map[string]float64 `json:"severitySummary,omitempty"`
+	SeveritySummary map[string]int `json:"severitySummary,omitempty"`
 }
 
 // NewServer creates a new server instance.
-func NewServer() (*Server, error) {
-	log.Debugf("NewServer")
-	var s Server
-	s.SubscriptionID = os.Getenv("SUBSCRIPTION_ID")
-	s.ResourceGroup = os.Getenv("RESOURCE_GROUP")
-	s.IdentityClientID = os.Getenv("CLIENT_ID")
+func NewARGProxy() (ARGProxy, error) {
+	log.Debugf("Creating ARG proxy")
+	var proxy ARGProxy
+	proxy.ctx = context.Background()
+	proxy.SubscriptionID = os.Getenv("SUBSCRIPTION_ID")
+	proxy.ResourceGroup = os.Getenv("RESOURCE_GROUP")
+	proxy.IdentityClientID = os.Getenv("CLIENT_ID")
 
-	return &s, nil
+	return proxy, nil
 }
 
 // Process the image
-func (s *Server) Process(ctx context.Context, image Image) (resps []ScanInfo, err error) {
+func (proxy ARGProxy) GetImageSecInfo(image Image) (imageSecInfo *ImageSecInfo, err error) {
 	// Create ARG client
-	argClient, err := s.createARGClient()
+	argClient, err := proxy.createARGClient()
 	if err != nil {
 		return nil, err
 	}
 	// Generate Query
-	query := s.generateQuery(image.digest)
+	query := proxy.generateQuery(image.Digest)
 	// Execute Query
-	results, err := argClient.Resources(ctx, query)
+	results, err := argClient.Resources(proxy.ctx, query)
 	if err != nil {
 		return nil, err
 	}
 	//Parse query response:
-	resps, err2 := s.parseQueryResponse(results)
-	if err2 != nil {
-		log.Debug(err2.Error())
-		return nil, err2
+	scanInfoList, err := proxy.parseQueryResponse(results)
+	if err != nil {
+		log.Debug(err.Error())
+		return nil, err
 	}
-
-	return resps, nil
+	log.Debugf("Scan Info List: %s", scanInfoList)
+	// Extract first item in the list.
+	return &scanInfoList[0], nil
 }
 
 // Parse query response from arg to ScanInfo array.
-func (s *Server) parseQueryResponse(results azresourcegraph.QueryResponse) (scanInfoList []ScanInfo, err error) {
-	log.Debugf("results: %d", results)
-
-	var data []ScanInfo
+func (proxy ARGProxy) parseQueryResponse(results azresourcegraph.QueryResponse) (scanInfoList []ImageSecInfo, err error) {
+	var data []QueryResponse
 	count := *results.Count
-
-	scanInfoList = make([]ScanInfo, 0)
+	log.Debugf("results.Data: %s", results.Data)
+	scanInfoList = make([]ImageSecInfo, 0)
 	// In case that scan info returned from ARG.
 	if count > 0 {
 		raw, err := json.Marshal(results.Data)
 		if err != nil {
 			return nil, err
 		}
+		log.Debugf("raw: %s", raw)
 		err = json.Unmarshal(raw, &data)
 		if err != nil {
 			return nil, err
 		}
-		log.Debugf("Data: %d", data)
+		log.Debugf("data: %s", data)
 		for _, v := range data {
-			oneScanInfo := ScanInfo{
+			oneScanInfo := ImageSecInfo{
 				ScanStatus:      v.ScanStatus,
 				SeveritySummary: v.SeveritySummary,
 			}
@@ -109,8 +108,9 @@ func (s *Server) parseQueryResponse(results azresourcegraph.QueryResponse) (scan
 		}
 		// In case that there are no results of scan.
 	} else {
-		oneScanInfo := ScanInfo{
-			ScanStatus:      &unscannedImage,
+		unScannedImageForAssignment := unscannedImage // Can't assign pointer of constant.
+		oneScanInfo := ImageSecInfo{
+			ScanStatus:      &unScannedImageForAssignment,
 			SeveritySummary: nil,
 		}
 		scanInfoList = append(scanInfoList, oneScanInfo)
@@ -123,9 +123,9 @@ func (s *Server) parseQueryResponse(results azresourcegraph.QueryResponse) (scan
 }
 
 // Generate query for ARG with the relevant options and digest.
-func (s *Server) generateQuery(digest string) azresourcegraph.QueryRequest {
+func (proxy ARGProxy) generateQuery(digest string) azresourcegraph.QueryRequest {
 	// Prepare query:
-	subs := []string{s.SubscriptionID}
+	subs := []string{proxy.SubscriptionID}
 	rawQuery := `
 		securityresources
 		| where type == 'microsoft.security/assessments/subassessments'
@@ -133,11 +133,11 @@ func (s *Server) generateQuery(digest string) azresourcegraph.QueryRequest {
 		//| parse id with registryResourceId '/providers/Microsoft.Security/assessments/' *
 		//| parse registryResourceId with * "/providers/Microsoft.ContainerRegistry/registries/" registryName
 		| extend imageDigest = tostring(properties.additionalData.imageDigest)
-		| where imageDigest == "` + digest + `"
+		| where imageDigest == '` + digest + `'
 		| extend repository = tostring(properties.additionalData.repositoryName)
 		| extend scanFindingSeverity = tostring(properties.status.severity), scanStatus = tostring(properties.status.code)
-		| summarize scanFindingSeverityCount = count() by scanFindingSeverity, scanStatus, repository, imageDigest
-		| summarize severitySummary = make_bag(pack(scanFindingSeverity, scanFindingSeverityCount)) by  imageDigest, scanStatus`
+		| summarize scanFindingSeverityCount = count() by scanFindingSeverity, scanStatus, repository
+		| summarize severitySummary = make_bag(pack(scanFindingSeverity, scanFindingSeverityCount)) by scanStatus`
 
 	log.Debugf("Query: %s", rawQuery)
 	options := azresourcegraph.QueryRequestOptions{ResultFormat: azresourcegraph.ResultFormatObjectArray}
@@ -150,21 +150,20 @@ func (s *Server) generateQuery(digest string) azresourcegraph.QueryRequest {
 }
 
 // Create ARG Client using userassigned identity.
-func (s *Server) createARGClient() (azresourcegraph.BaseClient, error) {
+func (proxy ARGProxy) createARGClient() (azresourcegraph.BaseClient, error) {
 	// Connect to ARG:
 	argClient := azresourcegraph.New()
-	token, tokenErr := s.generateToken()
+	token, tokenErr := proxy.generateToken()
 	if tokenErr != nil {
 		return argClient, errors.Wrapf(tokenErr, "failed to get management token")
 	}
 	// [4. creates a BearerAuthorizer using the given token provider]
 	argClient.Authorizer = autorest.NewBearerAuthorizer(token)
-	log.Debugf("argClient.Authorizer: %s", argClient.Authorizer)
 	return argClient, nil
 }
 
 // Generate endpoint and token for Bearer Authorizer using UserAssignedIdentity
-func (s *Server) generateToken() (msg *adal.Token, err error) {
+func (proxy ARGProxy) generateToken() (msg *adal.Token, err error) {
 	// [1. EndPoint] Get the MSI endpoint on Virtual Machines
 	imdsTokenEndpoint, err := adal.GetMSIVMEndpoint()
 	if err != nil {
@@ -174,7 +173,7 @@ func (s *Server) generateToken() (msg *adal.Token, err error) {
 	ticker := time.NewTicker(period)
 	defer ticker.Stop()
 	for ; true; <-ticker.C {
-		token := s.getTokenFromIMDSWithUserAssignedID(imdsTokenEndpoint)
+		token := proxy.getTokenFromIMDSWithUserAssignedID(imdsTokenEndpoint)
 		if token == nil {
 			log.Error("Tokens acquired from IMDS with and without identity client ID do not match")
 		} else {
@@ -185,9 +184,9 @@ func (s *Server) generateToken() (msg *adal.Token, err error) {
 }
 
 // Get token of user assigned identity
-func (s *Server) getTokenFromIMDSWithUserAssignedID(imdsTokenEndpoint string) *adal.Token {
+func (proxy ARGProxy) getTokenFromIMDSWithUserAssignedID(imdsTokenEndpoint string) *adal.Token {
 	// [2. SPT] creates a ServicePrincipalToken via the MSI VM Extension by using the clientID of specified user assigned identity
-	spt, err := adal.NewServicePrincipalTokenFromMSIWithUserAssignedID(imdsTokenEndpoint, resourceName, s.IdentityClientID)
+	spt, err := adal.NewServicePrincipalTokenFromMSIWithUserAssignedID(imdsTokenEndpoint, resourceName, proxy.IdentityClientID)
 	if err != nil {
 		log.Errorf("failed to acquire a token from IMDS using user-assigned identity, error: %+v", err)
 		return nil
@@ -207,6 +206,6 @@ func (s *Server) getTokenFromIMDSWithUserAssignedID(imdsTokenEndpoint string) *a
 		return nil
 	}
 
-	log.Infof("successfully acquired a service principal token from %s using a user-assigned identity (%s)", imdsTokenEndpoint, s.IdentityClientID)
+	log.Infof("successfully acquired a service principal token from %s using a user-assigned identity (%s)", imdsTokenEndpoint, proxy.IdentityClientID)
 	return &token
 }

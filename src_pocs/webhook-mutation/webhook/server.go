@@ -37,8 +37,8 @@ func StartServer() error {
 	s := &http.Server{
 		Addr:           fmt.Sprintf(":%s", port),
 		Handler:        mux,
-		ReadTimeout:    10 * time.Second,
-		WriteTimeout:   10 * time.Second,
+		ReadTimeout:    30 * time.Second,
+		WriteTimeout:   30 * time.Second,
 		MaxHeaderBytes: 1 << 20, // 1048576
 		TLSConfig:      &tls.Config{Certificates: []tls.Certificate{pair}},
 	}

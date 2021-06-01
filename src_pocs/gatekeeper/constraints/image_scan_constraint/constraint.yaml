@@ -1,14 +1,15 @@
 apiVersion: constraints.gatekeeper.sh/v1beta1
 kind: K8sDenyAll
 metadata:
-  name: deny-all-pods
+  name: azuredefender-k8s-inclusterdefense-block-vulnerable-image
 spec:
+  enforcementAction: dryrun
   match:
     kinds:
       - apiGroups: [""]
         kinds: ["Pod"]
         namespace: ["default",""]
   parameters:
-    high_severity: 10
-    medium_severity: 4
-    low_severity: 0
+    high_severity: 3
+    medium_severity: 9
+    low_severity: 20

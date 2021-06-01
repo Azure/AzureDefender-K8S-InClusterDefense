@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: image-with-digest-deployment
+  labels:
+    app: defender-webhook-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: defender-webhook-demo
+  template:
+    metadata:
+      labels:
+        app: defender-webhook-demo
+    spec:
+      containers:
+      - name: demo-with-digest
+        image: arcsecuritydev.azurecr.io/enableauditlogs:audit71@sha256:2ffa38b302fd1a8210379fe43f9c6c6d96ba702ecdc018a00c1f80470f60eb01
+        imagePullPolicy: IfNotPresent

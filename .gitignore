@@ -3,6 +3,7 @@ src_pocs/webhook-mutation/deployment/dependencies/mutation-configed.yaml
 src_pocs/webhook-mutation/deployment/dependencies/mutation-config-ca.yaml
 src_pocs/webhook-mutation/scripts/minikube-linux-amd64
 src_pocs/webhook-mutation/webhook/tls
+src_pocs/proxy-arg/getimagesha.sh
 
-
+*.exe
 *.sha256

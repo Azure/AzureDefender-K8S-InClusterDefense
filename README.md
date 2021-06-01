@@ -1,33 +1,41 @@
-# Project
+# Azure Defender K8S In Cluster Defense
 
-> This repo has been populated by an initial template to help get you started. Please
-> make sure to update the content to build a great experience for community-building.
+1. Create Local secret in src_pocs/proxy-arg/deployment/azcred.yaml:
+    apiVersion: v1
+    kind: Secret
+    metadata:
+    name: azcred
+    namespace: proxy-arg-ns
+    stringData:
+    clientid: <ClientID>
+    clientsecret: <ClientSecret>
 
-As the maintainer of this project, please make a few updates:
+    you can get the client ID ans client secret using the following queries:
+     1. az identity show --resource-group mc_block-img-playgroung_blockimagesplayground_eastus2 --name block-pod-id --query clientId
+     2. az identity show --resource-group mc_block-img-playgroung_blockimagesplayground_eastus2 --name block-pod-id --query clientSecretUrl
 
-- Improving this README.MD file to provide a great experience
-- Updating SUPPORT.MD with content about this project's support experience
-- Understanding the security reporting process in SECURITY.MD
-- Remove this section from the README
+2. Deploy the webhook mutation server.
+3. Verify that you have tag_2_digest.sh in the container machine (using exec command)
+4. Verify that the policies are deployed (template and assignment) (gatekeeper/constraints/image_scan_constraint.yaml)
 
-## Contributing
+# Usage
+1. You can modify the constraint to block instead of audit (dryrun) by deleting "  enforcementAction: dryrun" in the constraint file (gatekeeper/constraints/image_scan_constraint.yaml)
+# References
 
-This project welcomes contributions and suggestions.  Most contributions require you to agree to a
-Contributor License Agreement (CLA) declaring that you have the right to, and actually do, grant us
-the rights to use your contribution. For details, visit https://cla.opensource.microsoft.com.
+## Mutation webhook server
+Cert Controller - useful for creating certifacts for https server - https://github.com/open-policy-agent/cert-controller
+How to create mutation webhook- https://medium.com/ibm-cloud/diving-into-kubernetes-mutatingadmissionwebhook-6ef3c5695f74
+## Tag2Digest:
+Digester - Google open source - https://github.com/google/k8s-digester
 
-When you submit a pull request, a CLA bot will automatically determine whether you need to provide
-a CLA and decorate the PR appropriately (e.g., status check, comment). Simply follow the instructions
-provided by the bot. You will only need to do this once across all repos using our CLA.
+## ARG Proxy
+#### Authentication
+Pod Identity 
+    1. Repo - https://github.com/Azure/aad-pod-identity
+    2. How to use pod identity - https://blog.baeke.info/2019/02/02/aks-managed-pod-identity-and-access-to-azure-storage/
+ARG Client repo: https://github.com/Azure/azure-sdk-for-go/tree/master/services/resourcegraph/mgmt/2021-03-01/resourcegraph
 
-This project has adopted the [Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/).
-For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or
-contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.
-
-## Trademarks
-
-This project may contain trademarks or logos for projects, products, or services. Authorized use of Microsoft 
-trademarks or logos is subject to and must follow 
-[Microsoft's Trademark & Brand Guidelines](https://www.microsoft.com/en-us/legal/intellectualproperty/trademarks/usage/general).
-Use of Microsoft trademarks or logos in modified versions of this project must not cause confusion or imply Microsoft sponsorship.
-Any use of third-party trademarks or logos are subject to those third-party's policies.
+## Policies
+GateKeeper
+    1. open source of GK - https://github.com/open-policy-agent/gatekeeper
+    2. Webinar : how to use gk - https://www.youtube.com/watch?v=v4wJE3I8BYM
