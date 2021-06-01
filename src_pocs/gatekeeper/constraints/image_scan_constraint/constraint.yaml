@@ -3,6 +3,7 @@ kind: K8sDenyAll
 metadata:
   name: azuredefender-k8s-inclusterdefense-block-vulnerable-image
 spec:
+  enforcementAction: dryrun
   match:
     kinds:
       - apiGroups: [""]

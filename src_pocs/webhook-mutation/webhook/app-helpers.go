@@ -3,7 +3,11 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
+	"os"
+
+	log "github.com/sirupsen/logrus"
 )
 
 // http helpers
@@ -59,4 +63,51 @@ func jsonError(w http.ResponseWriter, errStr string, code int) {
 // jsonErr err
 type jsonErr struct {
 	Err string `json:"err"`
+}
+
+// setupLogger sets up hooks to redirect stdout and stderr
+func setupLogger() {
+	log.SetOutput(ioutil.Discard)
+
+	// set log level
+	log.SetLevel(log.InfoLevel)
+	if *debug {
+		log.SetLevel(log.DebugLevel)
+	}
+
+	// add hook to send info, debug, warn level logs to stdout
+	log.AddHook(&LogHook{
+		Writer: os.Stdout,
+		Loglevels: []log.Level{
+			log.InfoLevel,
+			log.DebugLevel,
+			log.WarnLevel,
+		},
+	})
+
+	// add hook to send panic, fatal, error logs to stderr
+	log.AddHook(&LogHook{
+		Writer: os.Stderr,
+		Loglevels: []log.Level{
+			log.PanicLevel,
+			log.FatalLevel,
+			log.ErrorLevel,
+		},
+	})
+}
+
+// Fire is called when logging function with current hook is called
+// write to appropriate writer based on log level
+func (hook *LogHook) Fire(entry *log.Entry) error {
+	line, err := entry.String()
+	if err != nil {
+		return err
+	}
+	_, err = hook.Writer.Write([]byte(line))
+	return err
+}
+
+// Levels defines log levels at which hook is triggered
+func (hook *LogHook) Levels() []log.Level {
+	return hook.Loglevels
 }

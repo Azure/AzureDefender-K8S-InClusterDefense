@@ -26,39 +26,39 @@ spec:
           m := input.review.object.metadata.annotations["azure-denfder.io/scanInfo"]
           scan_info := json.unmarshal(m)[_]
           
-          not scan_info.severity["high"] < input.parameters.high_severity
+          not scan_info.severity["High"] < input.parameters.high_severity
 
-          msg := sprintf("\nBlock Reason: High Severity\nThreshold: %v\nActual: %v\nScanInfo:%v",[input.parameters.high_severity,scan_info.severity["high"],get_output_msg(scan_info)])
+          msg := sprintf("\nBlock Reason: High Severity\nThreshold: %v\nActual: %v\nScanInfo:%v",[input.parameters.high_severity,scan_info.severity["High"],get_output_msg(scan_info)])
         }
 
         violation[{"msg": msg}] {
           m := input.review.object.metadata.annotations["azure-denfder.io/scanInfo"]
           scan_info := json.unmarshal(m)[_]
 
-          not scan_info.severity["medium"] < input.parameters.medium_severity
+          not scan_info.severity["Medium"] < input.parameters.medium_severity
 
-          msg := sprintf("\nBlock Reason: Medium Severity\nThreshold: %v\nActual: %v\nScanInfo:%v",[input.parameters.medium_severity,scan_info.severity["medium"],get_output_msg(scan_info)])
+          msg := sprintf("\nBlock Reason: Medium Severity\nThreshold: %v\nActual: %v\nScanInfo:%v",[input.parameters.medium_severity,scan_info.severity["Medium"],get_output_msg(scan_info)])
         }
 
         violation[{"msg": msg}] {
           m := input.review.object.metadata.annotations["azure-denfder.io/scanInfo"]
           scan_info := json.unmarshal(m)[_]
 
-          not scan_info.severity["low"] < input.parameters.low_severity
+          not scan_info.severity["Low"] < input.parameters.low_severity
 
-          msg := sprintf("\nBlock Reason: Low Severity\nThreshold: %v\nActual: %v\nScanInfo:%v",[input.parameters.low_severity,scan_info.severity["low"],get_output_msg(scan_info)])
+          msg := sprintf("\nBlock Reason: Low Severity\nThreshold: %v\nActual: %v\nScanInfo:%v",[input.parameters.low_severity,scan_info.severity["Low"],get_output_msg(scan_info)])
         }
 
         violation[{"msg": msg}] {
           m := input.review.object.metadata.annotations["azure-denfder.io/scanInfo"]
           scan_info := json.unmarshal(m)[_]
-          not is_scanned(scan_info)
+          is_unscanned(scan_info)
 
-          msg := "\nBlock Reason: Unscanned\n"
+          msg := "\nBlock Reason: unscanned image\n"
         }
 
-        is_scanned(scan_info) = true{
-          scan_info.status == "Scanned"
+        is_unscanned(scan_info) = true{
+          scan_info.status == "Unscanned"
         }
         
         get_output_msg(scan_info) = output_msg{

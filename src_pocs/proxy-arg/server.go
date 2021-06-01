@@ -3,36 +3,14 @@ package main
 import (
 	"encoding/json"
 	"os"
+	"time"
 
-	// "io/ioutil"
-	//"net/http"
-
-	// "path"
-	// "regexp"
-	// "strings"
-
-	log "github.com/sirupsen/logrus"
-	"golang.org/x/net/context"
-
-	// yaml "gopkg.in/yaml.v2"
-	// azsecurity "github.com/Azure/azure-sdk-for-go/services/preview/security/mgmt/v3.0/security"
 	azresourcegraph "github.com/Azure/azure-sdk-for-go/services/resourcegraph/mgmt/2019-04-01/resourcegraph"
-
-	//acrmgmt "github.com/Azure/azure-sdk-for-go/services/preview/containerregistry/mgmt/2018-02-01/containerregistry"
-	//acr "github.com/Azure/azure-sdk-for-go/services/preview/containerregistry/runtime/2019-08-15-preview/containerregistry"
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/adal"
-
 	"github.com/pkg/errors"
-
-	"time"
-)
-
-// auth
-const (
-	// OAuthGrantTypeServicePrincipal for client credentials flow
-	OAuthGrantTypeServicePrincipal OAuthGrantType = iota
-	cloudName                      string         = ""
+	log "github.com/sirupsen/logrus"
+	"golang.org/x/net/context"
 )
 
 const (
@@ -47,14 +25,6 @@ var (
 	period       time.Duration = 100 * time.Second
 	resourceName string        = "https://management.azure.com/"
 )
-
-// OAuthGrantType specifies which grant type to use.
-type OAuthGrantType int
-
-// AuthGrantType ...
-func AuthGrantType() OAuthGrantType {
-	return OAuthGrantTypeServicePrincipal
-}
 
 // Server
 type Server struct {
