@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: image-without-digest-deployment
+  labels:
+    app: defender-webhook-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: defender-webhook-demo
+  template:
+    metadata:
+      labels:
+        app: defender-webhook-demo
+    spec:
+      containers:
+      - name: demo-without-digest
+        image: upstream.azurecr.io/oss/kubernetes/ingress/nginx-ingress-controller:0.16.2
+        imagePullPolicy: IfNotPresent

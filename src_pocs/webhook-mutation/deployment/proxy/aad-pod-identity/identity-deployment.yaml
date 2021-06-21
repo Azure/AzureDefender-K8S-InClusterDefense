@@ -1,0 +1,18 @@
+apiVersion: aadpodidentity.k8s.io/v1
+kind: AzureIdentity
+metadata:
+  name: block-pod-id
+  namespace: proxy-arg-ns
+spec:
+  type: 0
+  resourceID: /subscriptions/409111bf-3097-421c-ad68-a44e716edf58/resourcegroups/MC_Block-Img-Playgroung_BlockImagesPlayground_eastus2/providers/Microsoft.ManagedIdentity/userAssignedIdentities/block-pod-id
+  clientID: 14eef188-6bd2-44d9-9756-ecfc13ab9f02
+---
+apiVersion: aadpodidentity.k8s.io/v1
+kind: AzureIdentityBinding
+metadata:
+  name: block-pod-id-binding
+  namespace: proxy-arg-ns
+spec:
+  azureIdentity: block-pod-id
+  selector: block-pod-id

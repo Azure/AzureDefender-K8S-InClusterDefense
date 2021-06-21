@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: defender-webhook-deployment
+  labels:
+    app: defender-webhook
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: defender-webhook
+  template:
+    metadata:
+      labels:
+        app: defender-webhook
+    spec:
+      containers:
+      - name: defender-webhook
+        image: blockimgreg.azurecr.io/azuredefenderdemo:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8000
+        volumeMounts:
+        - name: defender-webhook-tls
+          mountPath: "/tls"
+          readOnly: true        
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "500m"
+        env:
+        - name: PORT
+          value: "8000"
+        - name: TLS
+          value: "/tls"
+        - name: SUBSCRIPTION_ID
+          valueFrom:
+            secretKeyRef:
+              name: azcred
+              key: subscriptionID
+        - name: RESOURCE_GROUP
+          valueFrom:
+            secretKeyRef: 
+              name: azcred
+              key: resource-group
+        - name: CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              name: azcred
+              key: clientid
+        - name: CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: azcred
+              key: clientsecret
+      volumes:
+      - name: defender-webhook-tls
+        secret:
+            secretName: defender-webhook-tls
+            
+            
+            

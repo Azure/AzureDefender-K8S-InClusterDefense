@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: azcred
+stringData:
+  subscriptionID: 409111bf-3097-421c-ad68-a44e716edf58
+  resource-group: MC_Block-Img-Playgroung_BlockImagesPlayground_eastus2
+  clientid: 14eef188-6bd2-44d9-9756-ecfc13ab9f02
+  clientsecret: 72f988bf-86f1-41af-91ab-2d7cd011db47&oid=03141ff5-e6e2-4b42-80a0-c222b34a967d&aid=14eef188-6bd2-44d9-9756-ecfc13ab9f02

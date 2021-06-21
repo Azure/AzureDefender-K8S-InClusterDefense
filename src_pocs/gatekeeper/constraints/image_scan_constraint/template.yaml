@@ -1,0 +1,70 @@
+apiVersion: templates.gatekeeper.sh/v1beta1
+kind: ConstraintTemplate
+metadata:
+  name: k8sdenyall
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sDenyAll
+      validation:
+         openAPIV3Schema:
+          properties:
+            high_severity:
+              type: integer
+            medium_severity:
+              type: integer
+            low_severity:
+              type: integer
+            
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8sdenyall
+
+        violation[{"msg": msg}] {
+          m := input.review.object.metadata.annotations["azure-denfder.io/scanInfo"]
+          scan_info := json.unmarshal(m)[_]
+          
+          not scan_info.severity["High"] < input.parameters.high_severity
+
+          msg := sprintf("\nBlock Reason: High Severity\nThreshold: %v\nActual: %v\nScanInfo:%v",[input.parameters.high_severity,scan_info.severity["High"],get_output_msg(scan_info)])
+        }
+
+        violation[{"msg": msg}] {
+          m := input.review.object.metadata.annotations["azure-denfder.io/scanInfo"]
+          scan_info := json.unmarshal(m)[_]
+
+          not scan_info.severity["Medium"] < input.parameters.medium_severity
+
+          msg := sprintf("\nBlock Reason: Medium Severity\nThreshold: %v\nActual: %v\nScanInfo:%v",[input.parameters.medium_severity,scan_info.severity["Medium"],get_output_msg(scan_info)])
+        }
+
+        violation[{"msg": msg}] {
+          m := input.review.object.metadata.annotations["azure-denfder.io/scanInfo"]
+          scan_info := json.unmarshal(m)[_]
+
+          not scan_info.severity["Low"] < input.parameters.low_severity
+
+          msg := sprintf("\nBlock Reason: Low Severity\nThreshold: %v\nActual: %v\nScanInfo:%v",[input.parameters.low_severity,scan_info.severity["Low"],get_output_msg(scan_info)])
+        }
+
+        violation[{"msg": msg}] {
+          m := input.review.object.metadata.annotations["azure-denfder.io/scanInfo"]
+          scan_info := json.unmarshal(m)[_]
+          is_unscanned(scan_info)
+
+          msg := "\nBlock Reason: unscanned image\n"
+        }
+
+        is_unscanned(scan_info) = true{
+          scan_info.status == "Unscanned"
+        }
+        
+        get_output_msg(scan_info) = output_msg{
+          image := scan_info.image
+          status := scan_info.status
+          severity := scan_info.severity
+
+          output_msg := sprintf("\n\tImage: %v\n\tStatus: %v\n\tSeverity: %v\n", [image,status,severity])
+        }
