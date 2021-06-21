@@ -1,0 +1,174 @@
+AzDProxy is starting...
+{
+    "level": "info",
+    "ts": 1624309867.557413,
+    "logger": "controller-runtime.metrics",
+    "msg": "metrics server is starting to listen",
+    "addr": ":8080"
+}
+{
+    "level": "info",
+    "ts": 1624309867.5581918,
+    "logger": "setup",
+    "msg": "setting up cert rotation"
+}
+{
+    "level": "info",
+    "ts": 1624309867.5586636,
+    "logger": "setup",
+    "msg": "starting manager"
+}
+{
+    "level": "info",
+    "ts": 1624309867.5588243,
+    "logger": "setup",
+    "msg": "waiting for cert rotation setup"
+}
+{
+    "level": "info",
+    "ts": 1624309867.5589845,
+    "logger": "setup",
+    "msg": "starting metrics server",
+    "path": "/metrics"
+}
+{
+    "level": "info",
+    "ts": 1624309867.5591888,
+    "logger": "cert-rotation",
+    "msg": "starting cert rotator controller"
+}
+{
+    "level": "info",
+    "ts": 1624309867.5598037,
+    "logger": "setup.controller.cert-rotator",
+    "msg": "Starting EventSource",
+    "source": {}
+}
+{
+    "level": "info",
+    "ts": 1624309867.560077,
+    "logger": "setup.controller.cert-rotator",
+    "msg": "Starting EventSource",
+    "source": {}
+}
+{
+    "level": "info",
+    "ts": 1624309867.5601199,
+    "logger": "setup.controller.cert-rotator",
+    "msg": "Starting Controller"
+}
+{
+    "level": "info",
+    "ts": 1624309867.6600733,
+    "logger": "cert-rotation",
+    "msg": "refreshing CA and server certs"
+}
+{
+    "level": "info",
+    "ts": 1624309867.6614058,
+    "logger": "setup.controller.cert-rotator",
+    "msg": "Starting workers",
+    "worker count": 1
+}
+{
+    "level": "error",
+    "ts": 1624309867.6615336,
+    "logger": "cert-rotation",
+    "msg": "secret is not well-formed, cannot update webhook configurations",
+    "error": "Cert secret is not well-formed, missing ca.crt",
+    "errorVerbose": "Cert secret is not well-formed, missing ca.crt\ngithub.com/open-policy-agent/cert-controller/pkg/rotator.buildArtifactsFromSecret\n\t/go/pkg/mod/github.com/open-policy-agent/cert-controller@v0.2.0/pkg/rotator/rotator.go:360\ngithub.com/open-policy-agent/cert-controller/pkg/rotator.(*ReconcileWH).Reconcile\n\t/go/pkg/mod/github.com/open-policy-agent/cert-controller@v0.2.0/pkg/rotator/rotator.go:615\nsigs.k8s.io/controller-runtime/pkg/internal/controller.(*Controller).reconcileHandler\n\t/go/pkg/mod/sigs.k8s.io/controller-runtime@v0.9.0/pkg/internal/controller/controller.go:298\nsigs.k8s.io/controller-runtime/pkg/internal/controller.(*Controller).processNextWorkItem\n\t/go/pkg/mod/sigs.k8s.io/controller-runtime@v0.9.0/pkg/internal/controller/controller.go:253\nsigs.k8s.io/controller-runtime/pkg/internal/controller.(*Controller).Start.func2.2\n\t/go/pkg/mod/sigs.k8s.io/controller-runtime@v0.9.0/pkg/internal/controller/controller.go:214\nruntime.goexit\n\t/usr/local/go/src/runtime/asm_amd64.s:1371",
+    "stacktrace": "github.com/open-policy-agent/cert-controller/pkg/rotator.(*ReconcileWH).Reconcile\n\t/go/pkg/mod/github.com/open-policy-agent/cert-controller@v0.2.0/pkg/rotator/rotator.go:617\nsigs.k8s.io/controller-runtime/pkg/internal/controller.(*Controller).reconcileHandler\n\t/go/pkg/mod/sigs.k8s.io/controller-runtime@v0.9.0/pkg/internal/controller/controller.go:298\nsigs.k8s.io/controller-runtime/pkg/internal/controller.(*Controller).processNextWorkItem\n\t/go/pkg/mod/sigs.k8s.io/controller-runtime@v0.9.0/pkg/internal/controller/controller.go:253\nsigs.k8s.io/controller-runtime/pkg/internal/controller.(*Controller).Start.func2.2\n\t/go/pkg/mod/sigs.k8s.io/controller-runtime@v0.9.0/pkg/internal/controller/controller.go:214"
+}
+{
+    "level": "error",
+    "ts": 1624309867.6616793,
+    "logger": "cert-rotation",
+    "msg": "secret is not well-formed, cannot update webhook configurations",
+    "error": "Cert secret is not well-formed, missing ca.crt",
+    "errorVerbose": "Cert secret is not well-formed, missing ca.crt\ngithub.com/open-policy-agent/cert-controller/pkg/rotator.buildArtifactsFromSecret\n\t/go/pkg/mod/github.com/open-policy-agent/cert-controller@v0.2.0/pkg/rotator/rotator.go:360\ngithub.com/open-policy-agent/cert-controller/pkg/rotator.(*ReconcileWH).Reconcile\n\t/go/pkg/mod/github.com/open-policy-agent/cert-controller@v0.2.0/pkg/rotator/rotator.go:615\nsigs.k8s.io/controller-runtime/pkg/internal/controller.(*Controller).reconcileHandler\n\t/go/pkg/mod/sigs.k8s.io/controller-runtime@v0.9.0/pkg/internal/controller/controller.go:298\nsigs.k8s.io/controller-runtime/pkg/internal/controller.(*Controller).processNextWorkItem\n\t/go/pkg/mod/sigs.k8s.io/controller-runtime@v0.9.0/pkg/internal/controller/controller.go:253\nsigs.k8s.io/controller-runtime/pkg/internal/controller.(*Controller).Start.func2.2\n\t/go/pkg/mod/sigs.k8s.io/controller-runtime@v0.9.0/pkg/internal/controller/controller.go:214\nruntime.goexit\n\t/usr/local/go/src/runtime/asm_amd64.s:1371",
+    "stacktrace": "github.com/open-policy-agent/cert-controller/pkg/rotator.(*ReconcileWH).Reconcile\n\t/go/pkg/mod/github.com/open-policy-agent/cert-controller@v0.2.0/pkg/rotator/rotator.go:617\nsigs.k8s.io/controller-runtime/pkg/internal/controller.(*Controller).reconcileHandler\n\t/go/pkg/mod/sigs.k8s.io/controller-runtime@v0.9.0/pkg/internal/controller/controller.go:298\nsigs.k8s.io/controller-runtime/pkg/internal/controller.(*Controller).processNextWorkItem\n\t/go/pkg/mod/sigs.k8s.io/controller-runtime@v0.9.0/pkg/internal/controller/controller.go:253\nsigs.k8s.io/controller-runtime/pkg/internal/controller.(*Controller).Start.func2.2\n\t/go/pkg/mod/sigs.k8s.io/controller-runtime@v0.9.0/pkg/internal/controller/controller.go:214"
+}
+{
+    "level": "info",
+    "ts": 1624309868.102643,
+    "logger": "cert-rotation",
+    "msg": "Ensuring CA cert",
+    "name": "azure-defender-proxy-mutating-webhook-configuration",
+    "gvk": "admissionregistration.k8s.io/v1, Kind=MutatingWebhookConfiguration",
+    "name": "azure-defender-proxy-mutating-webhook-configuration",
+    "gvk": "admissionregistration.k8s.io/v1, Kind=MutatingWebhookConfiguration"
+}
+{
+    "level": "info",
+    "ts": 1624309868.1070101,
+    "logger": "cert-rotation",
+    "msg": "server certs refreshed"
+}
+{
+    "level": "info",
+    "ts": 1624309868.1688814,
+    "logger": "cert-rotation",
+    "msg": "Ensuring CA cert",
+    "name": "azure-defender-proxy-mutating-webhook-configuration",
+    "gvk": "admissionregistration.k8s.io/v1, Kind=MutatingWebhookConfiguration",
+    "name": "azure-defender-proxy-mutating-webhook-configuration",
+    "gvk": "admissionregistration.k8s.io/v1, Kind=MutatingWebhookConfiguration"
+}
+{
+    "level": "info",
+    "ts": 1624309869.5325377,
+    "logger": "cert-rotation",
+    "msg": "certs are ready in /certs"
+}
+{
+    "level": "info",
+    "ts": 1624309869.532887,
+    "logger": "cert-rotation",
+    "msg": "CA certs are injected to webhooks"
+}
+{
+    "level": "info",
+    "ts": 1624309869.5329263,
+    "logger": "setup",
+    "msg": "done waiting for cert rotation setup"
+}
+{
+    "level": "info",
+    "ts": 1624309869.5329537,
+    "logger": "setup",
+    "msg": "starting webhook server",
+    "path": "/mutate"
+}
+{
+    "level": "info",
+    "ts": 1624309869.533995,
+    "logger": "controller-runtime.webhook.webhooks",
+    "msg": "starting webhook server"
+}
+{
+    "level": "info",
+    "ts": 1624309869.5341206,
+    "logger": "controller-runtime.webhook",
+    "msg": "registering webhook",
+    "path": "/mutate"
+}
+{
+    "level": "info",
+    "ts": 1624309869.535294,
+    "logger": "controller-runtime.certwatcher",
+    "msg": "Updated current TLS certificate"
+}
+{
+    "level": "info",
+    "ts": 1624309869.5393765,
+    "logger": "controller-runtime.webhook",
+    "msg": "serving webhook server",
+    "host": "",
+    "port": 443
+}
+{
+    "level": "info",
+    "ts": 1624309869.5445032,
+    "logger": "controller-runtime.certwatcher",
+    "msg": "Starting certificate watcher"
+}
