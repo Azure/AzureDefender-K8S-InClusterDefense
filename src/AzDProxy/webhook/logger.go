@@ -53,7 +53,6 @@ func InitLogger() {
 }
 
 func setLoggerForProduction(encoder zapcore.LevelEncoder) {
-
 	sink := zapcore.AddSync(os.Stderr)
 	var opts []zap.Option
 	encCfg := zap.NewProductionEncoderConfig()
