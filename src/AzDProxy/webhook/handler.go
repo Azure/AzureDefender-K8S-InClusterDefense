@@ -2,7 +2,6 @@ package webhook
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 
 	"github.com/go-logr/logr"
@@ -28,7 +27,6 @@ type Handler struct {
 
 // Handle processes the AdmissionRequest by invoking the underlying function.
 func (h *Handler) Handle(ctx context.Context, req admission.Request) admission.Response {
-	fmt.Println("Mutateeeeeeeeeee")
 	h.Log.Info("received request", "name", req.Name, "namespace", req.Namespace, "gvk", req.Kind)
 	if req.Operation != admissionv1.Create && req.Operation != admissionv1.Update {
 		return admission.Allowed(reasonNoMutationForOperation)

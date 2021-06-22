@@ -5,7 +5,6 @@ go 1.14
 require (
 	github.com/go-logr/logr v0.4.0
 	github.com/go-logr/zapr v0.4.0
-	github.com/google/k8s-digester v0.1.1
 	github.com/open-policy-agent/cert-controller v0.2.0
 	go.uber.org/zap v1.17.0
 	gomodules.xyz/jsonpatch/v2 v2.2.0
