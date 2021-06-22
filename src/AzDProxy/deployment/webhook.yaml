@@ -20,7 +20,9 @@ spec:
         image: azdproxy-image
         imagePullPolicy: Never
         ports:
-        - containerPort: 8000
+        - name : webhook-server
+          protocol : TCP
+          containerPort: 8000
         volumeMounts:
         - name: cert
           readOnly: true
@@ -29,20 +31,6 @@ spec:
           limits:
             memory: "128Mi"
             cpu: "500m"
-        securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop:
-            - all
-          readOnlyRootFilesystem: true
-          runAsGroup: 65532
-          runAsNonRoot: true
-          runAsUser: 65532
-        env:
-        - name: PORT
-          value: "8000"
-        - name: TLS
-          value: "/tls"
       volumes:
       - name: cert
         secret:
