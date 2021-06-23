@@ -1,0 +1,32 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: "defender-webhook.azure.com"
+webhooks:
+- name: "defender-webhook.azure.com"
+  rules:
+  - apiGroups:   [""]
+    apiVersions: ["v1"]
+    operations:  ["CREATE", "UPDATE"]
+    resources:   ["pods"]
+    scope:       "Namespaced"
+  clientConfig:
+    service:
+      namespace: "default"
+      name: "defender-webhook-service"  
+      path: /mutate
+    caBundle: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURCakNDQWU2Z0F3SUJBZ0lCQVRBTkJna3Foa2lHOXcwQkFRc0ZBREFWTVJNd0VRWURWUVFERXdwdGFXNXAKYTNWaVpVTkJNQjRYRFRJeE1EVXdNakE1TWpNeE5Gb1hEVE14TURVd01UQTVNak14TkZvd0ZURVRNQkVHQTFVRQpBeE1LYldsdWFXdDFZbVZEUVRDQ0FTSXdEUVlKS29aSWh2Y05BUUVCQlFBRGdnRVBBRENDQVFvQ2dnRUJBSzloClBLMW1RU09FZUVpcGphN2hPQTNKbG0vK01UNktYb2lDa1FDL0JTQ25CUE1aYzV3VVNwZVBNcjBjK3NzbDB5c28Ka1RtMngyL3k2YlBtNWFjQVN3dDN3dVBub29BZ1hzNWdJYzdyd2dBV0xxdWdFYXd2VUo4VGN5LzVDMDdtNUQ5OApPSUdCMWlsdFJCb1lrbEl5Z0k4em0xSlpuWlRPZ2o5amZLb2ZGREFKbFBqWjFJN2N5NERJNndMZXlKdTBMeTJaCkhvek81eFUwRDEzNzFRUjI1WENBR0lGQ09Cbmc3QkJiSjFlTUVwZUNqcVlBbE9YcStBYllxREVpVy9xQ3Rldm4KREk0c1B6OEIxbEFKTEViSVlsSm5SNEdEK0k3eExaWjdhVFpyOGZIbVRHOHdrMXV3aklnSjF2WG9GMzVvdTJVYwp3QTVrZEZERExLVDEvd1NGWmpzQ0F3RUFBYU5oTUY4d0RnWURWUjBQQVFIL0JBUURBZ0trTUIwR0ExVWRKUVFXCk1CUUdDQ3NHQVFVRkJ3TUNCZ2dyQmdFRkJRY0RBVEFQQmdOVkhSTUJBZjhFQlRBREFRSC9NQjBHQTFVZERnUVcKQkJTZnNXNXU0VjltcjZWMDVReXdJMlo0WE1EejVEQU5CZ2txaGtpRzl3MEJBUXNGQUFPQ0FRRUFSa1VOVkRregpBbHlPZ25QSWlrdjBQUFRnVFhvTDdtOFVqT2NGc2hVbTBoTlBNSExlMk1CQzM2RU5zU1NiRjg3bDRyN20wUmFLCit2VU9qTHdyUlVCV2VNMTgzODZKbE5zaEkzNWhOTzFhRzFDRVBEZ01udXJuVFk5SFJDSUtUSnF4YXRDY3c4Q3MKWHBGTFc1YkxqMWJFTVhyczR1SDZYZXVKWWFFVnVFbEFTWFlJQjZGditKSUFGSFBNZUxkb2hFRzRTNFVpeHp2RwpLblhDa3ZZaUFsc3RsTTZkTDI2aXFuNlpTdTR0cDltLzFwN2JtRWlacUhFUng3djFaZUtRcS9DdE9nTy9uUTI3Ck5zYWlZYmdIWUZiK21yTWR6MzY1Y01oT1cyNHBDUWxhZTVxSXNoT3Y3aEU5SUdLaXJlWmN4ZlBGUkFUbjU5a3MKS2wzOE5zaExyZmhJSXc9PQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
+  namespaceSelector:
+    matchExpressions:
+        - key: name
+          operator: In
+          values: ["default"]
+  objectSelector:
+    matchExpressions:
+        - key: app
+          operator: NotIn
+          values: ["defender-webhook"]
+  failurePolicy: Fail
+  admissionReviewVersions: ["v1", "v1beta1"]
+  sideEffects: None
+  timeoutSeconds: 10
