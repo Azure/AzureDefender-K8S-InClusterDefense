@@ -1,7 +1,9 @@
-package webhook
+package instrumentation
 
 import (
+	"flag"
 	"fmt"
+	"github.com/go-logr/logr"
 	"os"
 	"time"
 
@@ -13,8 +15,8 @@ import (
 	crzap "sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
+//Log level encoders
 var (
-	SetupLog         = ctrl.Log.WithName("setup")
 	logLevelEncoders = map[string]zapcore.LevelEncoder{
 		"lower":        zapcore.LowercaseLevelEncoder,
 		"capital":      zapcore.CapitalLevelEncoder,
@@ -23,10 +25,21 @@ var (
 	}
 )
 
-func InitLogger() {
+//Logger parameters
+var (
+	logLevel        = flag.String("log-level", "INFO", "Minimum log level. For example, DEBUG, INFO, WARNING, ERROR. Defaulted to INFO if unspecified.")
+	logLevelKey     = flag.String("log-level-key", "level", "JSON key for the log level field, defaults to `level`")
+	logLevelEncoder = flag.String("log-level-encoder", "lower", "Encoder for the value of the log level field. Valid values: [`lower`, `capital`, `color`, `capitalcolor`], default: `lower`")
+)
+
+//TODO Currently using GK logger
+//  (https://github.com/open-policy-agent/gatekeeper/blob/bf94eb335918f8806571e28d01fb1c26a9179b2d/main.go#L119)
+
+//InitLogger initialize logger
+func InitLogger(logger logr.Logger) {
 	encoder, ok := logLevelEncoders[*logLevelEncoder]
 	if !ok {
-		SetupLog.Error(fmt.Errorf("invalid log level encoder: %v", *logLevelEncoder), "Invalid log level encoder")
+		logger.Error(fmt.Errorf("invalid log level encoder: %v", *logLevelEncoder), "Invalid log level encoder")
 		os.Exit(1)
 	}
 
@@ -52,6 +65,7 @@ func InitLogger() {
 	}
 }
 
+// initialize logger for production env
 func setLoggerForProduction(encoder zapcore.LevelEncoder) {
 	sink := zapcore.AddSync(os.Stderr)
 	var opts []zap.Option

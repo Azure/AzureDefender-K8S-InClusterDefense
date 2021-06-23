@@ -1,9 +1,11 @@
-src_pocs/webhook-mutation/deployment/dependencies/mutation-config-lior.yaml
-src_pocs/webhook-mutation/deployment/dependencies/mutation-configed.yaml
-src_pocs/webhook-mutation/deployment/dependencies/mutation-config-ca.yaml
-src_pocs/webhook-mutation/scripts/minikube-linux-amd64
-src_pocs/webhook-mutation/webhook/tls
-src_pocs/proxy-arg/getimagesha.sh
+# Ignore files from poc
+misc/proxy-arg
+misc/webhook-mutation/scripts/tls
+misc/webhook-mutation/deployment/dependencies/mutation-configed.yaml
+misc/gatekeeper/constraints/gk_ns_constraints
 
+
+.idea
+.vscode
 *.exe
 *.sha256
