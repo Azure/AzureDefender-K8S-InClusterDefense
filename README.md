@@ -1,1 +1,0 @@
-# Azure Defender K8S In Cluster Defense
