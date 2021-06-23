@@ -1,8 +1,8 @@
 # Ignore files from poc
-misc/proxy-arg
-misc/webhook-mutation/scripts/tls
-misc/webhook-mutation/deployment/dependencies/mutation-configed.yaml
-misc/gatekeeper/constraints/gk_ns_constraints
+misc/poc/proxy-arg
+misc/poc/webhook-mutation/scripts/tls
+misc/poc/webhook-mutation/deployment/dependencies/mutation-configed.yaml
+misc/poc/gatekeeper/constraints/gk_ns_constraints
 
 
 .idea
