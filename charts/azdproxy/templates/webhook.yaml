@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: azure-defender-proxy-deployment
+  namespace: '{{ .Release.Namespace }}'
+  labels:
+    app: '{{ template "azdproxy.name" . }}'
+    chart: '{{ template "azdproxy.name" . }}'
+    heritage: '{{ .Release.Service }}'
+    release: '{{ .Release.Name }}'
+spec:
+  replicas: {{ .Values.replicas }}
+  selector:
+    matchLabels:
+      app: '{{ template "azdproxy.name" . }}'
+      chart: '{{ template "azdproxy.name" . }}'
+      heritage: '{{ .Release.Service }}'
+      release: '{{ .Release.Name }}'
+  template:
+    metadata:
+      labels:
+        app: '{{ template "azdproxy.name" . }}'
+        chart: '{{ template "azdproxy.name" . }}'
+        heritage: '{{ .Release.Service }}'
+        release: '{{ .Release.Name }}'
+    spec:
+      serviceAccountName: azure-defender-proxy-admin
+      containers:
+        - name: azure-defender-proxy-webhook
+          image: '{{ .Values.azdproxy_deployment.image.repository }}:{{ .Values.azdproxy_deployment.image.release }}'
+          imagePullPolicy: '{{ .Values.azdproxy_deployment.image.pullPolicy }}'
+          ports:
+            - containerPort: 8000 # {"$kpt-set":"port"}
+          volumeMounts:
+            - name: cert
+              readOnly: true
+              mountPath: /certs # {"$kpt-set":"cert-dir"}
+          resources: {{- toYaml .Values.azdproxy_deployment.resources | nindent 12 }}
+      volumes:
+        - name: cert
+          secret:
+            defaultMode: 420
+            secretName: azure-defender-cert

@@ -1,0 +1,9 @@
+apiVersion: v2
+name: azdproxy
+description: A Helm chart for AzDProxy
+type: application
+version: 0.1.0
+home: https://github.com/Azure/AzureDefender-K8S-InClusterDefense
+sources:
+  - https://github.com/Azure/AzureDefender-K8S-InClusterDefense.git
+appVersion: "1.1.0"

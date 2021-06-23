@@ -1,0 +1,10 @@
+replicas: 1
+azdproxy_deployment:
+  image:
+    repository: azdproxy-image
+    release: latest
+    pullPolicy: Never
+  resources:
+    limits:
+      memory: 128Mi
+      cpu: 500m
