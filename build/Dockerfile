@@ -6,19 +6,11 @@ RUN mkdir -p /app
 
 WORKDIR /app
 # install dependencies
-<<<<<<< HEAD:src/AzDProxy/Dockerfile
 ADD go.mod go.mod
 ADD go.sum go.sum
 RUN go mod download
 # add code
 ADD . .
-=======
-ADD ../go.mod go.mod
-ADD ../go.sum go.sum
-RUN go mod download
-# add code
-ADD .. .
->>>>>>> 2097726 (test,build, and configs folder added):build/Dockerfile
 # build the source
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o azdproxy
 
