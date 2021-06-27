@@ -2,10 +2,13 @@ apiVersion: v1
 kind: Service
 metadata:
   name: azure-defender-proxy-service
+  labels:
+    app: azdproxy
+    admission.azdproxy.sh/ignore: no-self-managing
 spec:
   type: ClusterIP
   selector:
-    app: azure-defender
+    app: azdproxy
   ports:
   - protocol: TCP
     port: 443

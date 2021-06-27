@@ -3,7 +3,8 @@ kind: ClusterRoleBinding
 metadata:
   name: azure-defender-proxy-manager-rolebinding
   labels:
-    app: 'azure-defender'
+    app: azdproxy
+    admission.azdproxy.sh/ignore: no-self-managing
 roleRef:
   name: azure-defender-proxy-manager-role
   kind: ClusterRole

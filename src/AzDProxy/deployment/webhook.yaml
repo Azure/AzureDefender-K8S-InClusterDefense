@@ -3,36 +3,36 @@ kind: Deployment
 metadata:
   name: azure-defender-proxy-deployment
   labels:
-    app: azure-defender
+    app: azdproxy
+    admission.azdproxy.sh/ignore: no-self-managing
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: azure-defender
+      app: azdproxy
   template:
     metadata:
       labels:
-        app: azure-defender
+        app: azdproxy
+        admission.azdproxy.sh/ignore: no-self-managing
     spec:
       serviceAccountName: azure-defender-proxy-admin
       containers:
-      - name: azure-defender-proxy-webhook
-        image: azdproxy-image
-        imagePullPolicy: Never
-        ports:
-        - name : webhook-server
-          protocol : TCP
-          containerPort: 8000
-        volumeMounts:
-        - name: cert
-          readOnly: true
-          mountPath: /certs # {"$kpt-set":"cert-dir"}
-        resources:
-          limits:
-            memory: "128Mi"
-            cpu: "500m"
+        - name: azure-defender-proxy-webhook
+          image: azdproxy-image
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8000 # {"$kpt-set":"port"}
+          volumeMounts:
+            - name: cert
+              readOnly: true
+              mountPath: /certs # {"$kpt-set":"cert-dir"}
+          resources:
+            limits:
+              memory: "128Mi"
+              cpu: "500m"
       volumes:
-      - name: cert
-        secret:
-          defaultMode: 420
-          secretName: azure-defender-cert
+        - name: cert
+          secret:
+            defaultMode: 420
+            secretName: azure-defender-cert

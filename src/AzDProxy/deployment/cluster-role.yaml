@@ -3,7 +3,8 @@ kind: ClusterRole
 metadata:
   name: azure-defender-proxy-manager-role
   labels:
-    app: 'azure-defender'
+    app: azdproxy
+    admission.azdproxy.sh/ignore: no-self-managing
 rules:
 - resources:
   - secrets # access to imagePullSecrets
