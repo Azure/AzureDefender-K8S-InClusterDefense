@@ -2,6 +2,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: azure-defender-proxy-manager-role
+  namespace: kube-system
   labels:
     app: azdproxy
     admission.azdproxy.sh/ignore: no-self-managing

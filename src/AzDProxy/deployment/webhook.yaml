@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: azure-defender-proxy-deployment
+  namespace: kube-system
   labels:
     app: azdproxy
     admission.azdproxy.sh/ignore: no-self-managing

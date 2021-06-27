@@ -2,11 +2,12 @@ apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
   name: azure-defender-proxy-mutating-webhook-configuration
+  namespace: kube-system
   labels:
     app: azdproxy
     admission.azdproxy.sh/ignore: no-self-managing
 webhooks:
-  - name: azure-defender-proxy-service.default.svc
+  - name: azure-defender-proxy-service.kube-system.svc
     rules:
       - apiGroups: [ "" ]
         apiVersions: [ "v1" ]
@@ -15,7 +16,7 @@ webhooks:
         scope: "Namespaced"
     clientConfig:
       service:
-        namespace: "default"
+        namespace: kube-system
         name: azure-defender-proxy-service
         path: /mutate
       caBundle: Cg==
