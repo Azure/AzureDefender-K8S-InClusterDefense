@@ -22,15 +22,15 @@ RUN go mod download
 COPY pkg/ pkg/
 COPY cmd/ cmd/
 COPY main.go main.go
-# build binary files
+# Build binary files
 # In order to use net library, we have to disable CGO (CGO_ENABLED = 0)
 # See https://stackoverflow.com/questions/36279253/go-compiled-binary-wont-run-in-an-alpine-docker-container-on-ubuntu-host
 RUN	CGO_ENABLED=0 go build -o /go/azdproxy .
 #### STEP 2 - Build base image ####
 FROM ${BASE_IMAGE}
-# Copy files into new container
+# Copy executable file into the new container
 COPY --from=builder /go/azdproxy ./azdproxy
-# expose port for webhook server
+# Expose port for webhook server
 EXPOSE ${LISTEN_PORT}
-# run the binary
+# Run the executable file - azdproxy
 ENTRYPOINT ["./azdproxy"]
