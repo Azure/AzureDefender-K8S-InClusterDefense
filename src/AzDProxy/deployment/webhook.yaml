@@ -5,7 +5,7 @@ metadata:
   namespace: kube-system
   labels:
     app: azdproxy
-    admission.azdproxy.sh/ignore: no-self-managing
+    admission.azdproxy.sh/ignore: no-self-managing  # This field assigned in order to verify that this resource won't be mutated by azdproxy
 spec:
   replicas: 1
   selector:
@@ -15,19 +15,19 @@ spec:
     metadata:
       labels:
         app: azdproxy
-        admission.azdproxy.sh/ignore: no-self-managing
+        admission.azdproxy.sh/ignore: no-self-managing # This field assigned in order to verify that this resource won't be mutated by azdproxy
     spec:
       serviceAccountName: azure-defender-proxy-admin
       containers:
         - name: azure-defender-proxy-webhook
           image: azdproxy-image
-          imagePullPolicy: Never
+          imagePullPolicy: Never # Never for debugging, in production change to Always
           ports:
-            - containerPort: 8000 # {"$kpt-set":"port"}
+            - containerPort: 8000 # The port on which the service will send requests to, so the wh be listening on.
           volumeMounts:
             - name: cert
               readOnly: true
-              mountPath: /certs # {"$kpt-set":"cert-dir"}
+              mountPath: /certs
           resources:
             limits:
               memory: "128Mi"
@@ -35,5 +35,4 @@ spec:
       volumes:
         - name: cert
           secret:
-            defaultMode: 420
             secretName: azure-defender-cert

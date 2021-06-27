@@ -5,12 +5,12 @@ metadata:
   namespace: kube-system
   labels:
     app: azdproxy
-    admission.azdproxy.sh/ignore: no-self-managing
+    admission.azdproxy.sh/ignore: no-self-managing # This field assigned in order to verify that this resource won't be mutated by azdproxy
 spec:
   type: ClusterIP
   selector:
     app: azdproxy
   ports:
-  - protocol: TCP
-    port: 443
-    targetPort: 8000
+    - protocol: TCP
+      port: 443       # Exposes the Kubernetes service on the specified port within the cluster
+      targetPort: 8000 # The port on which the service will send requests to, the webhook will be listening on.

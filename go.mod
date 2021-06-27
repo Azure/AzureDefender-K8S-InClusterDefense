@@ -1,6 +1,6 @@
 module github.com/Azure/AzureDefender-K8S-InClusterDefense/src/AzDProxy
 
-go 1.14
+go 1.16
 
 require (
 	github.com/go-logr/logr v0.4.0
