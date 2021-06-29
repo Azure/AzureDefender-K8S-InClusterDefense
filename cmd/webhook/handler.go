@@ -27,8 +27,12 @@ func (h *Handler) Handle(ctx context.Context, req admission.Request) admission.R
 		"namespace", req.Namespace,
 		"operation", req.Operation,
 		"object", req.Object)
+
 	var patches []jsonpatch.JsonPatchOperation
-	if h.DryRun { // In case of dryrun=true:  reset all patch operations
+	//TODO invoke AzDSecInfo and patch the result.
+
+	// In case of dryrun=true:  reset all patch operations
+	if h.DryRun {
 		h.Logger.Info("not mutating resource, because dry-run=true")
 		patches = []jsonpatch.JsonPatchOperation{}
 	}

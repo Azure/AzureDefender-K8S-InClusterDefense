@@ -66,6 +66,7 @@ func StartServer() {
 	server := Server{}
 	server.Logger = ctrl.Log.WithName("webhook-setup")
 	instrumentation.InitLogger(server.Logger)
+
 	// Log all parameters:
 	server.Logger.Info("Parameters:",
 		"port", *port,
@@ -78,14 +79,17 @@ func StartServer() {
 	if err := server.initManager(); err != nil {
 		return //TODO exit with panic - error flow?
 	}
+
 	// Init cert controller - gets a channel of setting up the controller.
 	certSetupFinished, err := server.initCertController()
 	if err != nil {
 		server.Logger.Error(err, "Failed to initialize cert controller")
 		return //TODO exit with panic - error flow?
 	}
+
 	// Set up controllers.
 	go server.setupControllers(certSetupFinished)
+
 	// Start all registered controllers - webhook mutation as https server and cert controller.
 	if err := server.Manager.Start(signals.SetupSignalHandler()); err != nil {
 		server.Logger.Error(err, "problem running manager")
@@ -101,12 +105,14 @@ func (server *Server) initManager() (err error) {
 		server.Logger.Error(err, "Unable to add schema")
 		return err
 	}
+
 	// GetConfig creates a *rest.Config for talking to a Kubernetes API server (using --kubeconfig or cluster provided config)
 	cfg, err := config.GetConfig()
 	if err != nil {
 		server.Logger.Error(err, "Unable to get kube-config")
 		return err
 	}
+
 	// Creates new manager of creating controllers
 	newManager, err := manager.New(cfg, manager.Options{
 		Scheme:  scheme,
@@ -128,8 +134,10 @@ func (server *Server) initManager() (err error) {
 func (server *Server) initCertController() (certSetupFinished chan struct{}, err error) {
 	certSetupFinished = make(chan struct{})
 	if !*disableCertRotation {
+
 		dnsName := fmt.Sprintf("%s.%s.svc", serviceName, util.GetNamespace()) // matches the MutatingWebhookConfiguration webhooks name
 		server.Logger.Info("setting up cert rotation")
+		// Add rotator - using cert-controller API
 		if err := rotator.AddRotator(server.Manager, &rotator.CertRotator{
 			SecretKey: types.NamespacedName{
 				Namespace: util.GetNamespace(),
@@ -158,6 +166,7 @@ func (server *Server) setupControllers(certSetupFinished chan struct{}) {
 	server.Logger.Info("waiting for cert rotation setup")
 	<-certSetupFinished
 	server.Logger.Info("done waiting for cert rotation setup")
+
 	// Register mutation webhook.
 	server.registerWebhook()
 }
@@ -169,6 +178,7 @@ func (server *Server) registerWebhook() {
 		Logger: server.Logger.WithName("webhook-handler"),
 		DryRun: *dryRun,
 	}
+
 	//Register webhook
 	mutationWebhook := &admission.Webhook{Handler: webhookHandler}
 	server.Manager.GetWebhookServer().Register(webhookPath, mutationWebhook)

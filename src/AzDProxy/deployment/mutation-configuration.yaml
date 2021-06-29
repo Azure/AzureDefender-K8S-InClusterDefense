@@ -21,10 +21,10 @@ webhooks:
         path: /mutate # The path that the webhook is listening to.
       caBundle: Cg== # Cert-controller is overriding this value.
     namespaceSelector:
-      matchExpressions: # exclude all pods that have 'admission.azdproxy.sh/ignore' label
-        - key: admission.azdproxy.sh/ignore
+      matchExpressions: # Exclude all pods that have 'admission.azdproxy.sh/ignore' label
+        - key: admission.azdproxy.sh/ignore #TODO find better solution/ add script that adds this label.
           operator: DoesNotExist
     failurePolicy: Ignore
-    admissionReviewVersions: [ "v1", "v1beta1" ]
+    admissionReviewVersions: [ "v1" ]
     sideEffects: None
     timeoutSeconds: 3

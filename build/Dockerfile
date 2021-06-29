@@ -1,10 +1,8 @@
 # Set arguments and default values
 ARG GO_VERSION=1.16
 ARG BUILDER_IMAGE=golang:${GO_VERSION}
+ARG BASE_IMAGE=alpine:3.14
 ARG LISTEN_PORT=8000
-# Use distroless as minimal base image to package the manager binary
-# Refer to https://github.com/GoogleContainerTools/distroless for more details
-ARG BASE_IMAGE="gcr.io/distroless/static:nonroot-amd64"
 #### STEP 1- Build image ####
 FROM ${BUILDER_IMAGE} as builder
 # Set env variables

@@ -18,7 +18,7 @@ spec:
         admission.azdproxy.sh/ignore: no-self-managing # This field assigned in order to verify that this resource won't be mutated by azdproxy
     spec:
       serviceAccountName: azure-defender-proxy-admin
-      containers:
+      containers: # TODO : Add sercurityContext section.
         - name: azure-defender-proxy-webhook
           image: azdproxy-image
           imagePullPolicy: Never # Never for debugging, in production change to Always
