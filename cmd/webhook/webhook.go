@@ -137,7 +137,7 @@ func (server *Server) initCertController() (certSetupFinished chan struct{}, err
 
 		dnsName := fmt.Sprintf("%s.%s.svc", serviceName, util.GetNamespace()) // matches the MutatingWebhookConfiguration webhooks name
 		server.Logger.Info("setting up cert rotation")
-		// Add rotator - using cert-controller API
+		// Add rotator - using cert-controller API //TODO Expiration of certificate?
 		if err := rotator.AddRotator(server.Manager, &rotator.CertRotator{
 			SecretKey: types.NamespacedName{
 				Namespace: util.GetNamespace(),
