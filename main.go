@@ -1,10 +1,10 @@
 package main
 
 import (
-	"fmt"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/src/AzDProxy/cmd/webhook"
 )
 
 // main is the entrypoint to azdproxy.
 func main() {
-	fmt.Println("not")
+	webhook.StartServer()
 }
