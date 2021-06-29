@@ -17,11 +17,16 @@ const (
 // It implements the Handle interface that each webhook have to implement.
 type Handler struct {
 	Logger logr.Logger // Logger is the handler logger - gets it from the server.
-	DryRun bool        // dryRun if its true, handle request but don't mutate the pod spec.
+	DryRun bool        // DryRun is flag that if its true, it handles request but doesn't mutate the pod spec.
 }
 
 // Handle processes the AdmissionRequest by invoking the underlying function.
 func (h *Handler) Handle(ctx context.Context, req admission.Request) admission.Response {
+	// Exit with panic in case that the context is nil
+	if ctx == nil {
+		panic("Can't handle requests when the context (ctx) is nil")
+	}
+
 	h.Logger.Info("received request",
 		"name", req.Name,
 		"namespace", req.Namespace,

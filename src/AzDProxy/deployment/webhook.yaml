@@ -21,7 +21,7 @@ spec:
       containers: # TODO : Add securityContext section.
         - name: azure-defender-proxy-webhook
           image: azdproxy-image
-          imagePullPolicy: Always # Never for debugging, in production change to Always
+          imagePullPolicy: Never # Never for debugging, in production change to Always
           ports:
             - containerPort: 8000 # The port on which the service will send requests to, so the wh be listening on.
           volumeMounts:
