@@ -1,6 +1,6 @@
 # `/docs`
 
-Design and user documents (in addition to your godoc generated documentation).
+Design and user documents (in addition to your godoc generated documentation)..
 
 Examples:
 
