@@ -10,7 +10,6 @@ require (
 	gomodules.xyz/jsonpatch/v2 v2.2.0
 	k8s.io/api v0.21.1
 	k8s.io/apimachinery v0.21.1
-	k8s.io/client-go v0.21.1
 	k8s.io/klog/v2 v2.8.0
 	k8s.io/kube-openapi v0.0.0-20210421082810-95288971da7e // indirect
 	sigs.k8s.io/controller-runtime v0.9.0

@@ -59,7 +59,7 @@ type Server struct {
 }
 
 // StartServer Starting server - this is function is called from the main (entrypoint of azdproxy)
-// It initialize the server with all the instrumentation, initlize the controllers, and register them.
+// It initialize the server with all the instrumentation, initialize the controllers, and register them.
 // There are 2 controllers - cert-controller (https://github.com/open-policy-agent/cert-controller) that manages
 // the certificates of the server and the mutation webhook server that is registered with the AzDSecInfo Handler.
 func StartServer() {
