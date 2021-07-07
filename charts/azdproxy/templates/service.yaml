@@ -8,6 +8,7 @@ metadata:
     chart: '{{ template "azdproxy.name" . }}'
     heritage: '{{ .Release.Service }}'
     release: '{{ .Release.Name }}'
+    admission.azdproxy.sh/ignore: no-self-managing # This field assigned in order to verify that this resource won't be mutated by azdproxy
 spec:
   type: ClusterIP
   selector:
@@ -15,7 +16,8 @@ spec:
     chart: '{{ template "azdproxy.name" . }}'
     heritage: '{{ .Release.Service }}'
     release: '{{ .Release.Name }}'
+    admission.azdproxy.sh/ignore: no-self-managing # This field assigned in order to verify that this resource won't be mutated by azdproxy
   ports:
     - protocol: TCP
-      port: 443
-      targetPort: 8000
+      port: 443       # Exposes the Kubernetes service on the specified port within the cluster
+      targetPort: {{ .Values.targetPort }} # The port on which the service will send requests to, the webhook will be listening on.

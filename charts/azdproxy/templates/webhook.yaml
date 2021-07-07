@@ -9,7 +9,7 @@ metadata:
     heritage: '{{ .Release.Service }}'
     release: '{{ .Release.Name }}'
 spec:
-  replicas: {{ .Values.replicas }}
+  replicas: {{ .Values.azdproxy_webhook_deployment.replicas }}
   selector:
     matchLabels:
       app: '{{ template "azdproxy.name" . }}'
@@ -23,21 +23,21 @@ spec:
         chart: '{{ template "azdproxy.name" . }}'
         heritage: '{{ .Release.Service }}'
         release: '{{ .Release.Name }}'
+        admission.azdproxy.sh/ignore: no-self-managing # This field assigned in order to verify that this resource won't be mutated by azdproxy
     spec:
       serviceAccountName: azure-defender-proxy-admin
-      containers:
+      containers: # TODO : Add securityContext section.
         - name: azure-defender-proxy-webhook
-          image: '{{ .Values.azdproxy_deployment.image.repository }}:{{ .Values.azdproxy_deployment.image.release }}'
-          imagePullPolicy: '{{ .Values.azdproxy_deployment.image.pullPolicy }}'
+          image: '{{ .Values.azdproxy_webhook_deployment.image.repository }}:{{ .Values.azdproxy_webhook_deployment.image.release }}'
+          imagePullPolicy: '{{ .Values.azdproxy_webhook_deployment.image.pullPolicy }}' # Never for debugging, in production change to Always
           ports:
-            - containerPort: 8000 # {"$kpt-set":"port"}
+            - containerPort: {{ .Values.targetPort }} # The port on which the service will send requests to, so the wh be listening on.
           volumeMounts:
             - name: cert
               readOnly: true
-              mountPath: /certs # {"$kpt-set":"cert-dir"}
-          resources: {{- toYaml .Values.azdproxy_deployment.resources | nindent 12 }}
+              mountPath: /certs
+          resources: {{- toYaml .Values.azdproxy_webhook_deployment.resources | nindent 12 }}
       volumes:
         - name: cert
           secret:
-            defaultMode: 420
             secretName: azure-defender-cert

@@ -7,31 +7,26 @@ metadata:
     chart: '{{ template "azdproxy.name" . }}'
     heritage: '{{ .Release.Service }}'
     release: '{{ .Release.Name }}'
+    admission.azdproxy.sh/ignore: no-self-managing # This field assigned in order to verify that this resource won't be mutated by azdproxy
 webhooks:
-  - name: azure-defender-proxy-service.default.svc
+  - name: azure-defender-proxy-service.{{ .Release.Namespace }}.svc
     rules:
       - apiGroups: [ "" ]
         apiVersions: [ "v1" ]
-        operations: [ "CREATE", "UPDATE" ]
-        resources: [ "pods" ]
+        operations: [ "CREATE", "UPDATE" ]  # Apply mutation only on create and update operations
+        resources: [ "pods" ]               # Apply on pods only. //TODO add relevant resources according to context
         scope: "Namespaced"
     clientConfig:
       service:
         namespace: '{{ .Release.Namespace }}'
         name: azure-defender-proxy-service
-        path: /mutate
-      caBundle: Cg==
+        path: /mutate # The path that the webhook is listening to.
+      caBundle: Cg== # Cert-controller is overriding this value.
     namespaceSelector:
-      matchExpressions:
-        - key: name
-          operator: In
-          values: [ "default" ]
-    objectSelector:
-      matchExpressions:
-        - key: app
-          operator: NotIn
-          values: [ "azure-defender" ]
-    failurePolicy: Fail
-    admissionReviewVersions: [ "v1", "v1beta1" ]
+      matchExpressions: # Exclude all pods that have 'admission.azdproxy.sh/ignore' label
+        - key: admission.azdproxy.sh/ignore #TODO find better solution/ add script that adds this label.
+          operator: DoesNotExist
+    failurePolicy: Ignore
+    admissionReviewVersions: [ "v1" ]
     sideEffects: None
-    timeoutSeconds: 25
+    timeoutSeconds: {{ .Values.mutation_webhook_configuration.timeoutSeconds }}
