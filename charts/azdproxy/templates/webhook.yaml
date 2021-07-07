@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: azure-defender-proxy-deployment
+  namespace: '{{ .Release.Namespace }}'
+  labels:
+    app: '{{ template "azdproxy.name" . }}'
+    chart: '{{ template "azdproxy.name" . }}'
+    heritage: '{{ .Release.Service }}'
+    release: '{{ .Release.Name }}'
+spec:
+  replicas: {{ .Values.azdproxy_webhook_deployment.replicas }}
+  selector:
+    matchLabels:
+      app: '{{ template "azdproxy.name" . }}'
+      chart: '{{ template "azdproxy.name" . }}'
+      heritage: '{{ .Release.Service }}'
+      release: '{{ .Release.Name }}'
+  template:
+    metadata:
+      labels:
+        app: '{{ template "azdproxy.name" . }}'
+        chart: '{{ template "azdproxy.name" . }}'
+        heritage: '{{ .Release.Service }}'
+        release: '{{ .Release.Name }}'
+        admission.azdproxy.sh/ignore: no-self-managing # This field assigned in order to verify that this resource won't be mutated by azdproxy
+    spec:
+      serviceAccountName: azure-defender-proxy-admin
+      containers: # TODO : Add securityContext section.
+        - name: azure-defender-proxy-webhook
+          image: '{{ .Values.azdproxy_webhook_deployment.image.repository }}:{{ .Values.azdproxy_webhook_deployment.image.release }}'
+          imagePullPolicy: '{{ .Values.azdproxy_webhook_deployment.image.pullPolicy }}' # Never for debugging, in production change to Always
+          ports:
+            - containerPort: {{ .Values.targetPort }} # The port on which the service will send requests to, so the wh be listening on.
+          volumeMounts:
+            - name: cert
+              readOnly: true
+              mountPath: /certs
+          resources: {{- toYaml .Values.azdproxy_webhook_deployment.resources | nindent 12 }}
+      volumes:
+        - name: cert
+          secret:
+            secretName: azure-defender-cert

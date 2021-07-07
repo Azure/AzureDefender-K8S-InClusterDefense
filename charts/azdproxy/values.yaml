@@ -1,0 +1,25 @@
+# Webhook.yaml values
+azdproxy_webhook_deployment:
+  # Amount of replicas of azdproxy.
+  replicas: 3
+  # Image values:
+  image:
+    # The repository that holds azdproxy image.
+    repository: azdproxy-image
+    # The release/tag of the image.
+    release: latest # TODO Change this to stable version.
+    # Pull policy - default for always. in case that you want to use local registry, change to 'Never'
+    pullPolicy: Always
+  # Limitations on resources of webhook.
+  resources:
+    limits:
+      memory: 128Mi
+      cpu: 500m
+
+# mutation-configuration.yaml values:
+mutation_webhook_configuration:
+  # Default webhook timeout in seconds
+  timeoutSeconds: 3
+
+# The port on which the service will send requests to, so the wh be listening on.
+targetPort: 8000

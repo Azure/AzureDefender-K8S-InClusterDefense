@@ -1,0 +1,32 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: azure-defender-proxy-mutating-webhook-configuration
+  labels:
+    app: '{{ template "azdproxy.name" . }}'
+    chart: '{{ template "azdproxy.name" . }}'
+    heritage: '{{ .Release.Service }}'
+    release: '{{ .Release.Name }}'
+    admission.azdproxy.sh/ignore: no-self-managing # This field assigned in order to verify that this resource won't be mutated by azdproxy
+webhooks:
+  - name: azure-defender-proxy-service.{{ .Release.Namespace }}.svc
+    rules:
+      - apiGroups: [ "" ]
+        apiVersions: [ "v1" ]
+        operations: [ "CREATE", "UPDATE" ]  # Apply mutation only on create and update operations
+        resources: [ "pods" ]               # Apply on pods only. //TODO add relevant resources according to context
+        scope: "Namespaced"
+    clientConfig:
+      service:
+        namespace: '{{ .Release.Namespace }}'
+        name: azure-defender-proxy-service
+        path: /mutate # The path that the webhook is listening to.
+      caBundle: Cg== # Cert-controller is overriding this value.
+    namespaceSelector:
+      matchExpressions: # Exclude all pods that have 'admission.azdproxy.sh/ignore' label
+        - key: admission.azdproxy.sh/ignore #TODO find better solution/ add script that adds this label.
+          operator: DoesNotExist
+    failurePolicy: Ignore
+    admissionReviewVersions: [ "v1" ]
+    sideEffects: None
+    timeoutSeconds: {{ .Values.mutation_webhook_configuration.timeoutSeconds }}
