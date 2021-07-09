@@ -20,7 +20,7 @@ import (
 
 // Webhook configuration constants //TODO Change it to config-map
 const (
-	secretName  = "azure-defender-cert"                                 // matches the Secret name
+	secretName  = "azure-defender-proxy-cert"                                 // matches the Secret name
 	serviceName = "azure-defender-proxy-service"                        // matches the Service name
 	webhookName = "azure-defender-proxy-mutating-webhook-configuration" // matches the MutatingWebhookConfiguration name
 	webhookPath = "/mutate"                                             // matches the MutatingWebhookConfiguration clientConfig path

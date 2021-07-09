@@ -1,23 +1,15 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: azure-defender-proxy-service
+  name: {{.Values.AzDProxy.prefixResourceDeployment}}-service
   namespace: '{{ .Release.Namespace }}'
   labels:
-    app: '{{ template "azdproxy.name" . }}'
-    chart: '{{ template "azdproxy.name" . }}'
-    heritage: '{{ .Release.Service }}'
-    release: '{{ .Release.Name }}'
-    admission.azdproxy.sh/ignore: no-self-managing # This field assigned in order to verify that this resource won't be mutated by azdproxy
+    {{ include "common.labels" . | indent 4 }}
 spec:
   type: ClusterIP
   selector:
-    app: '{{ template "azdproxy.name" . }}'
-    chart: '{{ template "azdproxy.name" . }}'
-    heritage: '{{ .Release.Service }}'
-    release: '{{ .Release.Name }}'
-    admission.azdproxy.sh/ignore: no-self-managing # This field assigned in order to verify that this resource won't be mutated by azdproxy
+    {{ include "common.labels" . | indent 4 }}
   ports:
     - protocol: TCP
       port: 443       # Exposes the Kubernetes service on the specified port within the cluster
-      targetPort: {{ .Values.targetPort }} # The port on which the service will send requests to, the webhook will be listening on.
+      targetPort: {{ .Values.AzDProxy.service.targetPort }} # The port on which the service will send requests to, the webhook will be listening on.

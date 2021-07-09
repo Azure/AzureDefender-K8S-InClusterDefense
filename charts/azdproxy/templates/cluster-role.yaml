@@ -1,13 +1,10 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: azure-defender-proxy-manager-role
+  name: {{.Values.AzDProxy.prefixResourceDeployment}}-manager-role
+  namespace: '{{ .Release.Namespace }}'
   labels:
-    app: '{{ template "azdproxy.name" . }}'
-    chart: '{{ template "azdproxy.name" . }}'
-    heritage: '{{ .Release.Service }}'
-    release: '{{ .Release.Name }}'
-    admission.azdproxy.sh/ignore: no-self-managing # This field assigned in order to verify that this resource won't be mutated by azdproxy
+  {{ include "common.labels" . | indent 6 }}
 rules:
   # Cert-controller is using get,list and watch verbs on secrets
   - apiGroups: [ "" ]
@@ -17,7 +14,7 @@ rules:
   - apiGroups: [ "" ]
     resources: [ "secrets" ]
     verbs: [ "list", "watch", "update", "get" ]
-    resourceNames: [ "azure-defender-cert" ]
+    resourceNames: [ "{{ .Values.AzDProxy.prefixResourceDeployment }}-cert" ]
   # Cert-controller is using get,list and watch verbs on secrets
   - apiGroups: [ "admissionregistration.k8s.io" ]
     resources: [ "mutatingwebhookconfigurations" ]
@@ -26,4 +23,4 @@ rules:
   - apiGroups: [ "admissionregistration.k8s.io" ]
     resources: [ "mutatingwebhookconfigurations" ]
     verbs: [ "create","delete","get","list","patch","update","watch" ]
-    resourceNames: [ "azure-defender-proxy-mutating-webhook-configuration" ]
+    resourceNames: [ "{{ .Values.AzDProxy.prefixResourceDeployment }}-mutating-webhook-configuration" ]

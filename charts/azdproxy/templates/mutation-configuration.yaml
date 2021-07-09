@@ -1,15 +1,13 @@
 apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
-  name: azure-defender-proxy-mutating-webhook-configuration
+  name: {{.Values.AzDProxy.prefixResourceDeployment}}-mutating-webhook-configuration
+  namespace: '{{ .Release.Namespace }}'
   labels:
-    app: '{{ template "azdproxy.name" . }}'
-    chart: '{{ template "azdproxy.name" . }}'
-    heritage: '{{ .Release.Service }}'
-    release: '{{ .Release.Name }}'
-    admission.azdproxy.sh/ignore: no-self-managing # This field assigned in order to verify that this resource won't be mutated by azdproxy
+  {{ include "common.labels" . | indent 4 }}
 webhooks:
-  - name: azure-defender-proxy-service.{{ .Release.Namespace }}.svc
+  # e.g.: azure-defender-proxy-service.kube-system.svc
+  - name: {{.Values.AzDProxy.prefixResourceDeployment}}-service.{{ .Release.Namespace }}.svc
     rules:
       - apiGroups: [ "" ]
         apiVersions: [ "v1" ]
@@ -18,15 +16,18 @@ webhooks:
         scope: "Namespaced"
     clientConfig:
       service:
+        name: {{.Values.AzDProxy.prefixResourceDeployment}}-service
         namespace: '{{ .Release.Namespace }}'
-        name: azure-defender-proxy-service
-        path: /mutate # The path that the webhook is listening to.
-      caBundle: Cg== # Cert-controller is overriding this value.
+        # The path that the webhook is listening to.
+        path: {{.Values.AzDProxy.webhook.mutationPath}}
+      # Cert-controller is overriding this value.
+      caBundle: Cg==
     namespaceSelector:
-      matchExpressions: # Exclude all pods that have 'admission.azdproxy.sh/ignore' label
+      # Exclude all pods that have 'admission.azdproxy.sh/ignore' label
+      matchExpressions:
         - key: admission.azdproxy.sh/ignore #TODO find better solution/ add script that adds this label.
           operator: DoesNotExist
     failurePolicy: Ignore
     admissionReviewVersions: [ "v1" ]
     sideEffects: None
-    timeoutSeconds: {{ .Values.mutation_webhook_configuration.timeoutSeconds }}
+    timeoutSeconds: {{ .Values.AzDProxy.webhook_configuration.timeoutSeconds }}

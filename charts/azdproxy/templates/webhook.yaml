@@ -1,43 +1,37 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: azure-defender-proxy-deployment
+  name: {{.Values.AzDProxy.prefixResourceDeployment}}-deployment
   namespace: '{{ .Release.Namespace }}'
   labels:
-    app: '{{ template "azdproxy.name" . }}'
-    chart: '{{ template "azdproxy.name" . }}'
-    heritage: '{{ .Release.Service }}'
-    release: '{{ .Release.Name }}'
+  {{ include "common.labels" . | indent 4 }}
 spec:
-  replicas: {{ .Values.azdproxy_webhook_deployment.replicas }}
+  replicas: {{ .Values.AzDProxy.webhook.replicas }}
   selector:
     matchLabels:
-      app: '{{ template "azdproxy.name" . }}'
-      chart: '{{ template "azdproxy.name" . }}'
-      heritage: '{{ .Release.Service }}'
-      release: '{{ .Release.Name }}'
+  {{ include "common.labels" . | indent 6 }}
   template:
     metadata:
       labels:
-        app: '{{ template "azdproxy.name" . }}'
-        chart: '{{ template "azdproxy.name" . }}'
-        heritage: '{{ .Release.Service }}'
-        release: '{{ .Release.Name }}'
-        admission.azdproxy.sh/ignore: no-self-managing # This field assigned in order to verify that this resource won't be mutated by azdproxy
+        {{ include "common.labels" . | indent 8 }}
+        # This field assigned in order to verify that this resource won't be mutated by azdproxy
+        admission.azdproxy.sh/ignore: no-self-managing
     spec:
-      serviceAccountName: azure-defender-proxy-admin
-      containers: # TODO : Add securityContext section.
-        - name: azure-defender-proxy-webhook
-          image: '{{ .Values.azdproxy_webhook_deployment.image.repository }}:{{ .Values.azdproxy_webhook_deployment.image.release }}'
-          imagePullPolicy: '{{ .Values.azdproxy_webhook_deployment.image.pullPolicy }}' # Never for debugging, in production change to Always
+      serviceAccountName: {{.Values.AzDProxy.prefixResourceDeployment}}-admin
+      containers:
+        # TODO : Add securityContext section.
+        - name: {{.Values.AzDProxy.prefixResourceDeployment}}-webhook
+          image: '{{ .Values.AzDProxy.webhook.image.name }}:{{ .Values.AzDProxy.webhook.image.release }}'
+          imagePullPolicy: '{{ .Values.AzDProxy.webhook.image.pullPolicy }}'
           ports:
-            - containerPort: {{ .Values.targetPort }} # The port on which the service will send requests to, so the wh be listening on.
+            # The port on which the service will send requests to, so the webhook be listening on.
+            - containerPort: {{ .Values.AzDProxy.service.targetPort }}
           volumeMounts:
-            - name: cert
+            - name: {{.Values.AzDProxy.webhook.volume.name}}
               readOnly: true
-              mountPath: /certs
-          resources: {{- toYaml .Values.azdproxy_webhook_deployment.resources | nindent 12 }}
+              mountPath: {{.Values.AzDProxy.webhook.volume.mountPath}}
+          resources: {{- toYaml .Values.AzDProxy.webhook.resources | nindent 12 }}
       volumes:
-        - name: cert
+        - name: {{.Values.AzDProxy.webhook.volume.name}}
           secret:
-            secretName: azure-defender-cert
+            secretName: {{.Values.AzDProxy.prefixResourceDeployment}}-cert
