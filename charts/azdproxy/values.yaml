@@ -1,0 +1,41 @@
+# Default values for AzDProxy.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+AzDProxy:
+  # -- common prefix name for all resources.
+  prefixResourceDeployment: azure-defender-proxy
+  # Webhook values
+  webhook:
+    # -- Amount of replicas of azdproxy.
+    replicas: 3
+    # Image values:
+    image:
+      # -- Official image.
+      name: "azdproxy-image"
+      # -- Image tag/release.
+      release: "latest" # TODO Change this to stable version.
+      # -- Default for always. in case that you want to use local registry, change to 'Never'.
+      pullPolicy: "Always"
+    # -- The path that the webhook handler will be listening on.
+    mutationPath: "/mutate"
+    # Volume values of webhook.
+    volume:
+      # -- The name of the volume.
+      name: "cert"
+      # -- The mount path of the volume.
+      mountPath: "/certs"
+    # -- The resources of the webhook.
+    resources:
+      limits:
+        memory: "128Mi"
+        cpu: "500m"
+
+  # Values of mutation-configuration.yaml file:
+  webhook_configuration:
+    # -- Webhook timeout in seconds
+    timeoutSeconds: 3
+
+  # Values of service.yaml file.
+  service:
+    # -- The port on which the service will send requests to, so the webhook be listening on.
+    targetPort: 8000

@@ -1,0 +1,33 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: {{.Values.AzDProxy.prefixResourceDeployment}}-mutating-webhook-configuration
+  namespace: '{{ .Release.Namespace }}'
+  labels:
+  {{ include "common.labels" . | indent 4 }}
+webhooks:
+  # e.g.: azure-defender-proxy-service.kube-system.svc
+  - name: {{.Values.AzDProxy.prefixResourceDeployment}}-service.{{ .Release.Namespace }}.svc
+    rules:
+      - apiGroups: [ "" ]
+        apiVersions: [ "v1" ]
+        operations: [ "CREATE", "UPDATE" ]  # Apply mutation only on create and update operations
+        resources: [ "pods" ]               # Apply on pods only. //TODO add relevant resources according to context
+        scope: "Namespaced"
+    clientConfig:
+      service:
+        name: {{.Values.AzDProxy.prefixResourceDeployment}}-service
+        namespace: '{{ .Release.Namespace }}'
+        # The path that the webhook is listening to.
+        path: {{.Values.AzDProxy.webhook.mutationPath}}
+      # Cert-controller is overriding this value.
+      caBundle: Cg==
+    namespaceSelector:
+      # Exclude all pods that have 'admission.azdproxy.sh/ignore' label
+      matchExpressions:
+        - key: admission.azdproxy.sh/ignore #TODO find better solution/ add script that adds this label.
+          operator: DoesNotExist
+    failurePolicy: Ignore
+    admissionReviewVersions: [ "v1" ]
+    sideEffects: None
+    timeoutSeconds: {{ .Values.AzDProxy.webhook_configuration.timeoutSeconds }}
