@@ -4,6 +4,7 @@ package webhook
 import (
 	"flag"
 	"fmt"
+
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/src/AzDProxy/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/src/AzDProxy/pkg/infra/util"
 	"github.com/go-logr/logr"
@@ -20,11 +21,11 @@ import (
 
 // Webhook configuration constants //TODO Change it to config-map
 const (
-	secretName  = "azure-defender-proxy-cert"                                 // matches the Secret name
+	secretName  = "azure-defender-proxy-cert"                           // matches the Secret name
 	serviceName = "azure-defender-proxy-service"                        // matches the Service name
 	webhookName = "azure-defender-proxy-mutating-webhook-configuration" // matches the MutatingWebhookConfiguration name
 	webhookPath = "/mutate"                                             // matches the MutatingWebhookConfiguration clientConfig path
-	defaultPort = 8000
+	defaultPort = 443
 )
 
 //Cert controller constants //TODO Change it to config-map
@@ -77,14 +78,14 @@ func StartServer() {
 
 	// Init the manager object of the server - manager manages the creation and registration of the controllers.
 	if err := server.initManager(); err != nil {
-		return //TODO exit with panic - error flow?
+		panic(err)
 	}
 
 	// Init cert controller - gets a channel of setting up the controller.
 	certSetupFinished, err := server.initCertController()
 	if err != nil {
 		server.Logger.Error(err, "Failed to initialize cert controller")
-		return //TODO exit with panic - error flow?
+		panic(err)
 	}
 
 	// Set up controllers.
@@ -93,7 +94,7 @@ func StartServer() {
 	// Start all registered controllers - webhook mutation as https server and cert controller.
 	if err := server.Manager.Start(signals.SetupSignalHandler()); err != nil {
 		server.Logger.Error(err, "problem running manager")
-		return //TODO exit with panic - error flow?
+		panic(err)
 	}
 }
 
