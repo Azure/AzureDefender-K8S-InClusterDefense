@@ -3,14 +3,12 @@ module github.com/Azure/AzureDefender-K8S-InClusterDefense/src/AzDProxy
 go 1.16
 
 require (
-	github.com/Azure/azure-sdk-for-go v55.8.0+incompatible // indirect
-	github.com/Azure/go-autorest/autorest v0.11.19 // indirect
-	github.com/Azure/go-autorest/autorest/azure/auth v0.5.8 // indirect
-	github.com/Azure/go-autorest/autorest/to v0.4.0 // indirect
-	github.com/Azure/go-autorest/autorest/validation v0.3.1 // indirect
+	github.com/Azure/go-autorest/autorest v0.11.19
+	github.com/Azure/go-autorest/autorest/azure/auth v0.5.8
 	github.com/go-logr/logr v0.4.0
 	github.com/go-logr/zapr v0.4.0
 	github.com/open-policy-agent/cert-controller v0.2.0
+	github.com/stretchr/testify v1.7.0 // indirect
 	go.uber.org/zap v1.17.0
 	gomodules.xyz/jsonpatch/v2 v2.2.0
 	k8s.io/api v0.21.1

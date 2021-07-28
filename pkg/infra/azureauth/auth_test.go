@@ -1,50 +1,40 @@
 package azureauth
 
 import (
-	"context"
-	"fmt"
 	"testing"
 
-	arg "github.com/Azure/azure-sdk-for-go/services/resourcegraph/mgmt/2021-03-01/resourcegraph"
+	"github.com/Azure/go-autorest/autorest"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
-func TestNewARMAuthorizer(t *testing.T) {
-	factory := AzureAuthroizerFactory{
-		configuration: &AzureAuthroizerConfiguration{
-			isLocalDevelopmentMode: true,
-			clientId:               "27f25a78-b423-4756-9bf8-151d44d46c12",
+const (
+	string clientId = "fakeClientId"
+)
+
+type MockAzureAuthWrapper struct {
+	mock.Mock
+}
+
+func init() (IAzureAuthroizerFactory factory) {
+	factory := &NewAzureMSIAuthroizerFactory(
+		&AzureMSIAuthroizerConfiguration{
+			isLocalDevelopmentMode: false,
+			MSIClientId:            clientId,
 		},
-	}
+		nil,
+	)
+}
+func TestNewARMAuthorizer(t *testing.T) {
+	a := new(MockAzureAuthWrapper)
+	a.On()
+	assert.Equal(t, "tomer", "tomerw")
+}
 
-	authorizer, err := factory.NewARMAuthorizer()
-	if err != nil {
-		fmt.Printf("Got Error %q", err)
-		fmt.Println()
-		return
-	}
+func (wrapper *MockAzureAuthWrapper) GetSettingsFromEnvironment() (*IEnvironmentSettingsWrapper, error) {
+	return nil, nil
+}
 
-	argClient := arg.New()
-	argClient.Authorizer = authorizer
-
-	RequestOptions := arg.QueryRequestOptions{
-		ResultFormat: "objectArray",
-	}
-
-	query := "securityresources | take 1"
-	// Create the query request
-	Request := arg.QueryRequest{
-		Query:   &query,
-		Options: &RequestOptions,
-	}
-
-	results, err := argClient.Resources(context.Background(), Request)
-	if err != nil {
-		fmt.Printf("Got Error %q", err)
-		fmt.Println()
-
-	}
-
-	fmt.Printf("Results %q", results.Data)
-	fmt.Println()
-
+func (wrapper *MockAzureAuthWrapper) NewAuthorizerFromCLIWithResource(resource string) (*autorest.Authorizer, error) {
+	return nil, nil
 }
