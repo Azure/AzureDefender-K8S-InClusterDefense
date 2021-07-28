@@ -12,7 +12,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
@@ -55,37 +54,38 @@ var (
 
 // Server this struct is responsible for setting up azdproxy server in the cluster.
 type Server struct {
-	Logger  logr.Logger
-	Manager manager.Manager
+	Instrumentation *instrumentation.Instrumentation
+	Manager         manager.Manager
 }
 
-// StartServer Starting server - this is function is called from the main (entrypoint of azdproxy)
+// NewServer creates new server
+func NewServer(serverInstrumentation *instrumentation.Instrumentation) (server *Server) {
+	return &Server{Instrumentation: serverInstrumentation}
+}
+
+// Run Starting server - this is function is called from the main (entrypoint of azdproxy)
 // It initialize the server with all the instrumentation, initialize the controllers, and register them.
 // There are 2 controllers - cert-controller (https://github.com/open-policy-agent/cert-controller) that manages
 // the certificates of the server and the mutation webhook server that is registered with the AzDSecInfo Handler.
-func StartServer() {
-	server := Server{}
-	server.Logger = ctrl.Log.WithName("webhook-setup")
-	instrumentation.InitLogger(server.Logger)
-
+func (server *Server) Run() {
 	// Log all parameters:
-	server.Logger.Info("Parameters:",
+	server.Instrumentation.Tracer.Info("Parameters:",
 		"port", *port,
-		"certDir", certDir,
-		"disableCertRotation", disableCertRotation,
-		"dryRun", dryRun,
+		"certDir", *certDir,
+		"disableCertRotation", *disableCertRotation,
+		"dryRun", *dryRun,
 		"webhooks", webhooks)
 
 	// Init the manager object of the server - manager manages the creation and registration of the controllers.
 	if err := server.initManager(); err != nil {
-		panic(err)
+		return //TODO exit with panic - error flow?
 	}
 
 	// Init cert controller - gets a channel of setting up the controller.
 	certSetupFinished, err := server.initCertController()
 	if err != nil {
-		server.Logger.Error(err, "Failed to initialize cert controller")
-		panic(err)
+		server.Instrumentation.Tracer.Error(err, "Failed to initialize cert controller")
+		return //TODO exit with panic - error flow?
 	}
 
 	// Set up controllers.
@@ -93,8 +93,8 @@ func StartServer() {
 
 	// Start all registered controllers - webhook mutation as https server and cert controller.
 	if err := server.Manager.Start(signals.SetupSignalHandler()); err != nil {
-		server.Logger.Error(err, "problem running manager")
-		panic(err)
+		server.Instrumentation.Tracer.Error(err, "problem running manager")
+		return //TODO exit with panic - error flow?
 	}
 }
 
@@ -103,26 +103,25 @@ func StartServer() {
 func (server *Server) initManager() (err error) {
 	scheme := runtime.NewScheme()
 	if err = corev1.AddToScheme(scheme); err != nil {
-		server.Logger.Error(err, "Unable to add schema")
+		server.Instrumentation.Tracer.Error(err, "Unable to add schema")
 		return err
 	}
 
 	// GetConfig creates a *rest.Config for talking to a Kubernetes API server (using --kubeconfig or cluster provided config)
 	cfg, err := config.GetConfig()
 	if err != nil {
-		server.Logger.Error(err, "Unable to get kube-config")
+		server.Instrumentation.Tracer.Error(err, "Unable to get kube-config")
 		return err
 	}
-
 	// Creates new manager of creating controllers
 	newManager, err := manager.New(cfg, manager.Options{
 		Scheme:  scheme,
-		Logger:  server.Logger,
+		Logger:  server.Instrumentation.Tracer,
 		Port:    *port,
 		CertDir: *certDir,
 	})
 	if err != nil {
-		server.Logger.Error(err, "unable to setup manager")
+		server.Instrumentation.Tracer.Error(err, "unable to setup manager")
 		return err
 	}
 	// Assign new manager to the server
@@ -135,38 +134,44 @@ func (server *Server) initManager() (err error) {
 func (server *Server) initCertController() (certSetupFinished chan struct{}, err error) {
 	certSetupFinished = make(chan struct{})
 	if !*disableCertRotation {
-
 		dnsName := fmt.Sprintf("%s.%s.svc", serviceName, util.GetNamespace()) // matches the MutatingWebhookConfiguration webhooks name
-		server.Logger.Info("setting up cert rotation")
-		// Add rotator - using cert-controller API //TODO Expiration of certificate?
-		if err := rotator.AddRotator(server.Manager, &rotator.CertRotator{
-			SecretKey: types.NamespacedName{
-				Namespace: util.GetNamespace(),
-				Name:      secretName,
-			},
-			CertDir:        *certDir,
-			CAName:         caName,
-			CAOrganization: caOrganization,
-			DNSName:        dnsName,
-			IsReady:        certSetupFinished,
-			Webhooks:       webhooks,
-		}); err != nil {
-			server.Logger.Error(err, "Unable to set up cert rotation")
+		server.Instrumentation.Tracer.Info("setting up cert rotation")
+		// Add rotator - using cert-controller API
+		certRotator := NewCertRotator(&dnsName, certSetupFinished)
+		if err := rotator.AddRotator(server.Manager, certRotator); err != nil {
+			server.Instrumentation.Tracer.Error(err, "Unable to set up cert rotation")
 			return nil, err
 		}
 	} else {
-		server.Logger.Info("Skipping certificate provisioning setup")
+		server.Instrumentation.Tracer.Info("Skipping certificate provisioning setup")
 		close(certSetupFinished)
 	}
 	return certSetupFinished, nil
 }
 
+// NewCertRotator creates new cert rotator
+func NewCertRotator(dnsName *string, certSetupFinished chan struct{}) (certRotator *rotator.CertRotator) {
+	//TODO Add expiration?
+	return &rotator.CertRotator{
+		SecretKey: types.NamespacedName{
+			Namespace: util.GetNamespace(),
+			Name:      secretName,
+		},
+		CertDir:        *certDir,
+		CAName:         caName,
+		CAOrganization: caOrganization,
+		DNSName:        *dnsName,
+		IsReady:        certSetupFinished,
+		Webhooks:       webhooks,
+	}
+}
+
 // setupControllers is setting up all controllers of the server - cert-controller and webhook.
 func (server *Server) setupControllers(certSetupFinished chan struct{}) {
 	// Setup cert-controller - wait until the channel is finish.
-	server.Logger.Info("waiting for cert rotation setup")
+	server.Instrumentation.Tracer.Info("waiting for cert rotation setup")
 	<-certSetupFinished
-	server.Logger.Info("done waiting for cert rotation setup")
+	server.Instrumentation.Tracer.Info("done waiting for cert rotation setup")
 
 	// Register mutation webhook.
 	server.registerWebhook()
@@ -174,14 +179,11 @@ func (server *Server) setupControllers(certSetupFinished chan struct{}) {
 
 // registerWebhook - assigning Handler to the mutation webhook and register it.
 func (server *Server) registerWebhook() {
-	// Assign webhook handler
-	webhookHandler := &Handler{
-		Logger: server.Logger.WithName("webhook-handler"),
-		DryRun: *dryRun,
-	}
+	// Creates new webhook handler
+	webhookHandler := NewHandler(server.Instrumentation, *dryRun)
 
 	//Register webhook
 	mutationWebhook := &admission.Webhook{Handler: webhookHandler}
 	server.Manager.GetWebhookServer().Register(webhookPath, mutationWebhook)
-	server.Logger.Info("Webhook registered successfully", "path", webhookPath, "port", port)
+	server.Instrumentation.Tracer.Info("Webhook registered successfully", "path", webhookPath, "port", port)
 }
