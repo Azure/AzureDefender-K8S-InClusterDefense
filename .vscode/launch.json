@@ -1,6 +1,7 @@
 {
     "configurations": [
         
+        
         {
             "name": "Launch file",
             "type": "go",
@@ -26,5 +27,11 @@
             "mode": "auto",
             "program": "${workspaceFolder}"
         },
+        {
+            "name": "Go Mockery",
+            "type": "node-terminal",
+            "request": "launch",
+            "command": "mockery -all -dir \"pkg\" -keeptree  && mockery -all -dir \"cmd\" -keeptree",              
+        }
     ]
 }

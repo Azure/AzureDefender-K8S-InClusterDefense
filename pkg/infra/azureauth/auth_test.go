@@ -3,38 +3,45 @@ package azureauth
 import (
 	"testing"
 
-	"github.com/Azure/go-autorest/autorest"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/suite"
 )
 
 const (
-	string clientId = "fakeClientId"
+	clientId string = "fakeClientId"
 )
 
-type MockAzureAuthWrapper struct {
-	mock.Mock
+// We'll be able to store suite-wide
+// variables and add methods to this
+// test suite struct
+type ExampleTestSuite struct {
+	suite.Suite
 }
 
-func init() (IAzureAuthroizerFactory factory) {
-	factory := &NewAzureMSIAuthroizerFactory(
-		&AzureMSIAuthroizerConfiguration{
-			isLocalDevelopmentMode: false,
-			MSIClientId:            clientId,
-		},
-		nil,
-	)
-}
-func TestNewARMAuthorizer(t *testing.T) {
-	a := new(MockAzureAuthWrapper)
-	a.On()
-	assert.Equal(t, "tomer", "tomerw")
+var authWrapperMock IAzureAuthWrapper
+var authSettingsMock IEnvironmentSettingsWrapper
+var factory *AzureMSIAuthroizerFactory
+
+var configuration = &AzureMSIAuthroizerConfiguration{
+	isLocalDevelopmentMode: false,
+	MSIClientId:            clientId,
 }
 
-func (wrapper *MockAzureAuthWrapper) GetSettingsFromEnvironment() (*IEnvironmentSettingsWrapper, error) {
-	return nil, nil
+// This will run before each test in the suite
+func (suite *ExampleTestSuite) SetupTest() {
+
+	//authSettingsMock := &mocks.IEnvironmentSettingsWrapper{}
+
+	//factory = NewAzureMSIAuthroizerFactory(configuration, authWrapperMock)
+
 }
 
-func (wrapper *MockAzureAuthWrapper) NewAuthorizerFromCLIWithResource(resource string) (*autorest.Authorizer, error) {
-	return nil, nil
+// This is an example test that will always succeed
+func (suite *ExampleTestSuite) TestExample() {
+	suite.Equal(true, true)
+}
+
+// We need this function to kick off the test suite, otherwise
+// "go test" won't know about our tests
+func TestExampleTestSuite(t *testing.T) {
+	suite.Run(t, new(ExampleTestSuite))
 }

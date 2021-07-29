@@ -1,4 +1,4 @@
-module github.com/Azure/AzureDefender-K8S-InClusterDefense/src/AzDProxy
+module github.com/Azure/AzureDefender-K8S-InClusterDefense
 
 go 1.16
 
@@ -8,7 +8,7 @@ require (
 	github.com/go-logr/logr v0.4.0
 	github.com/go-logr/zapr v0.4.0
 	github.com/open-policy-agent/cert-controller v0.2.0
-	github.com/stretchr/testify v1.7.0 // indirect
+	github.com/stretchr/testify v1.7.0
 	go.uber.org/zap v1.17.0
 	gomodules.xyz/jsonpatch/v2 v2.2.0
 	k8s.io/api v0.21.1
