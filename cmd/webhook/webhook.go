@@ -7,7 +7,6 @@ import (
 
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/util"
-	"github.com/go-logr/logr"
 	"github.com/open-policy-agent/cert-controller/pkg/rotator"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -68,6 +67,7 @@ func NewServer(serverInstrumentation *instrumentation.Instrumentation) (server *
 // There are 2 controllers - cert-controller (https://github.com/open-policy-agent/cert-controller) that manages
 // the certificates of the server and the mutation webhook server that is registered with the AzDSecInfo Handler.
 func (server *Server) Run() {
+	flag.Parse()
 	// Log all parameters:
 	server.Instrumentation.Tracer.Info("Parameters:",
 		"port", *port,
