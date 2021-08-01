@@ -31,15 +31,15 @@ func (_m *IEnvironmentSettingsWrapper) Environment() *azure.Environment {
 }
 
 // GetAuthorizer provides a mock function with given fields:
-func (_m *IEnvironmentSettingsWrapper) GetAuthorizer() (*autorest.Authorizer, error) {
+func (_m *IEnvironmentSettingsWrapper) GetAuthorizer() (autorest.Authorizer, error) {
 	ret := _m.Called()
 
-	var r0 *autorest.Authorizer
-	if rf, ok := ret.Get(0).(func() *autorest.Authorizer); ok {
+	var r0 autorest.Authorizer
+	if rf, ok := ret.Get(0).(func() autorest.Authorizer); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*autorest.Authorizer)
+			r0 = ret.Get(0).(autorest.Authorizer)
 		}
 	}
 
