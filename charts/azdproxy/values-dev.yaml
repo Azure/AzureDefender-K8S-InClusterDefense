@@ -1,4 +1,4 @@
-# Default values for AzDProxy.
+# Default values for  dev environment AzDProxy.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 AzDProxy:
@@ -7,7 +7,7 @@ AzDProxy:
   # Webhook values
   webhook:
     # -- Amount of replicas of azdproxy.
-    replicas: 3
+    replicas: 1
     # Image values:
     image:
       # -- Official image.
@@ -31,7 +31,7 @@ AzDProxy:
   # Values of mutation-configuration.yaml file:
   webhook_configuration:
     # -- Webhook timeout in seconds
-    timeoutSeconds: 3
+    timeoutSeconds: 10
 
   # Values of service.yaml file.
   service:
