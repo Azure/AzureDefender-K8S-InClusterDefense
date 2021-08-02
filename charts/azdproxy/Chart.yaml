@@ -24,5 +24,5 @@ home: https://github.com/Azure/AzureDefender-K8S-InClusterDefense
 sources: [ https://github.com/Azure/AzureDefender-K8S-InClusterDefense.git ]
 # The maintainers of the helm chart
 maintainers:
-  - name: Azure Securit Center Detection Tomer's Team
+  - name: Azure Security Center Detection Tomer's Team
     email: ascdetectiontomer@microsoft.com

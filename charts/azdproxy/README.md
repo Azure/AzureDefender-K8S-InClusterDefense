@@ -44,9 +44,7 @@ _See [helm upgrade](https://helm.sh/docs/helm/helm_upgrade/) for command documen
 
 | Name | Email | Url |
 | ---- | ------ | --- |
-| Tomer Weinberger | tomer.weinberger@microsoft.com |  |
-| Lior Kesten | t-liorkesten@microsoft.com |  |
-| Or Kaplan | t-orkaplan@microsoft.com |  |
+| Azure Security Center Detection Tomer's Team | ascdetectiontomer@microsoft.com |  |
 
 ## Configuration
 
@@ -66,7 +64,6 @@ The following table lists the configurable parameters of the azdproxy chart and 
 | AzDProxy.service.targetPort | int | `8000` | The port on which the service will send requests to, so the webhook be listening on. |
 | AzDProxy.webhook.image.name | string | `"azdproxy-image"` | Official image. |
 | AzDProxy.webhook.image.pullPolicy | string | `"Always"` | Default for always. in case that you want to use local registry, change to 'Never'. |
-| AzDProxy.webhook.image.release | string | `"latest"` | Image tag/release. |
 | AzDProxy.webhook.mutationPath | string | `"/mutate"` | The path that the webhook handler will be listening on. |
 | AzDProxy.webhook.replicas | int | `3` | Amount of replicas of azdproxy. |
 | AzDProxy.webhook.resources | object | `{"limits":{"cpu":"500m","memory":"128Mi"}}` | The resources of the webhook. |
