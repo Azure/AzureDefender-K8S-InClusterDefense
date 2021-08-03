@@ -5,33 +5,35 @@ import (
 
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/azureauth/wrappers"
 	"github.com/Azure/go-autorest/autorest"
-	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 )
 
-// Factory to create an azure authorizer
+// IAzureAuthroizerFactory Factory to create an azure authorizer
 type IAzureAuthroizerFactory interface {
-	// Generates a new ARM azure client authorizer
+	// NewARMAuthorizer Generates a new ARM azure client authorizer
 	NewARMAuthorizer() (autorest.Authorizer, error)
 }
 
-// Factory to create an azure authorizer using managed identity
-// Implements azureauth.IAzureAuthroizerFactory
-type AzureAuthroizerFromEnvFactory struct {
-	configuration *AzureAuthroizerFromEnvConfiguration
-	authWrapper   wrappers.IAzureAuthWrapper
-}
-
-// Factory configuration to create an azure authorizer from environment (env varaibles or managed identity)
+// AzureAuthroizerFromEnvConfiguration Factory configuration to create an azure authorizer from environment (env varaibles or managed identity)
 type AzureAuthroizerFromEnvConfiguration struct {
-	// Is factory set to local development
+	// isLocalDevelopmentMode is factory set to local development
 	isLocalDevelopmentMode bool
 
 	// MSI client id
 	MSIClientId string
 }
 
-// Constructor
+// AzureAuthroizerFromEnvFactory Factory to create an azure authorizer using managed identity
+// implements azureauth.IAzureAuthroizerFactory
+type AzureAuthroizerFromEnvFactory struct {
+	// configuration factory's configuration
+	configuration *AzureAuthroizerFromEnvConfiguration
+
+	// authWrapper wrapper to all auth package related calls
+	authWrapper wrappers.IAzureAuthWrapper
+}
+
+// NewAzureAuthroizerFromEnvFactory Constructor for AzureAuthroizerFromEnvFactory
 func NewAzureAuthroizerFromEnvFactory(configuration *AzureAuthroizerFromEnvConfiguration, authWrapper wrappers.IAzureAuthWrapper) *AzureAuthroizerFromEnvFactory {
 	return &AzureAuthroizerFromEnvFactory{
 		configuration: configuration,
@@ -39,7 +41,7 @@ func NewAzureAuthroizerFromEnvFactory(configuration *AzureAuthroizerFromEnvConfi
 	}
 }
 
-// Generates a new ARM azure client authorizer using MSI configured
+// NewARMAuthorizer Generates a new ARM azure client authorizer using MSI configured
 func (factory *AzureAuthroizerFromEnvFactory) NewARMAuthorizer() (autorest.Authorizer, error) {
 
 	// Gets authorizer setting from environment
@@ -57,7 +59,7 @@ func (factory *AzureAuthroizerFromEnvFactory) NewARMAuthorizer() (autorest.Autho
 	return authorizer, err
 }
 
-// Creates a new authorizer from settings provided.
+// newAuthorizer Creates a new authorizer from settings provided.
 // The function adds the factory configured user assigned MSI client id to settings value map and generates
 // an authorizer using setting' (auth.EnvironmentSettings) GetAuthorizer.
 // If factory is configured in local development mode (configuration.isLocalDevelopmentMode == true):
@@ -77,50 +79,4 @@ func (factory *AzureAuthroizerFromEnvFactory) newAuthorizer(settings wrappers.IE
 		// Local development
 		return factory.authWrapper.NewAuthorizerFromCLIWithResource(settings.Values()[auth.Resource])
 	}
-}
-
-// Wrapper for azure/auth package used actions
-type AzureAuthWrapper struct{}
-
-func (wrapper *AzureAuthWrapper) GetSettingsFromEnvironment() (wrappers.IEnvironmentSettingsWrapper, error) {
-
-	settings, err := auth.GetSettingsFromEnvironment()
-	if err != nil {
-		return nil, err
-	}
-	return NewEnvironmentSettingsWrapper(&settings), nil
-}
-
-func (wrapper *AzureAuthWrapper) NewAuthorizerFromCLIWithResource(resource string) (autorest.Authorizer, error) {
-
-	authorizer, err := auth.NewAuthorizerFromCLIWithResource(resource)
-	if err != nil {
-		return nil, err
-	}
-	return authorizer, nil
-}
-
-type EnvironmentSettingsWrapper struct{ settings *auth.EnvironmentSettings }
-
-func NewEnvironmentSettingsWrapper(settings *auth.EnvironmentSettings) wrappers.IEnvironmentSettingsWrapper {
-	return &EnvironmentSettingsWrapper{
-		settings: settings,
-	}
-}
-
-func (wrapper *EnvironmentSettingsWrapper) GetAuthorizer() (autorest.Authorizer, error) {
-	authorizer, err := wrapper.settings.GetAuthorizer()
-	if err != nil {
-		return nil, err
-	}
-
-	return authorizer, nil
-}
-
-func (wrapper *EnvironmentSettingsWrapper) Values() map[string]string {
-	return wrapper.settings.Values
-}
-
-func (wrapper *EnvironmentSettingsWrapper) Environment() *azure.Environment {
-	return &wrapper.settings.Environment
 }

@@ -25,7 +25,7 @@ const (
 	serviceName = "azure-defender-proxy-service"                        // matches the Service name
 	webhookName = "azure-defender-proxy-mutating-webhook-configuration" // matches the MutatingWebhookConfiguration name
 	webhookPath = "/mutate"                                             // matches the MutatingWebhookConfiguration clientConfig path
-	defaultPort = 443
+	defaultPort = 8000
 )
 
 //Cert controller constants //TODO Change it to config-map
