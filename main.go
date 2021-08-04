@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/Azure/AzureDefender-K8S-InClusterDefense/src/AzDProxy/cmd/webhook"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/cmd/webhook"
 )
 
 // main is the entrypoint to azdproxy.
