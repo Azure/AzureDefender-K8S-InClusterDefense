@@ -21,7 +21,7 @@ spec:
       containers:
         # TODO : Add securityContext section.
         - name: {{.Values.AzDProxy.prefixResourceDeployment}}-webhook
-          image: '{{ .Values.AzDProxy.webhook.image.name }}:{{ .Values.AzDProxy.webhook.image.release }}'
+          image: '{{ .Values.AzDProxy.webhook.image.name }}'
           imagePullPolicy: '{{ .Values.AzDProxy.webhook.image.pullPolicy }}'
           ports:
             # The port on which the service will send requests to, so the webhook be listening on.
