@@ -1,5 +1,5 @@
 // Package webhook is setting up the webhook service and it's own dependencies (e.g. cert controller, logger, metrics, etc.).
-package webhook
+package server
 
 import (
 	"flag"
@@ -35,16 +35,6 @@ const (
 	_caOrganization = "azure-defender-proxy"
 )
 
-//Webhooks of AzDProxy.
-var (
-	_webhooks = []rotator.WebhookInfo{
-		{
-			Name: _webhookName,
-			Type: rotator.Mutating,
-		},
-	}
-)
-
 // Params of program that can be configured. //TODO Change it to config-map
 var (
 	port                = flag.Int("port", _defaultPort, "port for the server. defaulted to 8000 if unspecified ")
@@ -59,12 +49,16 @@ type Server struct {
 	Manager manager.Manager
 }
 
-// StartServer Starting server - this is function is called from the main (entrypoint of azdproxy)
+// NewServer Constructor for server
+func NewServer() (server *Server) {
+	return &Server{}
+}
+
+// Run Starting server - this is function is called from the main (entrypoint of azdproxy)
 // It initializes the server with all the instrumentation, initialize the controllers, and register them.
 // There are 2 controllers - cert-controller (https://github.com/open-policy-agent/cert-controller) that manages
 // the certificates of the server and the mutation webhook server that is registered with the AzDSecInfo Handler.
-func StartServer() (err error) {
-	server := Server{}
+func (server *Server) Run() (err error) {
 	server.Logger = ctrl.Log.WithName("webhook-setup")
 	instrumentation.InitLogger(server.Logger)
 
@@ -73,8 +67,7 @@ func StartServer() (err error) {
 		"port", *port,
 		"certDir", certDir,
 		"disableCertRotation", disableCertRotation,
-		"dryRun", dryRun,
-		"webhooks", _webhooks)
+		"dryRun", dryRun)
 
 	// Init the manager object of the server - manager manages the creation and registration of the controllers.
 	if err := server.initManager(); err != nil {
@@ -136,9 +129,8 @@ func (server *Server) initManager() (err error) {
 func (server *Server) initCertController() (certSetupFinished chan struct{}, err error) {
 	certSetupFinished = make(chan struct{})
 	if !*disableCertRotation {
-
-		dnsName := fmt.Sprintf("%s.%s.svc", _serviceName, util.GetNamespace()) // matches the MutatingWebhookConfiguration webhooks name
 		server.Logger.Info("setting up cert rotation")
+		dnsName := fmt.Sprintf("%s.%s.svc", _serviceName, util.GetNamespace()) // matches the MutatingWebhookConfiguration webhooks name
 		// Add rotator - using cert-controller API //TODO Expiration of certificate?
 		if err := rotator.AddRotator(server.Manager, &rotator.CertRotator{
 			SecretKey: types.NamespacedName{
@@ -150,7 +142,7 @@ func (server *Server) initCertController() (certSetupFinished chan struct{}, err
 			CAOrganization: _caOrganization,
 			DNSName:        dnsName,
 			IsReady:        certSetupFinished,
-			Webhooks:       _webhooks,
+			Webhooks:       []rotator.WebhookInfo{{Name: _webhookName, Type: rotator.Mutating}},
 		}); err != nil {
 			server.Logger.Error(err, "Unable to set up cert rotation")
 			return nil, err

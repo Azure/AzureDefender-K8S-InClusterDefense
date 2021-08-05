@@ -1,5 +1,5 @@
 // Package webhook is setting up the webhook service and it's own dependencies (e.g. cert controller, logger, metrics, etc.).
-package webhook
+package server
 
 import (
 	"context"
@@ -16,8 +16,8 @@ const (
 	_patched patchStatus = "Patched" // _patched in case that the handler patched to the webhook.
 )
 
-// Handler is handle with all admission requests according to the MutatingWebhookConfiguration.
-// It implements the Handle interface that each webhook have to implement.
+// Handler implements the admission.Handle. Handler handles with all admission requests according to the MutatingWebhookConfiguration.
+// It implements the admission.Handle interface that each webhook have to implement.
 type Handler struct {
 	Logger logr.Logger // Logger is the handler logger - gets it from the server.
 	DryRun bool        // DryRun is flag that if its true, it handles request but doesn't mutate the pod spec.

@@ -14,15 +14,6 @@ type IAzureAuthorizerFactory interface {
 	NewARMAuthorizer() (autorest.Authorizer, error)
 }
 
-// EnvAzureAuthorizerConfiguration Factory configuration to create an azure authorizer from environment (env variables or managed identity)
-type EnvAzureAuthorizerConfiguration struct {
-	// isLocalDevelopmentMode is factory set to local development
-	isLocalDevelopmentMode bool
-
-	// MSI client id
-	MSIClientId string
-}
-
 // EnvAzureAuthorizerFactory Factory to create an azure authorizer using managed identity
 // implements azureauth.IAzureAuthorizerFactory
 type EnvAzureAuthorizerFactory struct {
@@ -31,6 +22,15 @@ type EnvAzureAuthorizerFactory struct {
 
 	// authWrapper wrapper to all auth package related calls
 	authWrapper wrappers.IAzureAuthWrapper
+}
+
+// EnvAzureAuthorizerConfiguration Factory configuration to create an azure authorizer from environment (env variables or managed identity)
+type EnvAzureAuthorizerConfiguration struct {
+	// isLocalDevelopmentMode is factory set to local development
+	isLocalDevelopmentMode bool
+
+	// MSI client id
+	MSIClientId string
 }
 
 // NewEnvAzureAuthorizerFactory Constructor for EnvAzureAuthorizerFactory
