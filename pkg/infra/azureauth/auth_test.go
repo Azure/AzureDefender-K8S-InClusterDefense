@@ -21,13 +21,13 @@ type TestSuite struct {
 	suite.Suite
 	authWrapperMock  *mocks.IAzureAuthWrapper
 	authSettingsMock *mocks.IEnvironmentSettingsWrapper
-	factory          *AzureAuthroizerFromEnvFactory
+	factory          *FromEnvAzureAuthorizerFactory
 	values           map[string]string
 	env              *azure.Environment
 	authorizer       autorest.Authorizer
 }
 
-var configuration = &AzureAuthroizerFromEnvConfiguration{
+var configuration = &FromEnvAzureAuthorizerConfiguration{
 	isLocalDevelopmentMode: false,
 	MSIClientId:            clientId,
 }
@@ -43,15 +43,15 @@ func (suite *TestSuite) SetupTest() {
 	suite.env = &azure.PublicCloud
 	suite.authSettingsMock = &mocks.IEnvironmentSettingsWrapper{}
 	suite.authWrapperMock = &mocks.IAzureAuthWrapper{}
-	suite.factory = NewAzureAuthroizerFromEnvFactory(configuration, suite.authWrapperMock)
+	suite.factory = NewFromEnvAzureAuthorizerFactory(configuration, suite.authWrapperMock)
 	suite.authorizer = autorest.NullAuthorizer{}
 }
 
 // This is an example test that will always succeed
-func (suite *TestSuite) TestAzureAuthroizerFromEnvFactory_NewArmAuthorizer_NonDevelopmentMode_ClientIdAndResourceAuthUsingEnv() {
+func (suite *TestSuite) TestAzureAuthorizerFromEnvFactory_NewArmAuthorizer_NonDevelopmentMode_ClientIdAndResourceAuthUsingEnv() {
 
-	suite.authSettingsMock.On("Environment").Return(suite.env).Once()
-	suite.authSettingsMock.On("Values").Return(suite.values).Twice()
+	suite.authSettingsMock.On("GetEnvironment").Return(suite.env).Once()
+	suite.authSettingsMock.On("GetValues").Return(suite.values).Twice()
 	suite.authSettingsMock.On("GetAuthorizer").Return(suite.authorizer, nil).Once()
 	suite.authWrapperMock.On("GetSettingsFromEnvironment").Return(suite.authSettingsMock, nil).Once()
 	authorizer, err := suite.factory.NewARMAuthorizer()
@@ -65,8 +65,8 @@ func (suite *TestSuite) TestAzureAuthroizerFromEnvFactory_NewArmAuthorizer_NonDe
 func (suite *TestSuite) TestAzureAuthroizerFromEnvFactory_NewArmAuthorizer_DevelopmentMode_ResourceAuthUsingCLI() {
 
 	configuration.isLocalDevelopmentMode = true
-	suite.authSettingsMock.On("Environment").Return(suite.env).Once()
-	suite.authSettingsMock.On("Values").Return(suite.values).Times(3)
+	suite.authSettingsMock.On("GetEnvironment").Return(suite.env).Once()
+	suite.authSettingsMock.On("GetValues").Return(suite.values).Times(3)
 	suite.authWrapperMock.On("GetSettingsFromEnvironment").Return(suite.authSettingsMock, nil).Once()
 	suite.authWrapperMock.On("NewAuthorizerFromCLIWithResource", expectedValues[auth.Resource]).Return(suite.authorizer, nil).Once()
 
@@ -85,6 +85,6 @@ func assertExcpectations(suite *TestSuite) {
 
 // We need this function to kick off the test suite, otherwise
 // "go test" won't know about our tests
-func TestAzureAuthroizerFromEnvFactoryTestSuite(t *testing.T) {
+func TestAzureAuthorizerFromEnvFactoryTestSuite(t *testing.T) {
 	suite.Run(t, new(TestSuite))
 }

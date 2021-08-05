@@ -21,25 +21,25 @@ import (
 
 // Webhook configuration constants //TODO Change it to config-map
 const (
-	secretName  = "azure-defender-proxy-cert"                           // matches the Secret name
-	serviceName = "azure-defender-proxy-service"                        // matches the Service name
-	webhookName = "azure-defender-proxy-mutating-webhook-configuration" // matches the MutatingWebhookConfiguration name
-	webhookPath = "/mutate"                                             // matches the MutatingWebhookConfiguration clientConfig path
-	defaultPort = 8000
+	_secretName  = "azure-defender-proxy-cert"                           // matches the Secret name
+	_serviceName = "azure-defender-proxy-service"                        // matches the Service name
+	_webhookName = "azure-defender-proxy-mutating-webhook-configuration" // matches the MutatingWebhookConfiguration name
+	_webhookPath = "/mutate"                                             // matches the MutatingWebhookConfiguration clientConfig path
+	_defaultPort = 8000
 )
 
 //Cert controller constants //TODO Change it to config-map
 const (
-	defaultCertDir = "/certs"
-	caName         = "azure-defender-proxy-ca"
-	caOrganization = "azure-defender-proxy"
+	_defaultCertDir = "/certs"
+	_caName         = "azure-defender-proxy-ca"
+	_caOrganization = "azure-defender-proxy"
 )
 
 //Webhooks of AzDProxy.
 var (
-	webhooks = []rotator.WebhookInfo{
+	_webhooks = []rotator.WebhookInfo{
 		{
-			Name: webhookName,
+			Name: _webhookName,
 			Type: rotator.Mutating,
 		},
 	}
@@ -47,8 +47,8 @@ var (
 
 // Params of program that can be configured. //TODO Change it to config-map
 var (
-	port                = flag.Int("port", defaultPort, "port for the server. defaulted to 8000 if unspecified ")
-	certDir             = flag.String("cert-dir", defaultCertDir, "The directory where certs are stored, defaults to /certs")
+	port                = flag.Int("port", _defaultPort, "port for the server. defaulted to 8000 if unspecified ")
+	certDir             = flag.String("cert-dir", _defaultCertDir, "The directory where certs are stored, defaults to /certs")
 	disableCertRotation = flag.Bool("disable-cert-rotation", false, "disable automatic generation and rotation of webhook TLS certificates/keys")
 	dryRun              = flag.Bool("dry-run", false, "if true, do not mutate any resources")
 )
@@ -60,10 +60,10 @@ type Server struct {
 }
 
 // StartServer Starting server - this is function is called from the main (entrypoint of azdproxy)
-// It initialize the server with all the instrumentation, initialize the controllers, and register them.
+// It initializes the server with all the instrumentation, initialize the controllers, and register them.
 // There are 2 controllers - cert-controller (https://github.com/open-policy-agent/cert-controller) that manages
 // the certificates of the server and the mutation webhook server that is registered with the AzDSecInfo Handler.
-func StartServer() {
+func StartServer() (err error) {
 	server := Server{}
 	server.Logger = ctrl.Log.WithName("webhook-setup")
 	instrumentation.InitLogger(server.Logger)
@@ -74,18 +74,18 @@ func StartServer() {
 		"certDir", certDir,
 		"disableCertRotation", disableCertRotation,
 		"dryRun", dryRun,
-		"webhooks", webhooks)
+		"webhooks", _webhooks)
 
 	// Init the manager object of the server - manager manages the creation and registration of the controllers.
 	if err := server.initManager(); err != nil {
-		panic(err)
+		return err
 	}
 
 	// Init cert controller - gets a channel of setting up the controller.
 	certSetupFinished, err := server.initCertController()
 	if err != nil {
 		server.Logger.Error(err, "Failed to initialize cert controller")
-		panic(err)
+		return err
 	}
 
 	// Set up controllers.
@@ -94,8 +94,9 @@ func StartServer() {
 	// Start all registered controllers - webhook mutation as https server and cert controller.
 	if err := server.Manager.Start(signals.SetupSignalHandler()); err != nil {
 		server.Logger.Error(err, "problem running manager")
-		panic(err)
+		return err
 	}
+	return nil
 }
 
 // initManager Initialize the manager object of the service - this object is manages the creation and registration
@@ -136,20 +137,20 @@ func (server *Server) initCertController() (certSetupFinished chan struct{}, err
 	certSetupFinished = make(chan struct{})
 	if !*disableCertRotation {
 
-		dnsName := fmt.Sprintf("%s.%s.svc", serviceName, util.GetNamespace()) // matches the MutatingWebhookConfiguration webhooks name
+		dnsName := fmt.Sprintf("%s.%s.svc", _serviceName, util.GetNamespace()) // matches the MutatingWebhookConfiguration webhooks name
 		server.Logger.Info("setting up cert rotation")
 		// Add rotator - using cert-controller API //TODO Expiration of certificate?
 		if err := rotator.AddRotator(server.Manager, &rotator.CertRotator{
 			SecretKey: types.NamespacedName{
 				Namespace: util.GetNamespace(),
-				Name:      secretName,
+				Name:      _secretName,
 			},
 			CertDir:        *certDir,
-			CAName:         caName,
-			CAOrganization: caOrganization,
+			CAName:         _caName,
+			CAOrganization: _caOrganization,
 			DNSName:        dnsName,
 			IsReady:        certSetupFinished,
-			Webhooks:       webhooks,
+			Webhooks:       _webhooks,
 		}); err != nil {
 			server.Logger.Error(err, "Unable to set up cert rotation")
 			return nil, err
@@ -182,6 +183,6 @@ func (server *Server) registerWebhook() {
 
 	//Register webhook
 	mutationWebhook := &admission.Webhook{Handler: webhookHandler}
-	server.Manager.GetWebhookServer().Register(webhookPath, mutationWebhook)
-	server.Logger.Info("Webhook registered successfully", "path", webhookPath, "port", port)
+	server.Manager.GetWebhookServer().Register(_webhookPath, mutationWebhook)
+	server.Logger.Info("Webhook registered successfully", "path", _webhookPath, "port", port)
 }
