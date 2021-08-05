@@ -21,13 +21,13 @@ type TestSuite struct {
 	suite.Suite
 	authWrapperMock  *mocks.IAzureAuthWrapper
 	authSettingsMock *mocks.IEnvironmentSettingsWrapper
-	factory          *FromEnvAzureAuthorizerFactory
+	factory          *EnvAzureAuthorizerFactory
 	values           map[string]string
 	env              *azure.Environment
 	authorizer       autorest.Authorizer
 }
 
-var configuration = &FromEnvAzureAuthorizerConfiguration{
+var configuration = &EnvAzureAuthorizerConfiguration{
 	isLocalDevelopmentMode: false,
 	MSIClientId:            clientId,
 }
@@ -43,7 +43,7 @@ func (suite *TestSuite) SetupTest() {
 	suite.env = &azure.PublicCloud
 	suite.authSettingsMock = &mocks.IEnvironmentSettingsWrapper{}
 	suite.authWrapperMock = &mocks.IAzureAuthWrapper{}
-	suite.factory = NewFromEnvAzureAuthorizerFactory(configuration, suite.authWrapperMock)
+	suite.factory = NewEnvAzureAuthorizerFactory(configuration, suite.authWrapperMock)
 	suite.authorizer = autorest.NullAuthorizer{}
 }
 
