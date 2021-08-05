@@ -8,9 +8,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
+// patchStatus status of patching
+type patchStatus string
+
 // The reasons of patching
 const (
-	reasonPatched = "Patched"
+	_patched patchStatus = "Patched" // _patched in case that the handler patched to the webhook.
 )
 
 // Handler is handle with all admission requests according to the MutatingWebhookConfiguration.
@@ -22,8 +25,8 @@ type Handler struct {
 
 // Handle processes the AdmissionRequest by invoking the underlying function.
 func (h *Handler) Handle(ctx context.Context, req admission.Request) admission.Response {
-	// Exit with panic in case that the context is nil
 	if ctx == nil {
+		// Exit with panic in case that the context is nil
 		panic("Can't handle requests when the context (ctx) is nil")
 	}
 
@@ -42,5 +45,5 @@ func (h *Handler) Handle(ctx context.Context, req admission.Request) admission.R
 		patches = []jsonpatch.JsonPatchOperation{}
 	}
 	//Patch all patches operations
-	return admission.Patched(reasonPatched, patches...)
+	return admission.Patched(string(_patched), patches...)
 }
