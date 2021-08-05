@@ -7,7 +7,8 @@ import (
 
 // main is the entrypoint to azdproxy.
 func main() {
-	err := webhook.StartServer()
+	server := server.NewServer()
+	err := server.Run()
 	if err != nil {
 		os.Exit(1)
 	}

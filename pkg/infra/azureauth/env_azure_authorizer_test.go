@@ -59,10 +59,10 @@ func (suite *TestSuite) TestAzureAuthorizerFromEnvFactory_NewArmAuthorizer_NonDe
 	suite.Nil(err)
 	suite.Equal(suite.authorizer, authorizer)
 	suite.Equal(expectedValues, suite.values)
-	assertExcpectations(suite)
+	assertExpectations(suite)
 }
 
-func (suite *TestSuite) TestAzureAuthroizerFromEnvFactory_NewArmAuthorizer_DevelopmentMode_ResourceAuthUsingCLI() {
+func (suite *TestSuite) TestEnvAzureAuthorizerFactory_NewArmAuthorizer_DevelopmentMode_ResourceAuthUsingCLI() {
 
 	configuration.isLocalDevelopmentMode = true
 	suite.authSettingsMock.On("GetEnvironment").Return(suite.env).Once()
@@ -75,10 +75,10 @@ func (suite *TestSuite) TestAzureAuthroizerFromEnvFactory_NewArmAuthorizer_Devel
 	suite.Nil(err)
 	suite.Equal(suite.authorizer, authorizer)
 	suite.Equal(expectedValues, suite.values)
-	assertExcpectations(suite)
+	assertExpectations(suite)
 }
 
-func assertExcpectations(suite *TestSuite) {
+func assertExpectations(suite *TestSuite) {
 	suite.authSettingsMock.AssertExpectations(suite.T())
 	suite.authWrapperMock.AssertExpectations(suite.T())
 }
