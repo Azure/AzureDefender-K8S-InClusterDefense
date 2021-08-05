@@ -48,13 +48,13 @@ func (suite *TestSuite) SetupTest() {
 }
 
 // This is an example test that will always succeed
-func (suite *TestSuite) TestAzureAuthorizerFromEnvFactory_NewArmAuthorizer_NonDevelopmentMode_ClientIdAndResourceAuthUsingEnv() {
+func (suite *TestSuite) TestAzureAuthorizerFromEnvFactory_CreateArmAuthorizer_NonDevelopmentMode_ClientIdAndResourceAuthUsingEnv() {
 
 	suite.authSettingsMock.On("GetEnvironment").Return(suite.env).Once()
 	suite.authSettingsMock.On("GetValues").Return(suite.values).Twice()
 	suite.authSettingsMock.On("GetAuthorizer").Return(suite.authorizer, nil).Once()
 	suite.authWrapperMock.On("GetSettingsFromEnvironment").Return(suite.authSettingsMock, nil).Once()
-	authorizer, err := suite.factory.NewARMAuthorizer()
+	authorizer, err := suite.factory.CreateARMAuthorizer()
 
 	suite.Nil(err)
 	suite.Equal(suite.authorizer, authorizer)
@@ -62,7 +62,7 @@ func (suite *TestSuite) TestAzureAuthorizerFromEnvFactory_NewArmAuthorizer_NonDe
 	assertExpectations(suite)
 }
 
-func (suite *TestSuite) TestEnvAzureAuthorizerFactory_NewArmAuthorizer_DevelopmentMode_ResourceAuthUsingCLI() {
+func (suite *TestSuite) TestEnvAzureAuthorizerFactory_CreateArmAuthorizer_DevelopmentMode_ResourceAuthUsingCLI() {
 
 	configuration.isLocalDevelopmentMode = true
 	suite.authSettingsMock.On("GetEnvironment").Return(suite.env).Once()
@@ -70,7 +70,7 @@ func (suite *TestSuite) TestEnvAzureAuthorizerFactory_NewArmAuthorizer_Developme
 	suite.authWrapperMock.On("GetSettingsFromEnvironment").Return(suite.authSettingsMock, nil).Once()
 	suite.authWrapperMock.On("NewAuthorizerFromCLIWithResource", expectedValues[auth.Resource]).Return(suite.authorizer, nil).Once()
 
-	authorizer, err := suite.factory.NewARMAuthorizer()
+	authorizer, err := suite.factory.CreateARMAuthorizer()
 
 	suite.Nil(err)
 	suite.Equal(suite.authorizer, authorizer)
