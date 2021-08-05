@@ -1,17 +1,11 @@
 package instrumentation
 
 import (
-	tivanInstrumentation "dev.azure.com/msazure/One/_git/Rome-Detection-Tivan-Libs.git/src/instrumentation"
-	"github.com/Azure/AzureDefender-K8S-InClusterDefense/src/AzDProxy/pkg/infra/configuration"
+	"fmt"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/configuration"
 	"github.com/go-logr/logr"
-	"github.com/pkg/errors"
+	tivanInstrumentation "tivan.ms/libs/instrumentation"
 )
-
-// Instrumentation struct manage the instrumentation of the server
-type Instrumentation struct {
-	Tracer          logr.Logger
-	MetricSubmitter tivanInstrumentation.MetricSubmitter
-}
 
 // IInstrumentationFactory InstrumentationFactory - Instrumentation factory interface
 type IInstrumentationFactory interface {
@@ -21,6 +15,12 @@ type IInstrumentationFactory interface {
 // InstrumentationFactory a factory for creating a instrumentation entry
 type InstrumentationFactory struct {
 	//TODO add instrumentation configuration
+}
+
+// Instrumentation struct manage the instrumentation of the server
+type Instrumentation struct {
+	Tracer          logr.Logger
+	MetricSubmitter tivanInstrumentation.MetricSubmitter
 }
 
 // NewInstrumentationFactory returns new InstrumentationFactory
@@ -36,7 +36,7 @@ func (f *InstrumentationFactory) CreateInstrumentation() (newInstrumentation *In
 	instrumentationInitializer := tivanInstrumentation.NewInstrumentationInitializer(instrumentationConfiguration)
 	instrumentationInitializationResults, err := instrumentationInitializer.Initialize()
 	if err != nil {
-		return nil, errors.New("error encountered during tracer initialization")
+		return nil, fmt.Errorf("error encountered during tracer initialization: %v", err)
 	}
 	newInstrumentation.MetricSubmitter = instrumentationInitializationResults.MetricSubmitter
 	// Decorate Tivan's tracer with the logr.Logger interface.

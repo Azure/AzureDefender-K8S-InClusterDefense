@@ -3,7 +3,8 @@ package webhook
 
 import (
 	"context"
-	"github.com/Azure/AzureDefender-K8S-InClusterDefense/src/AzDProxy/pkg/infra/instrumentation"
+	"fmt"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"gomodules.xyz/jsonpatch/v2"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
@@ -38,10 +39,12 @@ func (h *Handler) Handle(ctx context.Context, req admission.Request) admission.R
 		panic("Can't handle requests when the context (ctx) is nil")
 	}
 
+	reqAsStr := fmt.Sprintf("%v", req)
 	h.Instrumentation.Tracer.Info("received request",
 		"name", req.Name,
 		"namespace", req.Namespace,
-		"operation", req.Operation)
+		"operation", req.Operation,
+		"request", reqAsStr)
 
 	var patches []jsonpatch.JsonPatchOperation
 	//TODO invoke AzDSecInfo and patch the result.

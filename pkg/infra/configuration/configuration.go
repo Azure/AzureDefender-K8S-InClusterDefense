@@ -1,6 +1,8 @@
 package configuration
 
-import tivanInstrumentation "dev.azure.com/msazure/One/_git/Rome-Detection-Tivan-Libs.git/src/instrumentation"
+import (
+	tivanInstrumentation "tivan.ms/libs/instrumentation"
+)
 
 // Default instrumentation configuration values
 const (

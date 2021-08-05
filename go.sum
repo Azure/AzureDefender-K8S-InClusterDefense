@@ -21,11 +21,6 @@ cloud.google.com/go/pubsub v1.2.0/go.mod h1:jhfEVHT8odbXTkndysNHCcx0awwzvfOlguIA
 cloud.google.com/go/storage v1.0.0/go.mod h1:IhtSnM/ZTZV8YYJWCY8RULGVqBDmpoyjwiyrjsg+URw=
 cloud.google.com/go/storage v1.5.0/go.mod h1:tpKbwo567HUNpVclU5sGELwQWBDZ8gh0ZeosJ0Rtdos=
 cloud.google.com/go/storage v1.6.0/go.mod h1:N7U0C8pVQ/+NIKOBQyamJIeKQKkZ+mxpohlUTyfDhBk=
-dev.azure.com/msazure/One/_git/Rome-Detection-Tivan-Libs.git/src/common v0.0.0-20210704072204-b2cd48a045f3/go.mod h1:CLKptgvvPzk8vX4eXWwG5k88RBw4+cJXdyXCMedeQHI=
-dev.azure.com/msazure/One/_git/Rome-Detection-Tivan-Libs.git/src/common v0.0.0-20210727121858-eac1b3ca1bf2 h1:NSFsG3IcH0XgruF7Yyg8XitDg6ie7YP298NF8V2DWGo=
-dev.azure.com/msazure/One/_git/Rome-Detection-Tivan-Libs.git/src/common v0.0.0-20210727121858-eac1b3ca1bf2/go.mod h1:kwOtZgobwccQBiG3Bud5+CwWgv5Jd7Ejftpq3ScTzrQ=
-dev.azure.com/msazure/One/_git/Rome-Detection-Tivan-Libs.git/src/instrumentation v0.0.0-20210727121858-eac1b3ca1bf2 h1:OYEjMX688DlCV/ENUdtmeEkSerzyZgLYIZwC5Ea7HIk=
-dev.azure.com/msazure/One/_git/Rome-Detection-Tivan-Libs.git/src/instrumentation v0.0.0-20210727121858-eac1b3ca1bf2/go.mod h1:bUyk0ibdc5xyj7CAqA+x3edHSy3CEfBlzidxSq8RCQs=
 dmitri.shuralyov.com/gpu/mtl v0.0.0-20190408044501-666a987793e9/go.mod h1:H6x//7gZCb22OMCxBHrMx7a5I7Hp++hsVxbQ4BYO7hU=
 github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78/go.mod h1:LmzpDX56iTiv29bbRTIsUNlaFfuhWRQBWjQdVyAevI8=
 github.com/Azure/go-autorest v14.2.0+incompatible h1:V5VMDjClD3GiElqLWO7mz2MxNAK/vTfRHdAubSIPRgs=
@@ -825,3 +820,7 @@ sigs.k8s.io/structured-merge-diff/v4 v4.1.0/go.mod h1:bJZC9H9iH24zzfZ/41RGcq60oK
 sigs.k8s.io/yaml v1.1.0/go.mod h1:UJmg0vDUVViEyp3mgSv9WPwZCDxu4rQW1olrI1uml+o=
 sigs.k8s.io/yaml v1.2.0 h1:kr/MCeFWJWTwyaHoR9c8EjH9OumOmoF9YGiZd7lFm/Q=
 sigs.k8s.io/yaml v1.2.0/go.mod h1:yfXDCHCao9+ENCvLSE62v9VSji2MKu5jeNfTrofGhJc=
+tivan.ms/libs/common v0.0.0-20210801072952-3e804bf20582 h1:dzuIDVbRmuQhaJf5n7cLm9Knl+y2BtIvfkNmqWYYOpk=
+tivan.ms/libs/common v0.0.0-20210801072952-3e804bf20582/go.mod h1:e7oijzILP4T3LwruT8mczb+de8YX2E0NBUfHhchmrcU=
+tivan.ms/libs/instrumentation v0.0.0-20210803101155-9c6cc8e668ee h1:5eJW0LrHMyi+6T7967BJE78ESWAahYXhH420/sVR3xI=
+tivan.ms/libs/instrumentation v0.0.0-20210803101155-9c6cc8e668ee/go.mod h1:wVmPydfztOXSfmY9uDjhJD/0qGVtV+dixmjbsWvhNEI=
