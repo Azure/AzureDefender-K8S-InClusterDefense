@@ -1,5 +1,5 @@
 // Package webhook is setting up the webhook service and it's own dependencies (e.g. cert controller, logger, metrics, etc.).
-package server
+package webhook
 
 import (
 	"context"
@@ -21,6 +21,14 @@ const (
 type Handler struct {
 	Logger logr.Logger // Logger is the handler logger - gets it from the server.
 	DryRun bool        // DryRun is flag that if its true, it handles request but doesn't mutate the pod spec.
+}
+
+// NewHandler Constructor for Handler
+func NewHandler(logger logr.Logger, runOnDryRun bool) (handler *Handler) {
+	return &Handler{
+		Logger: logger,
+		DryRun: runOnDryRun,
+	}
 }
 
 // Handle processes the AdmissionRequest by invoking the underlying function.
