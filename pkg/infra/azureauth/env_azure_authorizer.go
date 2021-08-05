@@ -14,8 +14,8 @@ type IAzureAuthorizerFactory interface {
 	NewARMAuthorizer() (autorest.Authorizer, error)
 }
 
-// FromEnvAzureAuthorizerConfiguration Factory configuration to create an azure authorizer from environment (env variables or managed identity)
-type FromEnvAzureAuthorizerConfiguration struct {
+// EnvAzureAuthorizerConfiguration Factory configuration to create an azure authorizer from environment (env variables or managed identity)
+type EnvAzureAuthorizerConfiguration struct {
 	// isLocalDevelopmentMode is factory set to local development
 	isLocalDevelopmentMode bool
 
@@ -23,26 +23,26 @@ type FromEnvAzureAuthorizerConfiguration struct {
 	MSIClientId string
 }
 
-// FromEnvAzureAuthorizerFactory Factory to create an azure authorizer using managed identity
+// EnvAzureAuthorizerFactory Factory to create an azure authorizer using managed identity
 // implements azureauth.IAzureAuthorizerFactory
-type FromEnvAzureAuthorizerFactory struct {
+type EnvAzureAuthorizerFactory struct {
 	// configuration factory's configuration
-	configuration *FromEnvAzureAuthorizerConfiguration
+	configuration *EnvAzureAuthorizerConfiguration
 
 	// authWrapper wrapper to all auth package related calls
 	authWrapper wrappers.IAzureAuthWrapper
 }
 
-// NewFromEnvAzureAuthorizerFactory Constructor for FromEnvAzureAuthorizerFactory
-func NewFromEnvAzureAuthorizerFactory(configuration *FromEnvAzureAuthorizerConfiguration, authWrapper wrappers.IAzureAuthWrapper) *FromEnvAzureAuthorizerFactory {
-	return &FromEnvAzureAuthorizerFactory{
+// NewEnvAzureAuthorizerFactory Constructor for EnvAzureAuthorizerFactory
+func NewEnvAzureAuthorizerFactory(configuration *EnvAzureAuthorizerConfiguration, authWrapper wrappers.IAzureAuthWrapper) *EnvAzureAuthorizerFactory {
+	return &EnvAzureAuthorizerFactory{
 		configuration: configuration,
 		authWrapper:   authWrapper,
 	}
 }
 
 // NewARMAuthorizer Generates a new ARM azure client authorizer using MSI configured
-func (factory *FromEnvAzureAuthorizerFactory) NewARMAuthorizer() (autorest.Authorizer, error) {
+func (factory *EnvAzureAuthorizerFactory) NewARMAuthorizer() (autorest.Authorizer, error) {
 
 	// Gets authorizer setting from environment
 	settings, err := factory.authWrapper.GetSettingsFromEnvironment()
@@ -64,7 +64,7 @@ func (factory *FromEnvAzureAuthorizerFactory) NewARMAuthorizer() (autorest.Autho
 // an authorizer using setting' (auth.EnvironmentSettings) GetAuthorizer.
 // If factory is configured in local development mode (configuration.isLocalDevelopmentMode == true):
 // creates an authorizer from azure cli with no logged-in user as ID.
-func (factory *FromEnvAzureAuthorizerFactory) newAuthorizer(settings wrappers.IEnvironmentSettingsWrapper) (autorest.Authorizer, error) {
+func (factory *EnvAzureAuthorizerFactory) newAuthorizer(settings wrappers.IEnvironmentSettingsWrapper) (autorest.Authorizer, error) {
 
 	if settings == nil {
 		return nil, fmt.Errorf("null argument settings")
