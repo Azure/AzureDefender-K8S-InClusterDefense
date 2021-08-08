@@ -16,14 +16,13 @@ type CertRotatorFactory struct {
 }
 
 type CertRotatorConfiguration struct {
-	Namespace          string // Namespace is the namespace that the pod is running.
-	SecretName         string // SecretName matches the Secret name.
-	ServiceName        string // SecretName matches the Service name.
-	WebhookName        string // WebhookName matches the MutatingWebhookConfiguration name.
-	CaName             string // CaName is the Ca name.
-	CaOrganization     string // CaOrganization
-	EnableCertRotation bool   // EnableCertRotation is flag that indicates whether cert rotator should run
-	CertDir            string // CertDir is the directory that the certificates are saved.
+	Namespace      string // Namespace is the namespace that the pod is running.
+	SecretName     string // SecretName matches the Secret name.
+	ServiceName    string // SecretName matches the Service name.
+	WebhookName    string // WebhookName matches the MutatingWebhookConfiguration name.
+	CaName         string // CaName is the Ca name.
+	CaOrganization string // CaOrganization
+	CertDir        string // CertDir is the directory that the certificates are saved.
 }
 
 // NewCertRotatorFactory Creates new cert rotator factory
