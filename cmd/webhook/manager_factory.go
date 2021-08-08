@@ -13,7 +13,7 @@ import (
 type IManagerFactory interface {
 	// CreateManager Initialize the manager object of the service - this object is manages the creation and registration
 	// of the controllers of the server
-	CreateManager(certDir string) (mgr manager.Manager, err error)
+	CreateManager() (mgr manager.Manager, err error)
 }
 
 // ManagerFactory Factory to create manager.Manager from configuration
@@ -24,11 +24,12 @@ type ManagerFactory struct {
 
 // ManagerConfiguration Factory configuration to create a manager.Manager
 type ManagerConfiguration struct {
-	Port int // Port is the port that the manager will register the server on.
+	Port    int    // Port is the port that the manager will register the server on.
+	CertDir string // CertDir is the directory that the certificates are saved.
 }
 
 // NewManagerFactory Constructor for ManagerFactory
-func NewManagerFactory(configuration *ManagerConfiguration, logger logr.Logger) (factory *ManagerFactory) {
+func NewManagerFactory(configuration *ManagerConfiguration, logger logr.Logger) (factory IManagerFactory) {
 	return &ManagerFactory{
 		Configuration: configuration,
 		Logger:        logger}
@@ -36,14 +37,14 @@ func NewManagerFactory(configuration *ManagerConfiguration, logger logr.Logger) 
 
 // CreateManager Initialize the manager object of the service - this object is manages the creation and registration
 // of the controllers of the server
-func (factory *ManagerFactory) CreateManager(certDir string) (mgr manager.Manager, err error) {
+func (factory *ManagerFactory) CreateManager() (mgr manager.Manager, err error) {
 	// GetConfig creates a *rest.Config for talking to a Kubernetes API server (using --kubeconfig or cluster provided config)
 	cfg, err := config.GetConfig()
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to get kube-config")
 	}
 
-	options, err := factory.createOptions(certDir)
+	options, err := factory.createOptions(factory.Configuration.CertDir)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to setup manager")
 	}
