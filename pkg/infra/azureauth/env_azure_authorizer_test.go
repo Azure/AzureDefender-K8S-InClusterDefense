@@ -11,8 +11,18 @@ import (
 )
 
 const (
-	clientId string = "fakeClientId"
+	CLIENT_ID string = "fakeClientId"
 )
+
+var _configuration = &EnvAzureAuthorizerConfiguration{
+	isLocalDevelopmentMode: false,
+	MSIClientId:            CLIENT_ID,
+}
+
+var _expectedValues = map[string]string{
+	auth.ClientID: CLIENT_ID,
+	auth.Resource: azure.PublicCloud.ResourceManagerEndpoint,
+}
 
 // We'll be able to store suite-wide
 // variables and add methods to this
@@ -27,23 +37,13 @@ type TestSuite struct {
 	authorizer       autorest.Authorizer
 }
 
-var configuration = &EnvAzureAuthorizerConfiguration{
-	isLocalDevelopmentMode: false,
-	MSIClientId:            clientId,
-}
-
-var expectedValues = map[string]string{
-	auth.ClientID: clientId,
-	auth.Resource: azure.PublicCloud.ResourceManagerEndpoint,
-}
-
 // This will run before each test in the suite
 func (suite *TestSuite) SetupTest() {
 	suite.values = map[string]string{}
 	suite.env = &azure.PublicCloud
 	suite.authSettingsMock = &mocks.IEnvironmentSettingsWrapper{}
 	suite.authWrapperMock = &mocks.IAzureAuthWrapper{}
-	suite.factory = NewEnvAzureAuthorizerFactory(configuration, suite.authWrapperMock)
+	suite.factory = NewEnvAzureAuthorizerFactory(_configuration, suite.authWrapperMock)
 	suite.authorizer = autorest.NullAuthorizer{}
 }
 
@@ -58,23 +58,23 @@ func (suite *TestSuite) TestAzureAuthorizerFromEnvFactory_CreateArmAuthorizer_No
 
 	suite.Nil(err)
 	suite.Equal(suite.authorizer, authorizer)
-	suite.Equal(expectedValues, suite.values)
+	suite.Equal(_expectedValues, suite.values)
 	assertExpectations(suite)
 }
 
 func (suite *TestSuite) TestEnvAzureAuthorizerFactory_CreateArmAuthorizer_DevelopmentMode_ResourceAuthUsingCLI() {
 
-	configuration.isLocalDevelopmentMode = true
+	_configuration.isLocalDevelopmentMode = true
 	suite.authSettingsMock.On("GetEnvironment").Return(suite.env).Once()
 	suite.authSettingsMock.On("GetValues").Return(suite.values).Times(3)
 	suite.authWrapperMock.On("GetSettingsFromEnvironment").Return(suite.authSettingsMock, nil).Once()
-	suite.authWrapperMock.On("NewAuthorizerFromCLIWithResource", expectedValues[auth.Resource]).Return(suite.authorizer, nil).Once()
+	suite.authWrapperMock.On("NewAuthorizerFromCLIWithResource", _expectedValues[auth.Resource]).Return(suite.authorizer, nil).Once()
 
 	authorizer, err := suite.factory.CreateARMAuthorizer()
 
 	suite.Nil(err)
 	suite.Equal(suite.authorizer, authorizer)
-	suite.Equal(expectedValues, suite.values)
+	suite.Equal(_expectedValues, suite.values)
 	assertExpectations(suite)
 }
 
