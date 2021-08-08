@@ -1,21 +1,18 @@
-package instrumentation
+package instrumenation
 
 import (
 	"fmt"
 	"github.com/go-logr/logr"
 	"github.com/sirupsen/logrus"
+	"go.uber.org/zap/zapcore"
 	"strings"
 )
-
-// ITracer interface of tracer that extends the logr.Logger interface
-type ITracer struct {
-	logr.Logger // Extend the logr.Logger interface
-}
 
 // Tracer implementation of ITracer interface - holds a Entry object in order to delegate Tivan tracer methods.
 type Tracer struct {
 	Entry *logrus.Entry
 	trace string
+	level zapcore.Level
 }
 
 // Enabled tests whether this Logger is enabled.
@@ -24,25 +21,43 @@ func (tracer Tracer) Enabled() bool {
 	return tracer.Entry != nil
 }
 
-type X struct {
-	trace string
-	msg   string
-}
-
 // Info writes msg. delegate this method using Tracer.Entry data member in order to implement logr.Logger interface
 func (tracer Tracer) Info(msg string, keysAndValues ...interface{}) {
-	newMsg := tracer.constructMsg(msg)
-	tracer.Entry.Info(newMsg)
+	// Check that the level of the tracer is enabled, and the len of keysAndValues are even:
+	if !tracer.level.Enabled(zapcore.InfoLevel) || len(keysAndValues)%2 == 1 {
+		return
+	}
+
+	msgWithTrace := tracer.concatTraceToMsg(msg)
+	if keysAndValues != nil && len(keysAndValues) > 0 {
+		tracer.Entry.Error(msgWithTrace, keysAndValues)
+	} else {
+		tracer.Entry.Error(msgWithTrace)
+	}
 }
 
 // Error writes error. delegate this method using Tracer.Entry data member in order to implement logr.Logger interface
 func (tracer Tracer) Error(err error, msg string, keysAndValues ...interface{}) {
-	tracer.Entry.Error(err, msg, keysAndValues)
+	// Check that the level of the tracer is enabled, and the len of keysAndValues are even:
+	if !tracer.level.Enabled(zapcore.ErrorLevel) || len(keysAndValues)%2 == 1 {
+		return
+	}
+
+	msgWithTrace := tracer.concatTraceToMsg(msg)
+	if keysAndValues != nil && len(keysAndValues) > 0 {
+		tracer.Entry.Error(msgWithTrace, keysAndValues)
+	} else {
+		tracer.Entry.Error(msgWithTrace)
+	}
 }
 
 // V implements this method only for logr.Logger interface. doesn't do anything - return the same tracer!
 func (tracer Tracer) V(level int) logr.Logger {
-	return tracer //TODO ??
+	return &Tracer{
+		level: tracer.level - zapcore.Level(level),
+		trace: tracer.trace,
+		Entry: tracer.Entry,
+	}
 }
 
 // WithValues implements this method only for logr.Logger interface. doesn't do anything - return the same tracer!
@@ -50,7 +65,8 @@ func (tracer Tracer) WithValues(keysAndValues ...interface{}) logr.Logger {
 	return tracer
 }
 
-// WithName implements this method only for logr.Logger interface. doesn't do anything - return the same tracer!
+// WithName adds a new element to the logger's name.
+// Successive calls with WithName continue to append suffixes to the logger's name.
 func (tracer Tracer) WithName(name string) logr.Logger {
 	newTracer := tracer.Named(name)
 	return newTracer
@@ -71,11 +87,15 @@ func (tracer *Tracer) Named(s string) *Tracer {
 	return t
 }
 
+// clone the tracer.
 func (tracer *Tracer) clone() *Tracer {
 	copiedTracer := *tracer
 	return &copiedTracer
 }
 
-func (tracer *Tracer) constructMsg(msg string) (newMsg string) {
+// concatTraceToMsg is concatenating the trace to the msg as json:
+// e.g. tracer.trace = "server.tag2digest", msg = "digest was resolved" -->
+// the return value will be : "{"trace": "server.tag2digest", msg: "digest was resolved"}
+func (tracer *Tracer) concatTraceToMsg(msg string) (newMsg string) {
 	return fmt.Sprintf(`{"trace":"%s","msg":"%s"}`, tracer.trace, msg)
 }
