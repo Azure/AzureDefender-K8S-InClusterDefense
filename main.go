@@ -31,7 +31,6 @@ func getServerConfiguration() (configuration *webhook.ServerConfiguration) {
 	return &webhook.ServerConfiguration{
 		Path:              "/mutate",
 		RunOnDryRunMode:   false,
-		CertDir:           "/certs",
 		CertRotatorConfig: certRotatorConfig,
 	}
 }
@@ -44,13 +43,13 @@ func getCertRotatorConfiguration() (configuration *webhook.CertRotatorConfigurat
 		WebhookName:        "azure-defender-proxy-mutating-webhook-configuration", // matches the MutatingWebhookConfiguration name
 		CaName:             "azure-defender-proxy-ca",
 		CaOrganization:     "azure-defender-proxy",
-		EnableCertRotation: false,
+		EnableCertRotation: true,
+		CertDir:            "/certs",
 	}
 }
 
 func getManagerConfiguration() (configuration *webhook.ManagerConfiguration) {
 	return &webhook.ManagerConfiguration{
-		Port:    8000,
-		CertDir: "/certs",
+		Port: 8000,
 	}
 }

@@ -1,8 +1,8 @@
 package webhook
 
 import (
-	"fmt"
 	"github.com/go-logr/logr"
+	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
@@ -13,22 +13,21 @@ import (
 type IManagerFactory interface {
 	// CreateManager Initialize the manager object of the service - this object is manages the creation and registration
 	// of the controllers of the server
-	CreateManager() (mgr manager.Manager, err error)
+	CreateManager(certDir string) (mgr manager.Manager, err error)
 }
 
 // ManagerFactory Factory to create manager.Manager from configuration
 type ManagerFactory struct {
-	Configuration *ManagerConfiguration
-	Logger        logr.Logger
+	Configuration *ManagerConfiguration // Configuration is the manager configuration
+	Logger        logr.Logger           // Logger is the manager logger.
 }
 
 // ManagerConfiguration Factory configuration to create a manager.Manager
 type ManagerConfiguration struct {
-	Port    int
-	CertDir string
+	Port int // Port is the port that the manager will register the server on.
 }
 
-// NewManagerFactory Constrcutor for ManagerFactory
+// NewManagerFactory Constructor for ManagerFactory
 func NewManagerFactory(configuration *ManagerConfiguration, logger logr.Logger) (factory *ManagerFactory) {
 	return &ManagerFactory{
 		Configuration: configuration,
@@ -37,37 +36,37 @@ func NewManagerFactory(configuration *ManagerConfiguration, logger logr.Logger) 
 
 // CreateManager Initialize the manager object of the service - this object is manages the creation and registration
 // of the controllers of the server
-func (factory *ManagerFactory) CreateManager() (mgr manager.Manager, err error) {
+func (factory *ManagerFactory) CreateManager(certDir string) (mgr manager.Manager, err error) {
 	// GetConfig creates a *rest.Config for talking to a Kubernetes API server (using --kubeconfig or cluster provided config)
 	cfg, err := config.GetConfig()
 	if err != nil {
-		return nil, fmt.Errorf("unable to get kube-config: " + err.Error())
+		return nil, errors.Wrap(err, "unable to get kube-config")
 	}
 
-	options, err := factory.createOptions()
+	options, err := factory.createOptions(certDir)
 	if err != nil {
-		return nil, fmt.Errorf("unable to setup manager: " + err.Error())
+		return nil, errors.Wrap(err, "unable to setup manager")
 	}
 
 	mgr, err = manager.New(cfg, *options)
 	if err != nil {
-		return nil, fmt.Errorf("unable to setup manager: " + err.Error())
+		return nil, errors.Wrap(err, "unable to setup manager")
 	}
 	// Assign new manager to the server
 	return mgr, nil
 }
 
 // createOptions Creates manager options
-func (factory *ManagerFactory) createOptions() (options *manager.Options, err error) {
+func (factory *ManagerFactory) createOptions(certDir string) (options *manager.Options, err error) {
 	scheme := runtime.NewScheme()
 	if err = corev1.AddToScheme(scheme); err != nil {
-		return nil, fmt.Errorf("unable to add schema: " + err.Error())
+		return nil, errors.Wrap(err, "unable to add schema")
 	}
 	options = &manager.Options{
 		Scheme:  scheme,
 		Logger:  factory.Logger,
 		Port:    factory.Configuration.Port,
-		CertDir: factory.Configuration.CertDir,
+		CertDir: certDir,
 	}
 	return options, nil
 }

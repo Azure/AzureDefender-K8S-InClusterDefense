@@ -8,7 +8,7 @@ import (
 
 type ICertRotatorFactory interface {
 	// CreateCertRotator Creates new cert rotator
-	CreateCertRotator(certDir string) (certRotator *rotator.CertRotator)
+	CreateCertRotator() (certRotator *rotator.CertRotator)
 }
 
 type CertRotatorFactory struct {
@@ -23,6 +23,7 @@ type CertRotatorConfiguration struct {
 	CaName             string // CaName is the Ca name.
 	CaOrganization     string // CaOrganization
 	EnableCertRotation bool   // EnableCertRotation is flag that indicates whether cert rotator should run
+	CertDir            string // CertDir is the directory that the certificates are saved.
 }
 
 // NewCertRotatorFactory Creates new cert rotator factory
@@ -33,7 +34,7 @@ func NewCertRotatorFactory(configuration *CertRotatorConfiguration) (factory ICe
 }
 
 // CreateCertRotator Creates new cert rotator
-func (factory *CertRotatorFactory) CreateCertRotator(certDir string) (certRotator *rotator.CertRotator) {
+func (factory *CertRotatorFactory) CreateCertRotator() (certRotator *rotator.CertRotator) {
 	certSetupFinished := make(chan struct{})
 	dnsName := fmt.Sprintf("%s.%s.svc", factory.configuration.ServiceName, factory.configuration.Namespace) // matches the MutatingWebhookConfiguration webhooks name
 	return &rotator.CertRotator{
@@ -41,7 +42,7 @@ func (factory *CertRotatorFactory) CreateCertRotator(certDir string) (certRotato
 			Namespace: factory.configuration.Namespace,
 			Name:      factory.configuration.SecretName,
 		},
-		CertDir:        certDir,
+		CertDir:        factory.configuration.CertDir,
 		CAName:         factory.configuration.CaName,
 		CAOrganization: factory.configuration.CaOrganization,
 		DNSName:        dnsName,
