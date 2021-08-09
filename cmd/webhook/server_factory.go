@@ -15,17 +15,24 @@ type IServerFactory interface {
 
 // ServerFactory Factory to create a Server using configuration and manager.
 type ServerFactory struct {
-	Configuration      *ServerConfiguration // Configuration is the server configuration
-	Logger             logr.Logger          // Logger is the logger of the server
-	managerFactory     IManagerFactory      // ManagerFactory is the factory for manager
-	certRotatorFactory ICertRotatorFactory  // CertRotatorFactory is the factory for cert rotator
+	// Configuration is the server configuration
+	Configuration *ServerConfiguration
+	// Logger is the logger of the server
+	Logger logr.Logger
+	// ManagerFactory is the factory for manager
+	managerFactory IManagerFactory
+	// CertRotatorFactory is the factory for cert rotator
+	certRotatorFactory ICertRotatorFactory
 }
 
 // ServerConfiguration Factory configuration to create a server.
 type ServerConfiguration struct {
-	Path               string // Path matches the MutatingWebhookConfiguration clientConfig path
-	RunOnDryRunMode    bool   // RunOnDryRunMode is boolean that define if the server should be on dry-run mode
-	EnableCertRotation bool   // EnableCertRotation is flag that indicates whether cert rotator should run
+	// Path matches the MutatingWebhookConfiguration clientConfig path
+	Path string
+	// RunOnDryRunMode is boolean that define if the server should be on dry-run mode
+	RunOnDryRunMode bool
+	// EnableCertRotation is flag that indicates whether cert rotator should run
+	EnableCertRotation bool
 }
 
 // NewServerFactory constructor for ServerFactory

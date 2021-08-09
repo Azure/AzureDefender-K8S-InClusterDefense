@@ -3,6 +3,7 @@ package webhook
 import (
 	"github.com/go-logr/logr"
 	"github.com/open-policy-agent/cert-controller/pkg/rotator"
+	"github.com/pkg/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
@@ -11,12 +12,18 @@ import (
 
 // Server this struct is responsible for setting up azdproxy server in the cluster.
 type Server struct {
-	Logger            logr.Logger
-	Manager           manager.Manager
-	certRotator       *rotator.CertRotator
+	// Logger is the server logger.
+	Logger logr.Logger
+	// Manager is the manager.Manager of the server - it is registers the server.
+	Manager manager.Manager
+	//certRotator is the cert rotator which manage the certificates of the server.
+	certRotator *rotator.CertRotator
+	// enableCertRotator is data member which should indicate if we want to enable the cert rotator.
 	enableCertRotator bool
-	path              string
-	runOnDryMode      bool
+	// path is the path that the server will listen to.
+	path string
+	// runOnDryMode indicates if we want that the handler will mutate the requests or just audit them
+	runOnDryMode bool
 }
 
 // Run Starting server - this is function is called from the main (entrypoint of azdproxy)
@@ -28,8 +35,7 @@ func (server *Server) Run() (err error) {
 
 	// Init cert controller - gets a channel of setting up the controller.
 	if err = server.initCertController(); err != nil {
-		server.Logger.Error(err, "Failed to initialize cert controller")
-		return err
+		return errors.Wrap(err, "failed to initialize cert controller")
 	}
 
 	// Set up controllers.
@@ -37,8 +43,7 @@ func (server *Server) Run() (err error) {
 
 	// Start all registered controllers - webhook mutation as https server and cert controller.
 	if err := server.Manager.Start(signals.SetupSignalHandler()); err != nil {
-		server.Logger.Error(err, "problem running manager")
-		return err
+		return errors.Wrap(err, "unable to start manager")
 	}
 	return nil
 }
@@ -50,8 +55,7 @@ func (server *Server) initCertController() (err error) {
 		server.Logger.Info("setting up cert rotation")
 		// Add rotator - using cert-controller API //TODO Expiration of certificate?
 		if err := rotator.AddRotator(server.Manager, server.certRotator); err != nil {
-			server.Logger.Error(err, "Unable to set up cert rotation")
-			return err
+			return errors.Wrap(err, "unable to setup cert rotation")
 		}
 	} else {
 		server.Logger.Info("Skipping certificate provisioning setup")

@@ -13,14 +13,17 @@ type patchStatus string
 
 // The reasons of patching
 const (
-	_patched patchStatus = "Patched" // _patched in case that the handler patched to the webhook.
+	// _patched in case that the handler patched to the webhook.
+	_patched patchStatus = "Patched"
 )
 
 // Handler implements the admission.Handle interface that each webhook have to implement.
 // Handler handles with all admission requests according to the MutatingWebhookConfiguration.
 type Handler struct {
-	Logger logr.Logger // Logger is the handler logger - gets it from the server.
-	DryRun bool        // DryRun is flag that if its true, it handles request but doesn't mutate the pod spec.
+	// Logger is the handler logger - gets it from the server.
+	Logger logr.Logger
+	// DryRun is flag that if it's true, it handles request but doesn't mutate the pod spec.
+	DryRun bool
 }
 
 // NewHandler Constructor for Handler

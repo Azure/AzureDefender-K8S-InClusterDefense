@@ -18,14 +18,18 @@ type IManagerFactory interface {
 
 // ManagerFactory Factory to create manager.Manager from configuration
 type ManagerFactory struct {
-	Configuration *ManagerConfiguration // Configuration is the manager configuration
-	Logger        logr.Logger           // Logger is the manager logger.
+	// Configuration is the manager configuration
+	Configuration *ManagerConfiguration
+	// Logger is the manager logger.
+	Logger logr.Logger
 }
 
 // ManagerConfiguration Factory configuration to create a manager.Manager
 type ManagerConfiguration struct {
-	Port    int    // Port is the port that the manager will register the server on.
-	CertDir string // CertDir is the directory that the certificates are saved.
+	// Port is the port that the manager will register the server on.
+	Port int
+	// CertDir is the directory that the certificates are saved.
+	CertDir string
 }
 
 // NewManagerFactory Constructor for ManagerFactory
@@ -44,7 +48,7 @@ func (factory *ManagerFactory) CreateManager() (mgr manager.Manager, err error) 
 		return nil, errors.Wrap(err, "unable to get kube-config")
 	}
 
-	options, err := factory.createOptions(factory.Configuration.CertDir)
+	options, err := factory.createOptions()
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to setup manager")
 	}
@@ -58,7 +62,7 @@ func (factory *ManagerFactory) CreateManager() (mgr manager.Manager, err error) 
 }
 
 // createOptions Creates manager options
-func (factory *ManagerFactory) createOptions(certDir string) (options *manager.Options, err error) {
+func (factory *ManagerFactory) createOptions() (options *manager.Options, err error) {
 	scheme := runtime.NewScheme()
 	if err = corev1.AddToScheme(scheme); err != nil {
 		return nil, errors.Wrap(err, "unable to add schema")
@@ -67,7 +71,7 @@ func (factory *ManagerFactory) createOptions(certDir string) (options *manager.O
 		Scheme:  scheme,
 		Logger:  factory.Logger,
 		Port:    factory.Configuration.Port,
-		CertDir: certDir,
+		CertDir: factory.Configuration.CertDir,
 	}
 	return options, nil
 }
