@@ -3,7 +3,11 @@ package webhook
 
 import (
 	"context"
+	"encoding/json"
+
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/azdsecinfo"
 	"github.com/go-logr/logr"
+	"github.com/pkg/errors"
 	"gomodules.xyz/jsonpatch/v2"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
@@ -22,37 +26,60 @@ const (
 type Handler struct {
 	// Logger is the handler logger - gets it from the server.
 	Logger logr.Logger
+	// AzdSecInfoProvider provides azure defender security information
+	AzdSecInfoProvider azdsecinfo.IAzdSecInfoProvider
+	// Configurations handler's config.
+	Configuration *HandlerConfiguration
+}
+
+type HandlerConfiguration struct {
 	// DryRun is flag that if it's true, it handles request but doesn't mutate the pod spec.
 	DryRun bool
 }
 
 // NewHandler Constructor for Handler
-func NewHandler(logger logr.Logger, runOnDryRun bool) (handler *Handler) {
+func NewHandler(azdSecInfoProvider azdsecinfo.IAzdSecInfoProvider, configuration *HandlerConfiguration, logger logr.Logger) (handler *Handler) {
 	return &Handler{
-		Logger: logger,
-		DryRun: runOnDryRun,
+		Logger:             logger,
+		AzdSecInfoProvider: azdSecInfoProvider,
+		Configuration:      configuration,
 	}
 }
 
 // Handle processes the AdmissionRequest by invoking the underlying function.
-func (h *Handler) Handle(ctx context.Context, req admission.Request) admission.Response {
+func (handler *Handler) Handle(ctx context.Context, req admission.Request) admission.Response {
 	if ctx == nil {
 		// Exit with panic in case that the context is nil
 		panic("Can't handle requests when the context (ctx) is nil")
 	}
 
-	h.Logger.Info("received request",
+	handler.Logger.Info("received request",
 		"name", req.Name,
 		"namespace", req.Namespace,
 		"operation", req.Operation,
 		"object", req.Object)
 
-	var patches []jsonpatch.JsonPatchOperation
-	//TODO invoke AzDSecInfo and patch the result.
+	vulnerabilitySecInfo, err := handler.AzdSecInfoProvider.GetContainersVulnerabilityScanInfo()
+	if err != nil {
+		wrappedError := errors.Wrap(err, "Handler failed to GetContainersVulnerabilityScanInfo")
+		handler.Logger.Error(wrappedError, "Handler.AzdSecInfoProvider.GetContainersVulnerabilityScanInfo")
+		panic(err)
+	}
+
+	marshaledVulnerabilitySecInfo, err := json.Marshal(vulnerabilitySecInfo)
+	if err != nil {
+		wrappedError := errors.Wrap(err, "Handler failed to marshaling GetContainersVulnerabilityScanInfo result")
+		handler.Logger.Error(wrappedError, "Handler Marshal marshaling GetContainersVulnerabilityScanInfo result")
+		panic(err)
+	}
+
+	patches := []jsonpatch.JsonPatchOperation{
+		jsonpatch.NewOperation("add", "/metadata/annotations/kubernetes.io~1ingress.class", marshaledVulnerabilitySecInfo),
+	}
 
 	// In case of dryrun=true:  reset all patch operations
-	if h.DryRun {
-		h.Logger.Info("not mutating resource, because dry-run=true")
+	if handler.Configuration.DryRun {
+		handler.Logger.Info("not mutating resource, because dry-run=true")
 		patches = []jsonpatch.JsonPatchOperation{}
 	}
 	//Patch all patches operations
