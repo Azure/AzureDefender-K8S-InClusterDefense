@@ -13,8 +13,8 @@ type IAzureAuthroizerFactory struct {
 	mock.Mock
 }
 
-// NewARMAuthorizer provides a mock function with given fields:
-func (_m *IAzureAuthroizerFactory) NewARMAuthorizer() (autorest.Authorizer, error) {
+// CreateARMAuthorizer provides a mock function with given fields:
+func (_m *IAzureAuthroizerFactory) CreateARMAuthorizer() (autorest.Authorizer, error) {
 	ret := _m.Called()
 
 	var r0 autorest.Authorizer

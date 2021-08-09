@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
+	"github.com/go-logr/logr"
 	"gomodules.xyz/jsonpatch/v2"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
@@ -14,28 +15,34 @@ type patchStatus string
 
 // The reasons of patching
 const (
-	patched patchStatus = "Patched"
+	// _patched in case that the handler patched to the webhook.
+	_patched patchStatus = "Patched"
 )
 
-// Handler is handle with all admission requests according to the MutatingWebhookConfiguration.
-// It implements the Handle interface that each webhook have to implement.
+// Handler implements the admission.Handle interface that each webhook have to implement.
+// Handler handles with all admission requests according to the MutatingWebhookConfiguration.
 type Handler struct {
-	Instrumentation *instrumentation.Instrumentation // Instrumentation is the handler instrumentation - gets it from the server.
-	dryRun          bool                             // dryRun is flag that if its true, it handles request but doesn't mutate the pod spec.
+	// Logger is the handler logger - gets it from the server.
+	Logger logr.Logger
+	// DryRun is flag that if it's true, it handles request but doesn't mutate the pod spec.
+	DryRun bool
+	// Instrumentation is the handler instrumentation - gets it from the server.
+	Instrumentation *instrumentation.Instrumentation
 }
 
-// NewHandler creates new handler
-func NewHandler(instrumentation *instrumentation.Instrumentation, dryRun bool) *Handler {
+// NewHandler Constructor for Handler
+func NewHandler(logger logr.Logger, runOnDryRun bool, instrumentation *instrumentation.Instrumentation) (handler *Handler) {
 	return &Handler{
 		Instrumentation: instrumentation,
-		dryRun:          dryRun,
+		Logger:          logger,
+		DryRun:          runOnDryRun,
 	}
 }
 
 // Handle processes the AdmissionRequest by invoking the underlying function.
 func (h *Handler) Handle(ctx context.Context, req admission.Request) admission.Response {
-	// Exit with panic in case that the context is nil
 	if ctx == nil {
+		// Exit with panic in case that the context is nil
 		panic("Can't handle requests when the context (ctx) is nil")
 	}
 
@@ -50,10 +57,10 @@ func (h *Handler) Handle(ctx context.Context, req admission.Request) admission.R
 	//TODO invoke AzDSecInfo and patch the result.
 
 	// In case of dryrun=true:  reset all patch operations
-	if h.dryRun {
+	if h.DryRun {
 		h.Instrumentation.Tracer.Info("not mutating resource, because dry-run=true")
 		patches = []jsonpatch.JsonPatchOperation{}
 	}
 	//Patch all patches operations
-	return admission.Patched(string(patched), patches...)
+	return admission.Patched(string(_patched), patches...)
 }
