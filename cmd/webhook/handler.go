@@ -3,9 +3,7 @@ package webhook
 
 import (
 	"context"
-	"fmt"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
-	"github.com/go-logr/logr"
 	"gomodules.xyz/jsonpatch/v2"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
@@ -22,8 +20,6 @@ const (
 // Handler implements the admission.Handle interface that each webhook have to implement.
 // Handler handles with all admission requests according to the MutatingWebhookConfiguration.
 type Handler struct {
-	// Logger is the handler logger - gets it from the server.
-	Logger logr.Logger
 	// DryRun is flag that if it's true, it handles request but doesn't mutate the pod spec.
 	DryRun bool
 	// Instrumentation is the handler instrumentation - gets it from the server.
@@ -31,10 +27,9 @@ type Handler struct {
 }
 
 // NewHandler Constructor for Handler
-func NewHandler(logger logr.Logger, runOnDryRun bool, instrumentation *instrumentation.Instrumentation) (handler *Handler) {
+func NewHandler(runOnDryRun bool, instrumentation *instrumentation.Instrumentation) (handler *Handler) {
 	return &Handler{
 		Instrumentation: instrumentation,
-		Logger:          logger,
 		DryRun:          runOnDryRun,
 	}
 }
@@ -46,12 +41,11 @@ func (h *Handler) Handle(ctx context.Context, req admission.Request) admission.R
 		panic("Can't handle requests when the context (ctx) is nil")
 	}
 
-	reqAsStr := fmt.Sprintf("%v", req)
 	h.Instrumentation.Tracer.Info("received request",
 		"name", req.Name,
 		"namespace", req.Namespace,
 		"operation", req.Operation,
-		"request", reqAsStr)
+		"request", req)
 
 	var patches []jsonpatch.JsonPatchOperation
 	//TODO invoke AzDSecInfo and patch the result.
