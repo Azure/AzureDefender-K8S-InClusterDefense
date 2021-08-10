@@ -14,7 +14,7 @@ func main() {
 	managerConfiguration := getManagerConfiguration()
 	certRotatorConfig := getCertRotatorConfiguration()
 	serverConfiguration := getServerConfiguration()
-	handlerConfiguration := gerHanlderConfiguration()
+	handlerConfiguration := gerHandlerConfiguration()
 
 	// Create factories
 	managerFactory := webhook.NewManagerFactory(managerConfiguration, nil)
@@ -35,7 +35,7 @@ func main() {
 }
 
 //TODO All three methods below will be deleted once Or finishes the configuration
-func gerHanlderConfiguration() *webhook.HandlerConfiguration {
+func gerHandlerConfiguration() *webhook.HandlerConfiguration {
 	return &webhook.HandlerConfiguration{
 		DryRun: false,
 	}

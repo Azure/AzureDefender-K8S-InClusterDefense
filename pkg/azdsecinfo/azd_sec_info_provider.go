@@ -1,14 +1,16 @@
 package azdsecinfo
 
 import (
+	"time"
+
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/azdsecinfo/contracts"
 )
 
 // IAzdSecInfoProvider represents interface for providing azure defender security information
 type IAzdSecInfoProvider interface {
 
-	// GetContainersVulnerabilityScanInfo receives containers list, and returns their fetched ContainersVulnerabilityScanInfo
-	GetContainersVulnerabilityScanInfo() (*contracts.ContainersVulnerabilityScanInfo, error)
+	// GetContainerVulnerabilityScanInfo receives containers list, and returns their fetched ContainersVulnerabilityScanInfo
+	GetContainerVulnerabilityScanInfo() (*contracts.ContainerVulnerabilityScanInfo, error)
 }
 
 // AzdSecInfoProvider represents default implementation of IAzdSecInfoProvider interface
@@ -20,12 +22,20 @@ func NewAzdSecInfoProvider() *AzdSecInfoProvider {
 	return &AzdSecInfoProvider{}
 }
 
-// GetContainersVulnerabilityScanInfo receives containers list, and returns their fetched ContainersVulnerabilityScanInfo
-func (*AzdSecInfoProvider) GetContainersVulnerabilityScanInfo() (*contracts.ContainersVulnerabilityScanInfo, error) {
+// GetContainerVulnerabilityScanInfo receives containers list, and returns their fetched ContainerVulnerabilityScanInfo
+func (*AzdSecInfoProvider) GetContainerVulnerabilityScanInfo() (*contracts.ContainerVulnerabilityScanInfo, error) {
 
-	// info := &{
+	info := &contracts.ContainerVulnerabilityScanInfo{
+		GeneratedTimestamp: time.Now().UTC(),
+		Name:               "tomer",
+		Image: &contracts.Image{
+			Registry:   "tomer.azurecr.io",
+			Repository: "redis",
+			Digest:     "sha256",
+		},
+		ScanStatus:   contracts.HealthyScan,
+		ScanFindings: nil,
+	}
 
-	// }
-
-	return nil, nil
+	return info, nil
 }
