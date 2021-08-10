@@ -14,8 +14,8 @@ type IEnvironmentSettingsWrapper struct {
 	mock.Mock
 }
 
-// Environment provides a mock function with given fields:
-func (_m *IEnvironmentSettingsWrapper) Environment() *azure.Environment {
+// GetEnvironment provides a mock function with given fields:
+func (_m *IEnvironmentSettingsWrapper) GetEnvironment() *azure.Environment {
 	ret := _m.Called()
 
 	var r0 *azure.Environment
@@ -53,8 +53,8 @@ func (_m *IEnvironmentSettingsWrapper) GetAuthorizer() (autorest.Authorizer, err
 	return r0, r1
 }
 
-// Values provides a mock function with given fields:
-func (_m *IEnvironmentSettingsWrapper) Values() map[string]string {
+// GetValues provides a mock function with given fields:
+func (_m *IEnvironmentSettingsWrapper) GetValues() map[string]string {
 	ret := _m.Called()
 
 	var r0 map[string]string
