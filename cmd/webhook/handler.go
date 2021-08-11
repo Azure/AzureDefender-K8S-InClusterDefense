@@ -10,17 +10,25 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 	"gomodules.xyz/jsonpatch/v2"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
-// patchStatus status of patching
-type patchStatus string
+// patchReason enum status reason of patching
+type patchReason string
 
-// The reasons of patching
 const (
 	// _patched in case that the handler patched to the webhook.
-	_patched patchStatus = "Patched"
+	_patched    patchReason = "Patched"
+	_notPathced patchReason = "NotPatched"
+)
+
+// Constants
+const (
+	_podKind = "Pod"
 )
 
 // Handler implements the admission.Handle interface that each webhook have to implement.
@@ -60,38 +68,48 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 		panic("Can't handle requests when the context (ctx) is nil")
 	}
 
-	handler.Logger.Info("received request",
-		"name", req.Name,
-		"namespace", req.Namespace,
-		"operation", req.Operation,
-		"object", req.Object,
-		"uid", req.UID,
-	)
+	// TODO: Debug
+	handler.Logger.Info("req", "req", req.AdmissionRequest)
 
-	vulnerabilitySecInfo, err := handler.AzdSecInfoProvider.GetContainerVulnerabilityScanInfo()
-	if err != nil {
-		wrappedError := errors.Wrap(err, "Handler failed to GetContainersVulnerabilityScanInfo")
-		handler.Logger.Error(wrappedError, "Handler.AzdSecInfoProvider.GetContainersVulnerabilityScanInfo")
-		panic(err)
-	}
+	// Logs
+	handler.Logger.Info("received request", "name", req.Name, "namespace", req.Namespace, "operation", req.Operation, "reqKind", req.Kind, "uid", req.UID)
 
-	vulnerabilitySecAnnotationsPatch, err := annotations.CreateContainersVulnerabilityScanAnnotationPatch(contracts.ContainerVulnerabilityScanInfoList{vulnerabilitySecInfo})
-	if err != nil {
-		wrappedError := errors.Wrap(err, "Handler failed to GetContainersVulnerabilityScanInfo")
-		handler.Logger.Error(wrappedError, "Handler.AzdSecInfoProvider.GetContainersVulnerabilityScanInfo")
-		panic(err)
-	}
+	patches := []jsonpatch.JsonPatchOperation{}
+	patchReason := _notPathced
 
-	annotInitPatch, err := annotations.CreateInitAnnotations()
-	if err != nil {
-		wrappedError := errors.Wrap(err, "Handler failed to CreateInitAnnotations")
-		handler.Logger.Error(wrappedError, "Handler.AzdSecInfoProvider.CreateInitAnnotations")
-		panic(err)
-	}
+	if req.Kind.Kind == _podKind {
+		// Extract the unstructred object
+		obj := unstructured.Unstructured{}
+		err := obj.UnmarshalJSON(req.Object.Raw)
+		if err != nil {
+			wrappedError := errors.Wrap(err, "Handler Failed to unmarshal")
+			handler.Logger.Error(wrappedError, "Handler unmarshal failed with object", string(req.Object.Raw))
+			panic(err)
+		}
+		objectKind := obj.GroupVersionKind()
+		handler.Logger.Info("Object kind", objectKind, "Name", obj.GetName())
 
-	patches := []jsonpatch.JsonPatchOperation{
-		*annotInitPatch,
-		*vulnerabilitySecAnnotationsPatch,
+		// Convert to pod
+		pod := &corev1.Pod{}
+		err = runtime.DefaultUnstructuredConverter.FromUnstructured(obj.Object, pod)
+		if err != nil {
+			wrappedError := errors.Wrap(err, "Handler Failed to convert to Pod")
+			handler.Logger.Error(wrappedError, "")
+			panic(err)
+		}
+
+		vulnerabilitySecAnnotationsPatch, err := handler.getContainersVulnerabilityScanInfoAnnotationsOperation(pod)
+		if err != nil {
+			wrappedError := errors.Wrap(err, "Failed to getContainersVulnerabilityScanInfoAnnotationsOperation for Pod")
+			handler.Logger.Error(wrappedError, "")
+			panic(err)
+		}
+
+		// Add to response patches
+		patches = append(patches, *vulnerabilitySecAnnotationsPatch)
+
+		// update patch reason
+		patchReason = _patched
 	}
 
 	// In case of dryrun=true:  reset all patch operations
@@ -101,7 +119,48 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 	}
 
 	// Patch all patches operations
-	response := admission.Patched(string(_patched), patches...)
-	handler.Logger.Info("Responded", "response")
+	response := admission.Patched(string(patchReason), patches...)
+	handler.Logger.Info("Responded", "response", response)
 	return response
+}
+
+func (handler *Handler) getContainersVulnerabilityScanInfoAnnotationsOperation(pod *corev1.Pod) (*jsonpatch.JsonPatchOperation, error) {
+	vulnSecInfoContainers := []*contracts.ContainerVulnerabilityScanInfo{}
+	for _, container := range pod.Spec.InitContainers {
+
+		// Get container vulnerability scan information for congainers
+		vulnerabilitySecInfo, err := handler.AzdSecInfoProvider.GetContainerVulnerabilityScanInfo(&container)
+		if err != nil {
+			wrappedError := errors.Wrap(err, "Handler failed to GetContainersVulnerabilityScanInfo Init containers")
+			handler.Logger.Error(wrappedError, "")
+			return nil, wrappedError
+		}
+
+		// Add it to slice
+		vulnSecInfoContainers = append(vulnSecInfoContainers, vulnerabilitySecInfo)
+	}
+
+	for _, container := range pod.Spec.Containers {
+
+		// Get container vulnerability scan information for congainers
+		vulnerabilitySecInfo, err := handler.AzdSecInfoProvider.GetContainerVulnerabilityScanInfo(&container)
+		if err != nil {
+			wrappedError := errors.Wrap(err, "Handler failed to GetContainersVulnerabilityScanInfo Init containers")
+			handler.Logger.Error(wrappedError, "")
+			return nil, wrappedError
+		}
+
+		// Add it to slice
+		vulnSecInfoContainers = append(vulnSecInfoContainers, vulnerabilitySecInfo)
+	}
+
+	// Create the annotations add json patch operation
+	vulnerabilitySecAnnotationsPatch, err := annotations.CreateContainersVulnerabilityScanAnnotationPatchAdd(vulnSecInfoContainers)
+	if err != nil {
+		wrappedError := errors.Wrap(err, "Handler failed to GetContainersVulnerabilityScanInfo")
+		handler.Logger.Error(wrappedError, "Handler.AzdSecInfoProvider.GetContainersVulnerabilityScanInfo")
+		return nil, wrappedError
+	}
+
+	return vulnerabilitySecAnnotationsPatch, nil
 }

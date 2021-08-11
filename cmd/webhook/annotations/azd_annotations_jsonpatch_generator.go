@@ -2,6 +2,7 @@ package annotations
 
 import (
 	"encoding/json"
+	"time"
 
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/azdsecinfo/contracts"
 	"github.com/pkg/errors"
@@ -9,32 +10,39 @@ import (
 )
 
 const (
-	_addPatchOperation                             = "add"
-	_annotationPatchPathPrefix                     = "/metadata/annotations"
-	_containersVulnerabilityScanAnnotationFullPath = _annotationPatchPathPrefix + "/" + contracts.ContainersVulnerabilityScanInfoAnnotationName
+	_addPatchOperation   = "add"
+	_annotationPatchPath = "/metadata/annotations"
 )
 
-func CreateContainersVulnerabilityScanAnnotationPatch(scanInfoList contracts.ContainerVulnerabilityScanInfoList) (*jsonpatch.JsonPatchOperation, error) {
-	serVulnerabilitySecInfo, err := serializeAnnotationInnerObject(scanInfoList)
+// CreateContainersVulnerabilityScanAnnotationPatchAdd creates and return an add type json patch to add to annotations map a new key value of ContainersVulnerabilityScanInfoAnnotationName.
+// The function creates a scanInfoList from the provided containers scan info  slice of type contracts.ContainerVulnerabilityScanInfoList serialize/marshale it and set it as a value string to key annotation
+// Contracts.ContainersVulnerabilityScanInfoAnnotationName (azuredefender.io/containers.vulnerability.scan.info)
+func CreateContainersVulnerabilityScanAnnotationPatchAdd(containersScanInfoList []*contracts.ContainerVulnerabilityScanInfo) (*jsonpatch.JsonPatchOperation, error) {
+	scanInfoList := &contracts.ContainerVulnerabilityScanInfoList{
+		GeneratedTimestamp: time.Now().UTC(),
+		Containers:         containersScanInfoList,
+	}
+
+	// Marshal the scan info list (annotations can only be strings)
+	serVulnerabilitySecInfo, err := marshalAnnotationInnerObject(scanInfoList)
 	if err != nil {
 		return nil, errors.Wrap(err, "AzdAnnotationsPatchGenerator failed marshaling scanInfoList during CreateContainersVulnerabilityScanAnnotationPatch")
 	}
 
-	patch := jsonpatch.NewOperation(_addPatchOperation, _containersVulnerabilityScanAnnotationFullPath, serVulnerabilitySecInfo)
+	// Create an add operation to annotations to add or create if annotations are empty
+	patch := jsonpatch.NewOperation(_addPatchOperation, _annotationPatchPath, map[string]string{contracts.ContainersVulnerabilityScanInfoAnnotationName: serVulnerabilitySecInfo})
 	return &patch, nil
 }
 
-func CreateInitAnnotations() (*jsonpatch.JsonPatchOperation, error) {
-	patch := jsonpatch.NewOperation(_addPatchOperation, _annotationPatchPathPrefix, make(map[string]string))
-	return &patch, nil
-}
-
-func serializeAnnotationInnerObject(object interface{}) (*string, error) {
+// marshalAnnotationInnerObject marshaling provided object needed to be set as string in annotations to json represeted string
+func marshalAnnotationInnerObject(object interface{}) (string, error) {
+	// Marshal object
 	marshaledVulnerabilitySecInfo, err := json.Marshal(object)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
+	// Cast to string
 	ser := string(marshaledVulnerabilitySecInfo)
-	return &ser, nil
+	return ser, nil
 }
