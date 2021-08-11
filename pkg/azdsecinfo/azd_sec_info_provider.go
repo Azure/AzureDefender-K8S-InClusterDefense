@@ -34,8 +34,16 @@ func (*AzdSecInfoProvider) GetContainerVulnerabilityScanInfo(container *corev1.C
 			// TODO: change
 			Digest: container.Image,
 		},
-		ScanStatus:   contracts.HealthyScan,
-		ScanFindings: nil,
+		// TODO : change
+		ScanStatus: contracts.HealthyScan,
+		// TODO : change
+		ScanFindings: []*contracts.ScanFinding{
+			{
+				Patchable: true,
+				Id:        "123",
+				Severity:  "High",
+			},
+		},
 	}
 
 	return info, nil
