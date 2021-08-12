@@ -3,8 +3,7 @@ package main
 import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/cmd/webhook"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
-	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
-	tivanInstrumentaiton "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/tivan"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/tivan"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/util"
 	"log"
@@ -18,29 +17,32 @@ type mainConfiguration struct {
 func main() {
 	// Load configuration
 	mainConfig := getMainConfiguration()
+	tivanInstrumentationConfiguration := getTivanInstrumentationConfiguration()
 	tracerConfiguration := getTracerConfiguration()
 	metricSubmitterConfiguration := getMetricSubmitterConfiguration()
 	instrumentationConfiguration := getInstrumentationConfiguration()
 	managerConfiguration := getManagerConfiguration()
 	certRotatorConfig := getCertRotatorConfiguration()
+	handlerConfiguration := getHandlerConfiguration()
 	serverConfiguration := getServerConfiguration()
 
 	// Create Tivan's instrumentation
-	tivanInstrumentationResult, err := tivanInstrumentaiton.GetTivanInstrumentationResult()
+	tivanInstrumentationResult, err := tivan.NewTivanInstrumentationResult(tivanInstrumentationConfiguration)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// Create factories
-	tracerFactory := trace.NewTracerFactory(tracerConfiguration, tivanInstrumentationResult.Tracer)
+	tracerFactory := tivan.NewTracerFactory(tracerConfiguration, tivanInstrumentationResult.Tracer)
 	if mainConfig.isDebug { // Use zapr logger when debugging
 		tracerFactory = trace.NewZaprTracerFactory(tracerConfiguration)
 	}
-	metricSubmitterFactory := metric.NewMetricSubmitterFactory(metricSubmitterConfiguration, &tivanInstrumentationResult.MetricSubmitter)
-	instrumentationFactory := instrumentation.NewInstrumentationFactory(instrumentationConfiguration, tracerFactory, metricSubmitterFactory)
+	metricSubmitterFactory := tivan.NewMetricSubmitterFactory(metricSubmitterConfiguration, &tivanInstrumentationResult.MetricSubmitter)
+	instrumentationProviderFactory := instrumentation.NewInstrumentationProviderFactory(instrumentationConfiguration, tracerFactory, metricSubmitterFactory)
 	managerFactory := webhook.NewManagerFactory(managerConfiguration, nil)
 	certRotatorFactory := webhook.NewCertRotatorFactory(certRotatorConfig)
-	serverFactory := webhook.NewServerFactory(serverConfiguration, managerFactory, certRotatorFactory, instrumentationFactory)
+	handlerFactory := webhook.NewHandlerFactory(handlerConfiguration, instrumentationProviderFactory)
+	serverFactory := webhook.NewServerFactory(serverConfiguration, managerFactory, certRotatorFactory, instrumentationProviderFactory, handlerFactory)
 
 	// Create Server
 	server, err := serverFactory.CreateServer()
@@ -53,9 +55,17 @@ func main() {
 	}
 }
 
+func getTivanInstrumentationConfiguration() *tivan.TivanInstrumentationConfiguration {
+	return &tivan.TivanInstrumentationConfiguration{
+		ComponentName: "AzDProxy",
+		MdmNamespace:  "Tivan.Collector.Pods",
+	}
+
+}
+
 //TODO All three methods below will be deleted once Or finishes the configuration
-func getInstrumentationConfiguration() *instrumentation.InstrumentationConfiguration {
-	return &instrumentation.InstrumentationConfiguration{}
+func getInstrumentationConfiguration() *instrumentation.InstrumentationProviderConfiguration {
+	return &instrumentation.InstrumentationProviderConfiguration{}
 }
 
 func getTracerConfiguration() *trace.TracerConfiguration {
@@ -65,8 +75,8 @@ func getTracerConfiguration() *trace.TracerConfiguration {
 	}
 }
 
-func getMetricSubmitterConfiguration() *metric.MetricSubmitterConfiguration {
-	return &metric.MetricSubmitterConfiguration{}
+func getMetricSubmitterConfiguration() *tivan.MetricSubmitterConfiguration {
+	return &tivan.MetricSubmitterConfiguration{}
 }
 
 func getServerConfiguration() (configuration *webhook.ServerConfiguration) {
@@ -98,6 +108,12 @@ func getManagerConfiguration() (configuration *webhook.ManagerConfiguration) {
 
 func getMainConfiguration() (configuration *mainConfiguration) {
 	return &mainConfiguration{
-		isDebug: true,
+		isDebug: false,
+	}
+}
+
+func getHandlerConfiguration() (configuration *webhook.HandlerConfiguration) {
+	return &webhook.HandlerConfiguration{
+		DryRun: false,
 	}
 }

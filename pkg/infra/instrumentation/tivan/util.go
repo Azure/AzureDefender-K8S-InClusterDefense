@@ -1,32 +1,32 @@
-package instrumentation
+package tivan
 
 import (
 	"github.com/pkg/errors"
 	tivanInstrumentation "tivan.ms/libs/instrumentation"
 )
 
-// Default instrumentation configuration values
-const (
+// TivanInstrumentationConfiguration is the configuration that is needed to create tivan's instrumentation
+type TivanInstrumentationConfiguration struct {
 	// componentName is the component name that Tivan's needs for the instrumentation.
-	componentName = "AzDProxy"
+	ComponentName string
 	// mdmNamespace is the mdm name that Tivan's needs for the instrumentation.
-	mdmNamespace = "Tivan.Collector.Pods" //TODO Check if I can change this mdmNameSpace ??
-)
+	MdmNamespace string
+}
 
-// GetTivanInstrumentationResult gets tivan instrumentation Result.
-func GetTivanInstrumentationResult() (instrumentationResult *tivanInstrumentation.InstrumentationInitializationResult, err error) {
-	tivanConfiguration := getInstrumentationConfiguration()
+// NewTivanInstrumentationResult Creates new tivanInstrumentation.InstrumentationInitializationResult - tivan instrumentation object.
+// It is creating it by creating tivan's configuration, and then initialize the instrumentation
+func NewTivanInstrumentationResult(configuration *TivanInstrumentationConfiguration) (instrumentationResult *tivanInstrumentation.InstrumentationInitializationResult, err error) {
+	tivanConfiguration := newTivanInstrumentationConfiguration(configuration)
 	instrumentationInitializer := tivanInstrumentation.NewInstrumentationInitializer(tivanConfiguration)
 	instrumentationResult, err = instrumentationInitializer.Initialize()
 	if err != nil {
-		return nil, errors.Wrap(err, "error encountered during tracer initialization")
+		return nil, errors.Wrap(err, "tivan.NewTivanInstrumentationResult: error encountered during tracer initialization")
 	}
 	return instrumentationResult, nil
 }
 
-// getInstrumentationConfiguration - Get Instrumentation Initialization Configuration
-func getInstrumentationConfiguration() *tivanInstrumentation.InstrumentationConfiguration {
-	// TODO Use Tivan default configuration - should be changed when we will have our configuration
-	instrumentationConfiguration := tivanInstrumentation.NewInstrumentationConfigurationFromEnv(componentName, mdmNamespace)
+// newTivanInstrumentationConfiguration - Get Instrumentation Initialization Configuration
+func newTivanInstrumentationConfiguration(configuration *TivanInstrumentationConfiguration) *tivanInstrumentation.InstrumentationConfiguration {
+	instrumentationConfiguration := tivanInstrumentation.NewInstrumentationConfigurationFromEnv(configuration.ComponentName, configuration.MdmNamespace)
 	return instrumentationConfiguration
 }

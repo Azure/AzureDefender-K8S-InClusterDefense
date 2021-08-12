@@ -4,6 +4,8 @@ package webhook
 import (
 	"context"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
 	"gomodules.xyz/jsonpatch/v2"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
@@ -22,14 +24,19 @@ const (
 type Handler struct {
 	// DryRun is flag that if it's true, it handles request but doesn't mutate the pod spec.
 	DryRun bool
-	// Instrumentation is the handler instrumentation - gets it from the server.
-	Instrumentation *instrumentation.Instrumentation
+	// Tracer of the handler
+	Tracer trace.ITracer
+	// MetricSubmitter
+	MetricSubmitter metric.IMetricSubmitter
 }
 
 // NewHandler Constructor for Handler
-func NewHandler(runOnDryRun bool, instrumentation *instrumentation.Instrumentation) (handler *Handler) {
+func NewHandler(runOnDryRun bool, provider instrumentation.IInstrumentationProvider) (handler *Handler) {
+	tracer := provider.GetTracer("handler")
+	metricSubmitter := provider.GetMetricSubmitter()
 	return &Handler{
-		Instrumentation: instrumentation,
+		Tracer:          tracer,
+		MetricSubmitter: metricSubmitter,
 		DryRun:          runOnDryRun,
 	}
 }
@@ -41,7 +48,7 @@ func (h *Handler) Handle(ctx context.Context, req admission.Request) admission.R
 		panic("Can't handle requests when the context (ctx) is nil")
 	}
 
-	h.Instrumentation.Tracer.Info("received request",
+	h.Tracer.Info("received request",
 		"name", req.Name,
 		"namespace", req.Namespace,
 		"operation", req.Operation,
@@ -52,7 +59,7 @@ func (h *Handler) Handle(ctx context.Context, req admission.Request) admission.R
 
 	// In case of dryrun=true:  reset all patch operations
 	if h.DryRun {
-		h.Instrumentation.Tracer.Info("not mutating resource, because dry-run=true")
+		h.Tracer.Info("not mutating resource, because dry-run=true")
 		patches = []jsonpatch.JsonPatchOperation{}
 	}
 	//Patch all patches operations

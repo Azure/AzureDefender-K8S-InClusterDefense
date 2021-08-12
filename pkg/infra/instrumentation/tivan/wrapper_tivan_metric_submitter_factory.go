@@ -1,12 +1,9 @@
-package metric
+package tivan
 
-import tivanInstrumentation "tivan.ms/libs/instrumentation"
-
-// IMetricSubmitterFactory is factory for metric submitter
-type IMetricSubmitterFactory interface {
-	// CreateMetricSubmitter creates new IMetricSubmitter.
-	CreateMetricSubmitter() (metricSubmitter IMetricSubmitter)
-}
+import (
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
+	tivanInstrumentation "tivan.ms/libs/instrumentation"
+)
 
 // MetricSubmitterFactory implement the IMetricSubmitterFactory and creates the default metric submitter.
 // It wraps Tivan's MetricSubmitter
@@ -22,7 +19,7 @@ type MetricSubmitterConfiguration struct {
 }
 
 // NewMetricSubmitterFactory creates MetricSubmitterFactory that creates metric submitter by wrapping the metric submitter of Tivan
-func NewMetricSubmitterFactory(configuration *MetricSubmitterConfiguration, metricSubmitter *tivanInstrumentation.MetricSubmitter) (factory IMetricSubmitterFactory) {
+func NewMetricSubmitterFactory(configuration *MetricSubmitterConfiguration, metricSubmitter *tivanInstrumentation.MetricSubmitter) (factory metric.IMetricSubmitterFactory) {
 	return MetricSubmitterFactory{
 		configuration:   configuration,
 		metricSubmitter: metricSubmitter,
@@ -30,6 +27,6 @@ func NewMetricSubmitterFactory(configuration *MetricSubmitterConfiguration, metr
 }
 
 // CreateMetricSubmitter creates new IMetricSubmitter by using the metric submitter of Tivan
-func (factory MetricSubmitterFactory) CreateMetricSubmitter() (metricSubmitter IMetricSubmitter) {
+func (factory MetricSubmitterFactory) CreateMetricSubmitter() (metricSubmitter metric.IMetricSubmitter) {
 	return *factory.metricSubmitter
 }
