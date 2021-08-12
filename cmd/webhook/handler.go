@@ -3,7 +3,9 @@ package webhook
 
 import (
 	"context"
+	"log"
 
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/cmd/webhook/admisionrequest"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/cmd/webhook/annotations"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/azdsecinfo"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/azdsecinfo/contracts"
@@ -11,8 +13,6 @@ import (
 	"github.com/pkg/errors"
 	"gomodules.xyz/jsonpatch/v2"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
@@ -69,7 +69,7 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 	}
 
 	// TODO: Debug
-	handler.Logger.Info("req", "req", req.AdmissionRequest)
+	handler.Logger.Info("req", "req", req)
 
 	// Logs
 	handler.Logger.Info("received request", "name", req.Name, "namespace", req.Namespace, "operation", req.Operation, "reqKind", req.Kind, "uid", req.UID)
@@ -78,31 +78,19 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 	patchReason := _notPathced
 
 	if req.Kind.Kind == _podKind {
-		// Extract the unstructred object
-		obj := unstructured.Unstructured{}
-		err := obj.UnmarshalJSON(req.Object.Raw)
-		if err != nil {
-			wrappedError := errors.Wrap(err, "Handler Failed to unmarshal")
-			handler.Logger.Error(wrappedError, "Handler unmarshal failed with object", string(req.Object.Raw))
-			panic(err)
-		}
-		objectKind := obj.GroupVersionKind()
-		handler.Logger.Info("Object kind", objectKind, "Name", obj.GetName())
 
-		// Convert to pod
-		pod := &corev1.Pod{}
-		err = runtime.DefaultUnstructuredConverter.FromUnstructured(obj.Object, pod)
+		pod, err := admisionrequest.UnmarshalPod(&req)
 		if err != nil {
-			wrappedError := errors.Wrap(err, "Handler Failed to convert to Pod")
+			wrappedError := errors.Wrap(err, "Failed to admisionrequest.UnmarshalPod req")
 			handler.Logger.Error(wrappedError, "")
-			panic(err)
+			log.Fatal(err)
 		}
 
 		vulnerabilitySecAnnotationsPatch, err := handler.getContainersVulnerabilityScanInfoAnnotationsOperation(pod)
 		if err != nil {
 			wrappedError := errors.Wrap(err, "Failed to getContainersVulnerabilityScanInfoAnnotationsOperation for Pod")
 			handler.Logger.Error(wrappedError, "")
-			panic(err)
+			log.Fatal(err)
 		}
 
 		// Add to response patches

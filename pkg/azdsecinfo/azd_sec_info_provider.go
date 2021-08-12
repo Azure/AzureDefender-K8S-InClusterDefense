@@ -27,10 +27,7 @@ func (*AzdSecInfoProvider) GetContainerVulnerabilityScanInfo(container *corev1.C
 	info := &contracts.ContainerVulnerabilityScanInfo{
 		Name: container.Name,
 		Image: &contracts.Image{
-			// TODO : change
-			Registry: container.Image,
-			// TODO : change
-			Repository: container.Image,
+			Name: container.Image,
 			// TODO: change
 			Digest: container.Image,
 		},

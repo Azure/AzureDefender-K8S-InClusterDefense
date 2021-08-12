@@ -12,6 +12,7 @@ import (
 
 // Server this struct is responsible for setting up azdproxy server in the cluster.
 type Server struct {
+	S int
 	// Logger is the server logger.
 	Logger logr.Logger
 	// Manager is the manager.Manager of the server - it is registers the server.
