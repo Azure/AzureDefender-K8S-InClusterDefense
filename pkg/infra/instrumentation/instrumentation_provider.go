@@ -21,9 +21,9 @@ func NewInstrumentationProvider(tracer trace.ITracer, metricSubmitter metric.IMe
 	}
 }
 
-// GetTracer implements IInstrumentationProvider.GetTracer method of IInstrumentationProvider interface - register the logger with the context.
-func (provider *InstrumentationProvider) GetTracer(context string) (tracer trace.ITracer) {
-	return provider.Tracer.WithName(context)
+// GetTracerProvider implements IInstrumentationProvider.GetTracer method of IInstrumentationProvider interface - register the logger with the context.
+func (provider *InstrumentationProvider) GetTracerProvider(context string) (tracer trace.ITracerProvider) {
+	return trace.NewTracerProvider(provider.Tracer, context)
 }
 
 // GetMetricSubmitter implements IInstrumentationProvider.GetMetricSubmitter method of IInstrumentationProvider interface

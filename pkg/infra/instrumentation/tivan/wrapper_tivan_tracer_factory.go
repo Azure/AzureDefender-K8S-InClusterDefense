@@ -23,10 +23,10 @@ func NewTracerFactory(configuration *trace.TracerConfiguration, entry *log.Entry
 }
 
 // CreateTracer Creates tracer
-func (tracerFactory TracerFactory) CreateTracer() (tracer trace.ITracer, err error) {
-	tracer = NewWrapperTivanTracer(tracerFactory.Entry, tracerFactory.configuration.DefaultContext, tracerFactory.configuration.TracerLevel, trace.NONE)
+func (factory *TracerFactory) CreateTracer() (tracer trace.ITracer) {
+	tracer = NewWrapperTivanTracer(factory.Entry, factory.configuration.DefaultContext, factory.configuration.TracerLevel, trace.NONE)
 
 	// Register the tracer as the main trace - without this, loggers won't be initialized (e.g crLog at cert-controller)
 	ctrl.SetLogger(tracer)
-	return tracer, nil
+	return tracer
 }

@@ -39,7 +39,7 @@ func main() {
 	}
 	metricSubmitterFactory := tivan.NewMetricSubmitterFactory(metricSubmitterConfiguration, &tivanInstrumentationResult.MetricSubmitter)
 	instrumentationProviderFactory := instrumentation.NewInstrumentationProviderFactory(instrumentationConfiguration, tracerFactory, metricSubmitterFactory)
-	managerFactory := webhook.NewManagerFactory(managerConfiguration, nil)
+	managerFactory := webhook.NewManagerFactory(managerConfiguration, instrumentationProviderFactory)
 	certRotatorFactory := webhook.NewCertRotatorFactory(certRotatorConfig)
 	handlerFactory := webhook.NewHandlerFactory(handlerConfiguration, instrumentationProviderFactory)
 	serverFactory := webhook.NewServerFactory(serverConfiguration, managerFactory, certRotatorFactory, instrumentationProviderFactory, handlerFactory)
@@ -70,8 +70,7 @@ func getInstrumentationConfiguration() *instrumentation.InstrumentationProviderC
 
 func getTracerConfiguration() *trace.TracerConfiguration {
 	return &trace.TracerConfiguration{
-		TracerLevel:    0,
-		DefaultContext: "AzD",
+		TracerLevel: 0,
 	}
 }
 

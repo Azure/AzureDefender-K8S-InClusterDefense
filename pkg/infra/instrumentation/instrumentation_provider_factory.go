@@ -3,12 +3,11 @@ package instrumentation
 import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
-	"github.com/pkg/errors"
 )
 
 // IInstrumentationProviderFactory InstrumentationFactory - Instrumentation factory interface
 type IInstrumentationProviderFactory interface {
-	// CreateInstrumentation  creates instrumentation and returns err in case that the creation was failed.
+	// CreateInstrumentationProvider  creates instrumentation provider.
 	CreateInstrumentationProvider() (IInstrumentationProvider, error)
 }
 
@@ -38,12 +37,9 @@ func NewInstrumentationProviderFactory(
 	}
 }
 
-// CreateInstrumentation creates instrumentation using Tivan infra.
+// CreateInstrumentationProvider creates instrumentation using Tivan infra.
 func (factory *InstrumentationProviderFactory) CreateInstrumentationProvider() (instrumentationProvider IInstrumentationProvider, err error) {
 	metricSubmitter := factory.metricSubmitterFactory.CreateMetricSubmitter()
-	tracer, err := factory.tracerFactory.CreateTracer()
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to create tracer while creating instrumentation")
-	}
-	return &InstrumentationProvider{Tracer: tracer, MetricSubmitter: metricSubmitter}, nil
+	tracer := factory.tracerFactory.CreateTracer()
+	return NewInstrumentationProvider(tracer, metricSubmitter), nil
 }

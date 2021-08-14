@@ -24,31 +24,32 @@ const (
 type Handler struct {
 	// DryRun is flag that if it's true, it handles request but doesn't mutate the pod spec.
 	DryRun bool
-	// Tracer of the handler
-	Tracer trace.ITracer
+	// TracerProvider of the handler
+	TracerProvider trace.ITracerProvider
 	// MetricSubmitter
 	MetricSubmitter metric.IMetricSubmitter
 }
 
 // NewHandler Constructor for Handler
 func NewHandler(runOnDryRun bool, provider instrumentation.IInstrumentationProvider) (handler *Handler) {
-	tracer := provider.GetTracer("handler")
+	tracerProvider := provider.GetTracerProvider("Handler")
 	metricSubmitter := provider.GetMetricSubmitter()
 	return &Handler{
-		Tracer:          tracer,
+		TracerProvider:  tracerProvider,
 		MetricSubmitter: metricSubmitter,
 		DryRun:          runOnDryRun,
 	}
 }
 
 // Handle processes the AdmissionRequest by invoking the underlying function.
-func (h *Handler) Handle(ctx context.Context, req admission.Request) admission.Response {
+func (handler *Handler) Handle(ctx context.Context, req admission.Request) admission.Response {
+	tracer := handler.TracerProvider.GetTracer("Handle")
 	if ctx == nil {
 		// Exit with panic in case that the context is nil
 		panic("Can't handle requests when the context (ctx) is nil")
 	}
 
-	h.Tracer.Info("received request",
+	tracer.Info("received request",
 		"name", req.Name,
 		"namespace", req.Namespace,
 		"operation", req.Operation,
@@ -58,8 +59,8 @@ func (h *Handler) Handle(ctx context.Context, req admission.Request) admission.R
 	//TODO invoke AzDSecInfo and patch the result.
 
 	// In case of dryrun=true:  reset all patch operations
-	if h.DryRun {
-		h.Tracer.Info("not mutating resource, because dry-run=true")
+	if handler.DryRun {
+		tracer.Info("not mutating resource, because dry-run=true")
 		patches = []jsonpatch.JsonPatchOperation{}
 	}
 	//Patch all patches operations

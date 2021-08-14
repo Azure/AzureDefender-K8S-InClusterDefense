@@ -82,15 +82,15 @@ func (tracer *WrapperTivanTracer) addNewContext(suffix string) *WrapperTivanTrac
 	if suffix == "" {
 		return tracer
 	}
-	t := tracer.clone()
+	clonedTracer := tracer.clone()
 	// In case that context is empty, don't add . as separator
 	if tracer.context == "" {
-		t.context = suffix
+		clonedTracer.context = suffix
 		// concatenate the suffix to the current context.
 	} else {
-		t.context = strings.Join([]string{t.context, suffix}, ".")
+		clonedTracer.context = strings.Join([]string{clonedTracer.context, suffix}, ".")
 	}
-	return t
+	return clonedTracer
 }
 
 // clone the tracer.
@@ -140,6 +140,6 @@ func (tracer *WrapperTivanTracer) WithValues(keysAndValues ...interface{}) logr.
 // Enabled tests whether this Logger is enabled.
 //delegate this method using Tracer.Entry data member in order to implement logr.Logger interface
 //				******* DOESN'T DO ANYTHING - RETURN THE SAME TRACER *******
-func (tracer WrapperTivanTracer) Enabled() bool {
+func (tracer *WrapperTivanTracer) Enabled() bool {
 	return tracer.Entry != nil
 }

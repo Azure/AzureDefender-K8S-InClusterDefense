@@ -10,7 +10,7 @@ import (
 type MetricSubmitterFactory struct {
 	// configuration is the configuration of the metric submitter
 	configuration *MetricSubmitterConfiguration
-	// metricsubmitter is the metric submitter of tivan
+	// metricSubmitter is the metric submitter of tivan
 	metricSubmitter *tivanInstrumentation.MetricSubmitter
 }
 
@@ -20,13 +20,13 @@ type MetricSubmitterConfiguration struct {
 
 // NewMetricSubmitterFactory creates MetricSubmitterFactory that creates metric submitter by wrapping the metric submitter of Tivan
 func NewMetricSubmitterFactory(configuration *MetricSubmitterConfiguration, metricSubmitter *tivanInstrumentation.MetricSubmitter) (factory metric.IMetricSubmitterFactory) {
-	return MetricSubmitterFactory{
+	return &MetricSubmitterFactory{
 		configuration:   configuration,
 		metricSubmitter: metricSubmitter,
 	}
 }
 
 // CreateMetricSubmitter creates new IMetricSubmitter by using the metric submitter of Tivan
-func (factory MetricSubmitterFactory) CreateMetricSubmitter() (metricSubmitter metric.IMetricSubmitter) {
+func (factory *MetricSubmitterFactory) CreateMetricSubmitter() (metricSubmitter metric.IMetricSubmitter) {
 	return *factory.metricSubmitter
 }

@@ -22,7 +22,7 @@ func NewZaprTracerFactory(configuration *TracerConfiguration) ITracerFactory {
 }
 
 // CreateTracer Creates tracer
-func (factory ZaprTracerFactory) CreateTracer() (tracer ITracer, err error) {
+func (factory *ZaprTracerFactory) CreateTracer() (tracer ITracer) {
 	switch factory.configuration.TracerLevel.CapitalString() {
 	// In DEBUG mode the output will be written in the following format:
 	//	2021-08-10T15:26:02.610+0300	INFO	setting up cert rotation
@@ -38,5 +38,5 @@ func (factory ZaprTracerFactory) CreateTracer() (tracer ITracer, err error) {
 	// SetLogger sets a concrete logging implementation for all deferred Loggers and register this tracer as the main logger
 	ctrl.SetLogger(tracer)
 	klog.SetLogger(tracer)
-	return tracer, nil
+	return tracer
 }

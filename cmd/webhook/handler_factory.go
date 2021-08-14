@@ -29,7 +29,7 @@ func NewHandlerFactory(configuration *HandlerConfiguration, instrumentationProvi
 	}
 }
 
-// HandlerConfiguration Factory configuration to create a admission.Handler
+// HandlerConfiguration Factory configuration to create an admission.Handler
 type HandlerConfiguration struct {
 	// DryRun is flag that if it's true, it handles request but doesn't mutate the pod spec.
 	DryRun bool
@@ -42,5 +42,5 @@ func (factory *HandlerFactory) CreateHandler() (handler admission.Handler, err e
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create handler")
 	}
-	return NewHandler(factory.Configuration.DryRun,provider), nil
+	return NewHandler(factory.Configuration.DryRun, provider), nil
 }

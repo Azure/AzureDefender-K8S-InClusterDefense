@@ -1,7 +1,7 @@
 package webhook
 
 import (
-	"github.com/go-logr/logr"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -20,8 +20,8 @@ type IManagerFactory interface {
 type ManagerFactory struct {
 	// Configuration is the manager configuration
 	Configuration *ManagerConfiguration
-	// Logger is the manager logger.
-	Logger logr.Logger
+	// InstrumentationProviderFactory is the instrumentation factory for manager.
+	InstrumentationProviderFactory instrumentation.IInstrumentationProviderFactory
 }
 
 // ManagerConfiguration Factory configuration to create a manager.Manager
@@ -33,10 +33,10 @@ type ManagerConfiguration struct {
 }
 
 // NewManagerFactory Constructor for ManagerFactory
-func NewManagerFactory(configuration *ManagerConfiguration, logger logr.Logger) (factory IManagerFactory) {
+func NewManagerFactory(configuration *ManagerConfiguration, instrumentationProviderFactory instrumentation.IInstrumentationProviderFactory) (factory IManagerFactory) {
 	return &ManagerFactory{
-		Configuration: configuration,
-		Logger:        logger}
+		Configuration:                  configuration,
+		InstrumentationProviderFactory: instrumentationProviderFactory}
 }
 
 // CreateManager Initialize the manager object of the service - this object is manages the creation and registration
@@ -63,13 +63,19 @@ func (factory *ManagerFactory) CreateManager() (mgr manager.Manager, err error) 
 
 // createOptions Creates manager options
 func (factory *ManagerFactory) createOptions() (options *manager.Options, err error) {
+	instrumentationProvider, err := factory.InstrumentationProviderFactory.CreateInstrumentationProvider()
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to create instrumentationProvider for manager in createOptions")
+	}
+	tracerProvider := instrumentationProvider.GetTracerProvider("Manager")
 	scheme := runtime.NewScheme()
 	if err = corev1.AddToScheme(scheme); err != nil {
-		return nil, errors.Wrap(err, "unable to add schema")
+		return nil, errors.Wrap(err, "unable to add schema in createOptions")
 	}
+
 	options = &manager.Options{
 		Scheme:  scheme,
-		Logger:  factory.Logger,
+		Logger:  tracerProvider.GetTracer("New"),
 		Port:    factory.Configuration.Port,
 		CertDir: factory.Configuration.CertDir,
 	}

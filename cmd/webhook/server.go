@@ -13,8 +13,8 @@ import (
 
 // Server this struct is responsible for setting up azdproxy server in the cluster.
 type Server struct {
-	// Tracer is the tracer of the server
-	Tracer trace.ITracer
+	// TracerProvider is the tracer provider of the server.
+	TracerProvider trace.ITracerProvider
 	// MetricSubmitter is the metric submitter of the server
 	MetricSubmitter metric.IMetricSubmitter
 	// Manager is the manager.Manager of the server - it is registers the server.
@@ -40,10 +40,10 @@ func NewServer(
 	path string,
 	handler admission.Handler) (server *Server) {
 	// Extract tracer and metricSubmitter from instrumentationProvider
-	tracer := instrumentationProvider.GetTracer("server")
+	tracerProvider := instrumentationProvider.GetTracerProvider("Server")
 	metricSubmitter := instrumentationProvider.GetMetricSubmitter()
 	server = &Server{
-		Tracer:            tracer,
+		TracerProvider:    tracerProvider,
 		MetricSubmitter:   metricSubmitter,
 		Manager:           mgr,
 		certRotator:       certRotator,
@@ -60,7 +60,6 @@ func NewServer(
 // There are 2 controllers - cert-controller (https://github.com/open-policy-agent/cert-controller) that manages
 // the certificates of the server and the mutation webhook server that is registered with the AzDSecInfo Handler.
 func (server *Server) Run() (err error) {
-	tracer := server.Tracer.WithName("Run")
 	// Init cert controller - gets a channel of setting up the controller.
 	if err = server.initCertController(); err != nil {
 		return errors.Wrap(err, "failed to initialize cert controller")
@@ -79,15 +78,16 @@ func (server *Server) Run() (err error) {
 //initCertController initialize the cert-controller.
 // If disableCertRotation is true, it adds new rotator using cert-controller library.
 func (server *Server) initCertController() (err error) {
-	tracer := server.Tracer.WithName("initCertController")
+	tracer := server.TracerProvider.GetTracer("initCertController")
+
 	if server.enableCertRotator {
-		server.Tracer.Info("setting up cert rotation")
+		tracer.Info("setting up cert rotation")
 		// Add rotator - using cert-controller API //TODO Expiration of certificate?
 		if err := rotator.AddRotator(server.Manager, server.certRotator); err != nil {
 			return errors.Wrap(err, "unable to setup cert rotation")
 		}
 	} else {
-		server.Tracer.Info("Skipping certificate provisioning setup")
+		tracer.Info("Skipping certificate provisioning setup")
 		close(server.certRotator.IsReady)
 	}
 	return nil
@@ -95,10 +95,12 @@ func (server *Server) initCertController() (err error) {
 
 // setupControllers is setting up all controllers of the server - cert-controller and webhook.
 func (server *Server) setupControllers() {
+	tracer := server.TracerProvider.GetTracer("setupControllers")
+
 	// Setup cert-controller - wait until the channel is finish.
-	server.Tracer.Info("waiting for cert rotation setup")
+	tracer.Info("waiting for cert rotation setup")
 	<-server.certRotator.IsReady
-	server.Tracer.Info("done waiting for cert rotation setup")
+	tracer.Info("done waiting for cert rotation setup")
 
 	// Register mutation webhook.
 	server.registerWebhook()
@@ -106,11 +108,10 @@ func (server *Server) setupControllers() {
 
 // registerWebhook - assigning Handler to the mutation webhook and register it.
 func (server *Server) registerWebhook() {
-	// Assign webhook handler
-	//webhookHandler := NewHandler(server.runOnDryMode, server.Instrumentation)
+	tracer := server.TracerProvider.GetTracer("registerWebhook")
 
 	//Register webhook
 	mutationWebhook := &admission.Webhook{Handler: server.Handler}
 	server.Manager.GetWebhookServer().Register(server.path, mutationWebhook)
-	server.Tracer.Info("Webhook registered successfully", "path", server.path)
+	tracer.Info("Webhook registered successfully", "path", server.path)
 }
