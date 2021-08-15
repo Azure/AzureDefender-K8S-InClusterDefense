@@ -27,12 +27,11 @@ func main() {
 	certRotatorConfig := getCertRotatorConfiguration()
 	handlerConfiguration := getHandlerConfiguration()
 	serverConfiguration := getServerConfiguration()
-	handlerConfiguration := gerHandlerConfiguration()
 
 	// Create Tivan's instrumentation
 	tivanInstrumentationResult, err := tivan.NewTivanInstrumentationResult(tivanInstrumentationConfiguration)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("main.NewTivanInstrumentationResult", err)
 	}
 
 	// Create factories
@@ -42,20 +41,24 @@ func main() {
 	}
 	metricSubmitterFactory := tivan.NewMetricSubmitterFactory(metricSubmitterConfiguration, &tivanInstrumentationResult.MetricSubmitter)
 	instrumentationProviderFactory := instrumentation.NewInstrumentationProviderFactory(instrumentationConfiguration, tracerFactory, metricSubmitterFactory)
-	managerFactory := webhook.NewManagerFactory(managerConfiguration, instrumentationProviderFactory)
-	certRotatorFactory := webhook.NewCertRotatorFactory(certRotatorConfig)
+	instrumentationProvider, err := instrumentationProviderFactory.CreateInstrumentationProvider()
+	if err != nil {
+		log.Fatal("main.instrumentationProviderFactory.CreateInstrumentationProvider", err)
+	}
 
+	managerFactory := webhook.NewManagerFactory(managerConfiguration, instrumentationProvider)
+	certRotatorFactory := webhook.NewCertRotatorFactory(certRotatorConfig)
 	azdSecInfoProvider := azdsecinfo.NewAzdSecInfoProvider()
-	handler := webhook.NewHandler(azdSecInfoProvider, handlerConfiguration, nil)
-	serverFactory := webhook.NewServerFactory(serverConfiguration, managerFactory, certRotatorFactory, handler, nil)
+	handler := webhook.NewHandler(azdSecInfoProvider, handlerConfiguration, instrumentationProvider)
+	serverFactory := webhook.NewServerFactory(serverConfiguration, managerFactory, certRotatorFactory, handler, instrumentationProvider)
 	// Create Server
 	server, err := serverFactory.CreateServer()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("main.serverFactory.CreateServer", err)
 	}
 	// Run server
 	if err = server.Run(); err != nil {
-		log.Fatal(err)
+		log.Fatal("main.server.Run", err)
 	}
 }
 
@@ -82,11 +85,6 @@ func getMetricSubmitterConfiguration() *tivan.MetricSubmitterConfiguration {
 	return &tivan.MetricSubmitterConfiguration{}
 }
 
-func gerHandlerConfiguration() *webhook.HandlerConfiguration {
-	return &webhook.HandlerConfiguration{
-		DryRun: false,
-	}
-}
 func getServerConfiguration() *webhook.ServerConfiguration {
 	return &webhook.ServerConfiguration{
 		Path:               "/mutate",

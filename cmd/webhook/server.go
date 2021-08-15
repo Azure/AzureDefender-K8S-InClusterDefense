@@ -1,9 +1,9 @@
 package webhook
 
 import (
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
-	"github.com/go-logr/logr"
 	"github.com/open-policy-agent/cert-controller/pkg/rotator"
 	"github.com/pkg/errors"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -36,18 +36,17 @@ type ServerConfiguration struct {
 }
 
 // NewServer Server constructor
-func NewServer(manager manager.Manager, logger logr.Logger, certRotator *rotator.CertRotator, webhookHandler admission.Handler, configuration *ServerConfiguration) *Server {
-
-	// Extract tracer and metricSubmitter from instrumentationProvider
-	tracerProvider := instrumentationProvider.GetTracerProvider("Server")
-	metricSubmitter := instrumentationProvider.GetMetricSubmitter()
-
+func NewServer(instrumentationProvider instrumentation.IInstrumentationProvider,
+	manager manager.Manager, certRotator *rotator.CertRotator,
+	webhookHandler admission.Handler,
+	configuration *ServerConfiguration) *Server {
 	return &Server{
-		manager:        manager,
-		logger:         logger,
-		certRotator:    certRotator,
-		webhookHandler: webhookHandler,
-		configuration:  configuration,
+		tracerProvider:  instrumentationProvider.GetTracerProvider("Handler"),
+		metricSubmitter: instrumentationProvider.GetMetricSubmitter(),
+		manager:         manager,
+		certRotator:     certRotator,
+		webhookHandler:  webhookHandler,
+		configuration:   configuration,
 	}
 }
 
@@ -56,9 +55,14 @@ func NewServer(manager manager.Manager, logger logr.Logger, certRotator *rotator
 // There are 2 controllers - cert-controller (https://github.com/open-policy-agent/cert-controller) that manages
 // the certificates of the server and the mutation webhook server that is registered with the AzDSecInfo Handler.
 func (server *Server) Run() (err error) {
+	tracer := server.tracerProvider.GetTracer("Run")
+
+	tracer.Info("Run() server")
+
 	// Init cert controller - gets a channel of setting up the controller.
 	if err = server.initCertController(); err != nil {
-		return errors.Wrap(err, "failed to initialize cert controller")
+		tracer.Error(err, "initCertController")
+		return errors.Wrap(err, "Server.Run - failed to initialize cert controller")
 	}
 
 	// Set up controllers.
@@ -66,7 +70,8 @@ func (server *Server) Run() (err error) {
 
 	// Start all registered controllers - webhook mutation as https server and cert controller.
 	if err := server.manager.Start(signals.SetupSignalHandler()); err != nil {
-		return errors.Wrap(err, "unable to start manager")
+		tracer.Error(err, "manager Start")
+		return errors.Wrap(err, "Server.Run unable to start manager")
 	}
 	return nil
 }
@@ -76,7 +81,9 @@ func (server *Server) Run() (err error) {
 func (server *Server) initCertController() (err error) {
 	tracer := server.tracerProvider.GetTracer("initCertController")
 
-	if server.configuration.enableCertRotator {
+	tracer.Info("initCertController")
+
+	if server.configuration.EnableCertRotation {
 		tracer.Info("setting up cert rotation")
 		// Add rotator - using cert-controller API //TODO Expiration of certificate?
 		if err := rotator.AddRotator(server.manager, server.certRotator); err != nil {
@@ -93,6 +100,8 @@ func (server *Server) initCertController() (err error) {
 func (server *Server) setupControllers() {
 	tracer := server.tracerProvider.GetTracer("setupControllers")
 
+	tracer.Info("setupControllers")
+
 	// Setup cert-controller - wait until the channel is finish.
 	tracer.Info("waiting for cert rotation setup")
 	<-server.certRotator.IsReady
@@ -105,6 +114,7 @@ func (server *Server) setupControllers() {
 // registerWebhook - assigning Handler to the mutation webhook and register it.
 func (server *Server) registerWebhook() {
 	tracer := server.tracerProvider.GetTracer("registerWebhook")
+	tracer.Info("registerWebhook")
 
 	//Register webhook
 	mutationWebhook := &admission.Webhook{Handler: server.webhookHandler}

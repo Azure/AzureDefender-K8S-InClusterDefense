@@ -19,9 +19,9 @@ type IManagerFactory interface {
 // ManagerFactory Factory to create manager.Manager from configuration
 type ManagerFactory struct {
 	// Configuration is the manager configuration
-	Configuration *ManagerConfiguration
-	// InstrumentationProviderFactory is the instrumentation factory for manager.
-	InstrumentationProviderFactory instrumentation.IInstrumentationProviderFactory
+	configuration *ManagerConfiguration
+	// InstrumentationProvider is the instrumentation factory for manager.
+	instrumentationProvider instrumentation.IInstrumentationProvider
 }
 
 // ManagerConfiguration Factory configuration to create a manager.Manager
@@ -33,10 +33,10 @@ type ManagerConfiguration struct {
 }
 
 // NewManagerFactory Constructor for ManagerFactory
-func NewManagerFactory(configuration *ManagerConfiguration, instrumentationProviderFactory instrumentation.IInstrumentationProviderFactory) (factory IManagerFactory) {
+func NewManagerFactory(configuration *ManagerConfiguration, instrumentationProvider instrumentation.IInstrumentationProvider) (factory IManagerFactory) {
 	return &ManagerFactory{
-		Configuration:                  configuration,
-		InstrumentationProviderFactory: instrumentationProviderFactory}
+		configuration:           configuration,
+		instrumentationProvider: instrumentationProvider}
 }
 
 // CreateManager Initialize the manager object of the service - this object is manages the creation and registration
@@ -63,11 +63,8 @@ func (factory *ManagerFactory) CreateManager() (mgr manager.Manager, err error) 
 
 // createOptions Creates manager options
 func (factory *ManagerFactory) createOptions() (options *manager.Options, err error) {
-	instrumentationProvider, err := factory.InstrumentationProviderFactory.CreateInstrumentationProvider()
-	if err != nil {
-		return nil, errors.Wrap(err, "unable to create instrumentationProvider for manager in createOptions")
-	}
-	tracerProvider := instrumentationProvider.GetTracerProvider("Manager")
+	// Add prefix init to cert controller mgr
+	tracerProvider := factory.instrumentationProvider.GetTracerProvider("Manager")
 	scheme := runtime.NewScheme()
 	if err = corev1.AddToScheme(scheme); err != nil {
 		return nil, errors.Wrap(err, "unable to add schema in createOptions")
@@ -76,8 +73,8 @@ func (factory *ManagerFactory) createOptions() (options *manager.Options, err er
 	options = &manager.Options{
 		Scheme:  scheme,
 		Logger:  tracerProvider.GetTracer("New"),
-		Port:    factory.Configuration.Port,
-		CertDir: factory.Configuration.CertDir,
+		Port:    factory.configuration.Port,
+		CertDir: factory.configuration.CertDir,
 	}
 	return options, nil
 }

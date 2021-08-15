@@ -5,6 +5,7 @@ import (
 	"context"
 	"log"
 
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
 
@@ -12,7 +13,6 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/cmd/webhook/annotations"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/azdsecinfo"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/azdsecinfo/contracts"
-	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 	"gomodules.xyz/jsonpatch/v2"
 	corev1 "k8s.io/api/core/v1"
@@ -44,18 +44,15 @@ type Handler struct {
 // HandlerConfiguration configuration for handler
 type HandlerConfiguration struct {
 	// DryRun is flag that if it's true, it handles request but doesn't mutate the pod spec.
-	dryRun bool
+	DryRun bool
 }
 
 // NewHandler Constructor for Handler
-func NewHandler(azdSecInfoProvider azdsecinfo.IAzdSecInfoProvider, configuration *HandlerConfiguration, logger logr.Logger) (handler *Handler) {
-
-	tracerProvider := provider.GetTracerProvider("Handler")
-	metricSubmitter := provider.GetMetricSubmitter()
+func NewHandler(azdSecInfoProvider azdsecinfo.IAzdSecInfoProvider, configuration *HandlerConfiguration, instrumentationProvider instrumentation.IInstrumentationProvider) (handler *Handler) {
 
 	return &Handler{
-		// TODO Update on real instrumentation
-		logger:             logger,
+		tracerProvider:     instrumentationProvider.GetTracerProvider("Handler"),
+		metricSubmitter:    instrumentationProvider.GetMetricSubmitter(),
 		azdSecInfoProvider: azdSecInfoProvider,
 		configuration:      configuration,
 	}
@@ -65,6 +62,7 @@ func NewHandler(azdSecInfoProvider azdsecinfo.IAzdSecInfoProvider, configuration
 func (handler *Handler) Handle(ctx context.Context, req admission.Request) admission.Response {
 	tracer := handler.tracerProvider.GetTracer("Handle")
 	if ctx == nil {
+		tracer.Error(errors.New("ctx received is nil"), "Handler.Handle")
 		// Exit with panic in case that the context is nil
 		log.Fatal("Can't handle requests when the context (ctx) is nil")
 	}
@@ -79,16 +77,16 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 
 		pod, err := admisionrequest.UnmarshalPod(&req)
 		if err != nil {
-			wrappedError := errors.Wrap(err, "Failed to admisionrequest.UnmarshalPod req")
+			wrappedError := errors.Wrap(err, "Handle handler failed to admisionrequest.UnmarshalPod req")
 			tracer.Error(wrappedError, "")
-			log.Fatal(err)
+			log.Fatal(wrappedError)
 		}
 
 		vulnerabilitySecAnnotationsPatch, err := handler.getPodContainersVulnerabilityScanInfoAnnotationsOperation(pod)
 		if err != nil {
-			wrappedError := errors.Wrap(err, "Failed to getPodContainersVulnerabilityScanInfoAnnotationsOperation for Pod")
+			wrappedError := errors.Wrap(err, "Handler.Handle Failed to getPodContainersVulnerabilityScanInfoAnnotationsOperation for Pod")
 			tracer.Error(wrappedError, "")
-			log.Fatal(err)
+			log.Fatal(wrappedError)
 		}
 
 		// Add to response patches
@@ -99,7 +97,7 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 	}
 
 	// In case of dryrun=true:  reset all patch operations
-	if handler.configuration.dryRun {
+	if handler.configuration.DryRun {
 		tracer.Info("not mutating resource, because dry-run=true")
 		patches = []jsonpatch.JsonPatchOperation{}
 	}
@@ -111,6 +109,7 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 }
 
 func (handler *Handler) getPodContainersVulnerabilityScanInfoAnnotationsOperation(pod *corev1.Pod) (*jsonpatch.JsonPatchOperation, error) {
+	tracer := handler.tracerProvider.GetTracer("getPodContainersVulnerabilityScanInfoAnnotationsOperation")
 	vulnSecInfoContainers := []*contracts.ContainerVulnerabilityScanInfo{}
 	for _, container := range pod.Spec.InitContainers {
 
@@ -118,7 +117,7 @@ func (handler *Handler) getPodContainersVulnerabilityScanInfoAnnotationsOperatio
 		vulnerabilitySecInfo, err := handler.azdSecInfoProvider.GetContainerVulnerabilityScanInfo(&container)
 		if err != nil {
 			wrappedError := errors.Wrap(err, "Handler failed to GetContainersVulnerabilityScanInfo Init containers")
-			handler.logger.Error(wrappedError, "")
+			tracer.Error(wrappedError, "")
 			return nil, wrappedError
 		}
 
@@ -132,7 +131,7 @@ func (handler *Handler) getPodContainersVulnerabilityScanInfoAnnotationsOperatio
 		vulnerabilitySecInfo, err := handler.azdSecInfoProvider.GetContainerVulnerabilityScanInfo(&container)
 		if err != nil {
 			wrappedError := errors.Wrap(err, "Handler failed to GetContainersVulnerabilityScanInfo Init containers")
-			handler.logger.Error(wrappedError, "")
+			tracer.Error(wrappedError, "")
 			return nil, wrappedError
 		}
 
@@ -144,7 +143,7 @@ func (handler *Handler) getPodContainersVulnerabilityScanInfoAnnotationsOperatio
 	vulnerabilitySecAnnotationsPatch, err := annotations.CreateContainersVulnerabilityScanAnnotationPatchAdd(vulnSecInfoContainers)
 	if err != nil {
 		wrappedError := errors.Wrap(err, "Handler failed to GetContainersVulnerabilityScanInfo")
-		handler.logger.Error(wrappedError, "Handler.AzdSecInfoProvider.GetContainersVulnerabilityScanInfo")
+		tracer.Error(wrappedError, "Handler.AzdSecInfoProvider.GetContainersVulnerabilityScanInfo")
 		return nil, wrappedError
 	}
 
