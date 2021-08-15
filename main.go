@@ -1,9 +1,11 @@
 package main
 
 import (
-	"github.com/Azure/AzureDefender-K8S-InClusterDefense/cmd/webhook"
-	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/util"
 	"log"
+
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/cmd/webhook"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/azdsecinfo"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/util"
 )
 
 // main is the entrypoint to AzureDefenderInClusterDefense .
@@ -12,11 +14,15 @@ func main() {
 	managerConfiguration := getManagerConfiguration()
 	certRotatorConfig := getCertRotatorConfiguration()
 	serverConfiguration := getServerConfiguration()
+	handlerConfiguration := gerHandlerConfiguration()
 
 	// Create factories
 	managerFactory := webhook.NewManagerFactory(managerConfiguration, nil)
 	certRotatorFactory := webhook.NewCertRotatorFactory(certRotatorConfig)
-	serverFactory := webhook.NewServerFactory(serverConfiguration, managerFactory, certRotatorFactory, nil)
+
+	azdSecInfoProvider := azdsecinfo.NewAzdSecInfoProvider()
+	handler := webhook.NewHandler(azdSecInfoProvider, handlerConfiguration, nil)
+	serverFactory := webhook.NewServerFactory(serverConfiguration, managerFactory, certRotatorFactory, handler, nil)
 	// Create Server
 	server, err := serverFactory.CreateServer()
 	if err != nil {
@@ -29,15 +35,19 @@ func main() {
 }
 
 //TODO All three methods below will be deleted once Or finishes the configuration
-func getServerConfiguration() (configuration *webhook.ServerConfiguration) {
+func gerHandlerConfiguration() *webhook.HandlerConfiguration {
+	return &webhook.HandlerConfiguration{
+		DryRun: false,
+	}
+}
+func getServerConfiguration() *webhook.ServerConfiguration {
 	return &webhook.ServerConfiguration{
 		Path:               "/mutate",
-		RunOnDryRunMode:    false,
 		EnableCertRotation: true,
 	}
 }
 
-func getCertRotatorConfiguration() (configuration *webhook.CertRotatorConfiguration) {
+func getCertRotatorConfiguration() *webhook.CertRotatorConfiguration {
 	return &webhook.CertRotatorConfiguration{
 		Namespace:      util.GetNamespace(),
 		SecretName:     "azure-defender-proxy-cert",                           // matches the Secret name
@@ -49,7 +59,7 @@ func getCertRotatorConfiguration() (configuration *webhook.CertRotatorConfigurat
 	}
 }
 
-func getManagerConfiguration() (configuration *webhook.ManagerConfiguration) {
+func getManagerConfiguration() *webhook.ManagerConfiguration {
 	return &webhook.ManagerConfiguration{
 		Port:    8000,
 		CertDir: "/certs",
