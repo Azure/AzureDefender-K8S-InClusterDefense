@@ -22,12 +22,12 @@ const (
 // Handler implements the admission.Handle interface that each webhook have to implement.
 // Handler handles with all admission requests according to the MutatingWebhookConfiguration.
 type Handler struct {
-	// DryRun is flag that if it's true, it handles request but doesn't mutate the pod spec.
-	DryRun bool
-	// TracerProvider of the handler
-	TracerProvider trace.ITracerProvider
+	// dryRun is flag that if it's true, it handles request but doesn't mutate the pod spec.
+	dryRun bool
+	// tracerProvider of the handler
+	tracerProvider trace.ITracerProvider
 	// MetricSubmitter
-	MetricSubmitter metric.IMetricSubmitter
+	metricSubmitter metric.IMetricSubmitter
 }
 
 // NewHandler Constructor for Handler
@@ -35,15 +35,15 @@ func NewHandler(runOnDryRun bool, provider instrumentation.IInstrumentationProvi
 	tracerProvider := provider.GetTracerProvider("Handler")
 	metricSubmitter := provider.GetMetricSubmitter()
 	return &Handler{
-		TracerProvider:  tracerProvider,
-		MetricSubmitter: metricSubmitter,
-		DryRun:          runOnDryRun,
+		tracerProvider:  tracerProvider,
+		metricSubmitter: metricSubmitter,
+		dryRun:          runOnDryRun,
 	}
 }
 
 // Handle processes the AdmissionRequest by invoking the underlying function.
 func (handler *Handler) Handle(ctx context.Context, req admission.Request) admission.Response {
-	tracer := handler.TracerProvider.GetTracer("Handle")
+	tracer := handler.tracerProvider.GetTracer("Handle")
 	if ctx == nil {
 		// Exit with panic in case that the context is nil
 		panic("Can't handle requests when the context (ctx) is nil")
@@ -59,7 +59,7 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 	//TODO invoke AzDSecInfo and patch the result.
 
 	// In case of dryrun=true:  reset all patch operations
-	if handler.DryRun {
+	if handler.dryRun {
 		tracer.Info("not mutating resource, because dry-run=true")
 		patches = []jsonpatch.JsonPatchOperation{}
 	}

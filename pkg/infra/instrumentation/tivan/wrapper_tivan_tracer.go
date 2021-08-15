@@ -11,8 +11,8 @@ import (
 
 // WrapperTivanTracer implementation of ITracer interface - holds an Entry object in order to delegate Tivan tracer methods.
 type WrapperTivanTracer struct {
-	// Entry is logrus.Entry that Tivan use in their logger so we wrap it.
-	Entry *logrus.Entry
+	// entry is logrus.Entry that Tivan use in their logger so we wrap it.
+	entry *logrus.Entry
 	//context indicates the context of the log.
 	context string
 	//level is the tracer level (e.g. DEBUG,INFO,WARN, etc.)
@@ -24,7 +24,7 @@ type WrapperTivanTracer struct {
 // NewWrapperTivanTracer Ctor of tracer
 func NewWrapperTivanTracer(entry *logrus.Entry, context string, level zapcore.Level, encoder trace.Encoder) (tracer *WrapperTivanTracer) {
 	return &WrapperTivanTracer{
-		Entry:   entry,
+		entry:   entry,
 		context: context,
 		level:   level,
 		encoder: encoder,
@@ -38,15 +38,15 @@ func (tracer *WrapperTivanTracer) Info(msg string, keysAndValues ...interface{})
 		return
 	}
 	if len(keysAndValues)%2 == 1 {
-		tracer.Entry.Error("Error: len of keysAndValues should be even")
+		tracer.entry.Error("Error: len of keysAndValues should be even")
 		return
 	}
 
 	msgWithContext := tracer.concatenateContextToMsg(msg)
 	if keysAndValues != nil && len(keysAndValues) > 0 {
-		tracer.Entry.Info(msgWithContext, keysAndValues)
+		tracer.entry.Info(msgWithContext, keysAndValues)
 	} else {
-		tracer.Entry.Info(msgWithContext)
+		tracer.entry.Info(msgWithContext)
 	}
 }
 
@@ -57,15 +57,15 @@ func (tracer *WrapperTivanTracer) Error(err error, msg string, keysAndValues ...
 		return
 	}
 	if len(keysAndValues)%2 == 1 {
-		tracer.Entry.Error("Error: len of keysAndValues should be even")
+		tracer.entry.Error("Error: len of keysAndValues should be even")
 		return
 	}
 
 	msgWithContext := tracer.concatenateContextToMsg(msg)
 	if keysAndValues != nil && len(keysAndValues) > 0 {
-		tracer.Entry.Error(msgWithContext, err, keysAndValues)
+		tracer.entry.Error(msgWithContext, err, keysAndValues)
 	} else {
-		tracer.Entry.Error(msgWithContext, err)
+		tracer.entry.Error(msgWithContext, err)
 	}
 }
 
@@ -141,5 +141,5 @@ func (tracer *WrapperTivanTracer) WithValues(keysAndValues ...interface{}) logr.
 //delegate this method using Tracer.Entry data member in order to implement logr.Logger interface
 //				******* DOESN'T DO ANYTHING - RETURN THE SAME TRACER *******
 func (tracer *WrapperTivanTracer) Enabled() bool {
-	return tracer.Entry != nil
+	return tracer.entry != nil
 }

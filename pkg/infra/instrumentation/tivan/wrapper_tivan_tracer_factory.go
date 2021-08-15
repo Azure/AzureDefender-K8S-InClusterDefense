@@ -11,20 +11,20 @@ type TracerFactory struct {
 	// configuration is the configuration of the tracer.
 	configuration *trace.TracerConfiguration
 	// Entry is needed for Tivan's instrumentation
-	Entry *log.Entry
+	entry *log.Entry
 }
 
 // NewTracerFactory creates new TracerFactory instance.
 func NewTracerFactory(configuration *trace.TracerConfiguration, entry *log.Entry) trace.ITracerFactory {
 	return &TracerFactory{
 		configuration: configuration,
-		Entry:         entry,
+		entry:         entry,
 	}
 }
 
 // CreateTracer Creates tracer
 func (factory *TracerFactory) CreateTracer() (tracer trace.ITracer) {
-	tracer = NewWrapperTivanTracer(factory.Entry, factory.configuration.DefaultContext, factory.configuration.TracerLevel, trace.NONE)
+	tracer = NewWrapperTivanTracer(factory.entry, factory.configuration.DefaultContext, factory.configuration.TracerLevel, trace.NONE)
 
 	// Register the tracer as the main trace - without this, loggers won't be initialized (e.g crLog at cert-controller)
 	ctrl.SetLogger(tracer)

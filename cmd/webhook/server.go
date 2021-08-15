@@ -13,12 +13,12 @@ import (
 
 // Server this struct is responsible for setting up azdproxy server in the cluster.
 type Server struct {
-	// TracerProvider is the tracer provider of the server.
-	TracerProvider trace.ITracerProvider
-	// MetricSubmitter is the metric submitter of the server
-	MetricSubmitter metric.IMetricSubmitter
-	// Manager is the manager.Manager of the server - it is registers the server.
-	Manager manager.Manager
+	// tracerProvider is the tracer provider of the server.
+	tracerProvider trace.ITracerProvider
+	// metricSubmitter is the metric submitter of the server
+	metricSubmitter metric.IMetricSubmitter
+	// manager is the manager.Manager of the server - it is registers the server.
+	manager manager.Manager
 	//certRotator is the cert rotator which manage the certificates of the server.
 	certRotator *rotator.CertRotator
 	// enableCertRotator is data member which should indicate if we want to enable the cert rotator.
@@ -27,8 +27,8 @@ type Server struct {
 	path string
 	// runOnDryMode indicates if we want that the handler will mutate the requests or just audit them
 	runOnDryMode bool
-	// The handler of the server
-	Handler admission.Handler
+	// handler is The handler of the server
+	handler admission.Handler
 }
 
 func NewServer(
@@ -43,14 +43,14 @@ func NewServer(
 	tracerProvider := instrumentationProvider.GetTracerProvider("Server")
 	metricSubmitter := instrumentationProvider.GetMetricSubmitter()
 	server = &Server{
-		TracerProvider:    tracerProvider,
-		MetricSubmitter:   metricSubmitter,
-		Manager:           mgr,
+		tracerProvider:    tracerProvider,
+		metricSubmitter:   metricSubmitter,
+		manager:           mgr,
 		certRotator:       certRotator,
 		enableCertRotator: enableCertRotator,
 		path:              path,
 		runOnDryMode:      runOnDryRunMode,
-		Handler:           handler,
+		handler:           handler,
 	}
 	return server
 }
@@ -69,7 +69,7 @@ func (server *Server) Run() (err error) {
 	go server.setupControllers()
 
 	// Start all registered controllers - webhook mutation as https server and cert controller.
-	if err := server.Manager.Start(signals.SetupSignalHandler()); err != nil {
+	if err := server.manager.Start(signals.SetupSignalHandler()); err != nil {
 		return errors.Wrap(err, "unable to start manager")
 	}
 	return nil
@@ -78,12 +78,12 @@ func (server *Server) Run() (err error) {
 //initCertController initialize the cert-controller.
 // If disableCertRotation is true, it adds new rotator using cert-controller library.
 func (server *Server) initCertController() (err error) {
-	tracer := server.TracerProvider.GetTracer("initCertController")
+	tracer := server.tracerProvider.GetTracer("initCertController")
 
 	if server.enableCertRotator {
 		tracer.Info("setting up cert rotation")
 		// Add rotator - using cert-controller API //TODO Expiration of certificate?
-		if err := rotator.AddRotator(server.Manager, server.certRotator); err != nil {
+		if err := rotator.AddRotator(server.manager, server.certRotator); err != nil {
 			return errors.Wrap(err, "unable to setup cert rotation")
 		}
 	} else {
@@ -95,7 +95,7 @@ func (server *Server) initCertController() (err error) {
 
 // setupControllers is setting up all controllers of the server - cert-controller and webhook.
 func (server *Server) setupControllers() {
-	tracer := server.TracerProvider.GetTracer("setupControllers")
+	tracer := server.tracerProvider.GetTracer("setupControllers")
 
 	// Setup cert-controller - wait until the channel is finish.
 	tracer.Info("waiting for cert rotation setup")
@@ -108,10 +108,10 @@ func (server *Server) setupControllers() {
 
 // registerWebhook - assigning Handler to the mutation webhook and register it.
 func (server *Server) registerWebhook() {
-	tracer := server.TracerProvider.GetTracer("registerWebhook")
+	tracer := server.tracerProvider.GetTracer("registerWebhook")
 
 	//Register webhook
-	mutationWebhook := &admission.Webhook{Handler: server.Handler}
-	server.Manager.GetWebhookServer().Register(server.path, mutationWebhook)
+	mutationWebhook := &admission.Webhook{Handler: server.handler}
+	server.manager.GetWebhookServer().Register(server.path, mutationWebhook)
 	tracer.Info("Webhook registered successfully", "path", server.path)
 }
