@@ -4,6 +4,7 @@ package webhook
 import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/pkg/errors"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
 // IServerFactory factory to create server
@@ -22,8 +23,6 @@ type ServerFactory struct {
 	managerFactory IManagerFactory
 	// CertRotatorFactory is the factory for cert rotator
 	certRotatorFactory ICertRotatorFactory
-	// handlerFactory is the handler factory for the server
-	handlerFactory IHandlerFactory
 }
 
 // ServerConfiguration Factory configuration to create a server.
@@ -49,6 +48,18 @@ func NewServerFactory(
 		certRotatorFactory:             certRotatorFactory,
 		instrumentationProviderFactory: instrumentationFactory,
 		handlerFactory:                 handlerFactory,
+	// Handler to provide to server
+	webhookHandler admission.Handler
+}
+
+// NewServerFactory constructor for ServerFactory
+func NewServerFactory(configuration *ServerConfiguration, managerFactory IManagerFactory, certRotatorFactory ICertRotatorFactory, webhookHandler admission.Handler, logger logr.Logger) (factory IServerFactory) {
+	return &ServerFactory{
+		configuration:      configuration,
+		managerFactory:     managerFactory,
+		certRotatorFactory: certRotatorFactory,
+		webhookHandler:     webhookHandler,
+		logger:             logger,
 	}
 }
 
@@ -65,16 +76,11 @@ func (factory *ServerFactory) CreateServer() (server *Server, err error) {
 	// Create manager using IManagerFactory
 	mgr, err := factory.managerFactory.CreateManager()
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create the manager of the server")
-	}
-
-	// Create handler using IHandlerFactory
-	handler, err := factory.handlerFactory.CreateHandler()
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to create server")
+		return nil, errors.Wrap(err, "unable to create Manager for server")
 	}
 
 	// Create Server
-	server = NewServer(instrumentationProvider, mgr, certRotator, factory.configuration.EnableCertRotation, factory.configuration.RunOnDryRunMode, factory.configuration.Path, handler)
+	server = NewServer(mgr, factory.logger, certRotator, factory.webhookHandler, factory.configuration)
+
 	return server, nil
 }

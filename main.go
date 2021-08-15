@@ -1,12 +1,14 @@
 package main
 
 import (
+	"log"
+
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/cmd/webhook"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/azdsecinfo"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/tivan"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/util"
-	"log"
 )
 
 type mainConfiguration struct {
@@ -25,6 +27,7 @@ func main() {
 	certRotatorConfig := getCertRotatorConfiguration()
 	handlerConfiguration := getHandlerConfiguration()
 	serverConfiguration := getServerConfiguration()
+	handlerConfiguration := gerHandlerConfiguration()
 
 	// Create Tivan's instrumentation
 	tivanInstrumentationResult, err := tivan.NewTivanInstrumentationResult(tivanInstrumentationConfiguration)
@@ -41,9 +44,10 @@ func main() {
 	instrumentationProviderFactory := instrumentation.NewInstrumentationProviderFactory(instrumentationConfiguration, tracerFactory, metricSubmitterFactory)
 	managerFactory := webhook.NewManagerFactory(managerConfiguration, instrumentationProviderFactory)
 	certRotatorFactory := webhook.NewCertRotatorFactory(certRotatorConfig)
-	handlerFactory := webhook.NewHandlerFactory(handlerConfiguration, instrumentationProviderFactory)
-	serverFactory := webhook.NewServerFactory(serverConfiguration, managerFactory, certRotatorFactory, instrumentationProviderFactory, handlerFactory)
 
+	azdSecInfoProvider := azdsecinfo.NewAzdSecInfoProvider()
+	handler := webhook.NewHandler(azdSecInfoProvider, handlerConfiguration, nil)
+	serverFactory := webhook.NewServerFactory(serverConfiguration, managerFactory, certRotatorFactory, handler, nil)
 	// Create Server
 	server, err := serverFactory.CreateServer()
 	if err != nil {
@@ -78,15 +82,19 @@ func getMetricSubmitterConfiguration() *tivan.MetricSubmitterConfiguration {
 	return &tivan.MetricSubmitterConfiguration{}
 }
 
-func getServerConfiguration() (configuration *webhook.ServerConfiguration) {
+func gerHandlerConfiguration() *webhook.HandlerConfiguration {
+	return &webhook.HandlerConfiguration{
+		DryRun: false,
+	}
+}
+func getServerConfiguration() *webhook.ServerConfiguration {
 	return &webhook.ServerConfiguration{
 		Path:               "/mutate",
-		RunOnDryRunMode:    false,
 		EnableCertRotation: true,
 	}
 }
 
-func getCertRotatorConfiguration() (configuration *webhook.CertRotatorConfiguration) {
+func getCertRotatorConfiguration() *webhook.CertRotatorConfiguration {
 	return &webhook.CertRotatorConfiguration{
 		Namespace:      util.GetNamespace(),
 		SecretName:     "azure-defender-proxy-cert",                           // matches the Secret name
@@ -98,7 +106,7 @@ func getCertRotatorConfiguration() (configuration *webhook.CertRotatorConfigurat
 	}
 }
 
-func getManagerConfiguration() (configuration *webhook.ManagerConfiguration) {
+func getManagerConfiguration() *webhook.ManagerConfiguration {
 	return &webhook.ManagerConfiguration{
 		Port:    8000,
 		CertDir: "/certs",

@@ -1,7 +1,5 @@
 {
-    "configurations": [ 
-        
-        
+    "configurations": [
         {
             "name": "Launch file",
             "type": "go",
@@ -26,6 +24,17 @@
             "request": "launch",
             "mode": "auto",
             "program": "${workspaceFolder}"
+        },
+        {
+            "name": "Kubernetes: Run/Debug - azuredefender",
+            "type": "cloudcode.kubernetes",
+            "request": "launch",
+            "skaffoldConfig": "${workspaceFolder}/skaffold.yaml",
+            "profile": "azuredefender",
+            "watch": false,
+            "cleanUp": true,
+            "portForward": true,
+            "imageRegistry": "blockreg.azurecr.io/azdproxy-image"
         }
     ]
 }

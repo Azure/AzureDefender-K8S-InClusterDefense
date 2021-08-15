@@ -1,9 +1,9 @@
 package webhook
 
 import (
-	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
+	"github.com/go-logr/logr"
 	"github.com/open-policy-agent/cert-controller/pkg/rotator"
 	"github.com/pkg/errors"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -21,38 +21,34 @@ type Server struct {
 	manager manager.Manager
 	//certRotator is the cert rotator which manage the certificates of the server.
 	certRotator *rotator.CertRotator
-	// enableCertRotator is data member which should indicate if we want to enable the cert rotator.
-	enableCertRotator bool
-	// path is the path that the server will listen to.
-	path string
-	// runOnDryMode indicates if we want that the handler will mutate the requests or just audit them
-	runOnDryMode bool
-	// handler is The handler of the server
-	handler admission.Handler
+	// webhookHandler Server admission webhook handler
+	webhookHandler admission.Handler
+	// configuration  - Server configuration
+	configuration *ServerConfiguration
 }
 
-func NewServer(
-	instrumentationProvider instrumentation.IInstrumentationProvider,
-	mgr manager.Manager,
-	certRotator *rotator.CertRotator,
-	enableCertRotator bool,
-	runOnDryRunMode bool,
-	path string,
-	handler admission.Handler) (server *Server) {
+// ServerConfiguration configuration
+type ServerConfiguration struct {
+	// Path matches the MutatingWebhookConfiguration clientConfig path
+	Path string
+	// EnableCertRotation is flag that indicates whether cert rotator should run
+	EnableCertRotation bool
+}
+
+// NewServer Server constructor
+func NewServer(manager manager.Manager, logger logr.Logger, certRotator *rotator.CertRotator, webhookHandler admission.Handler, configuration *ServerConfiguration) *Server {
+
 	// Extract tracer and metricSubmitter from instrumentationProvider
 	tracerProvider := instrumentationProvider.GetTracerProvider("Server")
 	metricSubmitter := instrumentationProvider.GetMetricSubmitter()
-	server = &Server{
-		tracerProvider:    tracerProvider,
-		metricSubmitter:   metricSubmitter,
-		manager:           mgr,
-		certRotator:       certRotator,
-		enableCertRotator: enableCertRotator,
-		path:              path,
-		runOnDryMode:      runOnDryRunMode,
-		handler:           handler,
+
+	return &Server{
+		manager:        manager,
+		logger:         logger,
+		certRotator:    certRotator,
+		webhookHandler: webhookHandler,
+		configuration:  configuration,
 	}
-	return server
 }
 
 // Run Starting server - this is function is called from the main (entrypoint of azdproxy)
@@ -80,7 +76,7 @@ func (server *Server) Run() (err error) {
 func (server *Server) initCertController() (err error) {
 	tracer := server.tracerProvider.GetTracer("initCertController")
 
-	if server.enableCertRotator {
+	if server.configuration.enableCertRotator {
 		tracer.Info("setting up cert rotation")
 		// Add rotator - using cert-controller API //TODO Expiration of certificate?
 		if err := rotator.AddRotator(server.manager, server.certRotator); err != nil {
@@ -111,7 +107,7 @@ func (server *Server) registerWebhook() {
 	tracer := server.tracerProvider.GetTracer("registerWebhook")
 
 	//Register webhook
-	mutationWebhook := &admission.Webhook{Handler: server.handler}
-	server.manager.GetWebhookServer().Register(server.path, mutationWebhook)
-	tracer.Info("Webhook registered successfully", "path", server.path)
+	mutationWebhook := &admission.Webhook{Handler: server.webhookHandler}
+	server.manager.GetWebhookServer().Register(server.configuration.Path, mutationWebhook)
+	tracer.Info("Webhook registered successfully", "path", server.configuration.Path)
 }
