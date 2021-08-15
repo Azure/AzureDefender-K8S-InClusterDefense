@@ -3,7 +3,6 @@ package webhook
 
 import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
-	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
@@ -16,44 +15,47 @@ type IServerFactory interface {
 
 // ServerFactory Factory to create a Server using configuration and manager.
 type ServerFactory struct {
-	// Configuration to provide to server
+	// configuration is the server configuration
 	configuration *ServerConfiguration
-	// Logger is the logger of the server
-	logger logr.Logger
+	// instrumentationProvider
+	instrumentationProvider instrumentation.IInstrumentationProvider
 	// ManagerFactory is the factory for manager
 	managerFactory IManagerFactory
 	// CertRotatorFactory is the factory for cert rotator
 	certRotatorFactory ICertRotatorFactory
-	// Handler to provide to server
+	// webhookHandler
 	webhookHandler admission.Handler
 }
 
 // NewServerFactory constructor for ServerFactory
-func NewServerFactory(configuration *ServerConfiguration, managerFactory IManagerFactory, certRotatorFactory ICertRotatorFactory, webhookHandler admission.Handler, logger logr.Logger) (factory IServerFactory) {
+func NewServerFactory(configuration *ServerConfiguration,
+	managerFactory IManagerFactory,
+	certRotatorFactory ICertRotatorFactory,
+	webhookHandler admission.Handler,
+	instrumentationProvider instrumentation.IInstrumentationProvider) (factory IServerFactory) {
 	return &ServerFactory{
-		configuration:      configuration,
-		managerFactory:     managerFactory,
-		certRotatorFactory: certRotatorFactory,
-		webhookHandler:     webhookHandler,
-		logger:             logger,
+		configuration:           configuration,
+		managerFactory:          managerFactory,
+		certRotatorFactory:      certRotatorFactory,
+		webhookHandler:          webhookHandler,
+		instrumentationProvider: instrumentationProvider,
 	}
 }
 
 // CreateServer creates new server
 func (factory *ServerFactory) CreateServer() (server *Server, err error) {
-	// Initialize logger.
-	// TODO will be replaced in the instrumentation PR.
-	instrumentation.InitLogger(factory.logger)
+
 	// Create CertRotator using ICertRotatorFactory
 	certRotator := factory.certRotatorFactory.CreateCertRotator()
-	// Create manager
+
+	// Create manager using IManagerFactory
 	mgr, err := factory.managerFactory.CreateManager()
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to create Manager for server")
 	}
 
 	// Create Server
-	server = NewServer(mgr, factory.logger, certRotator, factory.webhookHandler, factory.configuration)
+	server = NewServer(factory.instrumentationProvider, mgr, certRotator, factory.webhookHandler, factory.configuration)
 
 	return server, nil
 }

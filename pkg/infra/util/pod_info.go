@@ -3,6 +3,8 @@ package util
 
 import "os"
 
+// TODO Delete this when Or finishes to create the configuration
+
 // GetNamespace this function checks if there is POD_NAMESPACE as env variable, and if not, returns the default ns - kube-system
 func GetNamespace() string {
 	//TODO Maybe fetch this var from config-map/app parameter (performance)

@@ -2,6 +2,7 @@ package admisionrequest
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/pkg/errors"
 
@@ -21,7 +22,7 @@ var (
 )
 
 // UnmarshalPod unmarshals the raw object in the AdmissionRequest into a Pod.
-func UnmarshalPod(r *admission.Request) (pod *corev1.Pod, err error) {
+func UnmarshalPod(r *admission.Request) (*corev1.Pod, error) {
 	if r == nil {
 		return nil, _errInvalidAdmission
 	}
@@ -33,8 +34,12 @@ func UnmarshalPod(r *admission.Request) (pod *corev1.Pod, err error) {
 		return nil, _errUnexpectedResource
 	}
 
-	if err := json.Unmarshal(r.Object.Raw, pod); err != nil {
-		return nil, errors.Wrap(err, "json.Unmarshal failed in unmarshaling pod")
+	pod := new(corev1.Pod)
+
+	err := json.Unmarshal(r.Object.Raw, &pod)
+	if err != nil {
+		fmt.Print(err)
+		return nil, errors.Wrap(err, "extractor.UnmarshalPod: failed in json.Unmarshal")
 	}
 	return pod, nil
 }
