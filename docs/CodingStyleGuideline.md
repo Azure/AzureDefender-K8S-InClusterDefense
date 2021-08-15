@@ -43,6 +43,19 @@ A rule of thumb is to put each struct/interface in different go file except:
   the same file.
 - There are structs that only one struct use them - e.g. struct A probably will be in the same file with ConfigurationA
 
+**Files names**:
+
+- Files should be called according to the main struct in the file:
+    ```go
+        // File name is server.go
+        type Server strcut{//...}
+    ```
+- Name should be written in lowercase, and use underscore as a separator between words
+    ```go
+      // File name is server_configuration.go
+      type ServerConfiguration strcut{//...}
+  ```
+
 ### File Structure
 
 **File structure should be in the following order:**
