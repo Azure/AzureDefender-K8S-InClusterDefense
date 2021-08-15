@@ -1,0 +1,22 @@
+# A static app's configuration file. Used for local debugging.
+webhook:
+  CertRotatorConfiguration:
+    SecretName: "azure-defender-proxy-cert"
+    ServiceName: "azure-defender-proxy-service"
+    WebhookName: "azure-defender-proxy-mutating-webhook-configuration"
+    CaName: "azure-defender-proxy-ca"
+    CaOrganization: "azure-defender-proxy"
+    CertDir: "/certs"
+    namespace: "kube-system"
+  ManagerConfiguration:
+    Port: 8000
+    CertDir: "/certs"
+  ServerConfiguration:
+    Path: "/mutate"
+    RunOnDryRunMode: false
+    EnableCertRotation: true
+instrumentation:
+  LoggerCondifuration:
+    logLevel: "INFO"
+    logLevelKey: "level"
+    logLevelEncoder: "lower"

@@ -1,0 +1,34 @@
+# Default Configurations for AzureDefender-K8S-InClusterDefense.
+# This is a ConfigMap file.
+# Declare variables to be passed into configurations object of the project's files.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-config
+  namespace: "kube-system"
+# Application's configuration settings. Arranged by project's filesystem hierarchy
+data:
+  AppConfig.yaml: |-
+    webhook:
+      CertRotatorConfiguration:
+        SecretName: {{.Values.AppConfig.webhook.CertRotatorConfiguration.SecretName | quote}},
+        ServiceName: {{.Values.AppConfig.webhook.CertRotatorConfiguration.ServiceName | quote}},
+        WebhookName: {{.Values.AppConfig.webhook.CertRotatorConfiguration.WebhookName | quote}},
+        CaName: {{.Values.AppConfig.webhook.CertRotatorConfiguration.CaName | quote}},
+        CaOrganization: {{.Values.AppConfig.webhook.CertRotatorConfiguration.CaOrganization | quote}},
+        CertDir: {{.Values.AppConfig.webhook.CertRotatorConfiguration.CertDir | quote}},
+        Namespace: {{.Release.Namespace | quote}}
+      ManagerConfiguration:
+        Port: {{.Values.AppConfig.webhook.ManagerConfiguration.Port}},
+        CertDir: {{.Values.AppConfig.webhook.ManagerConfiguration.CertDir | quote}}
+      ServerConfiguration:
+        Path: {{.Values.AppConfig.webhook.ServerConfiguration.Path | quote}},
+        RunOnDryRunMode: {{.Values.AppConfig.webhook.ServerConfiguration.RunOnDryRunMode}},
+        EnableCertRotation: {{.Values.AppConfig.webhook.ServerConfiguration.EnableCertRotation}}
+    pkg:
+      infra:
+        instrumentation:
+          logger:
+            logLevel: {{ .Values.AppConfig.instrumentation.LoggerCondifuration.logLevel | quote}},
+            logLevelKey: {{.Values.AppConfig.instrumentation.LoggerCondifuration.logLevelKey | quote}},
+            logLevelEncoder: {{.Values.AppConfig.instrumentation.LoggerCondifuration.logLevelEncoder | quote}}
