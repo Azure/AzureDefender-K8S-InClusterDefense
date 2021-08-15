@@ -49,7 +49,7 @@ func (factory *ServerFactory) CreateServer() (server *Server, err error) {
 	// Create manager
 	mgr, err := factory.managerFactory.CreateManager()
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to create ,anager for server")
+		return nil, errors.Wrap(err, "unable to create Manager for server")
 	}
 
 	// Create Server
