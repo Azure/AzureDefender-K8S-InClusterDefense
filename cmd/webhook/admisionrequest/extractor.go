@@ -10,31 +10,31 @@ import (
 )
 
 const (
+	// _podKind kind of the pod request in admission review
 	_podKind = "Pod"
 )
 
 var (
-	errObjectNotFound     = errors.New("admisionrequest.extractor: request did not include object")
-	errUnexpectedResource = errors.New("admisionrequest.extractor: expected pod resource")
-	errInvalidAdmission   = errors.New("admisionrequest.extractor: admission request was nil")
+	_errObjectNotFound     = errors.New("admisionrequest.extractor: request did not include object")
+	_errUnexpectedResource = errors.New("admisionrequest.extractor: expected pod resource")
+	_errInvalidAdmission   = errors.New("admisionrequest.extractor: admission request was nil")
 )
 
 // UnmarshalPod unmarshals the raw object in the AdmissionRequest into a Pod.
-func UnmarshalPod(r *admission.Request) (*corev1.Pod, error) {
+func UnmarshalPod(r *admission.Request) (pod *corev1.Pod, err error) {
 	if r == nil {
-		return nil, errInvalidAdmission
+		return nil, _errInvalidAdmission
 	}
 	if len(r.Object.Raw) == 0 {
-		return nil, errObjectNotFound
+		return nil, _errObjectNotFound
 	}
 	if r.Kind.Kind != _podKind {
-		// If the ValidatingWebhookConfiguration was given additional resource scopes.
-		return nil, errUnexpectedResource
+		// If the MutatingWebhookConfiguration was given additional resource scopes.
+		return nil, _errUnexpectedResource
 	}
 
-	var pod corev1.Pod
-	if err := json.Unmarshal(r.Object.Raw, &pod); err != nil {
+	if err := json.Unmarshal(r.Object.Raw, pod); err != nil {
 		return nil, errors.Wrap(err, "json.Unmarshal failed in unmarshaling pod")
 	}
-	return &pod, nil
+	return pod, nil
 }
