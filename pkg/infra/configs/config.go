@@ -43,6 +43,12 @@ func (config *Configuration) Unmarshal(runTimeConfig interface{}) (err error){
 	return err
 }
 
+// AllSettings merges all settings and returns them as a map[string]interface{}
+// A wrapper method for viper.AllSettings method
+func (config *Configuration) AllSettings() map[string] interface{} {
+	return config.viperConfig.AllSettings()
+}
+
 // BindEnvVariable binds a key to env variable.
 // If env variable doesn't exist bind the key to a default value (if given).
 // The method uses os.Getenv, viper.BindEnv and viper.SetDefault methods

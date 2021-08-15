@@ -2,13 +2,13 @@ package main
 
 import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/cmd/webhook"
-	config "github.com/Azure/AzureDefender-K8S-InClusterDefense/configs"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/configs"
 	"log"
 )
 
 // main is the entrypoint to AzureDefenderInClusterDefense .
 func main() {
-	AppConfig, err := config.NewConfiguration("AppConfig","yaml",
+	AppConfig, err := configs.NewConfiguration("AppConfig","yaml",
 		"/configs", true)
 	if err != nil {
 		log.Fatal(err)
@@ -41,7 +41,7 @@ func main() {
 
 // CreateSubConfiguration Create new configuration object for each resource,
 // based on it's values in the main configuration file
-func CreateSubConfiguration(mainConfiguration *config.Configuration, subConfigHierarchy string, configuration interface{}){
+func CreateSubConfiguration(mainConfiguration *configs.Configuration, subConfigHierarchy string, configuration interface{}){
 	ConfigValues := mainConfiguration.SubConfig(subConfigHierarchy)
 	err := ConfigValues.Unmarshal(&configuration)
 	if err != nil {

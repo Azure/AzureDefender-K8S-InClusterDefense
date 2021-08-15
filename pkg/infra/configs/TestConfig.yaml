@@ -1,0 +1,12 @@
+name: "Steve"
+hobbies:
+  - "skateboarding"
+  - "snowboarding"
+  - "go"
+clothing:
+  jacket: "leather"
+  trousers: "denim"
+  shoes: 45
+age: 35
+eyes : "blue"
+beard: true
