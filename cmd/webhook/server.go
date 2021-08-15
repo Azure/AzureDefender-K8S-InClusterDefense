@@ -12,17 +12,16 @@ import (
 
 // Server this struct is responsible for setting up azdproxy server in the cluster.
 type Server struct {
-	S int
 	// Logger is the server logger.
-	Logger logr.Logger
-	// Manager is the manager.Manager of the server - it is registers the server.
-	Manager manager.Manager
+	logger logr.Logger
+	// manager is the manager.Manager of the server - it is registers the server.
+	manager manager.Manager
 	//certRotator is the cert rotator which manage the certificates of the server.
-	CertRotator *rotator.CertRotator
-	// Server admission webhook handler
-	WebhookHandler admission.Handler
-	// Server configuration
-	Configuration *ServerConfiguration
+	certRotator *rotator.CertRotator
+	// webhookHandler Server admission webhook handler
+	webhookHandler admission.Handler
+	// configuration  - Server configuration
+	configuration *ServerConfiguration
 }
 
 // ServerConfiguration configuration
@@ -34,13 +33,13 @@ type ServerConfiguration struct {
 }
 
 // NewServer Server constructor
-func NewServer(mgr manager.Manager, logger logr.Logger, certRotator *rotator.CertRotator, webhookHandler admission.Handler, configuration *ServerConfiguration) *Server {
+func NewServer(manager manager.Manager, logger logr.Logger, certRotator *rotator.CertRotator, webhookHandler admission.Handler, configuration *ServerConfiguration) *Server {
 	return &Server{
-		Manager:        mgr,
-		Logger:         logger,
-		CertRotator:    certRotator,
-		WebhookHandler: webhookHandler,
-		Configuration:  configuration,
+		manager:        manager,
+		logger:         logger,
+		certRotator:    certRotator,
+		webhookHandler: webhookHandler,
+		configuration:  configuration,
 	}
 }
 
@@ -49,7 +48,7 @@ func NewServer(mgr manager.Manager, logger logr.Logger, certRotator *rotator.Cer
 // There are 2 controllers - cert-controller (https://github.com/open-policy-agent/cert-controller) that manages
 // the certificates of the server and the mutation webhook server that is registered with the AzDSecInfo Handler.
 func (server *Server) Run() (err error) {
-	server.Logger = ctrl.Log.WithName("webhook-setup")
+	server.logger = ctrl.Log.WithName("webhook-setup")
 
 	// Init cert controller - gets a channel of setting up the controller.
 	if err = server.initCertController(); err != nil {
@@ -60,7 +59,7 @@ func (server *Server) Run() (err error) {
 	go server.setupControllers()
 
 	// Start all registered controllers - webhook mutation as https server and cert controller.
-	if err := server.Manager.Start(signals.SetupSignalHandler()); err != nil {
+	if err := server.manager.Start(signals.SetupSignalHandler()); err != nil {
 		return errors.Wrap(err, "unable to start manager")
 	}
 	return nil
@@ -69,15 +68,15 @@ func (server *Server) Run() (err error) {
 //initCertController initialize the cert-controller.
 // If disableCertRotation is true, it adds new rotator using cert-controller library.
 func (server *Server) initCertController() (err error) {
-	if server.Configuration.EnableCertRotation {
-		server.Logger.Info("setting up cert rotation")
+	if server.configuration.EnableCertRotation {
+		server.logger.Info("setting up cert rotation")
 		// Add rotator - using cert-controller API //TODO Expiration of certificate?
-		if err := rotator.AddRotator(server.Manager, server.CertRotator); err != nil {
+		if err := rotator.AddRotator(server.manager, server.certRotator); err != nil {
 			return errors.Wrap(err, "unable to setup cert rotation")
 		}
 	} else {
-		server.Logger.Info("Skipping certificate provisioning setup")
-		close(server.CertRotator.IsReady)
+		server.logger.Info("Skipping certificate provisioning setup")
+		close(server.certRotator.IsReady)
 	}
 	return nil
 }
@@ -85,9 +84,9 @@ func (server *Server) initCertController() (err error) {
 // setupControllers is setting up all controllers of the server - cert-controller and webhook.
 func (server *Server) setupControllers() {
 	// Setup cert-controller - wait until the channel is finish.
-	server.Logger.Info("waiting for cert rotation setup")
-	<-server.CertRotator.IsReady
-	server.Logger.Info("done waiting for cert rotation setup")
+	server.logger.Info("waiting for cert rotation setup")
+	<-server.certRotator.IsReady
+	server.logger.Info("done waiting for cert rotation setup")
 
 	// Register mutation webhook.
 	server.registerWebhook()
@@ -98,7 +97,7 @@ func (server *Server) registerWebhook() {
 	// Assign webhook handler
 
 	//Register webhook
-	mutationWebhook := &admission.Webhook{Handler: server.WebhookHandler}
-	server.Manager.GetWebhookServer().Register(server.Configuration.Path, mutationWebhook)
-	server.Logger.Info("Webhook registered successfully", "path", server.Configuration.Path)
+	mutationWebhook := &admission.Webhook{Handler: server.webhookHandler}
+	server.manager.GetWebhookServer().Register(server.configuration.Path, mutationWebhook)
+	server.logger.Info("Webhook registered successfully", "path", server.configuration.Path)
 }

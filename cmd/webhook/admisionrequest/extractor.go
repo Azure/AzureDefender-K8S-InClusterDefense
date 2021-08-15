@@ -10,8 +10,8 @@ import (
 )
 
 const (
-	// _podKind kind of the pod request in admission review
-	_podKind = "Pod"
+	// PodKind admission pod kind of the pod request in admission review
+	PodKind = "Pod"
 )
 
 var (
@@ -28,7 +28,7 @@ func UnmarshalPod(r *admission.Request) (pod *corev1.Pod, err error) {
 	if len(r.Object.Raw) == 0 {
 		return nil, _errObjectNotFound
 	}
-	if r.Kind.Kind != _podKind {
+	if r.Kind.Kind != PodKind {
 		// If the MutatingWebhookConfiguration was given additional resource scopes.
 		return nil, _errUnexpectedResource
 	}

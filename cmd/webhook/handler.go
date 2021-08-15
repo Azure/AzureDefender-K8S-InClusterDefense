@@ -26,25 +26,21 @@ const (
 	_notPathced patchReason = "NotPatched"
 )
 
-// Constants
-const (
-	_podKind = "Pod"
-)
-
 // Handler implements the admission.Handle interface that each webhook have to implement.
 // Handler handles with all admission requests according to the MutatingWebhookConfiguration.
 type Handler struct {
 	// Logger is the handler logger - gets it from the server.
-	Logger logr.Logger
+	logger logr.Logger
 	// AzdSecInfoProvider provides azure defender security information
-	AzdSecInfoProvider azdsecinfo.IAzdSecInfoProvider
+	azdSecInfoProvider azdsecinfo.IAzdSecInfoProvider
 	// Configurations handler's config.
-	Configuration *HandlerConfiguration
+	configuration *HandlerConfiguration
 }
 
+// HandlerConfiguration configuration for handler
 type HandlerConfiguration struct {
 	// DryRun is flag that if it's true, it handles request but doesn't mutate the pod spec.
-	DryRun bool
+	dryRun bool
 }
 
 // NewHandler Constructor for Handler
@@ -55,9 +51,9 @@ func NewHandler(azdSecInfoProvider azdsecinfo.IAzdSecInfoProvider, configuration
 
 	return &Handler{
 		// TODO Update on real instrumentation
-		Logger:             logger,
-		AzdSecInfoProvider: azdSecInfoProvider,
-		Configuration:      configuration,
+		logger:             logger,
+		azdSecInfoProvider: azdSecInfoProvider,
+		configuration:      configuration,
 	}
 }
 
@@ -65,31 +61,28 @@ func NewHandler(azdSecInfoProvider azdsecinfo.IAzdSecInfoProvider, configuration
 func (handler *Handler) Handle(ctx context.Context, req admission.Request) admission.Response {
 	if ctx == nil {
 		// Exit with panic in case that the context is nil
-		panic("Can't handle requests when the context (ctx) is nil")
+		log.Fatal("Can't handle requests when the context (ctx) is nil")
 	}
 
-	// TODO: Debug
-	handler.Logger.Info("req", "req", req)
-
 	// Logs
-	handler.Logger.Info("received request", "name", req.Name, "namespace", req.Namespace, "operation", req.Operation, "reqKind", req.Kind, "uid", req.UID)
+	handler.logger.Info("received request", "name", req.Name, "namespace", req.Namespace, "operation", req.Operation, "reqKind", req.Kind, "uid", req.UID)
 
 	patches := []jsonpatch.JsonPatchOperation{}
 	patchReason := _notPathced
 
-	if req.Kind.Kind == _podKind {
+	if req.Kind.Kind == admisionrequest.PodKind {
 
 		pod, err := admisionrequest.UnmarshalPod(&req)
 		if err != nil {
 			wrappedError := errors.Wrap(err, "Failed to admisionrequest.UnmarshalPod req")
-			handler.Logger.Error(wrappedError, "")
+			handler.logger.Error(wrappedError, "")
 			log.Fatal(err)
 		}
 
-		vulnerabilitySecAnnotationsPatch, err := handler.getContainersVulnerabilityScanInfoAnnotationsOperation(pod)
+		vulnerabilitySecAnnotationsPatch, err := handler.getPodContainersVulnerabilityScanInfoAnnotationsOperation(pod)
 		if err != nil {
-			wrappedError := errors.Wrap(err, "Failed to getContainersVulnerabilityScanInfoAnnotationsOperation for Pod")
-			handler.Logger.Error(wrappedError, "")
+			wrappedError := errors.Wrap(err, "Failed to getPodContainersVulnerabilityScanInfoAnnotationsOperation for Pod")
+			handler.logger.Error(wrappedError, "")
 			log.Fatal(err)
 		}
 
@@ -101,26 +94,26 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 	}
 
 	// In case of dryrun=true:  reset all patch operations
-	if handler.Configuration.DryRun {
-		handler.Logger.Info("not mutating resource, because dry-run=true")
+	if handler.configuration.dryRun {
+		handler.logger.Info("not mutating resource, because dry-run=true")
 		patches = []jsonpatch.JsonPatchOperation{}
 	}
 
 	// Patch all patches operations
 	response := admission.Patched(string(patchReason), patches...)
-	handler.Logger.Info("Responded", "response", response)
+	handler.logger.Info("Responded", "response", response)
 	return response
 }
 
-func (handler *Handler) getContainersVulnerabilityScanInfoAnnotationsOperation(pod *corev1.Pod) (*jsonpatch.JsonPatchOperation, error) {
+func (handler *Handler) getPodContainersVulnerabilityScanInfoAnnotationsOperation(pod *corev1.Pod) (*jsonpatch.JsonPatchOperation, error) {
 	vulnSecInfoContainers := []*contracts.ContainerVulnerabilityScanInfo{}
 	for _, container := range pod.Spec.InitContainers {
 
-		// Get container vulnerability scan information for congainers
-		vulnerabilitySecInfo, err := handler.AzdSecInfoProvider.GetContainerVulnerabilityScanInfo(&container)
+		// Get container vulnerability scan information for containers
+		vulnerabilitySecInfo, err := handler.azdSecInfoProvider.GetContainerVulnerabilityScanInfo(&container)
 		if err != nil {
 			wrappedError := errors.Wrap(err, "Handler failed to GetContainersVulnerabilityScanInfo Init containers")
-			handler.Logger.Error(wrappedError, "")
+			handler.logger.Error(wrappedError, "")
 			return nil, wrappedError
 		}
 
@@ -130,11 +123,11 @@ func (handler *Handler) getContainersVulnerabilityScanInfoAnnotationsOperation(p
 
 	for _, container := range pod.Spec.Containers {
 
-		// Get container vulnerability scan information for congainers
-		vulnerabilitySecInfo, err := handler.AzdSecInfoProvider.GetContainerVulnerabilityScanInfo(&container)
+		// Get container vulnerability scan information for containers
+		vulnerabilitySecInfo, err := handler.azdSecInfoProvider.GetContainerVulnerabilityScanInfo(&container)
 		if err != nil {
 			wrappedError := errors.Wrap(err, "Handler failed to GetContainersVulnerabilityScanInfo Init containers")
-			handler.Logger.Error(wrappedError, "")
+			handler.logger.Error(wrappedError, "")
 			return nil, wrappedError
 		}
 
@@ -146,7 +139,7 @@ func (handler *Handler) getContainersVulnerabilityScanInfoAnnotationsOperation(p
 	vulnerabilitySecAnnotationsPatch, err := annotations.CreateContainersVulnerabilityScanAnnotationPatchAdd(vulnSecInfoContainers)
 	if err != nil {
 		wrappedError := errors.Wrap(err, "Handler failed to GetContainersVulnerabilityScanInfo")
-		handler.Logger.Error(wrappedError, "Handler.AzdSecInfoProvider.GetContainersVulnerabilityScanInfo")
+		handler.logger.Error(wrappedError, "Handler.AzdSecInfoProvider.GetContainersVulnerabilityScanInfo")
 		return nil, wrappedError
 	}
 
