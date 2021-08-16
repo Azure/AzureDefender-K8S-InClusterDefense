@@ -1,0 +1,44 @@
+apiVersion: templates.gatekeeper.sh/v1beta1
+kind: ConstraintTemplate
+metadata:
+  name: k8sazuredefenderblockvulnerableimages
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sAzureDefenderBlockVulnerableImages
+      validation:
+        # Schema for the `parameters` field
+        openAPIV3Schema:
+          properties:
+            excludedImages:
+              type: array
+              items:
+                # Regex
+                type: string
+
+            excludeNonPatchable:
+              type bool
+
+            excludedCVS:
+              type: array
+              items:
+                type: string
+
+            highSeverityThreshold:
+              type: int
+
+            mediumSeverityThreshold:
+              type: int
+              
+            lowSeverityThreshold:
+              type: int
+            
+            
+
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8sazuredefenderblockvulnerableimages
+        
+        # TODO add rego code.
