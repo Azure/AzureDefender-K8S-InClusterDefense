@@ -60,24 +60,19 @@ The following table lists the configurable parameters of the azdproxy chart and 
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| AppConfig.instrumentation.LoggerCondifuration.logLevel | string | `"INFO"` |  |
-| AppConfig.instrumentation.LoggerCondifuration.logLevelEncoder | string | `"lower"` |  |
-| AppConfig.instrumentation.LoggerCondifuration.logLevelKey | string | `"level"` |  |
-| AppConfig.webhook.CertRotatorConfiguration.CaName | string | `"azure-defender-proxy-ca"` |  |
-| AppConfig.webhook.CertRotatorConfiguration.CaOrganization | string | `"azure-defender-proxy"` |  |
-| AppConfig.webhook.CertRotatorConfiguration.CertDir | string | `"/certs"` |  |
-| AppConfig.webhook.CertRotatorConfiguration.SecretName | string | `"azure-defender-proxy-cert"` |  |
-| AppConfig.webhook.CertRotatorConfiguration.ServiceName | string | `"azure-defender-proxy-service"` |  |
-| AppConfig.webhook.CertRotatorConfiguration.WebhookName | string | `"azure-defender-proxy-mutating-webhook-configuration"` |  |
-| AppConfig.webhook.ManagerConfiguration.CertDir | string | `"/certs"` |  |
-| AppConfig.webhook.ManagerConfiguration.Port | int | `8000` |  |
-| AppConfig.webhook.ServerConfiguration.EnableCertRotation | bool | `true` |  |
-| AppConfig.webhook.ServerConfiguration.Path | string | `"/mutate"` |  |
-| AppConfig.webhook.ServerConfiguration.RunOnDryRunMode | bool | `false` |  |
 | AzDProxy.configuration.volume.mountPath | string | `"/configs"` | The mount path of the volume. |
 | AzDProxy.configuration.volume.name | string | `"config"` | The name of the volume. |
+| AzDProxy.instrumentation.LoggerCondifuration.logLevel | string | `"INFO"` |  |
+| AzDProxy.instrumentation.LoggerCondifuration.logLevelEncoder | string | `"lower"` |  |
+| AzDProxy.instrumentation.LoggerCondifuration.logLevelKey | string | `"level"` |  |
 | AzDProxy.prefixResourceDeployment | string | `"azure-defender-proxy"` | common prefix name for all resources. |
 | AzDProxy.service.targetPort | int | `8000` | The port on which the service will send requests to, so the webhook be listening on. |
+| AzDProxy.webhook.CertRotatorConfiguration.CaName | string | `"ca"` | ca name |
+| AzDProxy.webhook.CertRotatorConfiguration.SecretName | string | `"cert"` | secret name |
+| AzDProxy.webhook.CertRotatorConfiguration.ServiceName | string | `"service"` | service name |
+| AzDProxy.webhook.CertRotatorConfiguration.WebhookName | string | `"mutating-webhook-configuration"` | webhook name |
+| AzDProxy.webhook.ServerConfiguration.EnableCertRotation | bool | `true` | is the cert rotation enabled |
+| AzDProxy.webhook.ServerConfiguration.RunOnDryRunMode | bool | `false` | is the run on dry mode |
 | AzDProxy.webhook.image.name | string | `"azdproxy-image"` | Official image. |
 | AzDProxy.webhook.image.pullPolicy | string | `"Always"` | Default for always. in case that you want to use local registry, change to 'Never'. |
 | AzDProxy.webhook.mutationPath | string | `"/mutate"` | The path that the webhook handler will be listening on. |
