@@ -5,7 +5,7 @@ import (
 )
 
 type IARGDataProvider interface {
-	TryGetImageVulnerabilityScanResults(registryHost string, repository string, digest string) (contracts.ScanStatus, []*contracts.ScanFinding)
+	TryGetImageVulnerabilityScanResults(registry string, repository string, digest string) ([]*contracts.ScanFinding, error)
 }
 
 type ARGDataProvider struct {

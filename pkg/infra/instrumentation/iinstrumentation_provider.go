@@ -11,5 +11,5 @@ type IInstrumentationProvider interface {
 	//with context of the struct.
 	GetTracerProvider(context string) (tracer trace.ITracerProvider)
 	// GetMetricSubmitter is function that returns metric submitter.
-	GetMetricSubmitter() (metricSubmitter metric.IMetricSubmitter)
+	GetMetricSubmitter() (tracer metric.IMetricSubmitter)
 }
