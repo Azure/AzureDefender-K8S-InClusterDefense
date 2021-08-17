@@ -37,3 +37,35 @@ AzDProxy:
   service:
     # -- The port on which the service will send requests to, so the webhook be listening on.
     targetPort: 8000
+
+  # Values for App's configuration.
+  configuration:
+    # Volume values of webhook.
+    volume:
+      # -- The name of the volume.
+      name: "config"
+      # -- The mount path of the volume.
+      mountPath: "/configs"
+
+# App's default configurations. Arranged by project's filesystem hierarchy
+AppConfig:
+  webhook:
+    CertRotatorConfiguration:
+      SecretName: "azure-defender-proxy-cert"                             # matches the Secret name
+      ServiceName: "azure-defender-proxy-service"                         # matches the Service name
+      WebhookName: "azure-defender-proxy-mutating-webhook-configuration"  # matches the MutatingWebhookConfiguration name
+      CaName: "azure-defender-proxy-ca"
+      CaOrganization: "azure-defender-proxy"
+      CertDir: "/certs"
+    ManagerConfiguration:
+      Port: 8000
+      CertDir: "/certs"
+    ServerConfiguration:
+      Path: "/mutate"
+      RunOnDryRunMode: false
+      EnableCertRotation: true
+  instrumentation:
+    LoggerCondifuration:
+      logLevel: "INFO"
+      logLevelKey: "level"
+      logLevelEncoder: "lower"

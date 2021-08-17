@@ -27,9 +27,11 @@ spec:
             # The port on which the service will send requests to, so the webhook be listening on.
             - containerPort: {{ .Values.AzDProxy.service.targetPort }}
           volumeMounts:
+            # App's secrets
             - mountPath: {{.Values.AzDProxy.webhook.volume.mountPath}}
               name: {{.Values.AzDProxy.webhook.volume.name}}
               readOnly: true
+            # App's config file
             - mountPath: {{.Values.AzDProxy.configuration.volume.mountPath}}
               name: {{.Values.AzDProxy.configuration.volume.name}}
               readOnly: true

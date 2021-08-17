@@ -1,73 +1,56 @@
-package configs
+package config
 
 import (
-	"fmt"
+	"github.com/pkg/errors"
 	"github.com/spf13/viper"
-	"os"
 )
 
-// Configuration stores all configurations of the application
+// ConfigurationProvider stores all configurations of the application
 // The values are read by Viper from a config file or from environment variables
-type Configuration struct {
+type ConfigurationProvider struct {
 	viperConfig *viper.Viper
 }
 
-// NewConfiguration initiate a new configuration object and read configuration from file
-func NewConfiguration(configurationName string, configurationType string, configurationPath string, readEnv bool) (Config *Configuration, err error){
-	Config = new(Configuration)
+// LoadConfig return a new configuration object.
+// The object contains configuration values the were read from a config file and from env variables (if needed)
+func LoadConfig(configurationName string, configurationType string, configurationPath string, readEnv bool) (config *ConfigurationProvider, err error){
+	config = new(ConfigurationProvider)
 	viper.SetConfigName(configurationName)
 	viper.SetConfigType(configurationType)
 	viper.AddConfigPath("./" + configurationPath)
 	viper.AddConfigPath(configurationPath)
 	err = viper.ReadInConfig()
+	if err != nil{
+		return nil, errors.Wrap(err, "failed to read configuration file")
+	}
 	if readEnv{
 		viper.AutomaticEnv()
 	}
-	Config.viperConfig = viper.GetViper()
-	return Config, err
+	config.viperConfig = viper.GetViper()
+	return config, nil
 }
 
 // SubConfig returns new configuration instance representing a sub tree of the given instance.
 // SubConfig is case-insensitive for a key.
 // A wrapper method for viper.Sub method
- func (config *Configuration) SubConfig(key string) (NewConfig *Configuration){
- 	NewConfig = new(Configuration)
+ func (config *ConfigurationProvider) SubConfig(key string) (NewConfig *ConfigurationProvider){
+ 	NewConfig = new(ConfigurationProvider)
  	NewConfig.viperConfig = config.viperConfig.Sub(key)
  	return NewConfig
  }
 
 // Unmarshal config into our runtime config struct
 // A wrapper method for viper.Unmarshal method
-func (config *Configuration) Unmarshal(runTimeConfig interface{}) (err error){
+func (config *ConfigurationProvider) Unmarshal(runTimeConfig interface{}) (err error){
 	err = config.viperConfig.Unmarshal(&runTimeConfig)
-	return err
+	if err != nil{
+		return errors.Wrap(err, "failed to read configuration file")
+	}
+	return nil
 }
 
 // AllSettings merges all settings and returns them as a map[string]interface{}
 // A wrapper method for viper.AllSettings method
-func (config *Configuration) AllSettings() map[string] interface{} {
+func (config *ConfigurationProvider) AllSettings() map[string] interface{} {
 	return config.viperConfig.AllSettings()
-}
-
-// BindEnvVariable binds a key to env variable.
-// If env variable doesn't exist bind the key to a default value (if given).
-// The method uses os.Getenv, viper.BindEnv and viper.SetDefault methods
-func (config Configuration) BindEnvVariable(input... string) (err error) {
-	if len(input) < 2 {
-		err = fmt.Errorf("not enough arguments were given")
-		return
-	}
-
-	if len(input) < 3 {
-		err = config.viperConfig.BindEnv(input...)
-		return
-	}
-
-	envValue := os.Getenv(input[1])
-	if len(envValue) > 0 {
-		config.viperConfig.SetDefault(input[0], input[1])
-	} else {
-		config.viperConfig.SetDefault(input[0], input[2])
-	}
-	return nil
 }

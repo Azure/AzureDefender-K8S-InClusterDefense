@@ -47,7 +47,6 @@ AzDProxy:
       name: "config"
       # -- The mount path of the volume.
       mountPath: "/configs"
-      # -- The mount sub-path of the volume.
 
 # App's default configurations. Arranged by project's filesystem hierarchy
 AppConfig:
