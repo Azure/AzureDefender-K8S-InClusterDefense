@@ -116,7 +116,7 @@
           },
 
         "excludeNonPatchable": {
-            "type": "Bool",
+            "type": "bool",
             "metadata": {
               "displayName": "Exclude non patchable",
               "description": "Indicator if the policy should ignore non patchable CVS."
@@ -132,25 +132,27 @@
             },
             "defaultValue": []
           },
+
         "highSeverityThreshold": {
-            "type": "Int",
+            "type": "int",
             "metadata": {
               "displayName": "High Severity Threshold",
               "description": "The number of allowed high severity findings that were found in scan findings."
             },
             "defaultValue": 0
           },
+          
         "mediumSeverityThreshold": {
-            "type": "Int",
+            "type": "int",
             "metadata": {
               "displayName": "Medium Severity Threshold",
               "description": "The number of allowed medium severity findings that were found in scan findings."
             },
             "defaultValue": 0
           },
-          
+
         "lowSeverityThreshold": {
-            "type": "Int",
+            "type": "int",
             "metadata": {
               "displayName": "Low Severity Threshold",
               "description": "The number of allowed low severity findings that were found in scan findings."

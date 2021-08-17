@@ -18,7 +18,7 @@ spec:
                 type: string
 
             excludeNonPatchable:
-              type bool
+              type: boolean
 
             excludedCVS:
               type: array
@@ -26,13 +26,13 @@ spec:
                 type: string
 
             highSeverityThreshold:
-              type: int
+              type: integer
 
             mediumSeverityThreshold:
-              type: int
+              type: integer
               
             lowSeverityThreshold:
-              type: int
+              type: integer
             
             
 
