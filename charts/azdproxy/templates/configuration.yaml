@@ -13,24 +13,24 @@ data:
   AppConfig.yaml: |-
     webhook:
       CertRotatorConfiguration:
-        SecretName: {{.Values.AppConfig.webhook.CertRotatorConfiguration.SecretName | quote}},
-        ServiceName: {{.Values.AppConfig.webhook.CertRotatorConfiguration.ServiceName | quote}},
-        WebhookName: {{.Values.AppConfig.webhook.CertRotatorConfiguration.WebhookName | quote}},
-        CaName: {{.Values.AppConfig.webhook.CertRotatorConfiguration.CaName | quote}},
-        CaOrganization: {{.Values.AppConfig.webhook.CertRotatorConfiguration.CaOrganization | quote}},
-        CertDir: {{.Values.AppConfig.webhook.CertRotatorConfiguration.CertDir | quote}},
+        SecretName: "{{ .Values.AzDProxy.prefixResourceDeployment }}-{{.Values.AzDProxy.webhook.CertRotatorConfiguration.SecretName }}",
+        ServiceName: "{{ .Values.AzDProxy.prefixResourceDeployment }}-{{.Values.AzDProxy.webhook.CertRotatorConfiguration.ServiceName }}",
+        WebhookName: "{{ .Values.AzDProxy.prefixResourceDeployment }}-{{.Values.AzDProxy.webhook.CertRotatorConfiguration.WebhookName }}",
+        CaName: "{{ .Values.AzDProxy.prefixResourceDeployment }}-{{.Values.AzDProxy.webhook.CertRotatorConfiguration.CaName }}",
+        CaOrganization: "{{ .Values.AzDProxy.prefixResourceDeployment }}",
+        CertDir: {{.Values.AzDProxy.webhook.volume.mountPath | quote}},
         Namespace: {{.Release.Namespace | quote}}
       ManagerConfiguration:
-        Port: {{.Values.AppConfig.webhook.ManagerConfiguration.Port}},
-        CertDir: {{.Values.AppConfig.webhook.ManagerConfiguration.CertDir | quote}}
+        Port: {{.Values.AzDProxy.service.targetPort}},
+        CertDir: {{.Values.AzDProxy.webhook.volume.mountPath | quote}}
       ServerConfiguration:
-        Path: {{.Values.AppConfig.webhook.ServerConfiguration.Path | quote}},
-        RunOnDryRunMode: {{.Values.AppConfig.webhook.ServerConfiguration.RunOnDryRunMode}},
-        EnableCertRotation: {{.Values.AppConfig.webhook.ServerConfiguration.EnableCertRotation}}
+        Path: {{.Values.AzDProxy.webhook.mutationPath | quote}},
+        RunOnDryRunMode: {{.Values.AzDProxy.webhook.ServerConfiguration.RunOnDryRunMode}},
+        EnableCertRotation: {{.Values.AzDProxy.webhook.ServerConfiguration.EnableCertRotation}}
     pkg:
       infra:
         instrumentation:
           logger:
-            logLevel: {{ .Values.AppConfig.instrumentation.LoggerCondifuration.logLevel | quote}},
-            logLevelKey: {{.Values.AppConfig.instrumentation.LoggerCondifuration.logLevelKey | quote}},
-            logLevelEncoder: {{.Values.AppConfig.instrumentation.LoggerCondifuration.logLevelEncoder | quote}}
+            logLevel: {{ .Values.AzDProxy.instrumentation.LoggerCondifuration.logLevel | quote}},
+            logLevelKey: {{.Values.AzDProxy.instrumentation.LoggerCondifuration.logLevelKey | quote}},
+            logLevelEncoder: {{.Values.AzDProxy.instrumentation.LoggerCondifuration.logLevelEncoder | quote}}

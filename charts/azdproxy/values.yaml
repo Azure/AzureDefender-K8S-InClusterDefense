@@ -22,6 +22,22 @@ AzDProxy:
       name: "cert"
       # -- The mount path of the volume.
       mountPath: "/certs"
+    # Configuration values of Cert Rotator.
+    CertRotatorConfiguration:
+      # -- secret name
+      SecretName: "cert"
+      # -- service name
+      ServiceName: "service"
+      # -- webhook name
+      WebhookName: "mutating-webhook-configuration"
+      # -- ca name
+      CaName: "ca"
+    # Configuration values of Cert Rotator.
+    ServerConfiguration:
+      # -- is the run on dry mode
+      RunOnDryRunMode: false
+      # -- is the cert rotation enabled
+      EnableCertRotation: true
 
     # -- The resources of the webhook.
     resources:
@@ -48,24 +64,9 @@ AzDProxy:
       # -- The mount path of the volume.
       mountPath: "/configs"
 
-# App's default configurations. Arranged by project's filesystem hierarchy
-AppConfig:
-  webhook:
-    CertRotatorConfiguration:
-      SecretName: "azure-defender-proxy-cert"                             # matches the Secret name
-      ServiceName: "azure-defender-proxy-service"                         # matches the Service name
-      WebhookName: "azure-defender-proxy-mutating-webhook-configuration"  # matches the MutatingWebhookConfiguration name
-      CaName: "azure-defender-proxy-ca"
-      CaOrganization: "azure-defender-proxy"
-      CertDir: "/certs"
-    ManagerConfiguration:
-      Port: 8000
-      CertDir: "/certs"
-    ServerConfiguration:
-      Path: "/mutate"
-      RunOnDryRunMode: false
-      EnableCertRotation: true
+  # Instrumentation values
   instrumentation:
+    # Values for App's configuration.
     LoggerCondifuration:
       logLevel: "INFO"
       logLevelKey: "level"
