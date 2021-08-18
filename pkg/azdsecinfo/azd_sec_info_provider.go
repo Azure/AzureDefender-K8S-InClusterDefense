@@ -51,19 +51,25 @@ func (provider *AzdSecInfoProvider) GetContainerVulnerabilityScanInfo(container 
 		return nil, _containerNullError
 	}
 
-	registry, repository, err := util.GetRegistryAndRepositoryFromImageReference(container.Image)
+	tracer.Info("Container image ref", "container image ref", container.Image)
+
+	imageRefContexct, err := util.ExtractImageRefContext(container.Image)
 	if err != nil {
 		tracer.Error(err, "Error from GetRegistryAndRepositoryFromImageReference")
 		return nil, err
 	}
+
+	tracer.Info("Container image ref extracted context", "context", imageRefContexct)
+
+
 
 	digest := "sha256:4a1c4b21597c1b4415bdbecb28a3296c6b5e23ca4f9feeb599860a1dac6a0108"
 
 	scanStatus := contracts.Unscanned
 	scanFindigs := []*contracts.ScanFinding{}
 
-	if strings.HasSuffix(strings.ToLower(registry), _azureContainerRegistrySuffix) {
-		v, err := provider.argDataProvider.TryGetImageVulnerabilityScanResults(registry, repository, digest)
+	if strings.HasSuffix(strings.ToLower(imageRefContexct.Registry), _azureContainerRegistrySuffix) {
+		v, err := provider.argDataProvider.TryGetImageVulnerabilityScanResults(imageRefContexct.Registry, imageRefContexct.Repository, digest)
 		if err != nil {
 			tracer.Error(err, "Error from argDataProvider.TryGetImageVulnerabilityScanResults")
 			return nil, err

@@ -111,6 +111,7 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 func (handler *Handler) getPodContainersVulnerabilityScanInfoAnnotationsOperation(pod *corev1.Pod) (*jsonpatch.JsonPatchOperation, error) {
 	tracer := handler.tracerProvider.GetTracer("getPodContainersVulnerabilityScanInfoAnnotationsOperation")
 	vulnSecInfoContainers := []*contracts.ContainerVulnerabilityScanInfo{}
+
 	for _, container := range pod.Spec.InitContainers {
 
 		// Get container vulnerability scan information for containers
