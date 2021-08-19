@@ -4,7 +4,7 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
-	"github.com/google/go-containerregistry/pkg/crane"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/wrappers"
 	"github.com/pkg/errors"
 )
 
@@ -17,13 +17,15 @@ type IRegistryClient interface {
 type RegistryClient struct {
 	tracerProvider  trace.ITracerProvider
 	metricSubmitter metric.IMetricSubmitter
+	craneWrapper    wrappers.ICraneWrapper
 }
 
 // Constructor
-func NewRegistryClient(instrumentationProvider instrumentation.IInstrumentationProvider) *RegistryClient {
+func NewRegistryClient(instrumentationProvider instrumentation.IInstrumentationProvider, craneWrapper wrappers.ICraneWrapper) *RegistryClient {
 	return &RegistryClient{
 		tracerProvider:  instrumentationProvider.GetTracerProvider("RegistryClient"),
 		metricSubmitter: instrumentationProvider.GetMetricSubmitter(),
+		craneWrapper:    craneWrapper,
 	}
 }
 
@@ -33,7 +35,7 @@ func (client *RegistryClient) GetDigest(imageRef string) (string, error) {
 	tracer.Info("Received image:", "imageRef", imageRef)
 
 	// Resolve digest
-	digest, err := crane.Digest(imageRef)
+	digest, err := client.craneWrapper.Digest(imageRef)
 	if err != nil {
 		// Report error
 		wrappedError := errors.Wrap(err, "RegistryClient.GetDigest:")

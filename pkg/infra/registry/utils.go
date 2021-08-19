@@ -1,4 +1,4 @@
-package util
+package registry
 
 import (
 	name "github.com/google/go-containerregistry/pkg/name"
@@ -27,7 +27,7 @@ func ExtractImageRefContext(imageRef string) (*ImageRefContext, error) {
 		// Extract image's string representation of registry
 		Registry: parsedRef.Context().RegistryStr(),
 		// Extract image's string representation of repository
-		Repository:  parsedRef.Context().RepositoryStr(),
+		Repository: parsedRef.Context().RepositoryStr(),
 	}
 	return ctx, nil
 }

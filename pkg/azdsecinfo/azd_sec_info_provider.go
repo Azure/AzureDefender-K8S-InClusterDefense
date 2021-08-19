@@ -6,7 +6,7 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
-	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/util"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"strings"
@@ -53,15 +53,13 @@ func (provider *AzdSecInfoProvider) GetContainerVulnerabilityScanInfo(container 
 
 	tracer.Info("Container image ref", "container image ref", container.Image)
 
-	imageRefContexct, err := util.ExtractImageRefContext(container.Image)
+	imageRefContexct, err := registry.ExtractImageRefContext(container.Image)
 	if err != nil {
 		tracer.Error(err, "Error from GetRegistryAndRepositoryFromImageReference")
 		return nil, err
 	}
 
 	tracer.Info("Container image ref extracted context", "context", imageRefContexct)
-
-
 
 	digest := "sha256:4a1c4b21597c1b4415bdbecb28a3296c6b5e23ca4f9feeb599860a1dac6a0108"
 
