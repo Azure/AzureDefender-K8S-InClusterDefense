@@ -1,11 +1,17 @@
 package azureauth
 
 import (
-	"fmt"
+	"github.com/pkg/errors"
 
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/azureauth/wrappers"
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
+)
+
+// Errors
+var (
+	// _nullArgErr is error that is thrown when there is unexpected null argument.
+	_nullArgErr = errors.New("null argument")
 )
 
 // IAzureAuthorizerFactory Factory to create an azure authorizer
@@ -67,7 +73,7 @@ func (factory *EnvAzureAuthorizerFactory) CreateARMAuthorizer() (autorest.Author
 func (factory *EnvAzureAuthorizerFactory) createAuthorizer(settings wrappers.IEnvironmentSettingsWrapper) (autorest.Authorizer, error) {
 
 	if settings == nil {
-		return nil, fmt.Errorf("null argument settings")
+		return nil, errors.Wrap(_nullArgErr, "null argument settings in createAuthorizer")
 	}
 	// Set client id for user managed identity (empty for system manged identity)
 	settings.GetValues()[auth.ClientID] = factory.configuration.MSIClientId
