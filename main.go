@@ -2,21 +2,19 @@ package main
 
 import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/cmd/webhook"
-	config "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/configs"
+	config "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/config"
 	"log"
+	"os"
 )
 
 const (
-	_configurationName string = "AppConfig"
-	_configurationType string = "yaml"
-	_configurationPath string = "/configs"
 	_readFromEnv bool = true
 )
 
 // main is the entrypoint to AzureDefenderInClusterDefense .
 func main() {
-	AppConfig, err := config.LoadConfig(_configurationName, _configurationType,
-		_configurationPath, _readFromEnv)
+	AppConfig, err := config.LoadConfig(os.Getenv("CONFIG_NAME"), os.Getenv("CONFIG_TYPE"),
+		os.Getenv("CONFIG_PATH"), _readFromEnv)
 	if err != nil {
 		log.Fatal(err)
 	}

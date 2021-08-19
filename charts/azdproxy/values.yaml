@@ -62,7 +62,11 @@ AzDProxy:
       # -- The name of the volume.
       name: "config"
       # -- The mount path of the volume.
-      mountPath: "/configs"
+      mountPath: "/config"
+    # Name of the configuration file
+    name: "AppConfig"
+    # Type of configuration file
+    type: "yaml"
 
   # Instrumentation values
   instrumentation:

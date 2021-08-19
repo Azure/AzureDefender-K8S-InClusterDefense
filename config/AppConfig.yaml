@@ -7,7 +7,7 @@ webhook:
     CaName: "azure-defender-proxy-ca"
     CaOrganization: "azure-defender-proxy"
     CertDir: "/certs"
-    namespace: "kube-system"
+    Namespace: "kube-system"
   ManagerConfiguration:
     Port: 8000
     CertDir: "/certs"
@@ -15,8 +15,9 @@ webhook:
     Path: "/mutate"
     RunOnDryRunMode: false
     EnableCertRotation: true
-instrumentation:
-  LoggerCondifuration:
-    logLevel: "INFO"
-    logLevelKey: "level"
-    logLevelEncoder: "lower"
+infra:
+  instrumentation:
+    LoggerConfiguration:
+      logLevel: "INFO"
+      logLevelKey: "level"
+      logLevelEncoder: "lower"

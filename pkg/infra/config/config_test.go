@@ -1,6 +1,7 @@
 package config
 
 import (
+	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/modern-go/reflect2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -10,7 +11,7 @@ import (
 const (
 	_configurationName string = "TestConfig"
 	_configurationType string = "yaml"
-	_configurationPath string = "."
+	_configurationPath string = "/testdata"
 	_readFromEnv bool = true
 )
 
@@ -28,7 +29,6 @@ type TestSuite struct {
 }
 
 
-
 func createExampleMapString() map[string]interface{}{
 	yamlExample := make(map[string]interface{})
 	yamlExample["name"] = "Steve"
@@ -39,7 +39,6 @@ func createExampleMapString() map[string]interface{}{
 	yamlExample["beard"] = true
 	return yamlExample
 }
-
 
 // This will run before each test in the suit
 func (suite *TestSuite) SetupTest(){
@@ -79,5 +78,7 @@ func (suite *TestSuite) TestConfig_UnmarshalConfiguration() {
 // We need this function to kick off the test suite, otherwise
 // "go test" won't know about our tests
 func TestConfigTestSuite(t *testing.T) {
+	settings, _ := auth.GetSettingsFromEnvironment()
+	print(settings.Environment.Name)
 	suite.Run(t, new(TestSuite))
 }
