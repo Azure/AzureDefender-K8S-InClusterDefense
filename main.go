@@ -1,30 +1,35 @@
 package main
 
 import (
-	"log"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/cmd/webhook"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/azdsecinfo"
+	config "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/config"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/tivan"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
-	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/util"
-	"github.com/Azure/AzureDefender-K8S-InClusterDefense/cmd/webhook"
-	config "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/config"
+	"log"
 	"os"
 )
 
 const (
-	_readFromEnv bool = true
+	_isLocalDevelopmentKey = "IS_LOCAL_DEVELOPMENT"
 )
 
-type mainConfiguration struct {
-	isDebug bool
+
+// IsLocalDevelopment checks if program is running local or on a remote kubernetes cluster
+func IsLocalDevelopment() bool {
+	_, isFound := os.LookupEnv(_isLocalDevelopmentKey)
+	if isFound{
+		return false
+	}
+	return true
 }
 
 // main is the entrypoint to AzureDefenderInClusterDefense .
 func main() {
 	// Load configuration
 	AppConfig, err := config.LoadConfig(os.Getenv("CONFIG_NAME"), os.Getenv("CONFIG_TYPE"),
-		os.Getenv("CONFIG_PATH"), _readFromEnv)
+		os.Getenv("CONFIG_PATH"), IsLocalDevelopment())
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -45,9 +50,7 @@ func main() {
 	CreateSubConfiguration(AppConfig, "webhook.ServerConfiguration", serverConfiguration)
 	CreateSubConfiguration(AppConfig, "webhook.HandlerConfiguration", handlerConfiguration)
 	CreateSubConfiguration(AppConfig, "tivan.TivanInstrumentationConfiguration", tivanInstrumentationConfiguration)
-	CreateSubConfiguration(AppConfig, "tivan.MetricSubmitterConfiguration", metricSubmitterConfiguration)
 	CreateSubConfiguration(AppConfig, "trace.TracerConfiguration", tracerConfiguration)
-	CreateSubConfiguration(AppConfig, "instrumentation.InstrumentationProviderConfiguration", instrumentationConfiguration)
 
 	// Create Tivan's instrumentation
 	tivanInstrumentationResult, err := tivan.NewTivanInstrumentationResult(tivanInstrumentationConfiguration)
@@ -57,7 +60,7 @@ func main() {
 
 	// Create factories
 	tracerFactory := tivan.NewTracerFactory(tracerConfiguration, tivanInstrumentationResult.Tracer)
-	if mainConfig.isDebug { // Use zapr logger when debugging
+	if IsLocalDevelopment() { // Use zapr logger when debugging
 		tracerFactory = trace.NewZaprTracerFactory(tracerConfiguration)
 	}
 	metricSubmitterFactory := tivan.NewMetricSubmitterFactory(metricSubmitterConfiguration, &tivanInstrumentationResult.MetricSubmitter)
@@ -68,7 +71,7 @@ func main() {
 	}
 
 	managerFactory := webhook.NewManagerFactory(managerConfiguration, instrumentationProvider)
-	certRotatorFactory := webhook.NewCertRotatorFactory(certRotatorConfig)
+	certRotatorFactory := webhook.NewCertRotatorFactory(certRotatorConfiguration)
 	azdSecInfoProvider := azdsecinfo.NewAzdSecInfoProvider()
 	handler := webhook.NewHandler(azdSecInfoProvider, handlerConfiguration, instrumentationProvider)
 	serverFactory := webhook.NewServerFactory(serverConfiguration, managerFactory, certRotatorFactory, handler, instrumentationProvider)
@@ -94,8 +97,3 @@ func CreateSubConfiguration(mainConfiguration *config.ConfigurationProvider, sub
 	}
 }
 
-func getMainConfiguration() (configuration *mainConfiguration) {
-	return &mainConfiguration{
-		isDebug: false,
-	}
-}

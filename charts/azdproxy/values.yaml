@@ -32,12 +32,14 @@ AzDProxy:
       WebhookName: "mutating-webhook-configuration"
       # -- ca name
       CaName: "ca"
-    # Configuration values of Cert Rotator.
+    # Configuration values of server.
     ServerConfiguration:
-      # -- is the run on dry mode
-      RunOnDryRunMode: false
-      # -- is the cert rotation enabled
+      # -- is the cert rotation enabled.
       EnableCertRotation: true
+    # Configuration values of handler.
+    HandlerConfiguration:
+      # -- is the run on dry mode.
+      RunOnDryRunMode: false
 
     # -- The resources of the webhook.
     resources:
@@ -55,7 +57,7 @@ AzDProxy:
     # -- The port on which the service will send requests to, so the webhook be listening on.
     targetPort: 8000
 
-  # Values for App's configuration.
+  # Values for App's configuration mounting.
   configuration:
     # Volume values of webhook.
     volume:
@@ -70,8 +72,20 @@ AzDProxy:
 
   # Instrumentation values
   instrumentation:
-    # Values for App's configuration.
-    LoggerCondifuration:
+    # Values for App's logger configuration.
+    LoggerConfiguration:
       logLevel: "INFO"
       logLevelKey: "level"
       logLevelEncoder: "lower"
+
+  # Tivan values
+  tivan:
+    # Values for Tivan's instrumentation configuration:
+    TivanInstrumentationConfiguration:
+      MdmNamespace: "Tivan.Collector.Pods"
+
+  # Trace values
+  trace:
+    # Values for tracer's configuration:
+    TracerConfiguration:
+      TracerLevel: 0

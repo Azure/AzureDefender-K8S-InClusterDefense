@@ -25,11 +25,18 @@ data:
         CertDir: {{.Values.AzDProxy.webhook.volume.mountPath | quote}}
       ServerConfiguration:
         Path: {{.Values.AzDProxy.webhook.mutationPath | quote}}
-        RunOnDryRunMode: {{.Values.AzDProxy.webhook.ServerConfiguration.RunOnDryRunMode}}
         EnableCertRotation: {{.Values.AzDProxy.webhook.ServerConfiguration.EnableCertRotation}}
-    infra:
-      instrumentation:
-        LoggerConfiguration:
-          logLevel: {{ .Values.AzDProxy.instrumentation.LoggerCondifuration.logLevel | quote}}
-          logLevelKey: {{.Values.AzDProxy.instrumentation.LoggerCondifuration.logLevelKey | quote}}
-          logLevelEncoder: {{.Values.AzDProxy.instrumentation.LoggerCondifuration.logLevelEncoder | quote}}
+      HandlerConfiguration:
+        DryRun: {{.Values.AzDProxy.webhook.HandlerConfiguration.RunOnDryRunMode}}
+    instrumentation:
+      LoggerConfiguration:
+        logLevel: {{ .Values.AzDProxy.instrumentation.LoggerConfiguration.logLevel | quote}}
+        logLevelKey: {{.Values.AzDProxy.instrumentation.LoggerConfiguration.logLevelKey | quote}}
+        logLevelEncoder: {{.Values.AzDProxy.instrumentation.LoggerConfiguration.logLevelEncoder | quote}}
+    trace:
+      TracerConfiguration:
+        TracerLevel: {{.Values.AzDProxy.trace.TracerConfiguration.TracerLevel }}
+    tivan:
+      TivanInstrumentationConfiguration:
+        ComponentName: {{ .Chart.Name | quote}}
+        MdmNamespace: {{ .Values.AzDProxy.tivan.TivanInstrumentationConfiguration.MdmNamespace | quote}}
