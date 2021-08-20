@@ -15,9 +15,8 @@ securityresources
  | where   registry =~ "tomer.azurecr.io" and repository =~ "test-image" and digest == "sha256:763bdd5314d126766d54cec7585f361c8c1429a2c51c818f0e7d0cab21a1481e"
  | parse id with  registryResourceId '/providers/Microsoft.Security/assessments/' *
  | extend scanFindingSeverity = tostring(properties.status.severity), scanStatus = tostring(properties.status.code)
- | extend id = tostring(properties.id), patchable = tostring(properties.additionalData.patchable)
+ | extend id = tostring(properties.id), patchable = tobool(properties.additionalData.patchable)
  | project registry, repository, digest, scanStatus, scanFindingSeverity, id, patchable
- | take 1
 `
 
 

@@ -3,6 +3,7 @@ module github.com/Azure/AzureDefender-K8S-InClusterDefense
 go 1.16
 
 require (
+	github.com/Azure/azure-sdk-for-go v56.3.0+incompatible // indirect
 	github.com/Azure/go-autorest/autorest v0.11.19
 	github.com/Azure/go-autorest/autorest/azure/auth v0.5.8
 	github.com/go-logr/logr v0.4.0

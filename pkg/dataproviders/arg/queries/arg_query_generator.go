@@ -26,7 +26,7 @@ func newQueryGenerator(containerVulnerabilityScanResultsQueryTemplate *template.
 	}
 }
 
-// CreateQueryGenerator factory to create a query generator with initalized query templates
+// CreateARGQueryGenerator factory to create a query generator with initalized query templates
 func CreateARGQueryGenerator() (*ARGQueryGenerator, error) {
 	// Parse it on create to optimize performance
 	containerVulnerabilityScanResultsQueryTemplate, err := template.New(_imageScanTemplateName).Parse(_containerVulnerabilityScanResultsQueryTemplateStr)

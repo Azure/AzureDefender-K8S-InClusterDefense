@@ -5,6 +5,7 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/wrappers"
+	"github.com/google/go-containerregistry/pkg/v1/remote/transport"
 	"github.com/pkg/errors"
 )
 
@@ -34,16 +35,27 @@ func (client *RegistryClient) GetDigest(imageRef string) (string, error) {
 	tracer := client.tracerProvider.GetTracer("GetDigest")
 	tracer.Info("Received image:", "imageRef", imageRef)
 
+	// TODO add retry policy
 	// Resolve digest
 	digest, err := client.craneWrapper.Digest(imageRef)
 	if err != nil {
 		// Report error
-		wrappedError := errors.Wrap(err, "RegistryClient.GetDigest:")
-		tracer.Error(wrappedError, "")
-		return "", wrappedError
+		err = errors.Wrap(err, "RegistryClient.GetDigest:")
+		tracer.Error(err, "")
+
+		// TODO return wrapped error type to handle on caller
+		return "", err
 	}
 
 	// Log digest and return it
 	tracer.Info("Resolved to:", "digest", digest)
 	return digest, nil
+}
+
+type UnauthorizedError struct {
+	originalRegistryError *transport.Error
+}
+
+func (unError *UnauthorizedError) Error() string {
+	return unError.originalRegistryError.Error()
 }
