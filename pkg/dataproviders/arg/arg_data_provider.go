@@ -68,7 +68,7 @@ func (provider *ARGDataProvider) TryGetImageVulnerabilityScanResults(registry st
 		}
 
 		containerVulnerabilityScanResultsQueryResponseObjectList := []*queries.ContainerVulnerabilityScanResultsQueryResponseObject{}
-		err = json.Unmarshal(marshaled, containerVulnerabilityScanResultsQueryResponseObjectList)
+		err = json.Unmarshal(marshaled, &containerVulnerabilityScanResultsQueryResponseObjectList)
 		if err != nil {
 			err = errors.Wrap(err, "ARGDataProvider.TryGetImageVulnerabilityScanResults failed on json.Unmarshal results")
 			tracer.Error(err, "")
