@@ -75,12 +75,11 @@ func (provider *ARGDataProvider) TryGetImageVulnerabilityScanResults(registry st
 			return false, nil, err
 		}
 
-
 		for _, element := range containerVulnerabilityScanResultsQueryResponseObjectList {
 			scanFindings = append(scanFindings, &contracts.ScanFinding{
-				Id: element.Id,
+				Id:        element.Id,
 				Patchable: element.Patchable,
-				Severity: element.ScanFindingSeverity,
+				Severity:  element.ScanFindingSeverity,
 			})
 		}
 
@@ -90,3 +89,5 @@ func (provider *ARGDataProvider) TryGetImageVulnerabilityScanResults(registry st
 
 	return isScanFound, scanFindings, nil
 }
+
+//
