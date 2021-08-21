@@ -12,6 +12,11 @@ import (
 	"strings"
 )
 
+
+const(
+	_argScanHealthyStatus = "Healthy"
+)
+
 // IARGDataProvider is a provider for any ARG data
 type IARGDataProvider interface {
 	// GetImageVulnerabilityScanResults fetch ARG based scan data information on image if exists from ARG
@@ -21,9 +26,6 @@ type IARGDataProvider interface {
 	// If scan status is Unhealthy, findings presented in scan findings array
 	GetImageVulnerabilityScanResults(registry string, repository string, digest string) (scanStatus contracts.ScanStatus, scanFindings []*contracts.ScanFinding, err error)
 }
-const(
-	_argScanHealthyStatus = "Healthy"
-)
 
 // ARGDataProvider is a IARGDataProvider implemtnation
 type ARGDataProvider struct {
