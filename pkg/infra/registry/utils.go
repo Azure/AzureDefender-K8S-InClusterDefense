@@ -12,7 +12,7 @@ type ImageRefContext struct {
 	Repository string
 }
 
-//GetRegistryAndRepositoryFromImageReference receives image reference string (e.g. tomer.azurecr.io/redis:v1)
+//ExtractImageRefContext receives image reference string (e.g. tomer.azurecr.io/redis:v1)
 // Function extract and return received ref: registry and repository (e.g registry: "tomer.azurecr,io", repository:"redis")
 // If image reference is not in right format, returns error.
 func ExtractImageRefContext(imageRef string) (*ImageRefContext, error) {

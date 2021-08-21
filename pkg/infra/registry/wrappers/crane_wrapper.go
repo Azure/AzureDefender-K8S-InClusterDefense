@@ -2,10 +2,13 @@ package wrappers
 
 import "github.com/google/go-containerregistry/pkg/crane"
 
+// ICraneWrapper wraps crane operations
 type ICraneWrapper interface {
+	// Digest get image digest using image ref using crane Digest call
 	Digest(ref string) (string, error)
 }
 
+// CraneWrapperwraps crante operations
 type CraneWrapper struct{}
 
 // Todo add auth options to pull secrets and ACR MSI based - currently only supports docker config auth

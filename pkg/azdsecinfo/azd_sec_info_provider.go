@@ -13,16 +13,17 @@ import (
 )
 
 const (
+	// _azureContainerRegistrySuffix is the suffix of ACR public (todo extract per env maybe?)
 	_azureContainerRegistrySuffix = "azurecr.io"
 )
 
 var (
+	// _containerNullError Null container error
 	_containerNullError = errors.New("Container received is null")
 )
 
 // IAzdSecInfoProvider represents interface for providing azure defender security information
 type IAzdSecInfoProvider interface {
-
 	// GetContainerVulnerabilityScanInfo receives containers list, and returns their fetched ContainersVulnerabilityScanInfo
 	GetContainerVulnerabilityScanInfo(*corev1.Container) (*contracts.ContainerVulnerabilityScanInfo, error)
 }
@@ -55,68 +56,50 @@ func (provider *AzdSecInfoProvider) GetContainerVulnerabilityScanInfo(container 
 
 	tracer.Info("Container image ref", "container image ref", container.Image)
 
+	// Extracts image context
 	imageRefContexct, err := registry.ExtractImageRefContext(container.Image)
 	if err != nil {
 		err = errors.Wrap(err, "AzdSecInfoProvider.GetContainerVulnerabilityScanInfo.registry.ExtractImageRefContext")
 		tracer.Error(err, "")
 		return nil, err
 	}
-
 	tracer.Info("Container image ref extracted context", "context", imageRefContexct)
 
+	// Set default values
 	var scanStatus = contracts.Unscanned
 	var scanFindings []*contracts.ScanFinding = nil
 	var digest = ""
 
+	// Check if this is an ACR image
 	if strings.HasSuffix(strings.ToLower(imageRefContexct.Registry), _azureContainerRegistrySuffix) {
-		digest, err := provider.registryClient.GetDigest(container.Image)
+
+		// Get image digest
+		digest, err = provider.registryClient.GetDigest(container.Image)
 		if err != nil {
 			err = errors.Wrap(err, "AzdSecInfoProvider.GetContainerVulnerabilityScanInfo.registry.GetDigest")
 			tracer.Error(err, "")
 
 			// TODO support digest does not exists in registry or unauthorized to not fail...
 			return nil, err
-
 		}
 
-		scanStatus, scanFindings, err = provider.getContainerVulnerbilityScanResults(imageRefContexct, digest)
+		// Tries to get image scan results for image
+		scanStatus, scanFindings, err = provider.argDataProvider.GetImageVulnerabilityScanResults(imageRefContexct.Registry, imageRefContexct.Repository, digest)
 		if err != nil {
 			err = errors.Wrap(err, "AzdSecInfoProvider.getContainerVulnerbilityScanResults")
 			tracer.Error(err, "")
 			return nil, err
 		}
-
+		tracer.Info("results from ARG data provider", "scanStatus", scanStatus, "scanFindings", scanFindings)
 	}
 
+	// Build scan info from provided scan results
 	info := buildContainerVulnerabilityScanInfoFromResult(container, digest, scanStatus, scanFindings)
 
 	return info, nil
 }
 
-func (provider *AzdSecInfoProvider) getContainerVulnerbilityScanResults(imageRefContexct *registry.ImageRefContext, digest string) (scanStatus contracts.ScanStatus, scanFindings []*contracts.ScanFinding, err error) {
-	tracer := provider.tracerProvider.GetTracer("getContainerVulnerbilityScanResults")
-
-	isScanned, results, err := provider.argDataProvider.TryGetImageVulnerabilityScanResults(imageRefContexct.Registry, imageRefContexct.Repository, digest)
-	if err != nil {
-		err = errors.Wrap(err, "Error from getContainerVulnerbilityScanResults.argDataProvider.TryGetImageVulnerabilityScanResults")
-		tracer.Error(err, "")
-		return "", nil, err
-	}
-
-	if isScanned {
-		if len(results) == 0 {
-			scanStatus = contracts.HealthyScan
-			scanFindings = []*contracts.ScanFinding{}
-		} else {
-			scanStatus = contracts.UnhealthyScan
-			scanFindings = results
-		}
-	} else {
-		scanStatus = contracts.Unscanned
-	}
-	return scanStatus, scanFindings, nil
-}
-
+// buildContainerVulnerabilityScanInfoFromResult build the info object from data provided
 func buildContainerVulnerabilityScanInfoFromResult(container *corev1.Container, digest string, scanStatus contracts.ScanStatus, scanFindigs []*contracts.ScanFinding) *contracts.ContainerVulnerabilityScanInfo {
 	info := &contracts.ContainerVulnerabilityScanInfo{
 		Name: container.Name,

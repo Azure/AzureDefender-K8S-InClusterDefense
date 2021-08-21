@@ -131,7 +131,7 @@ func (handler *Handler) getPodContainersVulnerabilityScanInfoAnnotationsOperatio
 		// Get container vulnerability scan information for containers
 		vulnerabilitySecInfo, err := handler.azdSecInfoProvider.GetContainerVulnerabilityScanInfo(&container)
 		if err != nil {
-			wrappedError := errors.Wrap(err, "Handler failed to GetContainersVulnerabilityScanInfo Init containers")
+			wrappedError := errors.Wrap(err, "Handler failed to GetContainersVulnerabilityScanInfo Containers")
 			tracer.Error(wrappedError, "")
 			return nil, wrappedError
 		}

@@ -11,10 +11,13 @@ import (
 	"github.com/pkg/errors"
 )
 
+// IARGClient is an interface for our arg client implemntation
 type IARGClient interface {
+	// QueryResources gets a query and return an array object as a result
 	QueryResources(query string) ([]interface{}, error)
 }
 
+// ARGClient is our implementation for ARG client
 type ARGClient struct {
 	tracerProvider       trace.ITracerProvider
 	metricSubmitter      metric.IMetricSubmitter
@@ -22,6 +25,7 @@ type ARGClient struct {
 	argReqOptions        *arg.QueryRequestOptions
 }
 
+// Contructor
 func NewARGClient(instrumentationProvider instrumentation.IInstrumentationProvider, argBaseClientWrapper wrappers.IARGBaseClientWrapper) *ARGClient {
 	return &ARGClient{
 		tracerProvider:       instrumentationProvider.GetTracerProvider("ARGClient"),
@@ -33,6 +37,7 @@ func NewARGClient(instrumentationProvider instrumentation.IInstrumentationProvid
 	}
 }
 
+// QueryResources gets a query and return an array object as a result
 func (client *ARGClient) QueryResources(query string) ([]interface{}, error) {
 	tracer := client.tracerProvider.GetTracer("QueryResources")
 
@@ -66,6 +71,5 @@ func (client *ARGClient) QueryResources(query string) ([]interface{}, error) {
 		tracer.Error(err, "")
 		return nil, err
 	}
-
 	return results, nil
 }
