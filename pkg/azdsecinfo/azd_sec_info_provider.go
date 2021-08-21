@@ -14,7 +14,7 @@ import (
 
 const (
 	// _azureContainerRegistrySuffix is the suffix of ACR public (todo extract per env maybe?)
-	_azureContainerRegistrySuffix = "azurecr.io"
+	_azureContainerRegistrySuffix = ".azurecr.io"
 )
 
 var (

@@ -9,6 +9,7 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
 	"github.com/pkg/errors"
 	"strconv"
+	"strings"
 )
 
 // IARGDataProvider is a provider for any ARG data
@@ -20,6 +21,9 @@ type IARGDataProvider interface {
 	// If scan status is Unhealthy, findings presented in scan findings array
 	GetImageVulnerabilityScanResults(registry string, repository string, digest string) (scanStatus contracts.ScanStatus, scanFindings []*contracts.ScanFinding, err error)
 }
+const(
+	_argScanHealthyStatus = "Healthy"
+)
 
 // ARGDataProvider is a IARGDataProvider implemtnation
 type ARGDataProvider struct {
@@ -142,7 +146,7 @@ func (provider *ARGDataProvider) getImageScanDataFromARGQueryScanResult(scanResu
 		// Return unscanned and return nil array of findings
 		return contracts.Unscanned, nil, nil
 	} else {
-		if len(scanResultsQueryResponseObjectList) == 1 && scanResultsQueryResponseObjectList[0].ScanStatus == "Healthy" {
+		if len(scanResultsQueryResponseObjectList) == 1 && strings.EqualFold(scanResultsQueryResponseObjectList[0].ScanStatus , _argScanHealthyStatus) {
 			// Healthy Set to healthy scan
 			tracer.Info("Set to Healthy scan data", "healthyReceivedFindings", scanResultsQueryResponseObjectList)
 			// Return healthy scan status and empty array (initialized but empty)
@@ -172,3 +176,4 @@ func (provider *ARGDataProvider) getImageScanDataFromARGQueryScanResult(scanResu
 		}
 	}
 }
+
