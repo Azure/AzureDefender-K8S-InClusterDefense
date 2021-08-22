@@ -3,7 +3,7 @@
       "displayName": "[Preview]: Kubernetes clusters should gate deployment of images according to vulnerability scans",
       "policyType": "BuiltIn",
       "mode": "Microsoft.Kubernetes.Data",
-      "description": "Do not allow vulnerable containers creation in a Kubernetes cluster. Verify that your images on the pod do not exceed your threshold vulnerabilities before creating or updating a pod based on results from ASC. If AzureDefenderInClusterDefense is not installed in your cluster, the policy remains compliant.",
+      "description": "Do not allow vulnerable containers creation in a Kubernetes cluster. Verify that your images on the pod do not exceed your threshold vulnerabilities before creating or updating a pod based on results from ASC. If Azure Policy Add-on is not installed in your cluster or AzureDefenderProfile is not enabled, the policy remains compliant.",
       "metadata": {
         "version": "1.0.0-preview",
         "category": "Kubernetes",
