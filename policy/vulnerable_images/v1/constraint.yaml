@@ -1,3 +1,4 @@
+# *** You will always be compliant with this policy if AzureDefenderInClusterDefense is not installed in your cluster.
 apiVersion: constraints.gatekeeper.sh/v1beta1
 kind: K8sAzureDefenderBlockVulnerableImages
 metadata:
@@ -9,8 +10,8 @@ spec:
         kinds: ["Pod"]
   parameters:
     excludedImages: {{ .Values.excludedImages }}
-    excludeNonPatchable: {{ .Values.excludeNonPatchable }}
-    excludedCVS: {{ .Values.excludedImages }}
+    excludeNotPatchableFindings: {{ .Values.excludeNotPatchableFindings }}
+    excludeFindingIDs: {{ .Values.excludeFindingIDs }}
     highSeverityThreshold: {{ .Values.highSeverityThreshold }}
     mediumSeverityThreshold: {{ .Values.mediumSeverityThreshold }}
     lowSeverityThreshold: {{ .Values.lowSeverityThreshold }}

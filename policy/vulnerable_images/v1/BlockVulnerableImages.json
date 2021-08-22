@@ -109,26 +109,26 @@
         "excludedImages": {
             "type": "Array",
             "metadata": {
-              "displayName": "Excluded image pattern",
-              "description": "List of images regex pattern that will be excluded. Empty array means all images should be evaluated."
+              "displayName": "Excluded image regex",
+              "description": "List of images regex pattern that will be excluded. Empty array means all images should be evaluated. example:exclude all images from the repo azure-defender-in-cluster-defense-repo in the blockreg ACR registry - [(blockreg.azurecr.io/azure-defender-in-cluster-defense-repo).*]"
             },
             "defaultValue": []
           },
 
-        "excludeNonPatchable": {
+        "excludeNotPatchableFindings": {
             "type": "bool",
             "metadata": {
-              "displayName": "Exclude non patchable",
-              "description": "Indicator if the policy should ignore non patchable CVS."
+              "displayName": "Exclude not patchable findings",
+              "description": "Indicator if the policy should ignore not patchable findings."
             },
             "defaultValue": false
           },
 
-        "excludedCVS": {
+        "excludeFindingIDs": {
             "type": "Array",
             "metadata": {
-              "displayName": "Excluded CVS",
-              "description": "List of CVS that the policy should exclude them in the aggregation."
+              "displayName": "Exclude finding IDs",
+              "description": "List of finding ids that the policy should exclude them in the aggregation."
             },
             "defaultValue": []
           },
@@ -179,8 +179,8 @@
             "labelSelector": "[parameters('labelSelector')]",
             "values": {
                 "excludedImages": "[parameters('excludedImages')]",
-                "excludeNonPatchable": "[parameters('excludeNonPatchable')]",
-                "excludedCVS": "[parameters('excludedCVS')]",
+                "excludeNotPatchableFindings": "[parameters('excludeNotPatchableFindings')]",
+                "excludeFindingIDs": "[parameters('excludeFindingIDs')]",
                 "highSeverityThreshold": "[parameters('highSeverityThreshold')]",
                 "mediumSeverityThreshold": "[parameters('mediumSeverityThreshold')]",
                 "lowSeverityThreshold": "[parameters('lowSeverityThreshold')]"
