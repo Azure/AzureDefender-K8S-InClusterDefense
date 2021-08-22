@@ -3,7 +3,7 @@
       "displayName": "[Preview]: Kubernetes clusters should gate deployment of images according to vulnerability scans",
       "policyType": "BuiltIn",
       "mode": "Microsoft.Kubernetes.Data",
-      "description": "TODO",
+      "description": "Do not allow vulnerable containers creation in a Kubernetes cluster. Verify that your images on the pod do not exceed your threshold vulnerabilities before creating or updating a pod based on results from ASC. If AzureDefenderInClusterDefense is not installed in your cluster, the policy remains compliant.",
       "metadata": {
         "version": "1.0.0-preview",
         "category": "Kubernetes",
@@ -110,7 +110,7 @@
             "type": "Array",
             "metadata": {
               "displayName": "Excluded image regex",
-              "description": "List of images regex pattern that will be excluded. Empty array means all images should be evaluated. example:exclude all images from the repo azure-defender-in-cluster-defense-repo in the blockreg ACR registry - [(blockreg.azurecr.io/azure-defender-in-cluster-defense-repo).*]"
+              "description": "List of images regex pattern that will be excluded. Empty array means all images should be evaluated. example: exclude all images from the repo azure-defender-in-cluster-defense-repo in the blockreg ACR- [\"(blockreg.azurecr.io/azure-defender-in-cluster-defense-repo).*\"]"
             },
             "defaultValue": []
           },
@@ -119,7 +119,7 @@
             "type": "bool",
             "metadata": {
               "displayName": "Exclude not patchable findings",
-              "description": "Indicator if the policy should ignore not patchable findings."
+              "description": "Indicator if the policy should ignore not patchable findings. if this indicator set to True, only findings that are patchable are evaluated against the severity thresholds."
             },
             "defaultValue": false
           },
@@ -137,7 +137,7 @@
             "type": "int",
             "metadata": {
               "displayName": "High Severity Threshold",
-              "description": "The number of allowed high severity findings that were found in scan findings."
+              "description": "The number of allowed high severity findings that were found in scan findings in specific image."
             },
             "defaultValue": 0
           },
@@ -146,7 +146,7 @@
             "type": "int",
             "metadata": {
               "displayName": "Medium Severity Threshold",
-              "description": "The number of allowed medium severity findings that were found in scan findings."
+              "description": "The number of allowed medium severity findings that were found in scan findings in specific image."
             },
             "defaultValue": 0
           },
@@ -155,7 +155,7 @@
             "type": "int",
             "metadata": {
               "displayName": "Low Severity Threshold",
-              "description": "The number of allowed low severity findings that were found in scan findings."
+              "description": "The number of allowed low severity findings that were found in scan findings in specific image."
             },
             "defaultValue": 0
           }
