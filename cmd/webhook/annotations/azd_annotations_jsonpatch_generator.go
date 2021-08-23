@@ -2,6 +2,7 @@ package annotations
 
 import (
 	"encoding/json"
+	"k8s.io/apimachinery/pkg/types"
 	"time"
 
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/azdsecinfo/contracts"
@@ -19,9 +20,10 @@ const (
 // CreateContainersVulnerabilityScanAnnotationPatchAdd creates and return an add type json patch to add to annotations map a new key value of ContainersVulnerabilityScanInfoAnnotationName.
 // The function creates a scanInfoList from the provided containers scan info  slice of type contracts.ContainerVulnerabilityScanInfoList serialize/marshal it and set it as a value string to key annotation
 // Contracts.ContainersVulnerabilityScanInfoAnnotationName (azuredefender.io/containers.vulnerability.scan.info)
-func CreateContainersVulnerabilityScanAnnotationPatchAdd(containersScanInfoList []*contracts.ContainerVulnerabilityScanInfo) (*jsonpatch.JsonPatchOperation, error) {
+func CreateContainersVulnerabilityScanAnnotationPatchAdd(containersScanInfoList []*contracts.ContainerVulnerabilityScanInfo, uidRequest types.UID) (*jsonpatch.JsonPatchOperation, error) {
 	scanInfoList := &contracts.ContainerVulnerabilityScanInfoList{
 		GeneratedTimestamp: time.Now().UTC(),
+		UIDRequest:         uidRequest,
 		Containers:         containersScanInfoList,
 	}
 
