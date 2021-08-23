@@ -6,12 +6,13 @@ metadata:
 spec:
   match:
     kinds:
-      - apiGroups: [""]
-        kinds: ["Pod"]
+      - apiGroups: [ "" ]
+        kinds: [ "Pod" ]
   parameters:
     excludedImages: {{ .Values.excludedImages }}
     excludeNotPatchableFindings: {{ .Values.excludeNotPatchableFindings }}
     excludeFindingIDs: {{ .Values.excludeFindingIDs }}
-    highSeverityThreshold: {{ .Values.highSeverityThreshold }}
-    mediumSeverityThreshold: {{ .Values.mediumSeverityThreshold }}
-    lowSeverityThreshold: {{ .Values.lowSeverityThreshold }}
+    sevirity:
+      High: {{ .Values.highSeverityThreshold }}
+      Medium: {{ .Values.mediumSeverityThreshold }}
+      Low: {{ .Values.lowSeverityThreshold }}
