@@ -49,4 +49,4 @@ func marshalAnnotationInnerObject(object interface{}) (string, error) {
 	return ser, nil
 }
 
-//
+///
