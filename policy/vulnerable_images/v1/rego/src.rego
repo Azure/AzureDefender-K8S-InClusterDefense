@@ -18,11 +18,9 @@ violation[{"msg": msg, "details": details}] {
 violation[{"msg": msg, "details": details}] {
     # Extract containers
     containers := getContainers(input.review)
-    # Explicit filter all containers that don't have unhealthy scan status.
-    containers = [container |  container := containers[_]
-                                container["scanStatus"] == "unhealthyScan"]
     container := containers[_]
-
+    # Explicit filter all containers that don't have unhealthy scan status.
+    container["scanStatus"] == "unhealthyScan"
     # Filter scanfindings
 	scanFindings := filterScanFindings(container["scanFindings"])
     isSevirityAboveThreshold(scanFindings)
@@ -39,7 +37,7 @@ getContainers(review) = containers{
     # Verify that the uid request that appears in containerVulnerabilityScanInfoList is match to the uid request of the request.
     isTheUIDRequestMatch(containerVulnerabilityScanInfoList)
     # Filter containers from containerVulnerabilityScanInfoList
-    containers = filterContainers(containerVulnerabilityScanInfoList["containers"])
+    containers := filterContainers(containerVulnerabilityScanInfoList["containers"])
 }
 
 # Gets review object and returns unnmarshelled scan resulsts (i.e. as array of scan results).
@@ -131,5 +129,6 @@ isSevirityAboveThreshold(scanFindings){
 isSevirityTypeAboveThreshold(scanFindings, sevirityType){
     c := count([scanFinding | 	scanFinding := scanFindings[_]
                                 scanFinding["severity"] == sevirityType])
+
     c > input.parameters.sevirity[sevirityType]
 }

@@ -61,11 +61,9 @@ spec:
         violation[{"msg": msg, "details": details}] {
           # Extract containers
           containers := getContainers(input.review)
-          # Explicit filter all containers that don't have unhealthy scan status.
-          containers = [container |  container := containers[_]
-          container["scanStatus"] == "unhealthyScan"]
           container := containers[_]
-
+          # Explicit filter all containers that don't have unhealthy scan status.
+          container["scanStatus"] == "unhealthyScan"
           # Filter scanfindings
           scanFindings := filterScanFindings(container["scanFindings"])
           isSevirityAboveThreshold(scanFindings)
@@ -82,7 +80,7 @@ spec:
           # Verify that the uid request that appears in containerVulnerabilityScanInfoList is match to the uid request of the request.
           isTheUIDRequestMatch(containerVulnerabilityScanInfoList)
           # Filter containers from containerVulnerabilityScanInfoList
-          containers = filterContainers(containerVulnerabilityScanInfoList["containers"])
+          containers := filterContainers(containerVulnerabilityScanInfoList["containers"])
         }
 
         # Gets review object and returns unnmarshelled scan resulsts (i.e. as array of scan results).
@@ -112,13 +110,13 @@ spec:
         # Filter containers that are have healthy scanStatus.
         filterContainersWithHealthyScanStatus(containers) = containers{
           containers = [containerVulnerabilityScanInfo | 	containerVulnerabilityScanInfo := containers[_]
-          containerVulnerabilityScanInfo["scanStatus"] != "healthyScan"]
+                                                            containerVulnerabilityScanInfo["scanStatus"] != "healthyScan"]
         }
 
         # Filter containers that are appear in the excluded_images_pattern parameter.
         filterContaintersWithExcludedImages(containers) = containers{
           containers = [containerVulnerabilityScanInfo | 	containerVulnerabilityScanInfo := containers[_]
-          not isImageMatchExcludedImagesPattern(containerVulnerabilityScanInfo["image"]["name"])]
+                                                          not isImageMatchExcludedImagesPattern(containerVulnerabilityScanInfo["image"]["name"])]
         }
 
         # Checks if the registry appers in the exclduded_registreis pattern
@@ -136,7 +134,7 @@ spec:
         # Filter all scanfindings that appear in the excludeFindingIDsList.
         filterScanFindingsExcludedFindings(scanFindings) = scanFindings{
           scanFindings = [scanFinding | 	scanFinding := scanFindings[_]
-          not isScanFindingAppearsInExlcudeFindingIDsList(scanFinding)]
+                                            not isScanFindingAppearsInExlcudeFindingIDsList(scanFinding)]
         }
 
         # Checks if the scanFinding appers in the list of the excluded findings id:
@@ -150,7 +148,7 @@ spec:
         filterScanFindingsIfExcludeNotPatchableFindingsParamTrue(scanFindings) = scanFindings{
           input.parameters.excludeNotPatchableFindings
           scanFindings = [scanFinding | 	scanFinding := scanFindings[_]
-          scanFinding["patchable"]]
+                                          scanFinding["patchable"]]
         }
         # Keep all scanFindings (patchable and not patchable) if the ExcludeNotPatchableFindings param is set to false
         filterScanFindingsIfExcludeNotPatchableFindingsParamTrue(scanFindings) = scanFindings{
@@ -173,6 +171,7 @@ spec:
         # Check if the total of all findings with sevirity level of severtyType (patchable and not patchable) is exceeding the threshold
         isSevirityTypeAboveThreshold(scanFindings, sevirityType){
           c := count([scanFinding | 	scanFinding := scanFindings[_]
-          scanFinding["severity"] == sevirityType])
+                                        scanFinding["severity"] == sevirityType])
+
           c > input.parameters.sevirity[sevirityType]
         }
