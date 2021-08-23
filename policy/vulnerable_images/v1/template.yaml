@@ -1,4 +1,4 @@
-# *** You will always be compliant with this policy if AzureDefenderInClusterDefense is not installed in your cluster.
+# *** NOTE: You will always be compliant with this policy if AzureDefenderInClusterDefense is not installed in your cluster.
 apiVersion: templates.gatekeeper.sh/v1beta1
 kind: ConstraintTemplate
 metadata:

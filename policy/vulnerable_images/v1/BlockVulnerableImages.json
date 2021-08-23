@@ -109,7 +109,7 @@
         "excludedImages": {
             "type": "Array",
             "metadata": {
-              "displayName": "Excluded image regex",
+              "displayName": "Excluded images regex",
               "description": "List of images regex pattern that will be excluded. Empty array means all images should be evaluated. example: exclude all images from the repo azure-defender-in-cluster-defense-repo in the blockreg ACR- [\"(blockreg.azurecr.io/azure-defender-in-cluster-defense-repo).*\"]"
             },
             "defaultValue": []
@@ -137,7 +137,7 @@
             "type": "int",
             "metadata": {
               "displayName": "High Severity Threshold",
-              "description": "The number of allowed high severity findings that were found in scan findings in specific image."
+              "description": "The number of allowed high severity scan findings for image."
             },
             "defaultValue": 0
           },
@@ -146,7 +146,7 @@
             "type": "int",
             "metadata": {
               "displayName": "Medium Severity Threshold",
-              "description": "The number of allowed medium severity findings that were found in scan findings in specific image."
+              "description": "the number of allowed medium severity scan findings for image."
             },
             "defaultValue": 0
           },
@@ -155,7 +155,7 @@
             "type": "int",
             "metadata": {
               "displayName": "Low Severity Threshold",
-              "description": "The number of allowed low severity findings that were found in scan findings in specific image."
+              "description": "the number of allowed low severity scan findings for image."
             },
             "defaultValue": 0
           }
