@@ -1,116 +1,135 @@
 package k8sazuredefendervulnerableimages
-# Is Unscanned violation
+
+# This violation checks if there is a container with unscanned scanStatus.
 violation[{"msg": msg, "details": details}] {
-    # Extract ContainerVulnerabilityScanInfoList
-    containerVulnerabilityScanInfoList := getContainerVulnerabilityScanInfoList(input.review)
-    # Check that the annotations are exist and updated.
-    are_the_annotations_updated(containerVulnerabilityScanInfoList)
-    # iterate on the containers of containerVulnerabilityScanInfoList.
-    ContainerVulnerabilityScanInfo := containerVulnerabilityScanInfoList["containers"][_]
-    is_unscanned(ContainerVulnerabilityScanInfo)
-    not is_image_match_excluded_images_pattern(ContainerVulnerabilityScanInfo.image.name)
-    # In case that there is a viloation, create informative msg:
-    msg := sprintf("The image %v is unscanned", [ContainerVulnerabilityScanInfo["image"].name])
-    details := ContainerVulnerabilityScanInfo
+    # Extract containers
+    containers := getContainers(input.review)
+    container := containers[_]
+
+    # Check if the scan status of the container is unscanned.
+    container["scanStatus"] == "unscanned"
+
+    # Construct violation msg:
+    msg := sprintf("Unscanned image found in the container %v", [container.name])
+    details := container
 }
 
-# Servirity violation
+# This violation checks if there is some container that it's sum of the severities of the scanFindings are exceed some thresholds.
 violation[{"msg": msg, "details": details}] {
+    # Extract containers
+    containers := getContainers(input.review)
+    # Explicit filter all containers that don't have unhealthy scan status.
+    containers = [container |  container := containers[_]
+                                container["scanStatus"] == "unhealthyScan"]
+    container := containers[_]
+
+    # Filter scanfindings
+	scanFindings := filterScanFindings(container["scanFindings"])
+    isSevirityAboveThreshold(scanFindings)
+
+    # Construct violation msg
+    msg := sprintf("Found vulnerable container: %v", [container.name])
+    details := {"Container": container, "ScanFindings": scanFindings}
+}
+
+# Extract the containers from the review object.
+getContainers(review) = containers{
     # Extract ContainerVulnerabilityScanInfoList
-    containerVulnerabilityScanInfoList := getContainerVulnerabilityScanInfoList(input.review)
-    # Check that the annotations are exist and updated.
-    are_the_annotations_updated(containerVulnerabilityScanInfoList)
-    # iterate on the containers of containerVulnerabilityScanInfoList.
-    ContainerVulnerabilityScanInfo := containerVulnerabilityScanInfoList["containers"][_]
-    # Check that scanStatus is unhealthy scan.
-    ContainerVulnerabilityScanInfo["scanStatus"] == "unhealthyScan"
-    # Check if the container is exceed the threshold.
-    is_sevirity_above_threshold(ContainerVulnerabilityScanInfo)
-    msg := sprintf("The image %v is unscanned", [ContainerVulnerabilityScanInfo])
-    details := ContainerVulnerabilityScanInfo
+    containerVulnerabilityScanInfoList := getContainerVulnerabilityScanInfoList(review)
+    # Verify that the uid request that appears in containerVulnerabilityScanInfoList is match to the uid request of the request.
+    isTheUIDRequestMatch(containerVulnerabilityScanInfoList)
+    # Filter containers from containerVulnerabilityScanInfoList
+    containers = filterContainers(containerVulnerabilityScanInfoList["containers"])
 }
 
-# Checks if the total of High sevirity is above the threshold
-is_sevirity_above_threshold(ContainerVulnerabilityScanInfo){
-    is_sevirity_above_threshold_in_context_of_patchable_findings(ContainerVulnerabilityScanInfo, "High")
-}
-# ********************* OR *************************************
-# Checks if the total of  Medium sevirity is above the threshold
-is_sevirity_above_threshold(ContainerVulnerabilityScanInfo){
-    is_sevirity_above_threshold_in_context_of_patchable_findings(ContainerVulnerabilityScanInfo, "Medium")
-}
-# ********************* OR *************************************
-# Checks if the total of  Low sevirity is above the threshold
-is_sevirity_above_threshold(ContainerVulnerabilityScanInfo){
-    is_sevirity_above_threshold_in_context_of_patchable_findings(ContainerVulnerabilityScanInfo, "Low")
-}
-
-
-# In case that input.parameters.excludeNotPatchableFindings is True, summarize only patchable findings
-is_sevirity_above_threshold_in_context_of_patchable_findings(ContainerVulnerabilityScanInfo, sevirityType){
-    input.parameters.excludeNotPatchableFindings
-    is_sevirity_type_above_threshold_while_excluding_not_patchable_findings(ContainerVulnerabilityScanInfo, sevirityType)
-}
-# ********************* OR *************************************
-# In case that input.parameters.excludeNotPatchableFindings is False, summarize all (patchable and not patchable) findings
-is_sevirity_above_threshold_in_context_of_patchable_findings(ContainerVulnerabilityScanInfo, sevirityType){
-    not input.parameters.excludeNotPatchableFindings
-    is_sevirity_type_above_threshold_while_including_not_patchable_findings(ContainerVulnerabilityScanInfo, sevirityType)
-}
-
-
-# Check if the total of all findings with sevirity level of severtyType and are patchable is exceeding the threshold
-is_sevirity_type_above_threshold_while_excluding_not_patchable_findings(ContainerVulnerabilityScanInfo, sevirityType){
-    c := count([scanFinding | 	scanFinding := ContainerVulnerabilityScanInfo["scanFindings"][_]
-                                scanFinding["patchable"]
-                                scanFinding["severity"] == sevirityType
-                                not is_scanFinding_appears_in_exlcudeFindingIDsList(scanFinding)])
-
-    c > input.parameters.sevirity[sevirityType]
-}
-
-# Check if the total of all findings with sevirity level of severtyType (patchable and not patchable) is exceeding the threshold
-is_sevirity_type_above_threshold_while_including_not_patchable_findings(ContainerVulnerabilityScanInfo, sevirityType){
-    c := count([scanFinding | 	scanFinding := ContainerVulnerabilityScanInfo["scanFindings"][_]
-                                scanFinding["severity"] == sevirityType
-                                not is_scanFinding_appears_in_exlcudeFindingIDsList(scanFinding)])
-    c > input.parameters.sevirity[sevirityType]
-}
-
-
-# Checks if the scanFinding appers in the list of the excluded findings id:
-is_scanFinding_appears_in_exlcudeFindingIDsList(scanFinding){
-    scanFindingID := scanFinding["id"]
-    excludedScanFinding := input.parameters.exlcudeFindingIDs[_]
-    scanFindingID == excludedScanFinding
-}
-
-# Checks if the registry appers in the exclduded_registreis pattern
-is_image_match_excluded_images_pattern(image_name){
-    image_pattern := input.parameters["excluded_images_pattern"][_]
-    re_match(image_pattern, image_name)
-}
-
-# Checks if scan info is unscanned
-is_unscanned(scan_info){
-    scan_info["scanStatus"] == "unscanned"
-}
-
-# Gets review object and returns unnmarshelled scan resulsts (i.e. as array of scan results)
+# Gets review object and returns unnmarshelled scan resulsts (i.e. as array of scan results).
+# See https://github.com/Azure/AzureDefender-K8S-InClusterDefense/blob/master/pkg/azdsecinfo/contracts/containers_vulnerability_scan_info.go
+# for more information about the contract and the unmarshalled object.
 getContainerVulnerabilityScanInfoList(review) = containerVulnerabilityScanInfoList{
     scanResults := review.object.metadata.annotations["azuredefender.io/containers.vulnerability.scan.info"]
     containerVulnerabilityScanInfoList := json.unmarshal(scanResults)
 }
 
-# Verify that the abs(enrichment time stemp - creation time stamp) <= dur 
-are_the_annotations_updated(containerVulnerabilityScanInfoList){
-    # Extract enrichment timestamp.
-    timestamp := containerVulnerabilityScanInfoList["generatedTimestamp"]
-    enrichmentTimestamp := time.parse_rfc3339_ns(timestamp)
-    # Extract creation timestamp
-    creationsTimestamp := time.parse_rfc3339_ns(input.review.object.metadata["creationTimestamp"])
-    # Convert duration param to time object
-    # TODO Should we define diff time than 20 seconds?
-    dur := time.parse_duration_ns("20s")
-    abs(enrichmentTimestamp - creationsTimestamp) <= dur
+# Verify that the uid request that appears in containerVulnerabilityScanInfoList is match to the uid request of the request.
+isTheUIDRequestMatch(containerVulnerabilityScanInfoList){
+    # Extract the uid requst from containerVulnerabilityScanInfoList
+    uidRequestInContainerVulnerabilityScanInfoList := containerVulnerabilityScanInfoList["uidRequest"]
+    # Extract the uid requst from the admission review
+    uidRequestOfAdmissionReview := input.review["uid"]
+
+    uidRequestInContainerVulnerabilityScanInfoList == uidRequestOfAdmissionReview
+}
+
+# Filter containers.
+filterContainers(containers) = containers{
+	containers = filterContainersWithHealthyScanStatus(containers)
+    containers = filterContaintersWithExcludedImages(containers)
+}
+
+# Filter containers that are have healthy scanStatus.
+filterContainersWithHealthyScanStatus(containers) = containers{
+	containers = [containerVulnerabilityScanInfo | 	containerVulnerabilityScanInfo := containers[_]
+    												containerVulnerabilityScanInfo["scanStatus"] != "healthyScan"]
+}
+
+# Filter containers that are appear in the excluded_images_pattern parameter.
+filterContaintersWithExcludedImages(containers) = containers{
+	containers = [containerVulnerabilityScanInfo | 	containerVulnerabilityScanInfo := containers[_]
+    												not isImageMatchExcludedImagesPattern(containerVulnerabilityScanInfo["image"]["name"])]
+}
+
+# Checks if the registry appers in the exclduded_registreis pattern
+isImageMatchExcludedImagesPattern(image_name){
+    image_pattern := input.parameters["excluded_images_pattern"][_]
+    re_match(image_pattern, image_name)
+}
+
+# Filter ScanFindings
+filterScanFindings(scanFindings) = scanFindings{
+	scanFindings = filterScanFindingsExcludedFindings(scanFindings)
+	scanFindings = filterScanFindingsIfExcludeNotPatchableFindingsParamTrue(scanFindings)
+}
+
+# Filter all scanfindings that appear in the excludeFindingIDsList.
+filterScanFindingsExcludedFindings(scanFindings) = scanFindings{
+	scanFindings = [scanFinding | 	scanFinding := scanFindings[_]
+    								not isScanFindingAppearsInExlcudeFindingIDsList(scanFinding)]
+}
+
+# Checks if the scanFinding appers in the list of the excluded findings id:
+isScanFindingAppearsInExlcudeFindingIDsList(scanFinding){
+    scanFindingID := scanFinding["id"]
+    excludedScanFinding := input.parameters.exlcudeFindingIDs[_]
+    scanFindingID == excludedScanFinding
+}
+
+# Filter scanFindings that are not patchable if the ExcludeNotPatchableFindings param is set to true
+filterScanFindingsIfExcludeNotPatchableFindingsParamTrue(scanFindings) = scanFindings{
+	input.parameters.excludeNotPatchableFindings
+	scanFindings = [scanFinding | 	scanFinding := scanFindings[_]
+    								scanFinding["patchable"]]
+}
+# Keep all scanFindings (patchable and not patchable) if the ExcludeNotPatchableFindings param is set to false
+filterScanFindingsIfExcludeNotPatchableFindingsParamTrue(scanFindings) = scanFindings{
+	not input.parameters.excludeNotPatchableFindings
+}
+
+# Checks if the total of High sevirity is above the threshold
+isSevirityAboveThreshold(scanFindings){
+    isSevirityTypeAboveThreshold(scanFindings, "High")
+}
+# Checks if the total of  Medium sevirity is above the threshold
+isSevirityAboveThreshold(scanFindings){
+    isSevirityTypeAboveThreshold(scanFindings, "Medium")
+}
+# Checks if the total of  Low sevirity is above the threshold
+isSevirityAboveThreshold(scanFindings){
+    isSevirityTypeAboveThreshold(scanFindings, "Low")
+}
+
+# Check if the total of all findings with sevirity level of severtyType (patchable and not patchable) is exceeding the threshold
+isSevirityTypeAboveThreshold(scanFindings, sevirityType){
+    c := count([scanFinding | 	scanFinding := scanFindings[_]
+                                scanFinding["severity"] == sevirityType])
+    c > input.parameters.sevirity[sevirityType]
 }

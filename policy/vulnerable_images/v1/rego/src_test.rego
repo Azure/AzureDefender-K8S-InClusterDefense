@@ -7,18 +7,39 @@ test_input_no_annotations {
     count(results) == 0
 }
 
-# Check that if the annotations are old i.e. are not updated in the last __ seconds, there is no violoation.
+# Check that if the annotations are old  (i.e. the uid request that appears in the annotations is different from the uid of the review) then there is no violoation.
 test_input_grace_annotations {
     input := { "review": input_review_violation_with_grace_annotations, "parameters": input_parameters_empty}
     results := violation with input as input
     count(results) == 0
 }
 
-# Checks that if there is unscanned msg and the image is appers in the excluded images regex list, then there is no violation.
-test_input_image_appear_in_excluded_images {
-    input := { "review": input_review_creation_time_ok_scan_status_unscanned, "parameters": input_parameters_tomerazurecr_image_excluded}
+# Checks that if there is unscanned image that is appers in the excluded images regex list, then there is no violation.
+test_input_unscanned_image_from_tomer_repo_appears_in_excluded_images {
+    input := { "review": input_review_creation_time_ok_scan_status_unscanned, "parameters": input_parameters_tomerazurecr_image_excluded_sevirityHighTreshold_2}
     results := violation with input as input
     count(results) == 0
+}
+
+# Checks that if there is unscanned image that is appers in the excluded images regex list, then there no violation.
+test_input_unscanned_image_from_lior_repo_appears_in_excluded_images {
+    input := { "review": input_review_creation_time_ok_scan_status_unscanned, "parameters": input_parameters_liorazurecr_image_excluded_sevirityHighTreshold_2}
+    results := violation with input as input
+    count(results) == 1
+}
+
+# Checks that although there is image that exceeds the sevirity treshold,if it appears in the excluded images regex list, then there is no violation.
+test_input_unhealthy_image_from_tomer_repo_appears_in_excluded_images {
+    input := { "review": input_review_unhealthy_2_containers_with_diff_severities, "parameters": input_parameters_tomerazurecr_image_excluded_sevirityHighTreshold_2}
+    results := violation with input as input
+    count(results) == 0
+}
+
+# Checks that although there is image that exceeds the sevirity treshold,if it appears in the excluded images regex list, then there is no violation.
+test_input_unhealthy_image_from_lior_repo_appears_in_excluded_images {
+    input := { "review": input_review_unhealthy_2_containers_with_diff_severities, "parameters": input_parameters_liorazurecr_image_excluded_sevirityHighTreshold_2}
+    results := violation with input as input
+    count(results) == 1
 }
 
 # Checks that if there is unscanned image, then there is 1 violtation.
@@ -91,10 +112,11 @@ input_review_no_annotations = {
 }
 
 input_review_creation_time_ok_scan_status_unscanned = {
+    "uid": "123",
     "object": {
         "metadata": {
             "annotations": {
-                "azuredefender.io/containers.vulnerability.scan.info": "{\"generatedTimestamp\":\"2021-05-04T23:53:20Z\",\"containers\":[{\"name\":\"testContainer\",\"image\":{\"name\":\"tomer.azurecr.io/core\/app:4.6\",\"digest\":\"sha256:4a1c4b21597c1b4415bdbecb28a3296c6b5e23ca4f9feeb599860a1dac6a0108\"},\"scanStatus\":\"unscanned\",\"scanFindings\":[{\"patchable\":true,\"id\":\"123\",\"severity\":\"High\"}]}]}"
+                "azuredefender.io/containers.vulnerability.scan.info": "{\"generatedTimestamp\":\"2021-05-04T23:53:20Z\",\"uidRequest\":\"123\",\"containers\":[{\"name\":\"testContainer\",\"image\":{\"name\":\"tomer.azurecr.io/core\/app:4.6\",\"digest\":\"sha256:4a1c4b21597c1b4415bdbecb28a3296c6b5e23ca4f9feeb599860a1dac6a0108\"},\"scanStatus\":\"unscanned\",\"scanFindings\":[{\"patchable\":true,\"id\":\"123\",\"severity\":\"High\"}]}]}"
             },
         "creationTimestamp": "2021-05-04T23:53:20Z"
         }
@@ -103,10 +125,11 @@ input_review_creation_time_ok_scan_status_unscanned = {
 
 
 input_review_violation_with_grace_annotations = {
+    "uid": "124",
     "object": {
         "metadata": {
             "annotations": {
-                "azuredefender.io/containers.vulnerability.scan.info": "{\"generatedTimestamp\":\"2021-03-04T23:53:20Z\",\"containers\":[{\"name\":\"testContainer\",\"image\":{\"name\":\"tomer.azurecr.io/core\/app:4.6\",\"digest\":\"sha256:4a1c4b21597c1b4415bdbecb28a3296c6b5e23ca4f9feeb599860a1dac6a0108\"},\"scanStatus\":\"unscanned\",\"scanFindings\":[{\"patchable\":true,\"id\":\"123\",\"severity\":\"High\"}]}]}"
+                "azuredefender.io/containers.vulnerability.scan.info": "{\"generatedTimestamp\":\"2021-03-04T23:53:20Z\",\"uidRequest\":\"123\",\"containers\":[{\"name\":\"testContainer\",\"image\":{\"name\":\"tomer.azurecr.io/core\/app:4.6\",\"digest\":\"sha256:4a1c4b21597c1b4415bdbecb28a3296c6b5e23ca4f9feeb599860a1dac6a0108\"},\"scanStatus\":\"unscanned\",\"scanFindings\":[{\"patchable\":true,\"id\":\"123\",\"severity\":\"High\"}]}]}"
             },
         "creationTimestamp": "2021-05-04T23:53:20Z"
         }
@@ -115,10 +138,11 @@ input_review_violation_with_grace_annotations = {
 
 
 input_review_unhealthy_2_containers_with_diff_severities = {
+    "uid": "123",
     "object": {
         "metadata": {
             "annotations": {
-                "azuredefender.io/containers.vulnerability.scan.info": "{\"generatedTimestamp\":\"2021-05-04T23:53:20Z\",\"containers\":[{\"name\":\"testContainer\",\"image\":{\"name\":\"tomer.azurecr.io/core\/app:4.6\",\"digest\":\"sha256:4a\"},\"scanStatus\":\"unhealthyScan\",\"scanFindings\":[{\"patchable\":true,\"id\":\"123\",\"severity\":\"High\"},{\"patchable\":true,\"id\":\"124\",\"severity\":\"High\"},{\"patchable\":true,\"id\":\"125\",\"severity\":\"High\"}]},{\"name\":\"testContainer2\",\"image\":{\"name\":\"tomer.azurecr.io/core\/app:4.6\",\"digest\":\"sha256:4a\"},\"scanStatus\":\"unhealthyScan\",\"scanFindings\":[{\"patchable\":true,\"id\":\"124\",\"severity\":\"Low\"},{\"patchable\":true,\"id\":\"124\",\"severity\":\"Medium\"},{\"patchable\":true,\"id\":\"124\",\"severity\":\"High\"},{\"patchable\":true,\"id\":\"125\",\"severity\":\"High\"}]}]}"
+                "azuredefender.io/containers.vulnerability.scan.info": "{\"generatedTimestamp\":\"2021-05-04T23:53:20Z\",\"uidRequest\":\"123\",\"containers\":[{\"name\":\"testContainer\",\"image\":{\"name\":\"tomer.azurecr.io/core\/app:4.6\",\"digest\":\"sha256:4a\"},\"scanStatus\":\"unhealthyScan\",\"scanFindings\":[{\"patchable\":true,\"id\":\"123\",\"severity\":\"High\"},{\"patchable\":true,\"id\":\"124\",\"severity\":\"High\"},{\"patchable\":true,\"id\":\"125\",\"severity\":\"High\"}]},{\"name\":\"testContainer2\",\"image\":{\"name\":\"tomer.azurecr.io/core\/app:4.6\",\"digest\":\"sha256:4a\"},\"scanStatus\":\"unhealthyScan\",\"scanFindings\":[{\"patchable\":true,\"id\":\"124\",\"severity\":\"Low\"},{\"patchable\":true,\"id\":\"124\",\"severity\":\"Medium\"},{\"patchable\":true,\"id\":\"124\",\"severity\":\"High\"},{\"patchable\":true,\"id\":\"125\",\"severity\":\"High\"}]}]}"
             },
         "creationTimestamp": "2021-05-04T23:53:20Z"
         }
@@ -126,10 +150,11 @@ input_review_unhealthy_2_containers_with_diff_severities = {
 }
 
 input_review_unhealthy_container_with_not_patchable_finding = {
+    "uid": "123",
     "object": {
         "metadata": {
             "annotations": {
-                "azuredefender.io/containers.vulnerability.scan.info": "{\"generatedTimestamp\":\"2021-05-04T23:53:20Z\",\"containers\":[{\"name\":\"testContainer2\",\"image\":{\"name\":\"tomer.azurecr.io/core\/app:4.6\",\"digest\":\"sha256:4a\"},\"scanStatus\":\"unhealthyScan\",\"scanFindings\":[{\"patchable\":false,\"id\":\"125\",\"severity\":\"High\"}]}]}"
+                "azuredefender.io/containers.vulnerability.scan.info": "{\"generatedTimestamp\":\"2021-05-04T23:53:20Z\",\"uidRequest\":\"123\",\"containers\":[{\"name\":\"testContainer2\",\"image\":{\"name\":\"tomer.azurecr.io/core\/app:4.6\",\"digest\":\"sha256:4a\"},\"scanStatus\":\"unhealthyScan\",\"scanFindings\":[{\"patchable\":false,\"id\":\"125\",\"severity\":\"High\"}]}]}"
             },
         "creationTimestamp": "2021-05-04T23:53:20Z"
         }
@@ -138,8 +163,18 @@ input_review_unhealthy_container_with_not_patchable_finding = {
 
 input_parameters_empty = {}
 
-input_parameters_tomerazurecr_image_excluded = {
-    "excluded_images_pattern": ["(tomer\\.azurecr\\.io).*"]
+input_parameters_tomerazurecr_image_excluded_sevirityHighTreshold_2 = {
+    "excluded_images_pattern": ["(tomer.azurecr.io).*"],
+    "sevirity" : {
+        "High": 2,
+    }
+}
+
+input_parameters_liorazurecr_image_excluded_sevirityHighTreshold_2 = {
+    "excluded_images_pattern": ["(lior.azurecr.io).*"],
+    "sevirity" : {
+        "High": 2,
+    }
 }
 
 input_parameters_sevirityHighTreshold_2 = {
