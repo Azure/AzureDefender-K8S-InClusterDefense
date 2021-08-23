@@ -54,20 +54,20 @@ func main() {
 	}
 
 	authrozierFactory := azureauth.NewEnvAzureAuthorizerFactory(getEnvAzureAuthorizerConfiguration(), new(azureauthwrappers.AzureAuthWrapper))
-	authorizer, err :=  authrozierFactory.CreateARMAuthorizer()
-	if err != nil{
+	authorizer, err := authrozierFactory.CreateARMAuthorizer()
+	if err != nil {
 		log.Fatal("main.NewEnvAzureAuthorizerFactory.CreateARMAuthorizer", err)
 	}
 
 	// Registry Client
-	regitryClient := registry.NewRegistryClient(instrumentationProvider, new(registrywrappers.CraneWrapper))
+	regitryClient := registry.NewCraneWrapperRegistryClient(instrumentationProvider, new(registrywrappers.CraneWrapper))
 
 	// ARG
 	argBaseClient := argbase.New()
 	argBaseClient.Authorizer = authorizer
 	argClient := arg.NewARGClient(instrumentationProvider, argBaseClient)
 	argQueryGenerator, err := argqueries.CreateARGQueryGenerator()
-	if err != nil{
+	if err != nil {
 		log.Fatal("main.CreateARGQueryGenerator", err)
 	}
 
@@ -153,7 +153,7 @@ func getHandlerConfiguration() (configuration *webhook.HandlerConfiguration) {
 	}
 }
 
-func getEnvAzureAuthorizerConfiguration() *azureauth.EnvAzureAuthorizerConfiguration{
+func getEnvAzureAuthorizerConfiguration() *azureauth.EnvAzureAuthorizerConfiguration {
 	return &azureauth.EnvAzureAuthorizerConfiguration{
 		IsLocalDevelopmentMode: true,
 		//TODO add MSI

@@ -25,7 +25,7 @@ func (suite *ExtractImageRefContextUtilsTestSuite) TestExtractRegistryAndReposit
 	suite.Equal("redis", ctx.Repository)
 }
 
-func (suite *ExtractImageRefContextUtilsTestSuite) TestExtractImageRefContext_NoIdentifier_Err() {
+func (suite *ExtractImageRefContextUtilsTestSuite) TestExtractImageRefContext_NoIdentifier() {
 	ctx, err := ExtractImageRefContext("tomer.azurecr.io/redis")
 	suite.Nil(err)
 	suite.Equal("tomer.azurecr.io", ctx.Registry)
@@ -41,6 +41,7 @@ func (suite *ExtractImageRefContextUtilsTestSuite) TestExtractImageRefContext_Di
 }
 
 func (suite *ExtractImageRefContextUtilsTestSuite) TestExtractImageRefContext_DigestBadFormat_Err() {
+	// The last 4 chars of the digest are deleted:
 	imageRef := "tomer.azurecr.io/redis@sha256:4a1c4b21597c1b4415bdbecb28a3296c6b5e23ca4f9feeb599860a1dac6a"
 	ctx, err := ExtractImageRefContext(imageRef)
 	suite.Equal(reflect.TypeOf(&name.ErrBadName{}), reflect.TypeOf(err))
@@ -54,13 +55,6 @@ func (suite *ExtractImageRefContextUtilsTestSuite) TestExtractImageRefContext_Ta
 	suite.Equal("tomer.azurecr.io", ctx.Registry)
 	suite.Equal("redis", ctx.Repository)
 }
-
-//func (suite *ExtractImageRefContextUtilsTestSuite) TestGetDigest(){
-//	imageRef := "tomerwdevops.azurecr.io/alpine:v0"
-//	digest, err := GetDigest(imageRef)
-//	suite.Nil(err)
-//	suite.Equal("sha256:d0710affa17fad5f466a70159cc458227bd25d4afb39514ef662ead3e6c99515", digest)
-//}
 
 func TestExtractImageRefContext(t *testing.T) {
 	suite.Run(t, new(ExtractImageRefContextUtilsTestSuite))

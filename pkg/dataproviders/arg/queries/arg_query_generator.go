@@ -7,33 +7,35 @@ import (
 )
 
 const (
+	// _imageScanTemplateName is constant that represent the template name that will be used when creating go template.
 	_imageScanTemplateName = "ImageVulnerabilityScanQuery"
 )
 
-var(
+var (
 	_nilArgumentError = errors.New("Received Null Argument")
 )
 
-// QueryGenerator creates ARG queries from pre-defined templates
+// ARGQueryGenerator QueryGenerator creates ARG queries from pre-defined templates
 type ARGQueryGenerator struct {
+	// containerVulnerabilityScanResultsQueryTemplate  is the go template of the ARG query.
 	containerVulnerabilityScanResultsQueryTemplate *template.Template
 }
 
 // Constructor
-func newQueryGenerator(containerVulnerabilityScanResultsQueryTemplate *template.Template) *ARGQueryGenerator {
+func newArgQueryGenerator(containerVulnerabilityScanResultsQueryTemplate *template.Template) *ARGQueryGenerator {
 	return &ARGQueryGenerator{
 		containerVulnerabilityScanResultsQueryTemplate: containerVulnerabilityScanResultsQueryTemplate,
 	}
 }
 
-// CreateARGQueryGenerator factory to create a query generator with initalized query templates
+// CreateARGQueryGenerator factory to create a query generator with initialized query templates
 func CreateARGQueryGenerator() (*ARGQueryGenerator, error) {
 	// Parse it on create to optimize performance
 	containerVulnerabilityScanResultsQueryTemplate, err := template.New(_imageScanTemplateName).Parse(_containerVulnerabilityScanResultsQueryTemplateStr)
 	if err != nil {
 		return nil, err
 	}
-	return newQueryGenerator(containerVulnerabilityScanResultsQueryTemplate), nil
+	return newArgQueryGenerator(containerVulnerabilityScanResultsQueryTemplate), nil
 }
 
 // GenerateImageVulnerabilityScanQuery generates a parsed container image scan results query for image using provided parameters

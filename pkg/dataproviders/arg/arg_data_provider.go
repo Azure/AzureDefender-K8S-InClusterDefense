@@ -12,8 +12,7 @@ import (
 	"strings"
 )
 
-
-const(
+const (
 	_argScanHealthyStatus = "Healthy"
 )
 
@@ -29,13 +28,15 @@ type IARGDataProvider interface {
 
 // ARGDataProvider is a IARGDataProvider implemtnation
 type ARGDataProvider struct {
-	tracerProvider    trace.ITracerProvider
-	metricSubmitter   metric.IMetricSubmitter
+	tracerProvider  trace.ITracerProvider
+	metricSubmitter metric.IMetricSubmitter
+	// argQueryGenerator is the generator for the are queries.
 	argQueryGenerator *queries.ARGQueryGenerator
-	argClient         IARGClient
+	// argClient is the arg client of the ARGDataProvider
+	argClient IARGClient
 }
 
-// Constructor
+// NewARGDataProvider Constructor
 func NewARGDataProvider(instrumentationProvider instrumentation.IInstrumentationProvider, argClient IARGClient, queryGenerator *queries.ARGQueryGenerator) *ARGDataProvider {
 	return &ARGDataProvider{
 		tracerProvider:    instrumentationProvider.GetTracerProvider("NewARGDataProvider"),
@@ -88,14 +89,14 @@ func (provider *ARGDataProvider) GetImageVulnerabilityScanResults(registry strin
 	tracer.Info("scanResultsQueryResponseObjectList", "list", scanResultsQueryResponseObjectList)
 
 	// Get image scan data from the ARG query parsed results
-	scanStaus, scanFindings, err := provider.getImageScanDataFromARGQueryScanResult(scanResultsQueryResponseObjectList)
+	scanStatus, scanFindings, err := provider.getImageScanDataFromARGQueryScanResult(scanResultsQueryResponseObjectList)
 	if err != nil {
 		err = errors.Wrap(err, "ARGDataProvider.GetImageVulnerabilityScanResults failed on getImageScanDataFromARGQueryScanResult")
 		tracer.Error(err, "")
 		return "", nil, err
 	}
 
-	return scanStaus, scanFindings, nil
+	return scanStatus, scanFindings, nil
 }
 
 // parseARGImageScanResults parse ARG client returnes results from scan results query to an array of ContainerVulnerabilityScanResultsQueryResponseObject
@@ -142,40 +143,41 @@ func (provider *ARGDataProvider) getImageScanDataFromARGQueryScanResult(scanResu
 		return "", nil, err
 	}
 
+	// Should set the scanStatus to unscanned?
 	if len(scanResultsQueryResponseObjectList) == 0 {
 		// Unscanned - no results found
 		tracer.Info("Set to Unscanned scan data")
 		// Return unscanned and return nil array of findings
 		return contracts.Unscanned, nil, nil
-	} else {
-		if len(scanResultsQueryResponseObjectList) == 1 && strings.EqualFold(scanResultsQueryResponseObjectList[0].ScanStatus , _argScanHealthyStatus) {
-			// Healthy Set to healthy scan
-			tracer.Info("Set to Healthy scan data", "healthyReceivedFindings", scanResultsQueryResponseObjectList)
-			// Return healthy scan status and empty array (initialized but empty)
-			return contracts.HealthyScan, []*contracts.ScanFinding{}, nil
-		} else {
-			// Unhealthy scan data
-			tracer.Info("Set to Unhealthy scan data")
-			scanFindings := []*contracts.ScanFinding{}
-			for _, element := range scanResultsQueryResponseObjectList {
-				// TODO check if there is more efficient way for this - might be a performance hit..(bool kusto vs. golang issue)
-				patchable, err := strconv.ParseBool(element.Patchable)
-				if err != nil {
-					err = errors.Wrapf(err, "ARGDataProvider.getImageScanDataFromARGQueryScanResult: Failed converting Finding :%v Patchable property from string to bool; patchable value: %v", element.Id, element.Patchable)
-					tracer.Error(err, "")
-					// Failed to parse if patchable - set default to "False" (TODO should we set it to false and continue instead?)
-					return "", nil, err
-				}
-
-				// Convert it to a scan finding
-				scanFindings = append(scanFindings, &contracts.ScanFinding{
-					Id:        element.Id,
-					Patchable: patchable,
-					Severity:  element.ScanFindingSeverity})
-			}
-
-			return contracts.UnhealthyScan, scanFindings, nil
-		}
 	}
-}
 
+	// Should set the scanStatus to healthy?
+	if len(scanResultsQueryResponseObjectList) == 1 && strings.EqualFold(scanResultsQueryResponseObjectList[0].ScanStatus, _argScanHealthyStatus) {
+		// Healthy Set to healthy scan
+		tracer.Info("Set to Healthy scan data", "healthyReceivedFindings", scanResultsQueryResponseObjectList)
+		// Return healthy scan status and empty array (initialized but empty)
+		return contracts.HealthyScan, []*contracts.ScanFinding{}, nil
+	}
+
+	// Set the scanStatus to Unhealthy.
+	tracer.Info("Set to Unhealthy scan data")
+	scanFindings := []*contracts.ScanFinding{}
+	for _, element := range scanResultsQueryResponseObjectList {
+		// TODO check if there is more efficient way for this - might be a performance hit..(bool kusto vs. golang issue)
+		patchable, err := strconv.ParseBool(element.Patchable)
+		if err != nil {
+			err = errors.Wrapf(err, "ARGDataProvider.getImageScanDataFromARGQueryScanResult: Failed converting Finding :%v Patchable property from string to bool; patchable value: %v", element.Id, element.Patchable)
+			tracer.Error(err, "")
+			// Failed to parse if patchable - set default to "False" (TODO should we set it to false and continue instead?)
+			return "", nil, err
+		}
+
+		// Convert it to a scan finding
+		scanFindings = append(scanFindings, &contracts.ScanFinding{
+			Id:        element.Id,
+			Patchable: patchable,
+			Severity:  element.ScanFindingSeverity})
+	}
+
+	return contracts.UnhealthyScan, scanFindings, nil
+}

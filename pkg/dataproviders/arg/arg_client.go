@@ -11,6 +11,10 @@ import (
 	"github.com/pkg/errors"
 )
 
+var (
+	_errArgQueryResponseIsNotAnObjectListFormat = fmt.Errorf("ARGClient.QueryResources received ARG query response data is not an object list")
+)
+
 // IARGClient is an interface for our arg client implemntation
 type IARGClient interface {
 	// QueryResources gets a query and return an array object as a result
@@ -19,19 +23,21 @@ type IARGClient interface {
 
 // ARGClient is our implementation for ARG client
 type ARGClient struct {
-	tracerProvider       trace.ITracerProvider
-	metricSubmitter      metric.IMetricSubmitter
+	tracerProvider  trace.ITracerProvider
+	metricSubmitter metric.IMetricSubmitter
+	// argBaseClientWrapper is the wrapper for ARG base client for the Resources function.
 	argBaseClientWrapper wrappers.IARGBaseClientWrapper
-	argReqOptions        *arg.QueryRequestOptions
+	//argQueryReqOptions is the options for query evaluation of the ARGClient
+	argQueryReqOptions *arg.QueryRequestOptions
 }
 
-// Contructor
+// NewARGClient Constructor
 func NewARGClient(instrumentationProvider instrumentation.IInstrumentationProvider, argBaseClientWrapper wrappers.IARGBaseClientWrapper) *ARGClient {
 	return &ARGClient{
 		tracerProvider:       instrumentationProvider.GetTracerProvider("ARGClient"),
 		metricSubmitter:      instrumentationProvider.GetMetricSubmitter(),
 		argBaseClientWrapper: argBaseClientWrapper,
-		argReqOptions: &arg.QueryRequestOptions{
+		argQueryReqOptions: &arg.QueryRequestOptions{
 			ResultFormat: arg.ResultFormatObjectArray,
 		},
 	}
@@ -44,7 +50,7 @@ func (client *ARGClient) QueryResources(query string) ([]interface{}, error) {
 	// Create the query request
 	Request := &arg.QueryRequest{
 		Query:   &query,
-		Options: client.argReqOptions,
+		Options: client.argQueryReqOptions,
 	}
 
 	tracer.Info("ARG query", "Request", Request)
@@ -58,7 +64,7 @@ func (client *ARGClient) QueryResources(query string) ([]interface{}, error) {
 
 	tracer.Info("ARG query", "Response", response)
 
-	// Check if response cound and data aren't null
+	// Check if response count and data aren't null
 	if response.Count == nil || response.Data == nil {
 		err = fmt.Errorf("ARGClient.QueryResources received ARG query response with nil count: %v or nil data: %v", response.Count, response.Data)
 		tracer.Error(err, "")
@@ -67,9 +73,8 @@ func (client *ARGClient) QueryResources(query string) ([]interface{}, error) {
 	// Assert type returned is an object array correlated to options.ResultFormat(arg.ResultFormatObjectArray)
 	results, ok := response.Data.([]interface{})
 	if ok == false {
-		err = fmt.Errorf("ARGClient.QueryResources received ARG query response date is not an object list")
-		tracer.Error(err, "")
-		return nil, err
+		tracer.Error(_errArgQueryResponseIsNotAnObjectListFormat, "")
+		return nil, _errArgQueryResponseIsNotAnObjectListFormat
 	}
 	return results, nil
 }

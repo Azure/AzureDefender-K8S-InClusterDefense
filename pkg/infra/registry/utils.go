@@ -2,9 +2,10 @@ package registry
 
 import (
 	name "github.com/google/go-containerregistry/pkg/name"
+	"github.com/pkg/errors"
 )
 
-//ImageContext represents image ref context - registry and repository
+// ImageRefContext represents image ref context - registry and repository
 type ImageRefContext struct {
 	// Registry image ref registry (e.g. "tomer.azurecr.io")
 	Registry string
@@ -20,7 +21,7 @@ func ExtractImageRefContext(imageRef string) (*ImageRefContext, error) {
 	parsedRef, err := name.ParseReference(imageRef)
 	if err != nil {
 		// Couldn't parse image ref
-		return nil, err
+		return nil, errors.Wrap(err, "ExtractImageRefContext failed to parse imageRef")
 	}
 
 	ctx := &ImageRefContext{

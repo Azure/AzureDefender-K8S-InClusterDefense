@@ -30,10 +30,14 @@ type IAzdSecInfoProvider interface {
 
 // AzdSecInfoProvider represents default implementation of IAzdSecInfoProvider interface
 type AzdSecInfoProvider struct {
-	tracerProvider  trace.ITracerProvider
+	//tracerProvider is tracer provider of AzdSecInfoProvider
+	tracerProvider trace.ITracerProvider
+	//metricSubmitter is metric submitter of AzdSecInfoProvider
 	metricSubmitter metric.IMetricSubmitter
+	// argDataProvider is the ARG provider which provides any ARG data
 	argDataProvider arg.IARGDataProvider
-	registryClient  registry.IRegistryClient
+	// registryClient is the client of the registry which is used to resolve image's digest
+	registryClient registry.IRegistryClient
 }
 
 // NewAzdSecInfoProvider - AzdSecInfoProvider Ctor
