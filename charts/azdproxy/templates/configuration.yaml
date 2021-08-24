@@ -1,0 +1,39 @@
+# Default Configurations for AzureDefender-K8S-InClusterDefense.
+# This is a ConfigMap file.
+# Declare variables to be passed into configurations object of the project's files.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{.Values.AzDProxy.prefixResourceDeployment}}-config
+  namespace: '{{ .Release.Namespace }}'
+  labels:
+  {{ include "common.labels" . | indent 6 }}
+# Application's configuration settings. Arranged by project's filesystem hierarchy
+data:
+  AppConfig.yaml: |-
+    webhook:
+      CertRotatorConfiguration:
+        SecretName: "{{ .Values.AzDProxy.prefixResourceDeployment }}-{{.Values.AzDProxy.webhook.CertRotatorConfiguration.SecretName }}"
+        ServiceName: "{{ .Values.AzDProxy.prefixResourceDeployment }}-{{.Values.AzDProxy.webhook.CertRotatorConfiguration.ServiceName }}"
+        WebhookName: "{{ .Values.AzDProxy.prefixResourceDeployment }}-{{.Values.AzDProxy.webhook.CertRotatorConfiguration.WebhookName }}"
+        CaName: "{{ .Values.AzDProxy.prefixResourceDeployment }}-{{.Values.AzDProxy.webhook.CertRotatorConfiguration.CaName }}"
+        CaOrganization: "{{ .Values.AzDProxy.prefixResourceDeployment }}"
+        CertDir: {{.Values.AzDProxy.webhook.volume.mountPath | quote}}
+        Namespace: {{.Release.Namespace | quote}}
+      ManagerConfiguration:
+        Port: {{.Values.AzDProxy.service.targetPort}}
+        CertDir: {{.Values.AzDProxy.webhook.volume.mountPath | quote}}
+      ServerConfiguration:
+        Path: {{.Values.AzDProxy.webhook.mutationPath | quote}}
+        EnableCertRotation: {{.Values.AzDProxy.webhook.ServerConfiguration.EnableCertRotation}}
+      HandlerConfiguration:
+        DryRun: {{.Values.AzDProxy.webhook.HandlerConfiguration.RunOnDryRunMode}}
+    instrumentation:
+      trace:
+        TracerConfiguration:
+          TracerLevel: {{.Values.AzDProxy.instrumentation.trace.TracerConfiguration.TracerLevel }}
+      tivan:
+        TivanInstrumentationConfiguration:
+          ComponentName: {{ .Chart.Name | quote}}
+          MdmNamespace: {{ .Values.AzDProxy.instrumentation.tivan.TivanInstrumentationConfiguration.MdmNamespace | quote}}
+
