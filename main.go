@@ -156,7 +156,7 @@ func getHandlerConfiguration() (configuration *webhook.HandlerConfiguration) {
 func getEnvAzureAuthorizerConfiguration() *azureauth.EnvAzureAuthorizerConfiguration {
 	return &azureauth.EnvAzureAuthorizerConfiguration{
 		IsLocalDevelopmentMode: true,
+		//MSIClientId:            "a554f933-695f-4ecf-abe4-2a7515e8c1b7",
 		//TODO add MSI
-
 	}
 }
