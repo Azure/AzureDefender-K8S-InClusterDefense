@@ -17,14 +17,10 @@ webhook:
   HandlerConfiguration:
     DryRun: false
 instrumentation:
-  LoggerConfiguration:
-    logLevel: "INFO"
-    logLevelKey: "level"
-    logLevelEncoder: "lower"
-trace:
-  TracerConfiguration:
-    TracerLevel: 0
-tivan:
-  TivanInstrumentationConfiguration:
-    ComponentName: "azdproxy"
-    MdmNamespace: "Tivan.Collector.Pods"
+  trace:
+    TracerConfiguration:
+      TracerLevel: 0
+  tivan:
+    TivanInstrumentationConfiguration:
+      ComponentName: "azdproxy"
+      MdmNamespace: "Tivan.Collector.Pods"

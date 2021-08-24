@@ -65,27 +65,20 @@ AzDProxy:
       name: "config"
       # -- The mount path of the volume.
       mountPath: "/config"
-    # Name of the configuration file
-    name: "AppConfig"
-    # Type of configuration file
-    type: "yaml"
+    # Path of the configuration file
+    filePath: "/config/AppConfig.yaml"
 
   # Instrumentation values
   instrumentation:
-    # Values for App's logger configuration.
-    LoggerConfiguration:
-      logLevel: "INFO"
-      logLevelKey: "level"
-      logLevelEncoder: "lower"
 
-  # Tivan values
-  tivan:
-    # Values for Tivan's instrumentation configuration:
-    TivanInstrumentationConfiguration:
-      MdmNamespace: "Tivan.Collector.Pods"
+    # Tivan values
+    tivan:
+      # Values for Tivan's instrumentation configuration:
+      TivanInstrumentationConfiguration:
+        MdmNamespace: "Tivan.Collector.Pods"
 
-  # Trace values
-  trace:
-    # Values for tracer's configuration:
-    TracerConfiguration:
-      TracerLevel: 0
+    # Trace values
+    trace:
+      # Values for tracer's configuration:
+      TracerConfiguration:
+        TracerLevel: 0

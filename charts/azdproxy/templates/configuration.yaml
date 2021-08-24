@@ -29,14 +29,10 @@ data:
       HandlerConfiguration:
         DryRun: {{.Values.AzDProxy.webhook.HandlerConfiguration.RunOnDryRunMode}}
     instrumentation:
-      LoggerConfiguration:
-        logLevel: {{ .Values.AzDProxy.instrumentation.LoggerConfiguration.logLevel | quote}}
-        logLevelKey: {{.Values.AzDProxy.instrumentation.LoggerConfiguration.logLevelKey | quote}}
-        logLevelEncoder: {{.Values.AzDProxy.instrumentation.LoggerConfiguration.logLevelEncoder | quote}}
-    trace:
-      TracerConfiguration:
-        TracerLevel: {{.Values.AzDProxy.trace.TracerConfiguration.TracerLevel }}
-    tivan:
-      TivanInstrumentationConfiguration:
-        ComponentName: {{ .Chart.Name | quote}}
-        MdmNamespace: {{ .Values.AzDProxy.tivan.TivanInstrumentationConfiguration.MdmNamespace | quote}}
+      trace:
+        TracerConfiguration:
+          TracerLevel: {{.Values.AzDProxy.instrumentation.trace.TracerConfiguration.TracerLevel }}
+      tivan:
+        TivanInstrumentationConfiguration:
+          ComponentName: {{ .Chart.Name | quote}}
+          MdmNamespace: {{ .Values.AzDProxy.instrumentation.tivan.TivanInstrumentationConfiguration.MdmNamespace | quote}}

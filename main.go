@@ -7,29 +7,23 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/tivan"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
+	"github.com/pkg/errors"
 	"log"
 	"os"
 )
 
 const (
-	_isLocalDevelopmentKey = "IS_LOCAL_DEVELOPMENT"
+	_configFileKey = "CONFIG_FILE"
 )
-
-
-// IsLocalDevelopment checks if program is running local or on a remote kubernetes cluster
-func IsLocalDevelopment() bool {
-	_, isFound := os.LookupEnv(_isLocalDevelopmentKey)
-	if isFound{
-		return false
-	}
-	return true
-}
 
 // main is the entrypoint to AzureDefenderInClusterDefense .
 func main() {
+	configFile := os.Getenv(_configFileKey)
+	if len(configFile) == 0{
+		log.Fatalf("%v env variable is not defined.", _configFileKey)
+	}
 	// Load configuration
-	AppConfig, err := config.LoadConfig(os.Getenv("CONFIG_NAME"), os.Getenv("CONFIG_TYPE"),
-		os.Getenv("CONFIG_PATH"), IsLocalDevelopment())
+	AppConfig, err := config.LoadConfig(configFile)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -45,12 +39,16 @@ func main() {
 	instrumentationConfiguration := new(instrumentation.InstrumentationProviderConfiguration)
 
 	// Unmarshal the relevant parts of appConfig's data to each of the configuration objects
-	CreateSubConfiguration(AppConfig, "webhook.ManagerConfiguration", managerConfiguration)
-	CreateSubConfiguration(AppConfig, "webhook.CertRotatorConfiguration", certRotatorConfiguration)
-	CreateSubConfiguration(AppConfig, "webhook.ServerConfiguration", serverConfiguration)
-	CreateSubConfiguration(AppConfig, "webhook.HandlerConfiguration", handlerConfiguration)
-	CreateSubConfiguration(AppConfig, "tivan.TivanInstrumentationConfiguration", tivanInstrumentationConfiguration)
-	CreateSubConfiguration(AppConfig, "trace.TracerConfiguration", tracerConfiguration)
+	err = CreateSubConfiguration(AppConfig, "webhook.ManagerConfiguration", managerConfiguration)
+	err = CreateSubConfiguration(AppConfig, "webhook.CertRotatorConfiguration", certRotatorConfiguration)
+	err = CreateSubConfiguration(AppConfig, "webhook.ServerConfiguration", serverConfiguration)
+	err = CreateSubConfiguration(AppConfig, "webhook.HandlerConfiguration", handlerConfiguration)
+	err = CreateSubConfiguration(AppConfig, "instrumentation.tivan.TivanInstrumentationConfiguration", tivanInstrumentationConfiguration)
+	err = CreateSubConfiguration(AppConfig, "instrumentation.trace.TracerConfiguration", tracerConfiguration)
+
+	if err != nil{
+		log.Fatal("failed to load specific configuration data.", err)
+	}
 
 	// Create Tivan's instrumentation
 	tivanInstrumentationResult, err := tivan.NewTivanInstrumentationResult(tivanInstrumentationConfiguration)
@@ -60,9 +58,6 @@ func main() {
 
 	// Create factories
 	tracerFactory := tivan.NewTracerFactory(tracerConfiguration, tivanInstrumentationResult.Tracer)
-	if IsLocalDevelopment() { // Use zapr logger when debugging
-		tracerFactory = trace.NewZaprTracerFactory(tracerConfiguration)
-	}
 	metricSubmitterFactory := tivan.NewMetricSubmitterFactory(metricSubmitterConfiguration, &tivanInstrumentationResult.MetricSubmitter)
 	instrumentationProviderFactory := instrumentation.NewInstrumentationProviderFactory(instrumentationConfiguration, tracerFactory, metricSubmitterFactory)
 	instrumentationProvider, err := instrumentationProviderFactory.CreateInstrumentationProvider()
@@ -89,11 +84,12 @@ func main() {
 
 // CreateSubConfiguration Create new configuration object for each resource,
 // based on it's values in the main configuration file
-func CreateSubConfiguration(mainConfiguration *config.ConfigurationProvider, subConfigHierarchy string, configuration interface{}){
-	ConfigValues := mainConfiguration.SubConfig(subConfigHierarchy)
-	err := ConfigValues.Unmarshal(&configuration)
+func CreateSubConfiguration(mainConfiguration *config.ConfigurationProvider, subConfigHierarchy string, configuration interface{}) error{
+	configValues := mainConfiguration.SubConfig(subConfigHierarchy)
+	err := configValues.Unmarshal(&configuration)
 	if err != nil {
-		log.Fatalf("Unable to decode the %v into struct, %v", subConfigHierarchy, err)
+		 return errors.Wrapf(err, "Unable to decode the %v into struct", subConfigHierarchy)
 	}
+	return nil
 }
 

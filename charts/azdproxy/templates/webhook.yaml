@@ -24,16 +24,9 @@ spec:
           image: '{{ .Values.AzDProxy.webhook.image.name }}'
           imagePullPolicy: '{{ .Values.AzDProxy.webhook.image.pullPolicy }}'
           env:
-          - name: "POD_NAMESPACE"
-            value: '{{ .Release.Namespace }}'
-          - name: "CONFIG_NAME"
-            value: {{ .Values.AzDProxy.configuration.name }}
-          - name: "CONFIG_TYPE"
-            value: {{ .Values.AzDProxy.configuration.type }}
-          - name: "CONFIG_PATH"
-            value: {{ .Values.AzDProxy.configuration.volume.mountPath }}
-          - name: "IS_LOCAL_DEVELOPMENT"
-            value: "false"
+          # env variable containing the path for the configuration file
+          - name: "CONFIG_FILE"
+            value: {{ .Values.AzDProxy.configuration.filePath }}
           ports:
             # The port on which the service will send requests to, so the webhook be listening on.
             - containerPort: {{ .Values.AzDProxy.service.targetPort }}

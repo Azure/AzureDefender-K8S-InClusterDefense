@@ -16,30 +16,22 @@ type ConfigurationProvider struct {
 
 // LoadConfig return a new configuration object.
 // The object contains configuration values the were read from a config file and from env variables (if needed)
-func LoadConfig(configurationName string, configurationType string, configurationPath string, isLocalDevelopment bool) (config *ConfigurationProvider, err error){
-	config = new(ConfigurationProvider)
-	viper.SetConfigName(configurationName)
-	viper.SetConfigType(configurationType)
-	if isLocalDevelopment {
-		viper.AddConfigPath("./" + configurationPath)
-	} else {
-		viper.AddConfigPath(configurationPath)
-	}
+func LoadConfig(configurationFile string) (config *ConfigurationProvider, err error){
+	viper.SetConfigFile(configurationFile)
 	err = viper.ReadInConfig()
 	if err != nil{
 		return nil, errors.Wrap(err, "failed to read configuration file")
 	}
-	config.viperConfig = viper.GetViper()
-	return config, nil
+	return &ConfigurationProvider{viper.GetViper()}, nil
 }
 
 // SubConfig returns new configuration instance representing a sub tree of the given instance.
 // SubConfig is case-insensitive for a key.
 // A wrapper method for viper.Sub method
- func (config *ConfigurationProvider) SubConfig(key string) (NewConfig *ConfigurationProvider){
- 	NewConfig = new(ConfigurationProvider)
- 	NewConfig.viperConfig = config.viperConfig.Sub(key)
- 	return NewConfig
+ func (config *ConfigurationProvider) SubConfig(key string) (newConfig *ConfigurationProvider){
+ 	newConfig = new(ConfigurationProvider)
+ 	newConfig.viperConfig = config.viperConfig.Sub(key)
+ 	return newConfig
  }
 
 // Unmarshal config into our runtime config struct
