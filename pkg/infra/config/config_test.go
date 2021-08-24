@@ -9,10 +9,7 @@ import (
 )
 
 const (
-	_configurationName string = "TestConfig"
-	_configurationType string = "yaml"
-	_configurationPath string = "/testdata"
-	_readFromEnv bool = true
+	_testConfigurationFile string = "./testdata/TestConfig.yaml"
 )
 
 type Clothing struct {
@@ -42,7 +39,7 @@ func createExampleMapString() map[string]interface{}{
 
 // This will run before each test in the suit
 func (suite *TestSuite) SetupTest(){
-	config, err := LoadConfig(_configurationName, _configurationType, _configurationPath, _readFromEnv)
+	config, err := LoadConfig(_testConfigurationFile)
 	suite.config = config
 	suite.exampleConfig = createExampleMapString()
 	suite.Nil(err)

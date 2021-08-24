@@ -7,7 +7,6 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/tivan"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
-	"github.com/pkg/errors"
 	"log"
 	"os"
 )
@@ -38,16 +37,22 @@ func main() {
 	tracerConfiguration := new(trace.TracerConfiguration)
 	instrumentationConfiguration := new(instrumentation.InstrumentationProviderConfiguration)
 
-	// Unmarshal the relevant parts of appConfig's data to each of the configuration objects
-	err = CreateSubConfiguration(AppConfig, "webhook.ManagerConfiguration", managerConfiguration)
-	err = CreateSubConfiguration(AppConfig, "webhook.CertRotatorConfiguration", certRotatorConfiguration)
-	err = CreateSubConfiguration(AppConfig, "webhook.ServerConfiguration", serverConfiguration)
-	err = CreateSubConfiguration(AppConfig, "webhook.HandlerConfiguration", handlerConfiguration)
-	err = CreateSubConfiguration(AppConfig, "instrumentation.tivan.TivanInstrumentationConfiguration", tivanInstrumentationConfiguration)
-	err = CreateSubConfiguration(AppConfig, "instrumentation.trace.TracerConfiguration", tracerConfiguration)
 
-	if err != nil{
-		log.Fatal("failed to load specific configuration data.", err)
+	// Create a map between configuration object and key in main config file
+	keyConfigMap := map[string]interface{} {
+		"webhook.ManagerConfiguration": managerConfiguration,
+		"webhook.CertRotatorConfiguration": certRotatorConfiguration,
+		"webhook.ServerConfiguration": serverConfiguration,
+		"webhook.HandlerConfiguration": handlerConfiguration,
+		"instrumentation.tivan.TivanInstrumentationConfiguration": tivanInstrumentationConfiguration,
+		"instrumentation.trace.TracerConfiguration": tracerConfiguration}
+
+	for key, configObject := range keyConfigMap{
+		// Unmarshal the relevant parts of appConfig's data to each of the configuration objects
+		err = config.CreateSubConfiguration(AppConfig, key, configObject)
+		if err != nil {
+			log.Fatal("failed to load specific configuration data.", err)
+		}
 	}
 
 	// Create Tivan's instrumentation
@@ -82,14 +87,4 @@ func main() {
 	}
 }
 
-// CreateSubConfiguration Create new configuration object for each resource,
-// based on it's values in the main configuration file
-func CreateSubConfiguration(mainConfiguration *config.ConfigurationProvider, subConfigHierarchy string, configuration interface{}) error{
-	configValues := mainConfiguration.SubConfig(subConfigHierarchy)
-	err := configValues.Unmarshal(&configuration)
-	if err != nil {
-		 return errors.Wrapf(err, "Unable to decode the %v into struct", subConfigHierarchy)
-	}
-	return nil
-}
 

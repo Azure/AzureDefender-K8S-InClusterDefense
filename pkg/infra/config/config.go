@@ -49,3 +49,14 @@ func (config *ConfigurationProvider) Unmarshal(runTimeConfig interface{}) (err e
 func (config *ConfigurationProvider) AllSettings() map[string] interface{} {
 	return config.viperConfig.AllSettings()
 }
+
+// CreateSubConfiguration Create new configuration object for each resource,
+// based on it's values in the main configuration file
+func CreateSubConfiguration(mainConfiguration *ConfigurationProvider, subConfigHierarchy string, configuration interface{}) error{
+	configValues := mainConfiguration.SubConfig(subConfigHierarchy)
+	err := configValues.Unmarshal(&configuration)
+	if err != nil {
+		return errors.Wrapf(err, "Unable to decode the %v into struct", subConfigHierarchy)
+	}
+	return nil
+}

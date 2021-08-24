@@ -36,3 +36,4 @@ data:
         TivanInstrumentationConfiguration:
           ComponentName: {{ .Chart.Name | quote}}
           MdmNamespace: {{ .Values.AzDProxy.instrumentation.tivan.TivanInstrumentationConfiguration.MdmNamespace | quote}}
+
