@@ -26,7 +26,7 @@ spec:
               items:
                 type: string
 
-            sevirity:
+            severity:
               type: object
               properties:
                 High:
@@ -70,8 +70,7 @@ spec:
 
             # Construct violation msg
             msg := sprintf("Found vulnerable container: %v", [container.name])
-            details := {"Container":
-              container, "ScanFindings": scanFindings}
+            details := {"Container": container, "ScanFindings": scanFindings}
         }
 
         # Extract the containers from the review object.
