@@ -22,19 +22,28 @@ spec:
         # TODO : Add securityContext section.
         - name: {{.Values.AzDProxy.prefixResourceDeployment}}-webhook
           image: '{{ .Values.AzDProxy.webhook.image.name }}'
-          env:
-            - name: "POD_NAMESPACE"
-              value: '{{ .Release.Namespace }}'
           imagePullPolicy: '{{ .Values.AzDProxy.webhook.image.pullPolicy }}'
+          env:
+          # env variable containing the path for the configuration file
+          - name: "CONFIG_FILE"
+            value: {{ .Values.AzDProxy.configuration.filePath }}
           ports:
             # The port on which the service will send requests to, so the webhook be listening on.
             - containerPort: {{ .Values.AzDProxy.service.targetPort }}
           volumeMounts:
-            - name: {{.Values.AzDProxy.webhook.volume.name}}
+            # App's secrets
+            - mountPath: {{.Values.AzDProxy.webhook.volume.mountPath}}
+              name: {{.Values.AzDProxy.webhook.volume.name}}
               readOnly: true
-              mountPath: {{.Values.AzDProxy.webhook.volume.mountPath}}
+            # App's config file
+            - mountPath: {{.Values.AzDProxy.configuration.volume.mountPath}}
+              name: {{.Values.AzDProxy.configuration.volume.name}}
+              readOnly: true
           resources: {{- toYaml .Values.AzDProxy.webhook.resources | nindent 12 }}
       volumes:
         - name: {{.Values.AzDProxy.webhook.volume.name}}
           secret:
             secretName: {{.Values.AzDProxy.prefixResourceDeployment}}-cert
+        - name: {{.Values.AzDProxy.configuration.volume.name}}
+          configMap:
+            name: {{.Values.AzDProxy.prefixResourceDeployment}}-config

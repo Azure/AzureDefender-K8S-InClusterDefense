@@ -9,9 +9,12 @@ require (
 	github.com/go-logr/logr v0.4.0
 	github.com/google/go-containerregistry v0.6.0
 	github.com/google/go-containerregistry/pkg/authn/k8schain v0.0.0-20210816182556-de8aff85c909 // indirect
+	github.com/modern-go/reflect2 v1.0.1
 	github.com/open-policy-agent/cert-controller v0.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.8.1
+	github.com/sirupsen/logrus v1.8.1
+	github.com/spf13/viper v1.7.0
 	github.com/stretchr/testify v1.7.0
 	go.uber.org/zap v1.17.0
 	gomodules.xyz/jsonpatch/v2 v2.2.0

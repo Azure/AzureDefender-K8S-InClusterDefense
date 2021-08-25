@@ -12,28 +12,57 @@ import (
 
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/cmd/webhook"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/azdsecinfo"
+	config "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/config"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/tivan"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
-	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/util"
+	"log"
+	"os"
 )
 
-type mainConfiguration struct {
-	isDebug bool
-}
+const (
+	_configFileKey = "CONFIG_FILE"
+)
 
 // main is the entrypoint to AzureDefenderInClusterDefense .
 func main() {
+	configFile := os.Getenv(_configFileKey)
+	if len(configFile) == 0{
+		log.Fatalf("%v env variable is not defined.", _configFileKey)
+	}
 	// Load configuration
-	mainConfig := getMainConfiguration()
-	tivanInstrumentationConfiguration := getTivanInstrumentationConfiguration()
-	tracerConfiguration := getTracerConfiguration()
-	metricSubmitterConfiguration := getMetricSubmitterConfiguration()
-	instrumentationConfiguration := getInstrumentationConfiguration()
-	managerConfiguration := getManagerConfiguration()
-	certRotatorConfig := getCertRotatorConfiguration()
-	handlerConfiguration := getHandlerConfiguration()
-	serverConfiguration := getServerConfiguration()
+	AppConfig, err := config.LoadConfig(configFile)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Create Configuration objects for each factory
+	managerConfiguration := new(webhook.ManagerConfiguration)
+	certRotatorConfiguration := new(webhook.CertRotatorConfiguration)
+	serverConfiguration := new(webhook.ServerConfiguration)
+	handlerConfiguration := new(webhook.HandlerConfiguration)
+	tivanInstrumentationConfiguration := new(tivan.TivanInstrumentationConfiguration)
+	metricSubmitterConfiguration := new(tivan.MetricSubmitterConfiguration)
+	tracerConfiguration := new(trace.TracerConfiguration)
+	instrumentationConfiguration := new(instrumentation.InstrumentationProviderConfiguration)
+
+
+	// Create a map between configuration object and key in main config file
+	keyConfigMap := map[string]interface{} {
+		"webhook.ManagerConfiguration": managerConfiguration,
+		"webhook.CertRotatorConfiguration": certRotatorConfiguration,
+		"webhook.ServerConfiguration": serverConfiguration,
+		"webhook.HandlerConfiguration": handlerConfiguration,
+		"instrumentation.tivan.TivanInstrumentationConfiguration": tivanInstrumentationConfiguration,
+		"instrumentation.trace.TracerConfiguration": tracerConfiguration}
+
+	for key, configObject := range keyConfigMap{
+		// Unmarshal the relevant parts of appConfig's data to each of the configuration objects
+		err = config.CreateSubConfiguration(AppConfig, key, configObject)
+		if err != nil {
+			log.Fatal("failed to load specific configuration data.", err)
+		}
+	}
 
 	// Create Tivan's instrumentation
 	tivanInstrumentationResult, err := tivan.NewTivanInstrumentationResult(tivanInstrumentationConfiguration)
@@ -43,9 +72,6 @@ func main() {
 
 	// Create factories
 	tracerFactory := tivan.NewTracerFactory(tracerConfiguration, tivanInstrumentationResult.Tracer)
-	if mainConfig.isDebug { // Use zapr logger when debugging
-		tracerFactory = trace.NewZaprTracerFactory(tracerConfiguration)
-	}
 	metricSubmitterFactory := tivan.NewMetricSubmitterFactory(metricSubmitterConfiguration, &tivanInstrumentationResult.MetricSubmitter)
 	instrumentationProviderFactory := instrumentation.NewInstrumentationProviderFactory(instrumentationConfiguration, tracerFactory, metricSubmitterFactory)
 	instrumentationProvider, err := instrumentationProviderFactory.CreateInstrumentationProvider()
@@ -79,8 +105,12 @@ func main() {
 
 	// Manager and server
 	managerFactory := webhook.NewManagerFactory(managerConfiguration, instrumentationProvider)
+	certRotatorFactory := webhook.NewCertRotatorFactory(certRotatorConfiguration)
+	azdSecInfoProvider := azdsecinfo.NewAzdSecInfoProvider()
+	handler := webhook.NewHandler(azdSecInfoProvider, handlerConfiguration, instrumentationProvider)
 	certRotatorFactory := webhook.NewCertRotatorFactory(certRotatorConfig)
 	serverFactory := webhook.NewServerFactory(serverConfiguration, managerFactory, certRotatorFactory, handler, instrumentationProvider)
+
 	// Create Server
 	server, err := serverFactory.CreateServer()
 	if err != nil {
@@ -92,66 +122,7 @@ func main() {
 	}
 }
 
-func getTivanInstrumentationConfiguration() *tivan.TivanInstrumentationConfiguration {
-	return &tivan.TivanInstrumentationConfiguration{
-		ComponentName: "AzDProxy",
-		MdmNamespace:  "Tivan.Collector.Pods",
-	}
 
-}
-
-//TODO All three methods below will be deleted once Or finishes the configuration
-func getInstrumentationConfiguration() *instrumentation.InstrumentationProviderConfiguration {
-	return &instrumentation.InstrumentationProviderConfiguration{}
-}
-
-func getTracerConfiguration() *trace.TracerConfiguration {
-	return &trace.TracerConfiguration{
-		TracerLevel: 0,
-	}
-}
-
-func getMetricSubmitterConfiguration() *tivan.MetricSubmitterConfiguration {
-	return &tivan.MetricSubmitterConfiguration{}
-}
-
-func getServerConfiguration() *webhook.ServerConfiguration {
-	return &webhook.ServerConfiguration{
-		Path:               "/mutate",
-		EnableCertRotation: true,
-	}
-}
-
-func getCertRotatorConfiguration() *webhook.CertRotatorConfiguration {
-	return &webhook.CertRotatorConfiguration{
-		Namespace:      util.GetNamespace(),
-		SecretName:     "azure-defender-proxy-cert",                           // matches the Secret name
-		ServiceName:    "azure-defender-proxy-service",                        // matches the Service name
-		WebhookName:    "azure-defender-proxy-mutating-webhook-configuration", // matches the MutatingWebhookConfiguration name
-		CaName:         "azure-defender-proxy-ca",
-		CaOrganization: "azure-defender-proxy",
-		CertDir:        "/certs",
-	}
-}
-
-func getManagerConfiguration() *webhook.ManagerConfiguration {
-	return &webhook.ManagerConfiguration{
-		Port:    8000,
-		CertDir: "/certs",
-	}
-}
-
-func getMainConfiguration() (configuration *mainConfiguration) {
-	return &mainConfiguration{
-		isDebug: false,
-	}
-}
-
-func getHandlerConfiguration() (configuration *webhook.HandlerConfiguration) {
-	return &webhook.HandlerConfiguration{
-		DryRun: false,
-	}
-}
 
 func getEnvAzureAuthorizerConfiguration() *azureauth.EnvAzureAuthorizerConfiguration {
 	return &azureauth.EnvAzureAuthorizerConfiguration{
