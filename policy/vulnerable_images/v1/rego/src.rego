@@ -3,7 +3,7 @@ package k8sazuredefendervulnerableimages
 # This violation checks if there is a container with unscanned scanStatus.
 violation[{"msg": msg, "details": details}] {
     # Extract containers
-    containers := getContainers(input.review)
+    containers := getApplicableContainersScanInfo(input.review)
     container := containers[_]
 
     # Check if the scan status of the container is unscanned.
@@ -17,13 +17,13 @@ violation[{"msg": msg, "details": details}] {
 # This violation checks if there is some container that it's sum of the severities of the scanFindings are exceed some thresholds.
 violation[{"msg": msg, "details": details}] {
     # Extract containers
-    containers := getContainers(input.review)
+    containers := getApplicableContainersScanInfo(input.review)
     container := containers[_]
     # Explicit filter all containers that don't have unhealthy scan status.
     container["scanStatus"] == "unhealthyScan"
     # Filter scanfindings
 	scanFindings := filterScanFindings(container["scanFindings"])
-    isSevirityAboveThreshold(scanFindings)
+    isSeverityAboveThreshold(scanFindings)
 
     # Construct violation msg
     msg := sprintf("Found vulnerable container: %v", [container.name])
@@ -31,7 +31,7 @@ violation[{"msg": msg, "details": details}] {
 }
 
 # Extract the containers from the review object.
-getContainers(review) = containers{
+getApplicableContainersScanInfo(review) = containers{
     # Extract ContainerVulnerabilityScanInfoList
     containerVulnerabilityScanInfoList := getContainerVulnerabilityScanInfoList(review)
     # Verify that the uid request that appears in containerVulnerabilityScanInfoList is match to the uid request of the request.
@@ -54,7 +54,7 @@ isTheUIDRequestMatch(containerVulnerabilityScanInfoList){
     uidRequestInContainerVulnerabilityScanInfoList := containerVulnerabilityScanInfoList["uidRequest"]
     # Extract the uid requst from the admission review
     uidRequestOfAdmissionReview := input.review["uid"]
-
+    # Check that the uid's are equal
     uidRequestInContainerVulnerabilityScanInfoList == uidRequestOfAdmissionReview
 }
 
@@ -65,14 +65,14 @@ filterContainers(containers) = containers{
 }
 
 # Filter containers that are have healthy scanStatus.
-filterContainersWithHealthyScanStatus(containers) = containers{
-	containers = [containerVulnerabilityScanInfo | 	containerVulnerabilityScanInfo := containers[_]
+filterContainersWithHealthyScanStatus(containers) = out{
+	out = [containerVulnerabilityScanInfo | 	containerVulnerabilityScanInfo := containers[_]
     												containerVulnerabilityScanInfo["scanStatus"] != "healthyScan"]
 }
 
 # Filter containers that are appear in the excluded_images_pattern parameter.
-filterContaintersWithExcludedImages(containers) = containers{
-	containers = [containerVulnerabilityScanInfo | 	containerVulnerabilityScanInfo := containers[_]
+filterContaintersWithExcludedImages(containers) = out{
+	out = [containerVulnerabilityScanInfo | 	containerVulnerabilityScanInfo := containers[_]
     												not isImageMatchExcludedImagesPattern(containerVulnerabilityScanInfo["image"]["name"])]
 }
 
@@ -83,15 +83,15 @@ isImageMatchExcludedImagesPattern(image_name){
 }
 
 # Filter ScanFindings
-filterScanFindings(scanFindings) = scanFindings{
-	scanFindings = filterScanFindingsExcludedFindings(scanFindings)
-	scanFindings = filterScanFindingsIfExcludeNotPatchableFindingsParamTrue(scanFindings)
+filterScanFindings(scanFindings) = out{
+	filtered := filterScanFindingsExcludedFindings(scanFindings)
+	out = filterScanFindingsNotPatchableBelowThreshold(filtered)
 }
 
 # Filter all scanfindings that appear in the excludeFindingIDsList.
-filterScanFindingsExcludedFindings(scanFindings) = scanFindings{
-	scanFindings = [scanFinding | 	scanFinding := scanFindings[_]
-    								not isScanFindingAppearsInExlcudeFindingIDsList(scanFinding)]
+filterScanFindingsExcludedFindings(scanFindings) = out{
+	out = [scanFinding | 	scanFinding := scanFindings[_]
+                            not isScanFindingAppearsInExlcudeFindingIDsList(scanFinding)]
 }
 
 # Checks if the scanFinding appers in the list of the excluded findings id:
@@ -101,34 +101,42 @@ isScanFindingAppearsInExlcudeFindingIDsList(scanFinding){
     scanFindingID == excludedScanFinding
 }
 
-# Filter scanFindings that are not patchable if the ExcludeNotPatchableFindings param is set to true
-filterScanFindingsIfExcludeNotPatchableFindingsParamTrue(scanFindings) = scanFindings{
-	input.parameters.excludeNotPatchableFindings
-	scanFindings = [scanFinding | 	scanFinding := scanFindings[_]
-    								scanFinding["patchable"]]
-}
-# Keep all scanFindings (patchable and not patchable) if the ExcludeNotPatchableFindings param is set to false
-filterScanFindingsIfExcludeNotPatchableFindingsParamTrue(scanFindings) = scanFindings{
-	not input.parameters.excludeNotPatchableFindings
+# Filter all scanfindings that are not patchable and their severity is below severityThresholdForExcludingNotPatchableFindings.
+filterScanFindingsNotPatchableBelowThreshold(scanFindings) = out{
+	out = [scanFinding | scanFinding := scanFindings[_] ; isScanFindingPatchableOrAboveThresholdSeverity(scanFinding)]
 }
 
-# Checks if the total of High sevirity is above the threshold
-isSevirityAboveThreshold(scanFindings){
-    isSevirityTypeAboveThreshold(scanFindings, "High")
-}
-# Checks if the total of  Medium sevirity is above the threshold
-isSevirityAboveThreshold(scanFindings){
-    isSevirityTypeAboveThreshold(scanFindings, "Medium")
-}
-# Checks if the total of  Low sevirity is above the threshold
-isSevirityAboveThreshold(scanFindings){
-    isSevirityTypeAboveThreshold(scanFindings, "Low")
+# Check if scanFinding is patchable
+isScanFindingPatchableOrAboveThresholdSeverity(scanFinding){
+	scanFinding["patchable"]
 }
 
-# Check if the total of all findings with sevirity level of severtyType (patchable and not patchable) is exceeding the threshold
-isSevirityTypeAboveThreshold(scanFindings, sevirityType){
+# Check if scanFinding is not patchable and the severity is above the threshold (severityThresholdForExcludingNotPatchableFindings)
+isScanFindingPatchableOrAboveThresholdSeverity(scanFinding){
+	not scanFinding["patchable"]
+	# Create map between severity to the integer level. None = 0, Low = 1, Medium = 2, High = 3
+	severityToLevel := {"None": 0, "Low": 1, "Medium" : 2, "High": 3}
+	# Check that the level of the scanFinding is above the threshold level.
+    severityToLevel[scanFinding["severity"]] > severityToLevel[input.parameters.severityThresholdForExcludingNotPatchableFindings]
+}
+
+# Checks if the total of High severity is above the threshold
+isSeverityAboveThreshold(scanFindings){
+    isSeverityTypeAboveThreshold(scanFindings, "High")
+}
+# Checks if the total of  Medium severity is above the threshold
+isSeverityAboveThreshold(scanFindings){
+    isSeverityTypeAboveThreshold(scanFindings, "Medium")
+}
+# Checks if the total of  Low severity is above the threshold
+isSeverityAboveThreshold(scanFindings){
+    isSeverityTypeAboveThreshold(scanFindings, "Low")
+}
+
+# Check if the total of all findings with severity level of severtyType (patchable and not patchable) is exceeding the threshold
+isSeverityTypeAboveThreshold(scanFindings, severityType){
     c := count([scanFinding | 	scanFinding := scanFindings[_]
-                                scanFinding["severity"] == sevirityType])
+                                scanFinding["severity"] == severityType])
 
-    c > input.parameters.sevirity[sevirityType]
+    c > input.parameters.severity[severityType]
 }

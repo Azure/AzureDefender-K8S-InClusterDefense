@@ -10,7 +10,7 @@ spec:
         kinds: [ "Pod" ]
   parameters:
     excludedImages: {{ .Values.excludedImages }}
-    excludeNotPatchableFindings: {{ .Values.excludeNotPatchableFindings }}
+    severityThresholdForExcludingNotPatchableFindings: {{ .Values.severityThresholdForExcludingNotPatchableFindings }}
     excludeFindingIDs: {{ .Values.excludeFindingIDs }}
     sevirity:
       High: {{ .Values.highSeverityThreshold }}
