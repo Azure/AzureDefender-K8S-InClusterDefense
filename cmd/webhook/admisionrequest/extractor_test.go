@@ -19,7 +19,7 @@ type TestSuite struct {
 	pod *corev1.Pod
 }
 
-func (suite *TestSuite) SetupSuite() {
+func (suite *TestSuite) SetupTest() {
 
 	suite.pod = &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
@@ -84,7 +84,7 @@ func (suite *TestSuite) Test_UnmarshalPod_EmptyRawObject_Error() {
 	suite.Equal(_errObjectNotFound, err)
 }
 
-func (suite *TestSuite) Test_UnmarshalPod_NotPodKindRequest_Error() {
+func (suite *TestSuite) Test_UnmarshalPod_FNotPodKindRequest_Error() {
 	suite.req.Kind.Kind = "NotPod"
 
 	pod, err := UnmarshalPod(suite.req)

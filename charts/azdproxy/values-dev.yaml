@@ -82,3 +82,8 @@ AzDProxy:
       # Values for tracer's configuration:
       TracerConfiguration:
         TracerLevel: 0
+
+    # Azure Auth values
+    azureauth:
+      envAzureAuthorizerConfiguration:
+        MSIClientId: "a554f933-695f-4ecf-abe4-2a7515e8c1b7"
