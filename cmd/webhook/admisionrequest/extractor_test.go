@@ -84,7 +84,7 @@ func (suite *TestSuite) Test_UnmarshalPod_EmptyRawObject_Error() {
 	suite.Equal(_errObjectNotFound, err)
 }
 
-func (suite *TestSuite) Test_UnmarshalPod_FNotPodKindRequest_Error() {
+func (suite *TestSuite) Test_UnmarshalPod_NotPodKindRequest_Error() {
 	suite.req.Kind.Kind = "NotPod"
 
 	pod, err := UnmarshalPod(suite.req)
