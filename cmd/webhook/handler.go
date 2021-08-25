@@ -3,7 +3,6 @@ package webhook
 
 import (
 	"context"
-	"k8s.io/apimachinery/pkg/types"
 	"log"
 
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
@@ -83,7 +82,7 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 			log.Fatal(wrappedError)
 		}
 
-		vulnerabilitySecAnnotationsPatch, err := handler.getPodContainersVulnerabilityScanInfoAnnotationsOperation(pod, req.UID)
+		vulnerabilitySecAnnotationsPatch, err := handler.getPodContainersVulnerabilityScanInfoAnnotationsOperation(pod)
 		if err != nil {
 			wrappedError := errors.Wrap(err, "Handler.Handle Failed to getPodContainersVulnerabilityScanInfoAnnotationsOperation for Pod")
 			tracer.Error(wrappedError, "")
@@ -109,7 +108,7 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 	return response
 }
 
-func (handler *Handler) getPodContainersVulnerabilityScanInfoAnnotationsOperation(pod *corev1.Pod, uidRequest types.UID) (*jsonpatch.JsonPatchOperation, error) {
+func (handler *Handler) getPodContainersVulnerabilityScanInfoAnnotationsOperation(pod *corev1.Pod) (*jsonpatch.JsonPatchOperation, error) {
 	tracer := handler.tracerProvider.GetTracer("getPodContainersVulnerabilityScanInfoAnnotationsOperation")
 	vulnSecInfoContainers := []*contracts.ContainerVulnerabilityScanInfo{}
 
@@ -141,7 +140,7 @@ func (handler *Handler) getPodContainersVulnerabilityScanInfoAnnotationsOperatio
 		vulnSecInfoContainers = append(vulnSecInfoContainers, vulnerabilitySecInfo)
 	}
 	// Create the annotations add json patch operation
-	vulnerabilitySecAnnotationsPatch, err := annotations.CreateContainersVulnerabilityScanAnnotationPatchAdd(vulnSecInfoContainers, uidRequest)
+	vulnerabilitySecAnnotationsPatch, err := annotations.CreateContainersVulnerabilityScanAnnotationPatchAdd(vulnSecInfoContainers)
 	if err != nil {
 		wrappedError := errors.Wrap(err, "Handler failed to GetContainersVulnerabilityScanInfo")
 		tracer.Error(wrappedError, "Handler.AzdSecInfoProvider.GetContainersVulnerabilityScanInfo")

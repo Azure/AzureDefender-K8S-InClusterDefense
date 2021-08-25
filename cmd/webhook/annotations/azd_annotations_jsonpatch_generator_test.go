@@ -55,7 +55,7 @@ func (suite *TestSuite) SetupSuite() {
 }
 
 func (suite *TestSuite) Test_CreateContainersVulnerabilityScanAnnotationPatchAdd_TwoContainersScanInfo_AnnotationsGeneratedAsExpected() {
-	result, err := CreateContainersVulnerabilityScanAnnotationPatchAdd(suite.containersScanInfo, "123")
+	result, err := CreateContainersVulnerabilityScanAnnotationPatchAdd(suite.containersScanInfo)
 	suite.Nil(err)
 	suite.Equal(_expectedTestAddPatchOperation, result.Operation)
 	suite.Equal(_expectedTestAnnotationPatchPath, result.Path)
