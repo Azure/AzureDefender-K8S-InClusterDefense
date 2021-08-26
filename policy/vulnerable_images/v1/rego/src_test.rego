@@ -8,10 +8,17 @@ test_input_no_annotations {
 }
 
 # Check that if the annotations are old  (i.e. the uid request that appears in the annotations is different from the uid of the review) then there is no violoation.
-test_input_grace_annotations {
-    input := { "review": input_review_violation_with_grace_annotations, "parameters": input_parameters_empty}
+test_input_stale_annotations_zero_violations {
+    input := { "review": input_review_violation_with_stale_annotations, "parameters": input_parameters_high_0_severityThresholdForExcludingNotPatchableFindings_None}
     results := violation with input as input
     count(results) == 0
+}
+
+# Check that if the annotations are old  (i.e. the uid request that appears in the annotations is different from the uid of the review) then there is no violoation.
+test_input_not_stale_annotations_1_violation {
+    input := { "review": input_review_violation_with_not_stale_annotations, "parameters": input_parameters_high_0_severityThresholdForExcludingNotPatchableFindings_None}
+    results := violation with input as input
+    count(results) == 1
 }
 
 # Checks that if there is unscanned image that is appers in the excluded images regex list, then there is no violation.
@@ -176,8 +183,7 @@ input_review_no_annotations = {
     "object": {
         "metadata": {
             "annotations": ""
-        },
-        "creationTimestamp": "2021-05-04T23:53:20Z"
+        }
     }
 }
 
@@ -187,25 +193,34 @@ input_review_creation_time_ok_scan_status_unscanned = {
         "metadata": {
             "annotations": {
                 "azuredefender.io/containers.vulnerability.scan.info": "{\"generatedTimestamp\":\"2021-05-04T23:53:20Z\",\"uidRequest\":\"123\",\"containers\":[{\"name\":\"testContainer\",\"image\":{\"name\":\"tomer.azurecr.io/core/app:4.6\",\"digest\":\"sha256:4a1c4b21597c1b4415bdbecb28a3296c6b5e23ca4f9feeb599860a1dac6a0108\"},\"scanStatus\":\"unscanned\",\"scanFindings\":[{\"patchable\":true,\"id\":\"123\",\"severity\":\"High\"}]}]}"
-            },
-        "creationTimestamp": "2021-05-04T23:53:20Z"
+            }
         }
     }
 }
 
-
-input_review_violation_with_grace_annotations = {
+input_review_violation_with_stale_annotations = {
     "uid": "124",
     "object": {
         "metadata": {
             "annotations": {
                 "azuredefender.io/containers.vulnerability.scan.info": "{\"generatedTimestamp\":\"2021-03-04T23:53:20Z\",\"uidRequest\":\"123\",\"containers\":[{\"name\":\"testContainer\",\"image\":{\"name\":\"tomer.azurecr.io/core/app:4.6\",\"digest\":\"sha256:4a1c4b21597c1b4415bdbecb28a3296c6b5e23ca4f9feeb599860a1dac6a0108\"},\"scanStatus\":\"unscanned\",\"scanFindings\":[{\"patchable\":true,\"id\":\"123\",\"severity\":\"High\"}]}]}"
             },
-        "creationTimestamp": "2021-05-04T23:53:20Z"
+        "managedFields":[{"time": "2021-05-04T23:53:20Z"}]
         }
     }
 }
 
+input_review_violation_with_not_stale_annotations = {
+    "uid": "124",
+    "object": {
+        "metadata": {
+            "annotations": {
+                "azuredefender.io/containers.vulnerability.scan.info": "{\"generatedTimestamp\":\"2021-03-04T23:53:20Z\",\"uidRequest\":\"123\",\"containers\":[{\"name\":\"testContainer\",\"image\":{\"name\":\"tomer.azurecr.io/core/app:4.6\",\"digest\":\"sha256:4a1c4b21597c1b4415bdbecb28a3296c6b5e23ca4f9feeb599860a1dac6a0108\"},\"scanStatus\":\"unscanned\",\"scanFindings\":[{\"patchable\":true,\"id\":\"123\",\"severity\":\"High\"}]}]}"
+            },
+        "managedFields":[{"time": "2021-03-04T23:53:20Z"}]
+        }
+    }
+}
 
 input_review_unhealthy_2_containers_with_diff_severities = {
     "uid": "123",
@@ -213,8 +228,7 @@ input_review_unhealthy_2_containers_with_diff_severities = {
         "metadata": {
             "annotations": {
                 "azuredefender.io/containers.vulnerability.scan.info": "{\"generatedTimestamp\":\"2021-05-04T23:53:20Z\",\"uidRequest\":\"123\",\"containers\":[{\"name\":\"testContainer\",\"image\":{\"name\":\"tomer.azurecr.io/core/app:4.6\",\"digest\":\"sha256:4a\"},\"scanStatus\":\"unhealthyScan\",\"scanFindings\":[{\"patchable\":true,\"id\":\"123\",\"severity\":\"High\"},{\"patchable\":true,\"id\":\"124\",\"severity\":\"High\"},{\"patchable\":true,\"id\":\"125\",\"severity\":\"High\"}]},{\"name\":\"testContainer2\",\"image\":{\"name\":\"tomer.azurecr.io/core/app:4.6\",\"digest\":\"sha256:4a\"},\"scanStatus\":\"unhealthyScan\",\"scanFindings\":[{\"patchable\":true,\"id\":\"124\",\"severity\":\"Low\"},{\"patchable\":true,\"id\":\"124\",\"severity\":\"Medium\"},{\"patchable\":true,\"id\":\"124\",\"severity\":\"High\"},{\"patchable\":true,\"id\":\"125\",\"severity\":\"High\"}]}]}"
-            },
-        "creationTimestamp": "2021-05-04T23:53:20Z"
+            }
         }
     }
 }
@@ -226,8 +240,7 @@ input_review_unhealthy_container_with_patchable_finding = {
         "metadata": {
             "annotations": {
                 "azuredefender.io/containers.vulnerability.scan.info": "{\"generatedTimestamp\":\"2021-05-04T23:53:20Z\",\"uidRequest\":\"123\",\"containers\":[{\"name\":\"testContainer2\",\"image\":{\"name\":\"tomer.azurecr.io/core/app:4.6\",\"digest\":\"sha256:4a\"},\"scanStatus\":\"unhealthyScan\",\"scanFindings\":[{\"patchable\":true,\"id\":\"125\",\"severity\":\"High\"}]}]}"
-            },
-        "creationTimestamp": "2021-05-04T23:53:20Z"
+            }
         }
     }
 }
@@ -239,8 +252,7 @@ input_review_unhealthy_container_with_not_patchable_finding = {
         "metadata": {
             "annotations": {
                 "azuredefender.io/containers.vulnerability.scan.info": "{\"generatedTimestamp\":\"2021-05-04T23:53:20Z\",\"uidRequest\":\"123\",\"containers\":[{\"name\":\"testContainer2\",\"image\":{\"name\":\"tomer.azurecr.io/core/app:4.6\",\"digest\":\"sha256:4a\"},\"scanStatus\":\"unhealthyScan\",\"scanFindings\":[{\"patchable\":false,\"id\":\"125\",\"severity\":\"High\"}]}]}"
-            },
-        "creationTimestamp": "2021-05-04T23:53:20Z"
+            }
         }
     }
 }
@@ -251,8 +263,7 @@ input_review_unhealthy_container_with_not_patchable_severities = {
         "metadata": {
             "annotations": {
                 "azuredefender.io/containers.vulnerability.scan.info": "{\"generatedTimestamp\":\"2021-05-04T23:53:20Z\",\"uidRequest\":\"123\",\"containers\":[{\"name\":\"testContainer\",\"image\":{\"name\":\"tomer.azurecr.io/core/app:4.6\",\"digest\":\"sha256:4a\"},\"scanStatus\":\"unhealthyScan\",\"scanFindings\":[{\"patchable\":false,\"id\":\"125\",\"severity\":\"Low\"},{\"patchable\":false,\"id\":\"126\",\"severity\":\"Medium\"},{\"patchable\":false,\"id\":\"127\",\"severity\":\"High\"}]}]}"
-            },
-        "creationTimestamp": "2021-05-04T23:53:20Z"
+            }
         }
     }
 }
@@ -263,8 +274,7 @@ input_review_unhealthy_container_with_one_finding_patchable_low_severity = {
         "metadata": {
             "annotations": {
                 "azuredefender.io/containers.vulnerability.scan.info": "{\"generatedTimestamp\":\"2021-05-04T23:53:20Z\",\"uidRequest\":\"123\",\"containers\":[{\"name\":\"testContainer2\",\"image\":{\"name\":\"tomer.azurecr.io/core/app:4.6\",\"digest\":\"sha256:4a\"},\"scanStatus\":\"unhealthyScan\",\"scanFindings\":[{\"patchable\":true,\"id\":\"125\",\"severity\":\"Low\"}]}]}"
-            },
-        "creationTimestamp": "2021-05-04T23:53:20Z"
+            }
         }
     }
 }
@@ -275,8 +285,7 @@ input_review_unhealthy_2_containers_one_unscanned_and_one_high = {
         "metadata": {
             "annotations": {
                 "azuredefender.io/containers.vulnerability.scan.info": "{\"generatedTimestamp\":\"2021-05-04T23:53:20Z\",\"uidRequest\":\"123\",\"containers\":[{\"name\":\"testContainer\",\"image\":{\"name\":\"tomer.azurecr.io/core/app:4.6\",\"digest\":\"sha256:4a\"},\"scanStatus\":\"unhealthyScan\",\"scanFindings\":[{\"patchable\":false,\"id\":\"125\",\"severity\":\"High\"}]},{\"name\":\"testContainer2\",\"image\":{\"name\":\"tomer.azurecr.io/core/app:4.6\",\"digest\":\"sha256:4a\"},\"scanStatus\":\"unscanned\",\"scanFindings\":[]}]}"
-            },
-        "creationTimestamp": "2021-05-04T23:53:20Z"
+            }
         }
     }
 }
