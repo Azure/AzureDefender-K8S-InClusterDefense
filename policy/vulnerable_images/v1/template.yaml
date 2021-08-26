@@ -161,6 +161,7 @@ spec:
         }
         # Check if the total of all findings with severity level of severtyType (patchable and not patchable) is exceeding the threshold
         isSeverityTypeAboveThreshold(scanFindings, severityType){
+          # Extract all scanFinding that have serverity level equal to severity type.
           c := count([scanFinding | 	scanFinding := scanFindings[_]
           scanFinding["severity"] == severityType])
           c > input.parameters.severity[severityType]
