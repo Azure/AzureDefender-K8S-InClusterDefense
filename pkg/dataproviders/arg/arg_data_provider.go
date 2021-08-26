@@ -8,7 +8,6 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
 	"github.com/pkg/errors"
-	"strconv"
 	"strings"
 )
 
@@ -26,9 +25,11 @@ type IARGDataProvider interface {
 	GetImageVulnerabilityScanResults(registry string, repository string, digest string) (scanStatus contracts.ScanStatus, scanFindings []*contracts.ScanFinding, err error)
 }
 
-// ARGDataProvider is a IARGDataProvider implemtnation
+// ARGDataProvider is a IARGDataProvider implementation
 type ARGDataProvider struct {
-	tracerProvider  trace.ITracerProvider
+	//tracerProvider
+	tracerProvider trace.ITracerProvider
+	//metricSubmitter
 	metricSubmitter metric.IMetricSubmitter
 	// argQueryGenerator is the generator for the are queries.
 	argQueryGenerator *queries.ARGQueryGenerator
@@ -161,21 +162,11 @@ func (provider *ARGDataProvider) getImageScanDataFromARGQueryScanResult(scanResu
 
 	// Set the scanStatus to Unhealthy.
 	tracer.Info("Set to Unhealthy scan data")
-	scanFindings := []*contracts.ScanFinding{}
+	scanFindings := make([]*contracts.ScanFinding, 0, len(scanResultsQueryResponseObjectList))
 	for _, element := range scanResultsQueryResponseObjectList {
-		// TODO check if there is more efficient way for this - might be a performance hit..(bool kusto vs. golang issue)
-		patchable, err := strconv.ParseBool(element.Patchable)
-		if err != nil {
-			err = errors.Wrapf(err, "ARGDataProvider.getImageScanDataFromARGQueryScanResult: Failed converting Finding :%v Patchable property from string to bool; patchable value: %v", element.Id, element.Patchable)
-			tracer.Error(err, "")
-			// Failed to parse if patchable - set default to "False" (TODO should we set it to false and continue instead?)
-			return "", nil, err
-		}
-
-		// Convert it to a scan finding
 		scanFindings = append(scanFindings, &contracts.ScanFinding{
 			Id:        element.Id,
-			Patchable: patchable,
+			Patchable: element.Patchable,
 			Severity:  element.ScanFindingSeverity})
 	}
 

@@ -28,5 +28,5 @@ instrumentation:
 azureauth:
   envAzureAuthorizerConfiguration:
     IsLocalDevelopmentMode: true
-    MSIClientId: "" # This should be kept empty while you are run the service locally.
+    MSIClientId: "" # This should be kept empty while you are running the service locally.
 

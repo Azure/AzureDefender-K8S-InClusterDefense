@@ -92,7 +92,7 @@ func main() {
 	argBaseClient := argbase.New()
 	argBaseClient.Authorizer = authorizer
 	argClient := arg.NewARGClient(instrumentationProvider, argBaseClient)
-	argQueryGenerator, err := argqueries.CreateARGQueryGenerator()
+	argQueryGenerator, err := argqueries.CreateARGQueryGenerator(instrumentationProvider)
 	if err != nil {
 		log.Fatal("main.CreateARGQueryGenerator", err)
 	}

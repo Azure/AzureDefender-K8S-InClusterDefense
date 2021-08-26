@@ -51,6 +51,7 @@ func (client *ARGClient) QueryResources(query string) ([]interface{}, error) {
 	Request := &arg.QueryRequest{
 		Query:   &query,
 		Options: client.argQueryReqOptions,
+		//TODO Add subscriptions?
 	}
 
 	tracer.Info("ARG query", "Request", Request)
@@ -64,9 +65,9 @@ func (client *ARGClient) QueryResources(query string) ([]interface{}, error) {
 
 	tracer.Info("ARG query", "Response", response)
 
-	// Check if response count and data aren't null
-	if response.Count == nil || response.Data == nil {
-		err = fmt.Errorf("ARGClient.QueryResources received ARG query response with nil count: %v or nil data: %v", response.Count, response.Data)
+	// Check if response TotalRecords and data aren't null
+	if response.TotalRecords == nil || response.Data == nil {
+		err = fmt.Errorf("ARGClient.QueryResources received ARG query response with nil TotalRecords: %v or nil Data: %v", response.Count, response.Data)
 		tracer.Error(err, "")
 		return nil, err
 	}
