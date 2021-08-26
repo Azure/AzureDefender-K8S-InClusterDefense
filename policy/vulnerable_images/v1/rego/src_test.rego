@@ -22,28 +22,28 @@ test_input_not_stale_annotations_1_violation {
 }
 
 # Checks that if there is unscanned image that is appers in the excluded images regex list, then there is no violation.
-test_input_unscanned_image_from_tomer_repo_appears_in_excluded_images {
+test_input_unscanned_image_that_appears_in_excluded_images_0_violation {
     input := { "review": input_review_creation_time_ok_scan_status_unscanned, "parameters": input_parameters_tomerazurecr_image_excluded_severityHighTreshold_2}
     results := violation with input as input
     count(results) == 0
 }
 
 # Checks that if there is unscanned image that is appers in the excluded images regex list, then there no violation.
-test_input_unscanned_image_from_lior_repo_appears_in_excluded_images {
+test_input_unscanned_image_that_isnt_appears_in_excluded_images_1_violation {
     input := { "review": input_review_creation_time_ok_scan_status_unscanned, "parameters": input_parameters_liorazurecr_image_excluded_severityHighTreshold_2}
     results := violation with input as input
     count(results) == 1
 }
 
 # Checks that although there is image that exceeds the severity treshold,if it appears in the excluded images regex list, then there is no violation.
-test_input_unhealthy_image_from_tomer_repo_appears_in_excluded_images {
+test_input_unhealthy_image_that_appears_in_excluded_images_0_violation {
     input := { "review": input_review_unhealthy_2_containers_with_diff_severities, "parameters": input_parameters_tomerazurecr_image_excluded_severityHighTreshold_2}
     results := violation with input as input
     count(results) == 0
 }
 
-# Checks that although there is image that exceeds the severity treshold,if it appears in the excluded images regex list, then there is no violation.
-test_input_unhealthy_image_from_lior_repo_appears_in_excluded_images {
+# Checks that although there is image that exceeds the severity treshold,if it is not appears in the excluded images regex list, then there is violation.
+test_input_unhealthy_image_that_isnt_appears_in_excluded_images_1_violation {
     input := { "review": input_review_unhealthy_2_containers_with_diff_severities, "parameters": input_parameters_liorazurecr_image_excluded_severityHighTreshold_2}
     results := violation with input as input
     count(results) == 1
@@ -57,122 +57,132 @@ test_input_creation_time_ok_scan_status_unscanned {
 }
 
 # Checks that if there is one container that is complainet (high severity) and one that isn't then we get only 1 violation.
-test_input_review_unhealthy_one_container_above_highSeverity_one_violotation {
+test_input_review_unhealthy_one_container_above_highSeverity_1_violotation {
     input := { "review": input_review_unhealthy_2_containers_with_diff_severities, "parameters": input_parameters_severityHighTreshold_2}
     results := violation with input as input
     count(results) == 1
 }
 
-# Checks that if there are 2 conatiners with higher highseverity than the treshold then we get 2 viloations.
-test_input_review_unhealthy_two_containers_above_highSeverity_two_violotation {
+# Checks that if there are 2 conatiners with higher Highseverity than the treshold then we get 2 viloations.
+test_input_review_unhealthy_two_containers_above_highSeverity_2_violotation {
     input := { "review": input_review_unhealthy_2_containers_with_diff_severities, "parameters": input_parameters_severityHighTreshold_1}
     results := violation with input as input
     count(results) == 2
 }
 
-
+# Checks that if there is one container with higher MediumSeverity than the threshold, then we get violation
 test_input_review_unhealthy_one_container_above_mediumSeverity_one_violotation {
     input := { "review": input_review_unhealthy_2_containers_with_diff_severities, "parameters": input_parameters_severityMediumTreshold_0}
     results := violation with input as input
     count(results) == 1
 }
 
+# Checks that if there is one container with higher LowSeverity than the threshold, then we get violation
 test_input_review_unhealthy_one_container_above_lowSeverity_one_violotation {
     input := { "review": input_review_unhealthy_2_containers_with_diff_severities, "parameters": input_parameters_severityLowTreshold_0}
     results := violation with input as input
     count(results) == 1
 }
 
+# Checks that if there altough there is scanFinding with high seveirty and its exceeed the threshold, if the ID is exist in exlcudeFindingIDs, then we won't get violation.
 test_input_review_unhealthy_cotainer_with_1_high_finding_that_is_appears_in_exlcudeFindingIDs_zero_violoations {
     input := { "review": input_review_unhealthy_container_with_not_patchable_finding, "parameters": input_parameters_high_0_excluded_finding_id_125}
     results := violation with input as input
     count(results) == 0
 }
 
+# Checks that if there altough there is scanFinding with high seveirty and its exceeed the threshold, if the ID isn't exist in exlcudeFindingIDs, then we get violation.
 test_input_review_unhealthy_cotainer_with_1_high_finding_that_isnt_appears_in_exlcudeFindingIDs_one_violations {
     input := { "review": input_review_unhealthy_container_with_patchable_finding, "parameters": input_parameters_high_0_excluded_finding_id_126}
     results := violation with input as input
     count(results) == 1
 }
 
-
+# Checks if patchableSeverityThreshold set to None and there is Low scanFinding, then there is violation
 test_input_review_unhealthy_container_1_low_not_patchable_finding_patchableSeverityThreshold_none_1_violoations {
     input := { "review": input_review_unhealthy_container_with_not_patchable_severities, "parameters": input_parameters_low_0_severityThresholdForExcludingNotPatchableFindings_None}
     results := violation with input as input
     count(results) == 1
 }
 
+# Checks if patchableSeverityThreshold set to None and there is Medium scanFinding, then there is violation
 test_input_review_unhealthy_container_1_medium_not_patchable_finding_patchableSeverityThreshold_none_1_violoations {
     input := { "review": input_review_unhealthy_container_with_not_patchable_severities, "parameters": input_parameters_medium_0_severityThresholdForExcludingNotPatchableFindings_None}
     results := violation with input as input
     count(results) == 1
 }
 
+# Checks if patchableSeverityThreshold set to None and there is High scanFinding, then there is violation
 test_input_review_unhealthy_container_1_high_not_patchable_finding_patchableSeverityThreshold_none_1_violoations {
     input := { "review": input_review_unhealthy_container_with_not_patchable_severities, "parameters": input_parameters_high_0_severityThresholdForExcludingNotPatchableFindings_None}
     results := violation with input as input
     count(results) == 1
 }
 
-
-
+# Checks if patchableSeverityThreshold set to Low and there is Low scanFinding, then there is no violation
 test_input_review_unhealthy_container_1_low_not_patchable_finding_patchableSeverityThreshold_low_0_violoations {
     input := { "review": input_review_unhealthy_container_with_not_patchable_severities, "parameters": input_parameters_low_0_severityThresholdForExcludingNotPatchableFindings_Low}
     results := violation with input as input
     count(results) == 0
 }
 
+# Checks if patchableSeverityThreshold set to Low and there is Medium scanFinding, then there is violation
 test_input_review_unhealthy_container_1_medium_not_patchable_finding_patchableSeverityThreshold_low_1_violoations {
     input := { "review": input_review_unhealthy_container_with_not_patchable_severities, "parameters": input_parameters_medium_0_severityThresholdForExcludingNotPatchableFindings_Low}
     results := violation with input as input
     count(results) == 1
 }
 
+# Checks if patchableSeverityThreshold set to Low and there is High scanFinding, then there is violation
 test_input_review_unhealthy_container_1_high_not_patchable_finding_patchableSeverityThreshold_low_1_violoations {
     input := { "review": input_review_unhealthy_container_with_not_patchable_severities, "parameters": input_parameters_high_0_severityThresholdForExcludingNotPatchableFindings_Low}
     results := violation with input as input
     count(results) == 1
 }
 
-
-
+# Checks if patchableSeverityThreshold set to Medium and there is Low scanFinding, then there is no violation
 test_input_review_unhealthy_container_1_low_not_patchable_finding_patchableSeverityThreshold_Medium_0_violoations {
     input := { "review": input_review_unhealthy_container_with_not_patchable_severities, "parameters": input_parameters_low_0_severityThresholdForExcludingNotPatchableFindings_Medium}
     results := violation with input as input
     count(results) == 0
 }
 
+# Checks if patchableSeverityThreshold set to Medium and there is Medium scanFinding, then there is no violation
 test_input_review_unhealthy_container_1_medium_not_patchable_finding_patchableSeverityThreshold_Medium_0_violoations {
     input := { "review": input_review_unhealthy_container_with_not_patchable_severities, "parameters": input_parameters_medium_0_severityThresholdForExcludingNotPatchableFindings_Medium}
     results := violation with input as input
     count(results) == 0
 }
 
+# Checks if patchableSeverityThreshold set to Medium and there is High scanFinding, then there is violation
 test_input_review_unhealthy_container_1_high_not_patchable_finding_patchableSeverityThreshold_Medium_1_violoations {
     input := { "review": input_review_unhealthy_container_with_not_patchable_severities, "parameters": input_parameters_high_0_severityThresholdForExcludingNotPatchableFindings_Medium}
     results := violation with input as input
     count(results) == 1
 }
 
-
+# Checks if patchableSeverityThreshold set to High and there is Low scanFinding, then there is no violation
 test_input_review_unhealthy_container_1_low_not_patchable_finding_patchableSeverityThreshold_High_0_violoations {
     input := { "review": input_review_unhealthy_container_with_not_patchable_severities, "parameters": input_parameters_low_0_severityThresholdForExcludingNotPatchableFindings_High}
     results := violation with input as input
     count(results) == 0
 }
 
+# Checks if patchableSeverityThreshold set to High and there is Medium scanFinding, then there is no violation
 test_input_review_unhealthy_container_1_medium_not_patchable_finding_patchableSeverityThreshold_High_0_violoations {
     input := { "review": input_review_unhealthy_container_with_not_patchable_severities, "parameters": input_parameters_medium_0_severityThresholdForExcludingNotPatchableFindings_High}
     results := violation with input as input
     count(results) == 0
 }
 
+# Checks if patchableSeverityThreshold set to High and there is High scanFinding, then there is no violation
 test_input_review_unhealthy_container_1_high_not_patchable_finding_patchableSeverityThreshold_High_0_violoations {
     input := { "review": input_review_unhealthy_container_with_not_patchable_severities, "parameters": input_parameters_high_0_severityThresholdForExcludingNotPatchableFindings_High}
     results := violation with input as input
     count(results) == 0
 }
 
+# Checks if there are 2 containers, one with unscaneed result, and one with exceeding serverity, then there are 2 violations.
 test_input_review_unhealthy_2_container_1_high_1_unscanned {
     input := { "review": input_review_unhealthy_2_containers_one_unscanned_and_one_high, "parameters": input_parameters_high_0_severityThresholdForExcludingNotPatchableFindings_None}
     results := violation with input as input
