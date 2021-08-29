@@ -86,7 +86,7 @@ func main() {
 	}
 
 	// Registry Client
-	registryClient := registry.NewCraneWrapperRegistryClient(instrumentationProvider, new(registrywrappers.CraneWrapper))
+	registryClient := registry.NewCraneRegistryClient(instrumentationProvider, new(registrywrappers.CraneWrapper))
 
 	// ARG
 	argBaseClient := argbase.New()
