@@ -14,5 +14,5 @@ spec:
     excludeFindingIDs: [ ]
     severity:
       High: 0
-      Medium: 0
-      Low: 0
+      Medium: 2
+      Low: 3

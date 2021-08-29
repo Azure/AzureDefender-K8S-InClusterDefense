@@ -48,3 +48,5 @@ func marshalAnnotationInnerObject(object interface{}) (string, error) {
 	ser := string(marshaledVulnerabilitySecInfo)
 	return ser, nil
 }
+
+///

@@ -32,8 +32,8 @@ type EnvAzureAuthorizerFactory struct {
 
 // EnvAzureAuthorizerConfiguration Factory configuration to create an azure authorizer from environment (env variables or managed identity)
 type EnvAzureAuthorizerConfiguration struct {
-	// isLocalDevelopmentMode is factory set to local development
-	isLocalDevelopmentMode bool
+	// IsLocalDevelopmentMode is factory set to local development
+	IsLocalDevelopmentMode bool
 
 	// MSI client id
 	MSIClientId string
@@ -68,7 +68,7 @@ func (factory *EnvAzureAuthorizerFactory) CreateARMAuthorizer() (autorest.Author
 // createAuthorizer Creates a new authorizer from settings provided.
 // The function adds the factory configured user assigned MSI client id to settings value map and generates
 // an authorizer using setting' (auth.EnvironmentSettings) GetAuthorizer.
-// If factory is configured in local development mode (configuration.isLocalDevelopmentMode == true):
+// If factory is configured in local development mode (configuration.IsLocalDevelopmentMode == true):
 // creates an authorizer from azure cli with no logged-in user as ID.
 func (factory *EnvAzureAuthorizerFactory) createAuthorizer(settings wrappers.IEnvironmentSettingsWrapper) (autorest.Authorizer, error) {
 
@@ -79,7 +79,7 @@ func (factory *EnvAzureAuthorizerFactory) createAuthorizer(settings wrappers.IEn
 	settings.GetValues()[auth.ClientID] = factory.configuration.MSIClientId
 
 	// If not
-	if !factory.configuration.isLocalDevelopmentMode {
+	if !factory.configuration.IsLocalDevelopmentMode {
 		return settings.GetAuthorizer()
 	}
 	// Else - Local development

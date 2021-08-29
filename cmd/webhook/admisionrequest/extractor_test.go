@@ -19,7 +19,7 @@ type TestSuite struct {
 	pod *corev1.Pod
 }
 
-func (suite *TestSuite) SetupSuite() {
+func (suite *TestSuite) SetupTest() {
 
 	suite.pod = &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{

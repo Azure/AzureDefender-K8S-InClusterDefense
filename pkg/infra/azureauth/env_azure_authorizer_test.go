@@ -15,7 +15,7 @@ const (
 )
 
 var _configuration = &EnvAzureAuthorizerConfiguration{
-	isLocalDevelopmentMode: false,
+	IsLocalDevelopmentMode: false,
 	MSIClientId:            CLIENT_ID,
 }
 
@@ -64,7 +64,7 @@ func (suite *TestSuite) TestAzureAuthorizerFromEnvFactory_CreateArmAuthorizer_No
 
 func (suite *TestSuite) TestEnvAzureAuthorizerFactory_CreateArmAuthorizer_DevelopmentMode_ResourceAuthUsingCLI() {
 
-	_configuration.isLocalDevelopmentMode = true
+	_configuration.IsLocalDevelopmentMode = true
 	suite.authSettingsMock.On("GetEnvironment").Return(suite.env).Once()
 	suite.authSettingsMock.On("GetValues").Return(suite.values).Times(3)
 	suite.authWrapperMock.On("GetSettingsFromEnvironment").Return(suite.authSettingsMock, nil).Once()

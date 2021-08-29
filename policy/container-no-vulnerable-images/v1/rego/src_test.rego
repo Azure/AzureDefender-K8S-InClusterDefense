@@ -1,6 +1,6 @@
 package k8sazuredefendervulnerableimages
 
-# Check that the annotations is empty there is no violation.
+# Check that if the annotations are empty then there is no violation.
 test_input_no_annotations {
     input := { "review": input_review_no_annotations, "parameters": input_parameters_empty}
     results := violation with input as input

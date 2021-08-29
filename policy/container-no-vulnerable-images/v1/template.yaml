@@ -144,7 +144,7 @@ spec:
           not scanFinding["patchable"]
           # Create map between severity to the integer level. None = 0, Low = 1, Medium = 2, High = 3
           severityToLevel := {"None":0, "Low":1, "Medium":2, "High": 3}
-          # Check that the level of the scanFinding is above the threshold level.
+          # Check that the level of the scanFindexamplesing is above the threshold level.
           severityToLevel[scanFinding["severity"]] > severityToLevel[input.parameters.severityThresholdForExcludingNotPatchableFindings]
         }
         # Checks if the total of High severity is above the threshold

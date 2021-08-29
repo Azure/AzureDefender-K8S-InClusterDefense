@@ -24,3 +24,9 @@ instrumentation:
     TivanInstrumentationConfiguration:
       ComponentName: "azdproxy"
       MdmNamespace: "Tivan.Collector.Pods"
+
+azureauth:
+  envAzureAuthorizerConfiguration:
+    IsLocalDevelopmentMode: true
+    MSIClientId: "" # This should be kept empty while you are running the service locally.
+
