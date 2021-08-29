@@ -38,6 +38,6 @@ data:
           MdmNamespace: {{ .Values.AzDProxy.instrumentation.tivan.TivanInstrumentationConfiguration.MdmNamespace | quote}}
     azureauth:
       envAzureAuthorizerConfiguration:
-        IsLocalDevelopmentMode: false
+        IsLocalDevelopmentMode: {{.Values.AzDProxy.azureauth.envAzureAuthorizerConfiguration.IsLocalDevelopmentMode}}
         MSIClientId: {{.Values.AzDProxy.azureauth.envAzureAuthorizerConfiguration.MSIClientId}}
 
