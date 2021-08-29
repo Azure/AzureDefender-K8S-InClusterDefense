@@ -18,8 +18,8 @@ type CraneRegistryClient struct {
 	craneWrapper wrappers.ICraneWrapper
 }
 
-// NewCraneWrapperRegistryClient Constructor for the registry client
-func NewCraneWrapperRegistryClient(instrumentationProvider instrumentation.IInstrumentationProvider, craneWrapper wrappers.ICraneWrapper) *CraneRegistryClient {
+// NewCraneRegistryClient Constructor for the registry client
+func NewCraneRegistryClient(instrumentationProvider instrumentation.IInstrumentationProvider, craneWrapper wrappers.ICraneWrapper) *CraneRegistryClient {
 	return &CraneRegistryClient{
 		tracerProvider:  instrumentationProvider.GetTracerProvider("CraneRegistryClient"),
 		metricSubmitter: instrumentationProvider.GetMetricSubmitter(),
