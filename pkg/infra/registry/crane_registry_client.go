@@ -8,8 +8,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-// CraneWrapperRegistryClient container registry based client
-type CraneWrapperRegistryClient struct {
+// CraneRegistryClient container registry based client
+type CraneRegistryClient struct {
 	// tracerProvider is the tracer provider for the registry client
 	tracerProvider trace.ITracerProvider
 	// metricSubmitter is the metric submitter for the registry client.
@@ -19,16 +19,16 @@ type CraneWrapperRegistryClient struct {
 }
 
 // NewCraneWrapperRegistryClient Constructor for the registry client
-func NewCraneWrapperRegistryClient(instrumentationProvider instrumentation.IInstrumentationProvider, craneWrapper wrappers.ICraneWrapper) *CraneWrapperRegistryClient {
-	return &CraneWrapperRegistryClient{
-		tracerProvider:  instrumentationProvider.GetTracerProvider("CraneWrapperRegistryClient"),
+func NewCraneWrapperRegistryClient(instrumentationProvider instrumentation.IInstrumentationProvider, craneWrapper wrappers.ICraneWrapper) *CraneRegistryClient {
+	return &CraneRegistryClient{
+		tracerProvider:  instrumentationProvider.GetTracerProvider("CraneRegistryClient"),
 		metricSubmitter: instrumentationProvider.GetMetricSubmitter(),
 		craneWrapper:    craneWrapper,
 	}
 }
 
 // GetDigest receives image reference string and calls crane digest api to get it's digest from registry
-func (client *CraneWrapperRegistryClient) GetDigest(imageRef string) (string, error) {
+func (client *CraneRegistryClient) GetDigest(imageRef string) (string, error) {
 	tracer := client.tracerProvider.GetTracer("GetDigest")
 	tracer.Info("Received image:", "imageRef", imageRef)
 
@@ -37,7 +37,7 @@ func (client *CraneWrapperRegistryClient) GetDigest(imageRef string) (string, er
 	digest, err := client.craneWrapper.Digest(imageRef)
 	if err != nil {
 		// Report error
-		err = errors.Wrap(err, "CraneWrapperRegistryClient.GetDigest:")
+		err = errors.Wrap(err, "CraneRegistryClient.GetDigest:")
 		tracer.Error(err, "")
 
 		// TODO return wrapped error type to handle on caller
