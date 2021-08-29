@@ -5,7 +5,7 @@ import "github.com/google/go-containerregistry/pkg/crane"
 // ICraneWrapper wraps crane operations
 type ICraneWrapper interface {
 	// Digest get image digest using image ref using crane Digest call
-	Digest(ref string) (string, error)
+	Digest(ref string, opt ...crane.Option) (string, error)
 }
 
 // CraneWrapper wraps crane operations

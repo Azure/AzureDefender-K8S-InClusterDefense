@@ -32,9 +32,24 @@ func (client *CraneRegistryClient) GetDigest(imageRef string) (string, error) {
 	tracer := client.tracerProvider.GetTracer("GetDigest")
 	tracer.Info("Received image:", "imageRef", imageRef)
 
+	// First check if we can extract it from ref it self (digest based ref)
+	isDigestBasedImageRef, digest, err := TryExtractDigestFromImageRef(imageRef)
+	if err != nil {
+		// Report error
+		err = errors.Wrap(err, "utils.TryExtractDigestFromImageRef:")
+		tracer.Error(err, "")
+		return "", err
+	}
+
+	tracer.Info("utils.TryExtractDigestFromImageRef return values", "isDigestBasedImageRef", isDigestBasedImageRef, "digest", digest)
+	if isDigestBasedImageRef {
+		// Return digest extracted from ref
+		return digest, nil
+	}
+
 	// TODO add retry policy
 	// Resolve digest
-	digest, err := client.craneWrapper.Digest(imageRef)
+	digest, err = client.craneWrapper.Digest(imageRef)
 	if err != nil {
 		// Report error
 		err = errors.Wrap(err, "CraneRegistryClient.GetDigest:")
