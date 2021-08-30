@@ -7,27 +7,27 @@ import (
 	"github.com/google/go-containerregistry/pkg/authn"
 )
 
-type IACRKeyChainFactory interface {
+type IACRKeychainFactory interface {
 	Create(namespace string, imagePullSecrets []string, serviceAccountName string) (authn.Keychain, error)
 }
 
-type ACRKeyChainFactory struct {
+type ACRKeychainFactory struct {
 	// tracerProvider is the tracer provider for the registry client
 	tracerProvider trace.ITracerProvider
 	// metricSubmitter is the metric submitter for the registry client.
 	metricSubmitter metric.IMetricSubmitter
 	// token exchanger
-	tokenExchanger ACRTokenExchanger
+	//tokenExchanger ACRTokenExchanger
 }
 
-func NewACRKeyChainFactory(instrumentationProvider instrumentation.IInstrumentationProvider) *ACRKeyChainFactory {
-	return &ACRKeyChainFactory{
-		tracerProvider:  instrumentationProvider.GetTracerProvider("ACRKeyChainFactory"),
+func NewACRKeychainFactory(instrumentationProvider instrumentation.IInstrumentationProvider) *ACRKeychainFactory {
+	return &ACRKeychainFactory{
+		tracerProvider:  instrumentationProvider.GetTracerProvider("ACRKeychainFactory"),
 		metricSubmitter: instrumentationProvider.GetMetricSubmitter(),
 	}
 }
 
-func (factory *ACRKeyChainFactory) Create(namespace string, imagePullSecrets []string, serviceAccountName string) (authn.Keychain, error) {
+func (factory *ACRKeychainFactory) Create(namespace string, imagePullSecrets []string, serviceAccountName string) (authn.Keychain, error) {
 	tracer := factory.tracerProvider.GetTracer("Create")
 	tracer.Info("Received:", "namespace", namespace, "imagePullSecrets", imagePullSecrets, "serviceAccountName", serviceAccountName)
 

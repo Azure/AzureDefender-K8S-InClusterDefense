@@ -10,11 +10,11 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-type IK8SKeyChainFactory interface {
+type IK8SKeychainFactory interface {
 	Create(namespace string, imagePullSecrets []string, serviceAccountName string) (authn.Keychain, error)
 }
 
-type K8SKeyChainFactory struct {
+type K8SKeychainFactory struct {
 	// tracerProvider is the tracer provider for the registry client
 	tracerProvider trace.ITracerProvider
 	// metricSubmitter is the metric submitter for the registry client.
@@ -23,15 +23,15 @@ type K8SKeyChainFactory struct {
 	client kubernetes.Interface
 }
 
-func NewK8SKeyChainFactory(instrumentationProvider instrumentation.IInstrumentationProvider, client kubernetes.Interface) *K8SKeyChainFactory {
-	return &K8SKeyChainFactory{
-		tracerProvider:  instrumentationProvider.GetTracerProvider("K8SKeyChainFactory"),
+func NewK8SKeychainFactory(instrumentationProvider instrumentation.IInstrumentationProvider, client kubernetes.Interface) *K8SKeychainFactory {
+	return &K8SKeychainFactory{
+		tracerProvider:  instrumentationProvider.GetTracerProvider("K8SKeychainFactory"),
 		metricSubmitter: instrumentationProvider.GetMetricSubmitter(),
 		client:          client,
 	}
 }
 
-func (factory *K8SKeyChainFactory) Create(namespace string, imagePullSecrets []string, serviceAccountName string) (authn.Keychain, error) {
+func (factory *K8SKeychainFactory) Create(namespace string, imagePullSecrets []string, serviceAccountName string) (authn.Keychain, error) {
 	tracer := factory.tracerProvider.GetTracer("Create")
 	tracer.Info("Received:", "namespace", namespace, "imagePullSecrets", imagePullSecrets, "serviceAccountName", serviceAccountName)
 

@@ -5,9 +5,13 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/wrappers"
+	"github.com/google/go-containerregistry/pkg/crane"
 	"github.com/pkg/errors"
 )
 
+const(
+	userAgent = "azdproxy"
+)
 // CraneRegistryClient container registry based client
 type CraneRegistryClient struct {
 	// tracerProvider is the tracer provider for the registry client
@@ -47,9 +51,11 @@ func (client *CraneRegistryClient) GetDigest(imageRef string) (string, error) {
 		return digest, nil
 	}
 
+
+
 	// TODO add retry policy
 	// Resolve digest
-	digest, err = client.craneWrapper.Digest(imageRef)
+	digest, err = client.craneWrapper.Digest(imageRef, crane.WithAuthFromKeychain(keychain), crane.WithUserAgent(userAgent)
 	if err != nil {
 		// Report error
 		err = errors.Wrap(err, "CraneRegistryClient.GetDigest:")
