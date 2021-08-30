@@ -24,8 +24,11 @@ type patchReason string
 
 const (
 	// _patched in case that the handler patched to the webhook.
-	_patched    patchReason = "Patched"
-	_notPathced patchReason = "NotPatched"
+	_patched patchReason = "Patched"
+	// _notPatchedInit is the initialized of the patchReason of the handle.
+	_notPatchedInit patchReason = "NotPatchedInit"
+	// _notPatchedDryRun in case that DryRun of Handler is True.
+	_notPatchedDryRun patchReason = "NotPatchedDryRun"
 )
 
 // Handler implements the admission.Handle interface that each webhook have to implement.
@@ -48,7 +51,7 @@ type HandlerConfiguration struct {
 }
 
 // NewHandler Constructor for Handler
-func NewHandler(azdSecInfoProvider azdsecinfo.IAzdSecInfoProvider, configuration *HandlerConfiguration, instrumentationProvider instrumentation.IInstrumentationProvider) (handler *Handler) {
+func NewHandler(azdSecInfoProvider azdsecinfo.IAzdSecInfoProvider, configuration *HandlerConfiguration, instrumentationProvider instrumentation.IInstrumentationProvider) admission.Handler {
 
 	return &Handler{
 		tracerProvider:     instrumentationProvider.GetTracerProvider("Handler"),
@@ -71,7 +74,7 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 	tracer.Info("received request", "name", req.Name, "namespace", req.Namespace, "operation", req.Operation, "reqKind", req.Kind, "uid", req.UID)
 
 	patches := []jsonpatch.JsonPatchOperation{}
-	patchReason := _notPathced
+	patchReason := _notPatchedInit
 
 	if req.Kind.Kind == admisionrequest.PodKind {
 
@@ -98,8 +101,9 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 
 	// In case of dryrun=true:  reset all patch operations
 	if handler.configuration.DryRun {
-		tracer.Info("not mutating resource, because dry-run=true")
+		tracer.Info("not mutating resource, because handler is on dryrun mode")
 		patches = []jsonpatch.JsonPatchOperation{}
+		patchReason = _notPatchedDryRun
 	}
 
 	// Patch all patches operations
