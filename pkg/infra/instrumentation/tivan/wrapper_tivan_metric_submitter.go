@@ -17,5 +17,5 @@ func NewWrapperTivanMetricSubmitter(tivanMetricSubmitter tivanInstrumentation.Me
 
 // SendMetric send metric using tivan's metric submitter.
 func (wrapper *WrapperTivanMetricSubmitter) SendMetric(value int, metric metric.IMetric) {
-	wrapper.tivanMetricSubmitter.SendMetric(value, metric)
+	wrapper.tivanMetricSubmitter.SendMetric(value, NewTivanMetric(metric))
 }

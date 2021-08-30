@@ -4,6 +4,7 @@ package webhook
 import (
 	"context"
 	"log"
+	"time"
 
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/cmd/webhook/admisionrequest"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/cmd/webhook/annotations"
+	webhookmetric "github.com/Azure/AzureDefender-K8S-InClusterDefense/cmd/webhook/metric"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/azdsecinfo"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/azdsecinfo/contracts"
 	"github.com/pkg/errors"
@@ -63,6 +65,8 @@ func NewHandler(azdSecInfoProvider azdsecinfo.IAzdSecInfoProvider, configuration
 
 // Handle processes the AdmissionRequest by invoking the underlying function.
 func (handler *Handler) Handle(ctx context.Context, req admission.Request) admission.Response {
+	startTime := time.Now().UTC()
+
 	tracer := handler.tracerProvider.GetTracer("Handle")
 	if ctx == nil {
 		tracer.Error(errors.New("ctx received is nil"), "Handler.Handle")
@@ -76,6 +80,7 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 	patches := []jsonpatch.JsonPatchOperation{}
 	patchReason := _notPatchedInit
 
+	handler.metricSubmitter.SendMetric(1, webhookmetric.NewHandlerNumOfRequestsMetric(req.Kind.Kind))
 	if req.Kind.Kind == admisionrequest.PodKind {
 
 		pod, err := admisionrequest.UnmarshalPod(&req)
@@ -109,6 +114,8 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 	// Patch all patches operations
 	response := admission.Patched(string(patchReason), patches...)
 	tracer.Info("Responded", "response", response)
+	handler.metricSubmitter.SendMetric(int(time.Now().Sub(startTime).Nanoseconds()), webhookmetric.NewHandlerLatencyMetric())
+
 	return response
 }
 
@@ -151,5 +158,6 @@ func (handler *Handler) getPodContainersVulnerabilityScanInfoAnnotationsOperatio
 		return nil, wrappedError
 	}
 
+	handler.metricSubmitter.SendMetric(len(pod.Spec.Containers)+len(pod.Spec.InitContainers), webhookmetric.NewHandlerNumOfContainersMetric())
 	return vulnerabilitySecAnnotationsPatch, nil
 }
