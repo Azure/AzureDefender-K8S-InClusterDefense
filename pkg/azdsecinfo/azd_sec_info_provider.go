@@ -8,6 +8,7 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry"
+	registryauth "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/auth"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"strings"
@@ -25,8 +26,8 @@ var (
 
 // IAzdSecInfoProvider represents interface for providing azure defender security information
 type IAzdSecInfoProvider interface {
-	// GetContainerVulnerabilityScanInfo receives containers list, and returns their fetched ContainersVulnerabilityScanInfo
-	GetContainerVulnerabilityScanInfo(*corev1.Container) (*contracts.ContainerVulnerabilityScanInfo, error)
+	// GetContainersVulnerabilityScanInfo receives pod template spec containing containers list, and returns their fetched ContainersVulnerabilityScanInfo
+	GetContainersVulnerabilityScanInfo(*corev1.PodTemplateSpec) (*contracts.ContainerVulnerabilityScanInfo, error)
 }
 
 // AzdSecInfoProvider represents default implementation of IAzdSecInfoProvider interface
@@ -51,9 +52,55 @@ func NewAzdSecInfoProvider(instrumentationProvider instrumentation.IInstrumentat
 	}
 }
 
-// GetContainerVulnerabilityScanInfo receives containers list, and returns their fetched ContainerVulnerabilityScanInfo
-func (provider *AzdSecInfoProvider) GetContainerVulnerabilityScanInfo(container *corev1.Container) (*contracts.ContainerVulnerabilityScanInfo, error) {
-	tracer := provider.tracerProvider.GetTracer("GetContainerVulnerabilityScanInfo")
+
+// GetContainersVulnerabilityScanInfo receives pod spec template containing containers list, and returns their fetched ContainerVulnerabilityScanInfo
+// Pod template spec represents contianers to be deployed for all api-resources
+func (provider *AzdSecInfoProvider) GetContainersVulnerabilityScanInfo(podTemplateSpec *corev1.PodTemplateSpec) ([]*contracts.ContainerVulnerabilityScanInfo, error) {
+	tracer := provider.tracerProvider.GetTracer("GetContainersVulnerabilityScanInfo")
+	if podTemplateSpec == nil {
+		tracer.Error(_containerNullError, "")
+		return nil, _containerNullError
+	}
+
+	tracer.Info("Container image ref", "container image ref", podTemplateSpec)
+
+	vulnSecInfoContainers := []*contracts.ContainerVulnerabilityScanInfo{}
+	ctx := registryauth.NewAuthContext(podTemplateSpec.Namespace, podTemplateSpec.Spec.ImagePullSecrets, podTemplateSpec.Spec.ServiceAccountName)
+
+	for _, container := range podTemplateSpec.Spec.InitContainers {
+
+		// Get container vulnerability scan information for init containers
+		vulnerabilitySecInfo, err := provider.getSingleContainerVulnerabilityScanInfo(&container)
+		if err != nil {
+			wrappedError := errors.Wrap(err, "Handler failed to GetContainersVulnerabilityScanInfo Init containers")
+			tracer.Error(wrappedError, "")
+			return nil, wrappedError
+		}
+
+		// Add it to slice
+		vulnSecInfoContainers = append(vulnSecInfoContainers, vulnerabilitySecInfo)
+	}
+
+	for _, container := range podTemplateSpec.Spec.Containers {
+
+		// Get container vulnerability scan information for containers
+		vulnerabilitySecInfo, err := provider.getSingleContainerVulnerabilityScanInfo(&container)
+		if err != nil {
+			wrappedError := errors.Wrap(err, "Handler failed to GetContainersVulnerabilityScanInfo Containers")
+			tracer.Error(wrappedError, "")
+			return nil, wrappedError
+		}
+
+		// Add it to slice
+		vulnSecInfoContainers = append(vulnSecInfoContainers, vulnerabilitySecInfo)
+	}
+	return vulnSecInfoContainers, nil
+}
+
+
+// getSingleContainerVulnerabilityScanInfo receives container , and returns fetched ContainerVulnerabilityScanInfo
+func (provider *AzdSecInfoProvider) getSingleContainerVulnerabilityScanInfo(container *corev1.Container) (*contracts.ContainerVulnerabilityScanInfo, error) {
+	tracer := provider.tracerProvider.GetTracer("getSingleContainerVulnerabilityScanInfo")
 	if container == nil {
 		tracer.Error(_containerNullError, "")
 		return nil, _containerNullError
@@ -64,7 +111,7 @@ func (provider *AzdSecInfoProvider) GetContainerVulnerabilityScanInfo(container 
 	// Extracts image context
 	imageRefContext, err := registry.ExtractImageRefContext(container.Image)
 	if err != nil {
-		err = errors.Wrap(err, "AzdSecInfoProvider.GetContainerVulnerabilityScanInfo.registry.ExtractImageRefContext")
+		err = errors.Wrap(err, "AzdSecInfoProvider.GetContainersVulnerabilityScanInfo.registry.ExtractImageRefContext")
 		tracer.Error(err, "")
 		return nil, err
 	}
@@ -85,9 +132,9 @@ func (provider *AzdSecInfoProvider) GetContainerVulnerabilityScanInfo(container 
 	}
 
 	// Get image digest
-	digest, err = provider.registryClient.GetDigest(container.Image)
+	digest, err = provider.registryClient.GetDigest(container.Image, ctx)
 	if err != nil {
-		err = errors.Wrap(err, "AzdSecInfoProvider.GetContainerVulnerabilityScanInfo.registry.GetDigest")
+		err = errors.Wrap(err, "AzdSecInfoProvider.GetContainersVulnerabilityScanInfo.registry.GetDigest")
 		tracer.Error(err, "")
 
 		// TODO support digest does not exists in registry or unauthorized to not fail...

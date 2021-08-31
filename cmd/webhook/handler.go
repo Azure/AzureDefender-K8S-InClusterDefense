@@ -110,35 +110,7 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 
 func (handler *Handler) getPodContainersVulnerabilityScanInfoAnnotationsOperation(pod *corev1.Pod) (*jsonpatch.JsonPatchOperation, error) {
 	tracer := handler.tracerProvider.GetTracer("getPodContainersVulnerabilityScanInfoAnnotationsOperation")
-	vulnSecInfoContainers := []*contracts.ContainerVulnerabilityScanInfo{}
 
-	for _, container := range pod.Spec.InitContainers {
-
-		// Get container vulnerability scan information for init containers
-		vulnerabilitySecInfo, err := handler.azdSecInfoProvider.GetContainerVulnerabilityScanInfo(&container)
-		if err != nil {
-			wrappedError := errors.Wrap(err, "Handler failed to GetContainersVulnerabilityScanInfo Init containers")
-			tracer.Error(wrappedError, "")
-			return nil, wrappedError
-		}
-
-		// Add it to slice
-		vulnSecInfoContainers = append(vulnSecInfoContainers, vulnerabilitySecInfo)
-	}
-
-	for _, container := range pod.Spec.Containers {
-
-		// Get container vulnerability scan information for containers
-		vulnerabilitySecInfo, err := handler.azdSecInfoProvider.GetContainerVulnerabilityScanInfo(&container)
-		if err != nil {
-			wrappedError := errors.Wrap(err, "Handler failed to GetContainersVulnerabilityScanInfo Containers")
-			tracer.Error(wrappedError, "")
-			return nil, wrappedError
-		}
-
-		// Add it to slice
-		vulnSecInfoContainers = append(vulnSecInfoContainers, vulnerabilitySecInfo)
-	}
 	// Create the annotations add json patch operation
 	vulnerabilitySecAnnotationsPatch, err := annotations.CreateContainersVulnerabilityScanAnnotationPatchAdd(vulnSecInfoContainers)
 	if err != nil {

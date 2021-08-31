@@ -1,35 +1,39 @@
-package auth
+package cranekeychain
 
 import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
 	"github.com/google/go-containerregistry/pkg/authn"
+	"github.com/google/go-containerregistry/pkg/authn/k8schain"
+	"golang.org/x/net/context"
+	"k8s.io/client-go/kubernetes"
 )
 
-type IACRKeychainFactory interface {
+type IK8SKeychainFactory interface {
 	Create(namespace string, imagePullSecrets []string, serviceAccountName string) (authn.Keychain, error)
 }
 
-type ACRKeychainFactory struct {
+type K8SKeychainFactory struct {
 	// tracerProvider is the tracer provider for the registry client
 	tracerProvider trace.ITracerProvider
 	// metricSubmitter is the metric submitter for the registry client.
 	metricSubmitter metric.IMetricSubmitter
-	// token exchanger
-	//tokenExchanger ACRTokenExchanger
+	// Kubernetes client
+	client kubernetes.Interface
 }
 
-func NewACRKeychainFactory(instrumentationProvider instrumentation.IInstrumentationProvider) *ACRKeychainFactory {
-	return &ACRKeychainFactory{
-		tracerProvider:  instrumentationProvider.GetTracerProvider("ACRKeychainFactory"),
+func NewK8SKeychainFactory(instrumentationProvider instrumentation.IInstrumentationProvider, client kubernetes.Interface) *K8SKeychainFactory {
+	return &K8SKeychainFactory{
+		tracerProvider:  instrumentationProvider.GetTracerProvider("K8SKeychainFactory"),
 		metricSubmitter: instrumentationProvider.GetMetricSubmitter(),
+		client:          client,
 	}
 }
 
-func (factory *ACRKeychainFactory) Create(namespace string, imagePullSecrets []string, serviceAccountName string) (authn.Keychain, error) {
+func (factory *K8SKeychainFactory) Create(namespace string, imagePullSecrets []string, serviceAccountName string) (authn.Keychain, error) {
 	tracer := factory.tracerProvider.GetTracer("Create")
 	tracer.Info("Received:", "namespace", namespace, "imagePullSecrets", imagePullSecrets, "serviceAccountName", serviceAccountName)
 
-	return nil, nil
+	return k8schain.New(context.Background(), factory.client, k8schain.Options{Namespace: namespace, ServiceAccountName: serviceAccountName, ImagePullSecrets: imagePullSecrets})
 }
