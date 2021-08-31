@@ -4,6 +4,7 @@ package metric
 type NoOpMetricSubmitter struct {
 }
 
+// NewNoOpMetricSubmitter Ctor for NoOpMetricSubmitter
 func NewNoOpMetricSubmitter() IMetricSubmitter {
 	return &NoOpMetricSubmitter{}
 }

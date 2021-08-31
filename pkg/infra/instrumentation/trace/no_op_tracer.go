@@ -5,6 +5,7 @@ import "github.com/go-logr/logr"
 // NoOpTracer is implementation that does nothing of ITracer
 type NoOpTracer struct{}
 
+// NewNoOpTracer Ctor for NoOpTracer
 func NewNoOpTracer() *NoOpTracer {
 	return &NoOpTracer{}
 }

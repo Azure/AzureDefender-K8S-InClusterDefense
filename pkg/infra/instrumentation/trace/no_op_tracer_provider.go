@@ -4,6 +4,7 @@ package trace
 type NoOpTracerProvider struct {
 }
 
+// NewNoOpTracerProvider Ctor for NoOpTracerProvider
 func NewNoOpTracerProvider() *NoOpTracerProvider {
 	return &NoOpTracerProvider{}
 }

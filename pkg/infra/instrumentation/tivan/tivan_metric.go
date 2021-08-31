@@ -5,10 +5,12 @@ import (
 	tivanInstrumentation "tivan.ms/libs/instrumentation"
 )
 
+// tivanMetric is struct that gets a metric.IMetric and warp it with implementations of tivanInstrumentation.Metric
 type tivanMetric struct {
 	wrappedMetric metric.IMetric
 }
 
+// NewTivanMetric Ctor for tivanMetric
 func NewTivanMetric(metric metric.IMetric) tivanInstrumentation.Metric {
 	return &tivanMetric{
 		wrappedMetric: metric,

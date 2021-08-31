@@ -5,12 +5,13 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
 )
 
-// ArgDataProviderResponseLatencyMetric is
+// ArgDataProviderResponseLatencyMetric is metric of ARGDataProvider that checks the latency according to some scanStatus
 type ArgDataProviderResponseLatencyMetric struct {
 	// scanStatus is the scan status of the metric that would be deployed as ScanStatus metric.Dimension.
 	scanStatus contracts.ScanStatus
 }
 
+// NewArgDataProviderResponseLatency  Ctor for ArgDataProviderResponseLatencyMetric
 func NewArgDataProviderResponseLatency(status contracts.ScanStatus) *ArgDataProviderResponseLatencyMetric {
 	return &ArgDataProviderResponseLatencyMetric{
 		scanStatus: status,
