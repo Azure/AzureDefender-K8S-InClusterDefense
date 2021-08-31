@@ -85,6 +85,6 @@ func assertExpectations(suite *TestSuite) {
 
 // We need this function to kick off the test suite, otherwise
 // "go test" won't know about our tests
-func TestAzureAuthorizerFromEnvFactoryTestSuite(t *testing.T) {
+func TestEnvAzureAuthorizerFactoryTestSuite(t *testing.T) {
 	suite.Run(t, new(TestSuite))
 }

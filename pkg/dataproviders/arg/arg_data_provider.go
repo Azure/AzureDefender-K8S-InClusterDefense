@@ -170,7 +170,7 @@ func (provider *ARGDataProvider) getImageScanDataFromARGQueryScanResult(scanResu
 	scanFindings := make([]*contracts.ScanFinding, 0, len(scanResultsQueryResponseObjectList))
 	for _, element := range scanResultsQueryResponseObjectList {
 		scanFindings = append(scanFindings, &contracts.ScanFinding{
-			Id:        element.Id,
+			Id:        element.FindingsIds,
 			Patchable: element.Patchable,
 			Severity:  element.ScanFindingSeverity})
 	}
