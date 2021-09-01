@@ -4,6 +4,7 @@ type AuthContext struct {
 	namespace          string
 	imagePullSecrets   []string
 	serviceAccountName string
+	imageRef string
 }
 
 func (ctx *AuthContext) Namespace() string {
@@ -18,10 +19,15 @@ func (ctx *AuthContext) ServiceAccountName() string {
 	return ctx.serviceAccountName
 }
 
-func NewAuthContext(namespace string, imagePullSecrets []string, serviceAccountName string) *AuthContext {
+func (ctx *AuthContext) ImageRef() string {
+	return ctx.imageRef
+}
+
+func NewAuthContext(namespace string, imagePullSecrets []string, serviceAccountName string, imageRef string) *AuthContext {
 	return &AuthContext{
 		namespace:          namespace,
 		imagePullSecrets:   imagePullSecrets,
 		serviceAccountName: serviceAccountName,
+		imageRef: imageRef,
 	}
 }

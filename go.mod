@@ -5,6 +5,7 @@ go 1.16
 require (
 	github.com/Azure/azure-sdk-for-go v56.3.0+incompatible
 	github.com/Azure/go-autorest/autorest v0.11.19
+	github.com/Azure/go-autorest/autorest/adal v0.9.13
 	github.com/Azure/go-autorest/autorest/azure/auth v0.5.8
 	github.com/go-logr/logr v0.4.0
 	github.com/google/go-containerregistry v0.6.0
@@ -17,6 +18,7 @@ require (
 	github.com/stretchr/testify v1.7.0
 	go.uber.org/zap v1.17.0
 	golang.org/x/net v0.0.0-20210525063256-abc453219eb5
+	golang.org/x/oauth2 v0.0.0-20210819190943-2bc19b11175f
 	gomodules.xyz/jsonpatch/v2 v2.2.0
 	k8s.io/api v0.21.1
 	k8s.io/apimachinery v0.21.1
