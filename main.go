@@ -6,9 +6,12 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/azureauth"
 	azureauthwrappers "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/azureauth/wrappers"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/auth/cranekeychain"
 	registrywrappers "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/wrappers"
 	argbase "github.com/Azure/azure-sdk-for-go/services/resourcegraph/mgmt/2021-03-01/resourcegraph"
+	"k8s.io/client-go/kubernetes"
 	"log"
+	k8sclientconfig "sigs.k8s.io/controller-runtime/pkg/client/config"
 
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/cmd/webhook"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/azdsecinfo"
@@ -85,8 +88,20 @@ func main() {
 		log.Fatal("main.NewEnvAzureAuthorizerFactory.CreateARMAuthorizer", err)
 	}
 
+
 	// Registry Client
-	registryClient := registry.NewCraneRegistryClient(instrumentationProvider, new(registrywrappers.CraneWrapper))
+	k8sclientconfig, err := k8sclientconfig.GetConfig()
+	if err != nil {
+		log.Fatal("main.k8sclientconfig.GetConfig", err)
+	}
+	clientK8s, err :=  kubernetes.NewForConfig(k8sclientconfig)
+	if err != nil {
+		log.Fatal("main.kubernetes.NewForConfig", err)
+	}
+
+	k8sKeychainFactory := cranekeychain.NewK8SKeychainFactory(instrumentationProvider, clientK8s)
+	multiKeychainFactory := cranekeychain.NewMultiKeychainFactory(instrumentationProvider, k8sKeychainFactory)
+	registryClient := registry.NewCraneRegistryClient(instrumentationProvider, new(registrywrappers.CraneWrapper), multiKeychainFactory)
 
 	// ARG
 	argBaseClient := argbase.New()

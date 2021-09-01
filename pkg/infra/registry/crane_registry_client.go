@@ -58,6 +58,7 @@ func (client *CraneRegistryClient) GetDigest(imageRef string, authContext *auth.
 	}
 
 	// TODO add retry policy
+	// TODO this will fail if pull secrets does not exists or SA is not accessibile - need to add a fallback to try to skip this if it fails
 	keychain, err := client.multiKeychainFactoryfactory.Create(authContext)
 	if err != nil {
 		// Report error
