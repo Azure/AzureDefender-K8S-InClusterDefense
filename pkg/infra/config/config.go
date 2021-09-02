@@ -60,3 +60,9 @@ func CreateSubConfiguration(mainConfiguration *ConfigurationProvider, subConfigH
 	}
 	return nil
 }
+
+// UnmarshalKey returns the value of a given key from the configuration object
+// A wrapper method for viper.UnmarshalKey method
+func (config *ConfigurationProvider) UnmarshalKey(key string, configVar interface{}) error{
+	return config.viperConfig.UnmarshalKey(key, configVar)
+}

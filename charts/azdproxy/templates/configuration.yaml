@@ -11,7 +11,7 @@ metadata:
 # Application's configuration settings. Arranged by project's filesystem hierarchy
 data:
   AppConfig.yaml: |-
-    webhook:
+    Webhook:
       CertRotatorConfiguration:
         SecretName: "{{ .Values.AzDProxy.prefixResourceDeployment }}-{{.Values.AzDProxy.webhook.CertRotatorConfiguration.SecretName }}"
         ServiceName: "{{ .Values.AzDProxy.prefixResourceDeployment }}-{{.Values.AzDProxy.webhook.CertRotatorConfiguration.ServiceName }}"
@@ -28,16 +28,25 @@ data:
         EnableCertRotation: {{.Values.AzDProxy.webhook.ServerConfiguration.EnableCertRotation}}
       HandlerConfiguration:
         DryRun: {{.Values.AzDProxy.webhook.HandlerConfiguration.RunOnDryRunMode}}
-    instrumentation:
-      trace:
+    Instrumentation:
+      Trace:
         TracerConfiguration:
           TracerLevel: {{.Values.AzDProxy.instrumentation.trace.TracerConfiguration.TracerLevel }}
-      tivan:
+      Tivan:
         TivanInstrumentationConfiguration:
           ComponentName: {{ .Chart.Name | quote}}
           MdmNamespace: {{ .Values.AzDProxy.instrumentation.tivan.TivanInstrumentationConfiguration.MdmNamespace | quote}}
-    azureauth:
-      envAzureAuthorizerConfiguration:
+    Azureauth:
+      EnvAzureAuthorizerConfiguration:
         IsLocalDevelopmentMode: {{.Values.AzDProxy.azureauth.envAzureAuthorizerConfiguration.IsLocalDevelopmentMode}}
         MSIClientId: {{.Values.AzDProxy.azureauth.envAzureAuthorizerConfiguration.MSIClientId}}
+    Wrappers:
+      CraneWrappersConfiguration:
+          RetryAttempts: {{ .Values.AzDProxy.wrappers.craneWrappers.RetryPolicyConfiguration.retryCount }}
+          RetryDuration: {{ .Values.AzDProxy.wrappers.craneWrappers.RetryPolicyConfiguration.SleepDurationBetweenRetries }}
+    Arg:
+      ArgBaseClient:
+        RetryPolicyConfiguration:
+          RetryAttempts: {{ .Values.AzDProxy.retryPolicy.retryPolicyConfiguration.retryCount }}
+          RetryDuration: {{ .Values.AzDProxy. }}
 

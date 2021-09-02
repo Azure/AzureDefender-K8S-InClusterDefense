@@ -1,5 +1,5 @@
 # A static app's configuration file. Used for local debugging.
-webhook:
+Webhook:
   CertRotatorConfiguration:
     SecretName: "azure-defender-proxy-cert"
     ServiceName: "azure-defender-proxy-service"
@@ -16,17 +16,27 @@ webhook:
     EnableCertRotation: true
   HandlerConfiguration:
     DryRun: false
-instrumentation:
-  trace:
+Instrumentation:
+  Trace:
     TracerConfiguration:
       TracerLevel: 0
-  tivan:
+  Tivan:
     TivanInstrumentationConfiguration:
       ComponentName: "azdproxy"
       MdmNamespace: "Tivan.Collector.Pods"
 
-azureauth:
-  envAzureAuthorizerConfiguration:
+Azureauth:
+  EnvAzureAuthorizerConfiguration:
     IsLocalDevelopmentMode: true
     MSIClientId: "" # This should be kept empty while you are running the service locally.
+
+Wrappers:
+  CraneWrappersConfiguration:
+    RetryAttempts: 5
+    RetryDuration: 50
+Arg:
+  ArgBaseClient:
+    RetryPolicyConfiguration:
+      RetryAttempts: 2
+      RetryDuration: 100000
 

@@ -9,6 +9,7 @@ import (
 	registrywrappers "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/wrappers"
 	argbase "github.com/Azure/azure-sdk-for-go/services/resourcegraph/mgmt/2021-03-01/resourcegraph"
 	"log"
+	"time"
 
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/cmd/webhook"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/azdsecinfo"
@@ -45,16 +46,19 @@ func main() {
 	tracerConfiguration := new(trace.TracerConfiguration)
 	instrumentationConfiguration := new(instrumentation.InstrumentationProviderConfiguration)
 	envAzureAuthorizerConfiguration := new(azureauth.EnvAzureAuthorizerConfiguration)
+	craneWrapper := new(registrywrappers.CraneWrapper)
 
 	// Create a map between configuration object and key in main config file
 	keyConfigMap := map[string]interface{}{
-		"webhook.ManagerConfiguration":                            managerConfiguration,
-		"webhook.CertRotatorConfiguration":                        certRotatorConfiguration,
-		"webhook.ServerConfiguration":                             serverConfiguration,
-		"webhook.HandlerConfiguration":                            handlerConfiguration,
-		"instrumentation.tivan.TivanInstrumentationConfiguration": tivanInstrumentationConfiguration,
-		"instrumentation.trace.TracerConfiguration":               tracerConfiguration,
-		"azureauth.envAzureAuthorizerConfiguration":               envAzureAuthorizerConfiguration}
+		"Webhook.ManagerConfiguration":                            managerConfiguration,
+		"Webhook.CertRotatorConfiguration":                        certRotatorConfiguration,
+		"Webhook.ServerConfiguration":                             serverConfiguration,
+		"Webhook.HandlerConfiguration":                            handlerConfiguration,
+		"Instrumentation.tivan.TivanInstrumentationConfiguration": tivanInstrumentationConfiguration,
+		"Instrumentation.trace.TracerConfiguration":               tracerConfiguration,
+		"Azureauth.EnvAzureAuthorizerConfiguration":               envAzureAuthorizerConfiguration,
+		"Wrappers.CraneWrappersConfiguration":		   			   craneWrapper,
+	}
 
 	for key, configObject := range keyConfigMap {
 		// Unmarshal the relevant parts of appConfig's data to each of the configuration objects
@@ -86,10 +90,23 @@ func main() {
 	}
 
 	// Registry Client
-	registryClient := registry.NewCraneRegistryClient(instrumentationProvider, new(registrywrappers.CraneWrapper))
+	registryClient := registry.NewCraneRegistryClient(instrumentationProvider, craneWrapper)
 
 	// ARG
 	argBaseClient := argbase.New()
+	// config arg retry policy
+	argRetryPolicyConfiguration := AppConfig.SubConfig("Arg.ArgBaseClient.RetryPolicyConfiguration")
+	err = argRetryPolicyConfiguration.UnmarshalKey("RetryAttempts", &argBaseClient.RetryAttempts)
+	if err != nil {
+		log.Fatal("Unable to change number of retry attempts for arg base client", err)
+	}
+	var sleepDuration time.Duration
+	err = argRetryPolicyConfiguration.UnmarshalKey("RetryDuration", &sleepDuration)
+	if err != nil {
+		log.Fatal("Unable to change sleep duration between retries for arg base client", err)
+	}
+	argBaseClient.RetryDuration = sleepDuration * time.Second
+
 	argBaseClient.Authorizer = authorizer
 	argClient := arg.NewARGClient(instrumentationProvider, argBaseClient)
 	argQueryGenerator, err := argqueries.CreateARGQueryGenerator(instrumentationProvider)

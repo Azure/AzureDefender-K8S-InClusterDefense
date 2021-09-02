@@ -88,3 +88,21 @@ AzDProxy:
     envAzureAuthorizerConfiguration:
       IsLocalDevelopmentMode: false
       MSIClientId: "a554f933-695f-4ecf-abe4-2a7515e8c1b7"
+
+  # Wrappers policy values
+  wrappers:
+    craneWrappers:
+      RetryPolicyConfiguration:
+        # Number of retries in case method has failed
+        retryCount: 3
+        # Sleep duration between retries (in milliseconds):
+        SleepDurationBetweenRetries: 500
+
+  # Arg values
+  arg:
+    ArgBaseClient:
+      RetryPolicyConfiguration:
+        # Number of retries in case method has failed
+        retryCount: 3
+        # Sleep duration between retries (in milliseconds):
+        SleepDurationBetweenRetries: 500
