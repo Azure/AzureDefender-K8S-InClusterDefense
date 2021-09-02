@@ -6,6 +6,7 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/azureauth"
 	azureauthwrappers "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/azureauth/wrappers"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry"
+	registryauthazure "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/auth/azure"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/auth/cranekeychain"
 	registrywrappers "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/wrappers"
 	argbase "github.com/Azure/azure-sdk-for-go/services/resourcegraph/mgmt/2021-03-01/resourcegraph"
@@ -99,8 +100,18 @@ func main() {
 		log.Fatal("main.kubernetes.NewForConfig", err)
 	}
 
+	// TODO add kublet client Id msi
+	bearerAuthorizer, ok := authorizer.(azureauth.IBearerAuthorizer)
+	if !ok{
+		log.Fatal("main.kubernetes.bearerAuthorizer type assertion", err)
+
+	}
+	acrTokenProvider := registryauthazure.NewACRTokenProvider(instrumentationProvider, bearerAuthorizer)
+
 	k8sKeychainFactory := cranekeychain.NewK8SKeychainFactory(instrumentationProvider, clientK8s)
-	multiKeychainFactory := cranekeychain.NewMultiKeychainFactory(instrumentationProvider, k8sKeychainFactory)
+	acrKeychain := cranekeychain.NewACRKeychainFactory(instrumentationProvider, acrTokenProvider)
+
+	multiKeychainFactory := cranekeychain.NewMultiKeychainFactory(instrumentationProvider, k8sKeychainFactory, acrKeychain)
 	registryClient := registry.NewCraneRegistryClient(instrumentationProvider, new(registrywrappers.CraneWrapper), multiKeychainFactory)
 
 	// ARG

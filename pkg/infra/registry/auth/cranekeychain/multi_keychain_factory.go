@@ -20,13 +20,16 @@ type MultiKeychainFactory struct {
 	metricSubmitter metric.IMetricSubmitter
 	// k8sKeychainFactory is the factory to create a K8S key chain
 	k8sKeychainFactory IK8SKeychainFactory
+
+	acrKeychainFactory IACRKeychainFactory
 }
 
-func NewMultiKeychainFactory(instrumentationProvider instrumentation.IInstrumentationProvider, k8sKeychainfactory IK8SKeychainFactory) *MultiKeychainFactory {
+func NewMultiKeychainFactory(instrumentationProvider instrumentation.IInstrumentationProvider, k8sKeychainfactory IK8SKeychainFactory, acrKeychainFactory IACRKeychainFactory) *MultiKeychainFactory {
 	return &MultiKeychainFactory{
 		tracerProvider:     instrumentationProvider.GetTracerProvider("MultiKeychainFactory"),
 		metricSubmitter:    instrumentationProvider.GetMetricSubmitter(),
 		k8sKeychainFactory: k8sKeychainfactory,
+		acrKeychainFactory: acrKeychainFactory,
 	}
 }
 
@@ -34,12 +37,30 @@ func (factory *MultiKeychainFactory) Create(ctx *auth.AuthContext) (authn.Keycha
 	tracer := factory.tracerProvider.GetTracer("Create")
 	tracer.Info("Received:", "ctx", ctx)
 
-	k8sKeychain, err := factory.k8sKeychainFactory.Create(ctx.Namespace(), ctx.ImagePullSecrets(), ctx.ServiceAccountName())
-	if err != nil {
-		err = errors.Wrap(err, "MultiKeychainFactory.Create: could not create k8schain")
-		tracer.Error(err, "")
-		return nil, err
+	kcList := make([]authn.Keychain,0,3)
+
+	if len(ctx.ImagePullSecrets) != 0 && ctx.ServiceAccountName != "" {
+		k8sKeychain, err := factory.k8sKeychainFactory.Create(ctx.Namespace, ctx.ImagePullSecrets, ctx.ServiceAccountName)
+		if err != nil {
+			// Add fallback on unable to create
+			err = errors.Wrap(err, "MultiKeychainFactory.Create: could not create k8schain")
+			tracer.Error(err, "")
+		} else {
+			kcList = append(kcList, k8sKeychain)
+
+		}
 	}
 
-	return authn.NewMultiKeychain(k8sKeychain, authn.DefaultKeychain), nil
+	acrKeychain, err := factory.acrKeychainFactory.Create(ctx.RegistryEndpoint)
+	if err != nil {
+		// Add fallback on unable to create
+		err = errors.Wrap(err, "MultiKeychainFactory.Create: could not create acrKeychain")
+		tracer.Error(err, "")
+	}else{
+		kcList = append(kcList, acrKeychain)
+	}
+
+	kcList = append(kcList, authn.DefaultKeychain)
+
+	return authn.NewMultiKeychain(kcList...), nil
 }

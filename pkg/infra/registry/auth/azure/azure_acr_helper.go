@@ -21,8 +21,8 @@ type tokenResponse struct {
 	TokenType    string `json:"token_type"`
 }
 
-// ExchangeACRAccessToken exchanges an ARM access token to an ACR access token
-func ExchangeACRAccessToken(loginServer string, armToken string) (string, error) {
+// exchangeACRAccessToken exchanges an ARM access token to an ACR access token
+func exchangeACRAccessToken(loginServer string, armToken string) (string, error) {
 	exchangeURL := fmt.Sprintf("%s://%s/oauth2/exchange", scheme, loginServer)
 	ul, err := url.Parse(exchangeURL)
 	if err != nil {

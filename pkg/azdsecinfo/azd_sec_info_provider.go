@@ -71,7 +71,7 @@ func (provider *AzdSecInfoProvider) GetContainersVulnerabilityScanInfo(podSpec *
 		imagePullSecrets = append(imagePullSecrets, element.Name)
 	}
 
-	registryAuthCtx := registryauth.NewAuthContext(namespace, imagePullSecrets, podSpec.ServiceAccountName)
+	registryAuthCtx := &registryauth.AuthContext{Namespace: namespace, ImagePullSecrets: imagePullSecrets, ServiceAccountName: podSpec.ServiceAccountName}
 	tracer.Info("registryAuthCtx:", "registryAuthCtx",registryAuthCtx)
 
 	vulnSecInfoContainers := []*contracts.ContainerVulnerabilityScanInfo{}
@@ -138,6 +138,9 @@ func (provider *AzdSecInfoProvider) getSingleContainerVulnerabilityScanInfo(cont
 		info := buildContainerVulnerabilityScanInfoFromResult(container, digest, scanStatus, scanFindings, additionalData)
 		return info, nil
 	}
+
+	// Set auth to this registry context
+	registryAuthCtx.RegistryEndpoint = imageRefContext.Registry
 
 	// Get image digest
 	digest, err = provider.registryClient.GetDigest(container.Image, registryAuthCtx)
