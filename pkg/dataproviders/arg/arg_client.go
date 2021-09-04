@@ -50,8 +50,68 @@ func NewARGClient(instrumentationProvider instrumentation.IInstrumentationProvid
 // QueryResources gets a query and return an array object as a result
 func (client *ARGClient) QueryResources(query string) ([]interface{}, error) {
 	tracer := client.tracerProvider.GetTracer("QueryResources")
+	// Creates new request
+	request := client.initDefaultQueryRequest(query)
+
+	totalResults, err := client.fetchAllResults(&request)
+	if err != nil {
+		return nil, err
+	}
+
+	// In case that totalResults is still nil - shouldn't happen
+	if totalResults == nil {
+		nilError := errors.New("nil error")
+		tracer.Error(nilError, "totalResults is nil - unknown behavior")
+		return nil, nilError
+	}
+
+	tracer.Info("ARG query", "totalResults", len(totalResults))
+	return totalResults, nil
+}
+
+// fetchAllResults from ARG using pagination. the pagination based on the skiptoken that is returned in the
+// response of ARG.
+func (client *ARGClient) fetchAllResults(request *arg.QueryRequest) ([]interface{}, error) {
+	tracer := client.tracerProvider.GetTracer("fetchAllResults")
 	// Create new totalResults array - default value is nil
 	var totalResults []interface{}
+
+	// While loop - pagination
+	for totalResults == nil || request.Options.SkipToken != nil {
+		// Execute query and get the response.
+		response, err := client.argBaseClientWrapper.Resources(context.Background(), *request)
+		if err != nil {
+			return nil, errors.Wrap(err, "ARGClient.QueryResources failed on baseClient.Resources")
+		}
+
+		// Check that the response is ok
+		if response.TotalRecords == nil || response.Data == nil {
+			err = fmt.Errorf("ARGClient.QueryResources received ARG query response with nil TotalRecords: %v or nil Data: %v", response.Count, response.Data)
+			tracer.Error(err, "")
+			return nil, err
+		}
+
+		// Assert type returned is an object array correlated to options.ResultFormat(arg.ResultFormatObjectArray)
+		results, ok := response.Data.([]interface{})
+		if !ok {
+			return nil, _errArgQueryResponseIsNotAnObjectListFormat
+		}
+
+		// In the first time, set totalResults in the length of the totalRecords. (use this instead of just appending each time for performance)
+		if totalResults == nil {
+			totalResults = make([]interface{}, 0, *response.TotalRecords)
+		}
+		// Add results to total results
+		totalResults = append(totalResults, results...)
+
+		// Update requestOptions.SkipToken in order to skip to the next page, if it's nil, it won't enter to another iteration.
+		request.Options.SkipToken = response.SkipToken
+	}
+	return totalResults, nil
+}
+
+// initDefaultQueryRequest initialize default arg.QueryRequest.
+func (client *ARGClient) initDefaultQueryRequest(query string) arg.QueryRequest {
 	// Create request options - result format should be array. extracting values from client.argQueryReqOptions for preventing case of overriding default values (e.g. SkipToken)
 	requestOptions := arg.QueryRequestOptions{
 		ResultFormat: client.argQueryReqOptions.ResultFormat,
@@ -64,56 +124,5 @@ func (client *ARGClient) QueryResources(query string) ([]interface{}, error) {
 		Options: &requestOptions,
 		//TODO Add subscriptions?
 	}
-
-	// While loop - pagination
-	for {
-		// Execute query and get the response.
-		response, err := client.argBaseClientWrapper.Resources(context.Background(), request)
-		if err != nil {
-			return nil, errors.Wrap(err, "ARGClient.QueryResources failed on baseClient.Resources")
-		}
-
-		// Check that the response is ok
-		if response.TotalRecords == nil || response.Data == nil {
-			err = fmt.Errorf("ARGClient.QueryResources received ARG query response with nil TotalRecords: %v or nil Data: %v", response.Count, response.Data)
-			tracer.Error(err, "")
-			return nil, err
-		}
-
-		// In the first time, set totalResults in the length of the totalRecords. (use this instead of just appending each time for performance)
-		if totalResults == nil {
-			totalResults = make([]interface{}, 0, *response.TotalRecords)
-		}
-
-		// Assert type returned is an object array correlated to options.ResultFormat(arg.ResultFormatObjectArray)
-		results, ok := response.Data.([]interface{})
-		if !ok {
-			return nil, _errArgQueryResponseIsNotAnObjectListFormat
-		}
-
-		// Check if we got empty data.
-		if len(results) == 0 {
-			break
-		}
-
-		// Add results to total results
-		totalResults = append(totalResults, results...)
-
-		// pagination - if response.SkipToken is  null, we fetched all data.
-		if response.SkipToken == nil {
-			break
-		}
-		// Update requestOptions.SkipToken in order to skip to the next page.
-		requestOptions.SkipToken = response.SkipToken
-	}
-
-	// In case that totalResults is still nil - shouldn't happen
-	if totalResults == nil {
-		nilError := errors.New("nil error")
-		tracer.Error(nilError, "totalResults is nil - unknown behavior")
-		return nil, nilError
-	}
-
-	tracer.Info("ARG query", "totalResults", len(totalResults))
-	return totalResults, nil
+	return request
 }

@@ -4,19 +4,19 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
 )
 
-// HandlerLatencyMetric is the latency metric of the handler
-type HandlerLatencyMetric struct {
+// HandlerHandleLatencyMetric is the latency metric of the handler
+type HandlerHandleLatencyMetric struct {
 }
 
-// NewHandlerLatencyMetric Ctor
-func NewHandlerLatencyMetric() *HandlerLatencyMetric {
-	return &HandlerLatencyMetric{}
+// NewHandlerHandleLatencyMetric Ctor
+func NewHandlerHandleLatencyMetric() *HandlerHandleLatencyMetric {
+	return &HandlerHandleLatencyMetric{}
 }
 
-func (m *HandlerLatencyMetric) MetricName() string {
-	return "ArgDataProviderResponseLatency"
+func (m *HandlerHandleLatencyMetric) MetricName() string {
+	return "HandlerHandleLatency"
 }
 
-func (m *HandlerLatencyMetric) MetricDimension() []metric.Dimension {
+func (m *HandlerHandleLatencyMetric) MetricDimension() []metric.Dimension {
 	return []metric.Dimension{}
 }

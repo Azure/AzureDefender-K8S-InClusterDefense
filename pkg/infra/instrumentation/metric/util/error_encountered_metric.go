@@ -9,9 +9,9 @@ type ErrorEncounteredMetric struct {
 }
 
 // NewErrorEncounteredMetric Cto'r for ErrorEncounteredMetric
-func NewErrorEncounteredMetric(errorType, context string) *ErrorEncounteredMetric {
+func NewErrorEncounteredMetric(err error, context string) *ErrorEncounteredMetric {
 	return &ErrorEncounteredMetric{
-		errorType: errorType,
+		errorType: err.Error(),
 		context:   context,
 	}
 }

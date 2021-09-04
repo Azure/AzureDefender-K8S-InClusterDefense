@@ -3,6 +3,7 @@ package trace
 import "github.com/go-logr/logr"
 
 // NoOpTracer is implementation that does nothing of ITracer
+// NoOp is used for testing/debugging.
 type NoOpTracer struct{}
 
 // NewNoOpTracer Ctor for NoOpTracer

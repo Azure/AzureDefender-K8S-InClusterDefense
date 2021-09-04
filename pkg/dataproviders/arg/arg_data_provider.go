@@ -7,6 +7,7 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/dataproviders/arg/queries"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric/util"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
 	"github.com/pkg/errors"
 	"strings"
@@ -56,7 +57,6 @@ func NewARGDataProvider(instrumentationProvider instrumentation.IInstrumentation
 // If scan status is Unhealthy, findings presented in scan findings array
 func (provider *ARGDataProvider) GetImageVulnerabilityScanResults(registry string, repository string, digest string) (contracts.ScanStatus, []*contracts.ScanFinding, error) {
 	tracer := provider.tracerProvider.GetTracer("GetImageVulnerabilityScanResults")
-
 	tracer.Info("Received", "registry", registry, "repository", repository, "digest", digest)
 
 	// Generate image scan result ARG query for this specific image
@@ -140,6 +140,7 @@ func (provider *ARGDataProvider) parseARGImageScanResults(argImageScanResults []
 func (provider *ARGDataProvider) getImageScanDataFromARGQueryScanResult(scanResultsQueryResponseObjectList []*queries.ContainerVulnerabilityScanResultsQueryResponseObject) (contracts.ScanStatus, []*contracts.ScanFinding, error) {
 	tracer := provider.tracerProvider.GetTracer("getImageScanDataFromARGQueryScanResult")
 	startTime := time.Now().UTC()
+
 	if scanResultsQueryResponseObjectList == nil {
 		err := errors.Wrap(errors.New("Received results nil argument"), "ARGDataProvider.getImageScanDataFromARGQueryScanResult")
 		tracer.Error(err, "")
@@ -150,7 +151,7 @@ func (provider *ARGDataProvider) getImageScanDataFromARGQueryScanResult(scanResu
 	if len(scanResultsQueryResponseObjectList) == 0 {
 		// Unscanned - no results found
 		tracer.Info("Set to Unscanned scan data")
-		provider.metricSubmitter.SendMetric(int(time.Now().Sub(startTime).Nanoseconds()), argmetric.NewArgDataProviderResponseLatency(contracts.Unscanned))
+		provider.metricSubmitter.SendMetric(util.GetDurationMilliseconds(startTime, time.Now().UTC()), argmetric.NewArgDataProviderResponseLatencyMetricWithGetImageVulnerabilityScanResultsQuery(contracts.Unscanned))
 		// Return unscanned and return nil array of findings
 		return contracts.Unscanned, nil, nil
 	}
@@ -160,7 +161,7 @@ func (provider *ARGDataProvider) getImageScanDataFromARGQueryScanResult(scanResu
 		// Healthy Set to healthy scan
 		tracer.Info("Set to Healthy scan data", "healthyReceivedFindings", scanResultsQueryResponseObjectList)
 
-		provider.metricSubmitter.SendMetric(int(time.Now().Sub(startTime).Nanoseconds()), argmetric.NewArgDataProviderResponseLatency(contracts.HealthyScan))
+		provider.metricSubmitter.SendMetric(util.GetDurationMilliseconds(startTime, time.Now().UTC()), argmetric.NewArgDataProviderResponseLatencyMetricWithGetImageVulnerabilityScanResultsQuery(contracts.HealthyScan))
 		// Return healthy scan status and empty array (initialized but empty)
 		return contracts.HealthyScan, []*contracts.ScanFinding{}, nil
 	}
@@ -175,7 +176,7 @@ func (provider *ARGDataProvider) getImageScanDataFromARGQueryScanResult(scanResu
 			Severity:  element.ScanFindingSeverity})
 	}
 	// Send metrics
-	provider.metricSubmitter.SendMetric(int(time.Now().Sub(startTime).Nanoseconds()), argmetric.NewArgDataProviderResponseLatency(contracts.UnhealthyScan))
 	provider.metricSubmitter.SendMetric(len(scanFindings), argmetric.NewArgDataProviderResponseNumOfRecordsMetric())
+	provider.metricSubmitter.SendMetric(util.GetDurationMilliseconds(startTime, time.Now().UTC()), argmetric.NewArgDataProviderResponseLatencyMetricWithGetImageVulnerabilityScanResultsQuery(contracts.UnhealthyScan))
 	return contracts.UnhealthyScan, scanFindings, nil
 }

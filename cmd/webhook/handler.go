@@ -3,6 +3,7 @@ package webhook
 
 import (
 	"context"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric/util"
 	"log"
 	"time"
 
@@ -31,6 +32,8 @@ const (
 	_notPatchedInit patchReason = "NotPatchedInit"
 	// _notPatchedDryRun in case that DryRun of Handler is True.
 	_notPatchedDryRun patchReason = "NotPatchedDryRun"
+	// _notPatchedNotSupportedKind in case that the resource kind of the request is not supported king
+	_notPatchedNotSupportedKind patchReason = "NotPatchedNotSupportedKind"
 )
 
 // Handler implements the admission.Handle interface that each webhook have to implement.
@@ -66,6 +69,7 @@ func NewHandler(azdSecInfoProvider azdsecinfo.IAzdSecInfoProvider, configuration
 // Handle processes the AdmissionRequest by invoking the underlying function.
 func (handler *Handler) Handle(ctx context.Context, req admission.Request) admission.Response {
 	startTime := time.Now().UTC()
+	defer handler.metricSubmitter.SendMetric(util.GetDurationMilliseconds(startTime, time.Now().UTC()), webhookmetric.NewHandlerHandleLatencyMetric())
 
 	tracer := handler.tracerProvider.GetTracer("Handle")
 	if ctx == nil {
@@ -80,7 +84,7 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 	patches := []jsonpatch.JsonPatchOperation{}
 	patchReason := _notPatchedInit
 
-	handler.metricSubmitter.SendMetric(1, webhookmetric.NewHandlerNumOfRequestsMetric(req.Kind.Kind))
+	handler.metricSubmitter.SendMetric(1, webhookmetric.NewHandlerNewRequestMetric(req.Kind.Kind))
 	if req.Kind.Kind == admisionrequest.PodKind {
 
 		pod, err := admisionrequest.UnmarshalPod(&req)
@@ -102,6 +106,8 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 
 		// update patch reason
 		patchReason = _patched
+	} else {
+		patchReason = _notPatchedNotSupportedKind
 	}
 
 	// In case of dryrun=true:  reset all patch operations
@@ -114,7 +120,6 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 	// Patch all patches operations
 	response := admission.Patched(string(patchReason), patches...)
 	tracer.Info("Responded", "response", response)
-	handler.metricSubmitter.SendMetric(int(time.Now().Sub(startTime).Nanoseconds()), webhookmetric.NewHandlerLatencyMetric())
 
 	return response
 }
@@ -122,6 +127,7 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 func (handler *Handler) getPodContainersVulnerabilityScanInfoAnnotationsOperation(pod *corev1.Pod) (*jsonpatch.JsonPatchOperation, error) {
 	tracer := handler.tracerProvider.GetTracer("getPodContainersVulnerabilityScanInfoAnnotationsOperation")
 	vulnSecInfoContainers := []*contracts.ContainerVulnerabilityScanInfo{}
+	handler.metricSubmitter.SendMetric(len(pod.Spec.Containers)+len(pod.Spec.InitContainers), webhookmetric.NewHandlerNumOfContainersPerPodMetric())
 
 	for _, container := range pod.Spec.InitContainers {
 
@@ -158,6 +164,5 @@ func (handler *Handler) getPodContainersVulnerabilityScanInfoAnnotationsOperatio
 		return nil, wrappedError
 	}
 
-	handler.metricSubmitter.SendMetric(len(pod.Spec.Containers)+len(pod.Spec.InitContainers), webhookmetric.NewHandlerNumOfContainersMetric())
 	return vulnerabilitySecAnnotationsPatch, nil
 }

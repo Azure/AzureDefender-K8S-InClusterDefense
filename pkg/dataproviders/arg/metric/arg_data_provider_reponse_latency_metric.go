@@ -9,13 +9,21 @@ import (
 type ArgDataProviderResponseLatencyMetric struct {
 	// scanStatus is the scan status of the metric that would be deployed as ScanStatus metric.Dimension.
 	scanStatus contracts.ScanStatus
+
+	// queryName is the query name - e.g. GetImageVulnerabilityScanResults
+	queryName string
 }
 
-// NewArgDataProviderResponseLatency  Ctor for ArgDataProviderResponseLatencyMetric
-func NewArgDataProviderResponseLatency(status contracts.ScanStatus) *ArgDataProviderResponseLatencyMetric {
+// NewArgDataProviderResponseLatencyMetric  Ctor for ArgDataProviderResponseLatencyMetric
+func NewArgDataProviderResponseLatencyMetric(status contracts.ScanStatus, queryName string) *ArgDataProviderResponseLatencyMetric {
 	return &ArgDataProviderResponseLatencyMetric{
 		scanStatus: status,
+		queryName:  queryName,
 	}
+}
+
+func NewArgDataProviderResponseLatencyMetricWithGetImageVulnerabilityScanResultsQuery(status contracts.ScanStatus) *ArgDataProviderResponseLatencyMetric {
+	return NewArgDataProviderResponseLatencyMetric(status, "GetImageVulnerabilityScanResults")
 }
 
 func (m *ArgDataProviderResponseLatencyMetric) MetricName() string {
