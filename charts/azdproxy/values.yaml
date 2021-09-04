@@ -88,3 +88,9 @@ AzDProxy:
     envAzureAuthorizerConfiguration:
       IsLocalDevelopmentMode: false
       MSIClientId: "a554f933-695f-4ecf-abe4-2a7515e8c1b7"
+
+
+  # Cache configuration
+  cache:
+    port: 6379
+    targetport: 6379

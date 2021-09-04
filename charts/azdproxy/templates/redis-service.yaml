@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{.Values.AzDProxy.prefixResourceDeployment}}-redis-service
+  namespace: '{{ .Release.Namespace }}'
+  labels:
+    {{ include "common.labels" . | indent 4 }}
+    run: redis
+    role: service
+spec:
+  ports:
+    - port: {{.Values.AzDProxy.cache.port}}
+      targetPort: {{.Values.AzDProxy.cache.targetport}}
+  selector:
+    run: redis

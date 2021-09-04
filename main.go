@@ -5,6 +5,8 @@ import (
 	argqueries "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/dataproviders/arg/queries"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/azureauth"
 	azureauthwrappers "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/azureauth/wrappers"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/cache"
+	cachewrappers "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/cache/wrappers"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry"
 	registrywrappers "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/wrappers"
 	argbase "github.com/Azure/azure-sdk-for-go/services/resourcegraph/mgmt/2021-03-01/resourcegraph"
@@ -46,6 +48,8 @@ func main() {
 	instrumentationConfiguration := new(instrumentation.InstrumentationProviderConfiguration)
 	envAzureAuthorizerConfiguration := new(azureauth.EnvAzureAuthorizerConfiguration)
 
+	argDataProviderCacheConfiguration := new(cachewrappers.RedisBaseCacheClientConfiguration)
+
 	// Create a map between configuration object and key in main config file
 	keyConfigMap := map[string]interface{}{
 		"webhook.ManagerConfiguration":                            managerConfiguration,
@@ -54,7 +58,9 @@ func main() {
 		"webhook.HandlerConfiguration":                            handlerConfiguration,
 		"instrumentation.tivan.TivanInstrumentationConfiguration": tivanInstrumentationConfiguration,
 		"instrumentation.trace.TracerConfiguration":               tracerConfiguration,
-		"azureauth.envAzureAuthorizerConfiguration":               envAzureAuthorizerConfiguration}
+		"azureauth.envAzureAuthorizerConfiguration":               envAzureAuthorizerConfiguration,
+		"cache.argDataProviderCacheConfiguration":                 argDataProviderCacheConfiguration,
+	}
 
 	for key, configObject := range keyConfigMap {
 		// Unmarshal the relevant parts of appConfig's data to each of the configuration objects
@@ -89,6 +95,8 @@ func main() {
 	registryClient := registry.NewCraneRegistryClient(instrumentationProvider, new(registrywrappers.CraneWrapper))
 
 	// ARG
+	//TODO complete it once we merge the rest of the PR's.
+	_ = cache.CreateRedisCacheClient(argDataProviderCacheConfiguration)
 	argBaseClient := argbase.New()
 	argBaseClient.Authorizer = authorizer
 	argClient := arg.NewARGClient(instrumentationProvider, argBaseClient)

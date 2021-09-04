@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{.Values.AzDProxy.prefixResourceDeployment}}-redis-deployment
+  namespace: '{{ .Release.Namespace }}'
+  labels:
+  {{ include "common.labels" . | indent 4 }}
+spec:
+  selector:
+    matchLabels:
+      run: redis
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        run: redis
+    spec:
+      containers:
+        - name: {{.Values.AzDProxy.prefixResourceDeployment}}-redis
+          image: redis:buster
+          ports:
+            - containerPort: {{.Values.AzDProxy.cache.targetport}}

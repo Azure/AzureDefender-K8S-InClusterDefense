@@ -8,6 +8,7 @@ require (
 	github.com/Azure/go-autorest/autorest/azure/auth v0.5.8
 	github.com/Azure/go-autorest/autorest/validation v0.1.0 // indirect
 	github.com/go-logr/logr v0.4.0
+	github.com/go-redis/redis v6.15.9+incompatible
 	github.com/google/go-containerregistry v0.6.0
 	github.com/modern-go/reflect2 v1.0.1
 	github.com/open-policy-agent/cert-controller v0.2.0
