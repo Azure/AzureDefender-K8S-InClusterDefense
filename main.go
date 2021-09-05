@@ -100,12 +100,12 @@ func main() {
 	if err != nil {
 		log.Fatal("Unable to change number of retry attempts for arg base client", err)
 	}
-	var sleepDuration time.Duration
-	err = argRetryPolicyConfiguration.UnmarshalKey("RetryDuration", &sleepDuration)
+	var retryDuration time.Duration
+	err = argRetryPolicyConfiguration.UnmarshalKey("RetryDuration", &retryDuration)
 	if err != nil {
 		log.Fatal("Unable to change sleep duration between retries for arg base client", err)
 	}
-	argBaseClient.RetryDuration = sleepDuration * time.Second
+	argBaseClient.RetryDuration = retryDuration * time.Millisecond
 
 	argBaseClient.Authorizer = authorizer
 	argClient := arg.NewARGClient(instrumentationProvider, argBaseClient)

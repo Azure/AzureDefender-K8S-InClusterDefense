@@ -32,11 +32,11 @@ Azureauth:
 
 Wrappers:
   CraneWrappersConfiguration:
-    RetryAttempts: 5
-    RetryDuration: 50
+    RetryAttempts: 3
+    RetryDuration: 10
 Arg:
   ArgBaseClient:
     RetryPolicyConfiguration:
-      RetryAttempts: 2
-      RetryDuration: 100000
+      RetryAttempts: 3
+      RetryDuration: 100
 
