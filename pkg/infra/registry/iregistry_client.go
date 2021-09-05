@@ -5,5 +5,7 @@ import registryauth "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/inf
 // IRegistryClient container registry based client
 type IRegistryClient interface {
 	// GetDigest receives image reference string and resolve it's digest.
-	GetDigest(imageRef string, registryAuthCtx *registryauth.AuthContext) (string, error)
+	GetDigest(imageRef string, authConfig *registryauth.AuthConfig) (string, error)
 }
+
+

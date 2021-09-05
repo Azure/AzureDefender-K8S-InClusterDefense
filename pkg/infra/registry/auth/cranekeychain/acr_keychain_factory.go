@@ -5,6 +5,7 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/auth/azure"
+	registryutils "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/utils"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/pkg/errors"
 )
@@ -39,17 +40,20 @@ func (factory *ACRKeychainFactory) Create(loginServer string) (authn.Keychain, e
 		tracer.Error(err, "")
 		return nil, err
 	}
-	return &BearerIdentityKeyChain{
+	return &ACRKeyChain{
 		Token: accessToken,
 	}, nil
 
 }
 
-type BearerIdentityKeyChain struct {
+type ACRKeyChain struct {
 	Token string `json:"token"`
 }
 
-func (b *BearerIdentityKeyChain) Resolve(authn.Resource) (authn.Authenticator, error) {
+func (b *ACRKeyChain) Resolve(resource authn.Resource) (authn.Authenticator, error) {
+	if !registryutils.IsRegistryEndpointACR(resource.RegistryStr()) {
+		return authn.Anonymous, nil
+	}
 	return authn.FromConfig(authn.AuthConfig{
 		IdentityToken: b.Token,
 	}), nil

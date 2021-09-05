@@ -9,6 +9,7 @@ import (
 	registryauthazure "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/auth/azure"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/auth/cranekeychain"
 	registrywrappers "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/wrappers"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/tag2digest"
 	argbase "github.com/Azure/azure-sdk-for-go/services/resourcegraph/mgmt/2021-03-01/resourcegraph"
 	"k8s.io/client-go/kubernetes"
 	"log"
@@ -125,8 +126,10 @@ func main() {
 
 	argDataProvider := arg.NewARGDataProvider(instrumentationProvider, argClient, argQueryGenerator)
 
+	tag2digestResolver := tag2digest.NewTag2DigestResolver(instrumentationProvider, registryClient)
+
 	// Handler and azdSecinfoProvider
-	azdSecInfoProvider := azdsecinfo.NewAzdSecInfoProvider(instrumentationProvider, argDataProvider, registryClient)
+	azdSecInfoProvider := azdsecinfo.NewAzdSecInfoProvider(instrumentationProvider, argDataProvider, tag2digestResolver)
 	handler := webhook.NewHandler(azdSecInfoProvider, handlerConfiguration, instrumentationProvider)
 
 	// Manager and server

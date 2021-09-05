@@ -38,38 +38,23 @@ func NewCraneRegistryClient(instrumentationProvider instrumentation.IInstrumenta
 }
 
 // GetDigest receives image reference string and calls cranekeychain digest api to get it's digest from registry
-func (client *CraneRegistryClient) GetDigest(imageRef string, authContext *auth.AuthContext) (string, error) {
+func (client *CraneRegistryClient) GetDigest(imageRef string, authConfig *auth.AuthConfig) (string, error) {
 	tracer := client.tracerProvider.GetTracer("GetDigest")
-	tracer.Info("Received image:", "imageRef", imageRef)
-
-	// First check if we can extract it from ref it self (digest based ref)
-	isDigestBasedImageRef, digest, err := TryExtractDigestFromImageRef(imageRef)
-	if err != nil {
-		// Report error
-		err = errors.Wrap(err, "utils.TryExtractDigestFromImageRef:")
-		tracer.Error(err, "")
-		return "", err
-	}
-
-	tracer.Info("utils.TryExtractDigestFromImageRef return values", "isDigestBasedImageRef", isDigestBasedImageRef, "digest", digest)
-	if isDigestBasedImageRef {
-		// Return digest extracted from ref
-		return digest, nil
-	}
+	tracer.Info("Received image:", "imageRef", imageRef, "authConfig", authConfig)
 
 	// TODO add retry policy
 	// TODO this will fail if pull secrets does not exists or SA is not accessibile - need to add a fallback to try to skip this if it fails
-	keychain, err := client.multiKeychainFactoryfactory.Create(authContext)
+	keychain, err := client.multiKeychainFactoryfactory.Create(authConfig)
 	if err != nil {
 		// Report error
-		err = errors.Wrap(err, "multiKeychainFactoryfactory.Create:")
+		err = errors.Wrap(err, "multiKeychainFactory.Create:")
 		tracer.Error(err, "")
 		return "", err
 	}
 
 	// TODO add retry policy
 	// Resolve digest
-	digest, err = client.craneWrapper.Digest(imageRef, crane.WithAuthFromKeychain(keychain), crane.WithUserAgent(userAgent))
+	digest, err := client.craneWrapper.Digest(imageRef, crane.WithAuthFromKeychain(keychain), crane.WithUserAgent(userAgent))
 	if err != nil {
 		// Report error
 		err = errors.Wrap(err, "CraneRegistryClient.GetDigest:")

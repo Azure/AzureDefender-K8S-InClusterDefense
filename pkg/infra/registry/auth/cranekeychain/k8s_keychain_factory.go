@@ -35,5 +35,6 @@ func (factory *K8SKeychainFactory) Create(namespace string, imagePullSecrets []s
 	tracer := factory.tracerProvider.GetTracer("Create")
 	tracer.Info("Received:", "namespace", namespace, "imagePullSecrets", imagePullSecrets, "serviceAccountName", serviceAccountName)
 
+	// TODO add support to not fail on non existant SA or Pull secret
 	return k8schain.New(context.Background(), factory.client, k8schain.Options{Namespace: namespace, ServiceAccountName: serviceAccountName, ImagePullSecrets: imagePullSecrets})
 }

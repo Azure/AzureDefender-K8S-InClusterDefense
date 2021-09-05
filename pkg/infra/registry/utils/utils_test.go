@@ -1,4 +1,4 @@
-package registry
+package utils
 
 import (
 	"github.com/stretchr/testify/suite"

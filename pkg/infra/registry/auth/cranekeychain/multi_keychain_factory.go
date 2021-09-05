@@ -9,8 +9,13 @@ import (
 	"github.com/pkg/errors"
 )
 
+var (
+	nullArgError = errors.New("NilArgArgument")
+	unsupportedAuthType = errors.New("unsupportedAuthType")
+)
+
 type IMultiKeychainFactory interface {
-	Create(ctx *auth.AuthContext) (authn.Keychain, error)
+	Create(ctx *auth.AuthConfig) (authn.Keychain, error)
 }
 
 type MultiKeychainFactory struct {
@@ -33,34 +38,40 @@ func NewMultiKeychainFactory(instrumentationProvider instrumentation.IInstrument
 	}
 }
 
-func (factory *MultiKeychainFactory) Create(ctx *auth.AuthContext) (authn.Keychain, error) {
+func (factory *MultiKeychainFactory) Create(authCfg *auth.AuthConfig) (authn.Keychain, error) {
 	tracer := factory.tracerProvider.GetTracer("Create")
-	tracer.Info("Received:", "ctx", ctx)
+	tracer.Info("Received:", "ctx", authCfg)
 
-	kcList := make([]authn.Keychain,0,3)
+	if authCfg == nil  || authCfg.Context == nil {
+		err := errors.Wrapf(nullArgError, "MultiKeychainFactory.Create: arg-> %v", authCfg)
+		tracer.Error(err, "")
+		return nil, err
+	}
 
-	if len(ctx.ImagePullSecrets) != 0 && ctx.ServiceAccountName != "" {
-		k8sKeychain, err := factory.k8sKeychainFactory.Create(ctx.Namespace, ctx.ImagePullSecrets, ctx.ServiceAccountName)
+	var kc authn.Keychain = nil
+	var err error = nil
+	switch authCfg.AuthType {
+	case auth.ACRAuth:
+		kc, err = factory.acrKeychainFactory.Create(authCfg.Context.RegistryEndpoint)
 		if err != nil {
-			// Add fallback on unable to create
+			err = errors.Wrap(err, "MultiKeychainFactory.Create: could not create acrKeychain")
+			tracer.Error(err, "")
+			return nil, err
+		}
+	case auth.K8SAuth:
+
+		kc, err = factory.k8sKeychainFactory.Create(authCfg.Context.Namespace, authCfg.Context.ImagePullSecrets, authCfg.Context.ServiceAccountName)
+		if err != nil {
 			err = errors.Wrap(err, "MultiKeychainFactory.Create: could not create k8schain")
 			tracer.Error(err, "")
-		} else {
-			kcList = append(kcList, k8sKeychain)
-
+			return nil, err
 		}
-	}
-
-	acrKeychain, err := factory.acrKeychainFactory.Create(ctx.RegistryEndpoint)
-	if err != nil {
-		// Add fallback on unable to create
-		err = errors.Wrap(err, "MultiKeychainFactory.Create: could not create acrKeychain")
+	default:
+		err = errors.Wrapf(err, "MultiKeychainFactory.Create: unsupportedAuthType: %v", authCfg.AuthType)
 		tracer.Error(err, "")
-	}else{
-		kcList = append(kcList, acrKeychain)
+		return nil, err
 	}
 
-	kcList = append(kcList, authn.DefaultKeychain)
-
-	return authn.NewMultiKeychain(kcList...), nil
+	// Add default key chain
+	return authn.NewMultiKeychain(kc,authn.DefaultKeychain), nil
 }

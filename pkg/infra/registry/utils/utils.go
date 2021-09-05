@@ -1,4 +1,4 @@
-package registry
+package utils
 
 import (
 	name "github.com/google/go-containerregistry/pkg/name"
@@ -8,6 +8,9 @@ import (
 
 const (
 	digestDelim = "@"
+
+	// _azureContainerRegistrySuffix is the suffix of ACR public (todo extract per env maybe?)
+	azureContainerRegistrySuffix = ".azurecr.io"
 )
 
 // ImageRefContext represents image ref context - registry and repository
@@ -55,3 +58,8 @@ func TryExtractDigestFromImageRef(imageRef string) (isDigestBasedImageRef bool, 
 	}
 	return false, "", nil
 }
+
+func IsRegistryEndpointACR(registryEndpoint string) bool {
+	return strings.HasSuffix(strings.ToLower(registryEndpoint), azureContainerRegistrySuffix)
+}
+

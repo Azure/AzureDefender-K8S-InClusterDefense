@@ -7,17 +7,16 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
-	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry"
 	registryauth "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/auth"
+	registryutils "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/utils"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/tag2digest"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"strings"
 )
 
 const (
-	// _azureContainerRegistrySuffix is the suffix of ACR public (todo extract per env maybe?)
-	_azureContainerRegistrySuffix = ".azurecr.io"
+
 )
 
 var (
@@ -39,17 +38,17 @@ type AzdSecInfoProvider struct {
 	metricSubmitter metric.IMetricSubmitter
 	// argDataProvider is the ARG provider which provides any ARG data
 	argDataProvider arg.IARGDataProvider
-	// registryClient is the client of the registry which is used to resolve image's digest
-	registryClient registry.IRegistryClient
+	// tag2digestResolver is the resolver of images to their digests
+	tag2digestResolver tag2digest.ITag2DigestResolver
 }
 
 // NewAzdSecInfoProvider - AzdSecInfoProvider Ctor
-func NewAzdSecInfoProvider(instrumentationProvider instrumentation.IInstrumentationProvider, argDataProvider arg.IARGDataProvider, registryClient registry.IRegistryClient) *AzdSecInfoProvider {
+func NewAzdSecInfoProvider(instrumentationProvider instrumentation.IInstrumentationProvider, argDataProvider arg.IARGDataProvider, tag2digestResolver tag2digest.ITag2DigestResolver) *AzdSecInfoProvider {
 	return &AzdSecInfoProvider{
 		tracerProvider:  instrumentationProvider.GetTracerProvider("AzdSecInfoProvider"),
 		metricSubmitter: instrumentationProvider.GetMetricSubmitter(),
 		argDataProvider: argDataProvider,
-		registryClient:  registryClient,
+		tag2digestResolver:  tag2digestResolver,
 	}
 }
 
@@ -117,7 +116,7 @@ func (provider *AzdSecInfoProvider) getSingleContainerVulnerabilityScanInfo(cont
 	tracer.Info("Received:", "container image ref", container.Image, "registryAuthCtx", registryAuthCtx)
 
 	// Extracts image context
-	imageRefContext, err := registry.ExtractImageRefContext(container.Image)
+	imageRefContext, err := registryutils.ExtractImageRefContext(container.Image)
 	if err != nil {
 		err = errors.Wrap(err, "AzdSecInfoProvider.GetContainersVulnerabilityScanInfo.registry.ExtractImageRefContext")
 		tracer.Error(err, "")
@@ -132,7 +131,7 @@ func (provider *AzdSecInfoProvider) getSingleContainerVulnerabilityScanInfo(cont
 	var additionalData = make(map[string]string)
 
 	// Checks if the image registry is not ACR.
-	if !strings.HasSuffix(strings.ToLower(imageRefContext.Registry), _azureContainerRegistrySuffix) {
+	if !registryutils.IsRegistryEndpointACR(imageRefContext.Registry) {
 		tracer.Info("Image from another registry than ACR received", "Registry", imageRefContext.Registry)
 		additionalData["unscannedReason"] = fmt.Sprintf("Registry of image \"%v\" is not an ACR", imageRefContext.Registry)
 		info := buildContainerVulnerabilityScanInfoFromResult(container, digest, scanStatus, scanFindings, additionalData)
@@ -143,9 +142,9 @@ func (provider *AzdSecInfoProvider) getSingleContainerVulnerabilityScanInfo(cont
 	registryAuthCtx.RegistryEndpoint = imageRefContext.Registry
 
 	// Get image digest
-	digest, err = provider.registryClient.GetDigest(container.Image, registryAuthCtx)
+	digest, err = provider.tag2digestResolver.Resolve(container.Image, registryAuthCtx)
 	if err != nil {
-		err = errors.Wrap(err, "AzdSecInfoProvider.GetContainersVulnerabilityScanInfo.registry.GetDigest")
+		err = errors.Wrap(err, "AzdSecInfoProvider.GetContainersVulnerabilityScanInfo.tag2digestResolver.Resolve")
 		tracer.Error(err, "")
 
 		// TODO support digest does not exists in registry or unauthorized to not fail...
