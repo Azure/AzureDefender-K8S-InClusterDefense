@@ -14,7 +14,7 @@ type ICraneWrapper interface {
 // CraneWrapper wraps crane operations
 type CraneWrapper struct{
 	retryAttempts int
-	sleepDurationBetweenRetries	int
+	sleepDurationBetweenRetries	time.Duration
 }
 
 // Digest get image digest using image ref using crane Digest call
@@ -32,13 +32,14 @@ func (craneWrapper *CraneWrapper) Digest(ref string) (string, error) {
 // DigestWithRetry re-executing Digest in case of a failure according to retryPolicy
 func (craneWrapper *CraneWrapper) DigestWithRetry(ref string) (res string, err error) {
 	for i := 0; i < craneWrapper.retryAttempts; i++ {
-		//
+		// Execute Digest and check if an error occurred
+		// TODO change Digest call after Digest method has been implemented correctly
 		if res, err = craneWrapper.Digest(""); err == nil {
 			return res, nil
 		} else {
-			//
-			time.Sleep(time.Duration(i * craneWrapper.sleepDurationBetweenRetries) * time.Millisecond)
+			// wait i*craneWrapper.sleepDurationBetweenRetries milliseconds between retries
+			time.Sleep(time.Duration(i) * craneWrapper.sleepDurationBetweenRetries * time.Millisecond)
 		}
 	}
-	return res, errors.Wrapf(err, "failed after %d retries", craneWrapper.retryAttempts)
+	return res, errors.Wrapf(err, "failed after %d retries due to error", craneWrapper.retryAttempts)
 }
