@@ -139,7 +139,7 @@ func (provider *ARGDataProvider) parseARGImageScanResults(argImageScanResults []
 // If scan status is Unhealthy, findings presented in scan findings array
 func (provider *ARGDataProvider) getImageScanDataFromARGQueryScanResult(scanResultsQueryResponseObjectList []*queries.ContainerVulnerabilityScanResultsQueryResponseObject) (contracts.ScanStatus, []*contracts.ScanFinding, error) {
 	tracer := provider.tracerProvider.GetTracer("getImageScanDataFromARGQueryScanResult")
-	startTime := time.Now()
+	startTime := time.Now().UTC()
 
 	if scanResultsQueryResponseObjectList == nil {
 		err := errors.Wrap(errors.New("Received results nil argument"), "ARGDataProvider.getImageScanDataFromARGQueryScanResult")
