@@ -151,7 +151,7 @@ func (provider *ARGDataProvider) getImageScanDataFromARGQueryScanResult(scanResu
 	if len(scanResultsQueryResponseObjectList) == 0 {
 		// Unscanned - no results found
 		tracer.Info("Set to Unscanned scan data")
-		provider.metricSubmitter.SendMetric(util.GetDurationMilliseconds(startTime, time.Now().UTC()), argmetric.NewArgDataProviderResponseLatencyMetricWithGetImageVulnerabilityScanResultsQuery(contracts.Unscanned))
+		provider.metricSubmitter.SendMetric(util.GetDurationMilliseconds(startTime), argmetric.NewArgDataProviderResponseLatencyMetricWithGetImageVulnerabilityScanResultsQuery(contracts.Unscanned))
 		// Return unscanned and return nil array of findings
 		return contracts.Unscanned, nil, nil
 	}
@@ -161,7 +161,7 @@ func (provider *ARGDataProvider) getImageScanDataFromARGQueryScanResult(scanResu
 		// Healthy Set to healthy scan
 		tracer.Info("Set to Healthy scan data", "healthyReceivedFindings", scanResultsQueryResponseObjectList)
 
-		provider.metricSubmitter.SendMetric(util.GetDurationMilliseconds(startTime, time.Now().UTC()), argmetric.NewArgDataProviderResponseLatencyMetricWithGetImageVulnerabilityScanResultsQuery(contracts.HealthyScan))
+		provider.metricSubmitter.SendMetric(util.GetDurationMilliseconds(startTime), argmetric.NewArgDataProviderResponseLatencyMetricWithGetImageVulnerabilityScanResultsQuery(contracts.HealthyScan))
 		// Return healthy scan status and empty array (initialized but empty)
 		return contracts.HealthyScan, []*contracts.ScanFinding{}, nil
 	}
@@ -177,6 +177,6 @@ func (provider *ARGDataProvider) getImageScanDataFromARGQueryScanResult(scanResu
 	}
 	// Send metrics
 	provider.metricSubmitter.SendMetric(len(scanFindings), argmetric.NewArgDataProviderResponseNumOfRecordsMetric())
-	provider.metricSubmitter.SendMetric(util.GetDurationMilliseconds(startTime, time.Now().UTC()), argmetric.NewArgDataProviderResponseLatencyMetricWithGetImageVulnerabilityScanResultsQuery(contracts.UnhealthyScan))
+	provider.metricSubmitter.SendMetric(util.GetDurationMilliseconds(startTime), argmetric.NewArgDataProviderResponseLatencyMetricWithGetImageVulnerabilityScanResultsQuery(contracts.UnhealthyScan))
 	return contracts.UnhealthyScan, scanFindings, nil
 }

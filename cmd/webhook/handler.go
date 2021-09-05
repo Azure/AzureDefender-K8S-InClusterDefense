@@ -69,7 +69,7 @@ func NewHandler(azdSecInfoProvider azdsecinfo.IAzdSecInfoProvider, configuration
 // Handle processes the AdmissionRequest by invoking the underlying function.
 func (handler *Handler) Handle(ctx context.Context, req admission.Request) admission.Response {
 	startTime := time.Now().UTC()
-	defer handler.metricSubmitter.SendMetric(util.GetDurationMilliseconds(startTime, time.Now().UTC()), webhookmetric.NewHandlerHandleLatencyMetric())
+	defer handler.metricSubmitter.SendMetric(util.GetDurationMilliseconds(startTime), webhookmetric.NewHandlerHandleLatencyMetric())
 
 	tracer := handler.tracerProvider.GetTracer("Handle")
 	if ctx == nil {
