@@ -1,3 +1,4 @@
+# TODO Redis deployments should be updated with stable/distributed and secured version.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -9,7 +10,7 @@ spec:
   selector:
     matchLabels:
       run: redis
-  replicas: 1
+  replicas: {{.Values.AzDProxy.cache.replicas}}
   template:
     metadata:
       labels:
