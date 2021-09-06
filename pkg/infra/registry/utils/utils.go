@@ -23,6 +23,7 @@ func GetImageReference(imageRef string) (registry.IImageReference, error) {
 		return nil, errors.Wrap(err, "GetImageReference failed to parse imageRef")
 	}
 
+	// Create ref based on type
 	switch refTyped := parsedRef.(type) {
 	case name.Tag:
 		tag := registry.NewTag(imageRef, refTyped.RegistryStr(), refTyped.RepositoryStr(), refTyped.TagStr())
@@ -35,6 +36,7 @@ func GetImageReference(imageRef string) (registry.IImageReference, error) {
 	}
 }
 
+// IsRegistryEndpointACR return is registryEndpoing is ACR based (ACR suffix)
 func IsRegistryEndpointACR(registryEndpoint string) bool {
 	return strings.HasSuffix(strings.ToLower(registryEndpoint), azureContainerRegistrySuffix)
 }

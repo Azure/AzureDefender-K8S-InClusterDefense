@@ -10,18 +10,23 @@ import (
 	"github.com/pkg/errors"
 )
 
+// IACRKeychainFactory responsible to create an ACR auth based keychain to authenticate to registry
 type IACRKeychainFactory interface {
-	Create(loginServer string) (authn.Keychain, error)
+	// Create is creating  an ACR auth based keychain to registry using provided registry
+	Create(registry string) (authn.Keychain, error)
 }
 
+// ACRKeychainFactory basic implementation of
 type ACRKeychainFactory struct {
 	// tracerProvider is the tracer provider for the registry client
 	tracerProvider trace.ITracerProvider
 	// metricSubmitter is the metric submitter for the registry client.
 	metricSubmitter  metric.IMetricSubmitter
+	// acrTokenProvider provides an ACR token
 	acrTokenProvider acrauth.IACRTokenProvider
 }
 
+// NewACRKeychainFactory Ctor
 func NewACRKeychainFactory(instrumentationProvider instrumentation.IInstrumentationProvider, acrTokenProvider acrauth.IACRTokenProvider) *ACRKeychainFactory {
 	return &ACRKeychainFactory{
 		tracerProvider:   instrumentationProvider.GetTracerProvider("ACRKeychainFactory"),
@@ -30,31 +35,39 @@ func NewACRKeychainFactory(instrumentationProvider instrumentation.IInstrumentat
 	}
 }
 
-func (factory *ACRKeychainFactory) Create(loginServer string) (authn.Keychain, error) {
+// Create creating  an ACR auth based keychain to registry using provided registry
+func (factory *ACRKeychainFactory) Create(registry string) (authn.Keychain, error) {
 	tracer := factory.tracerProvider.GetTracer("Create")
-	tracer.Info("Received:", "loginServer", loginServer)
+	tracer.Info("Received:", "registry", registry)
 
-	accessToken, err := factory.acrTokenProvider.GetACRTokenFromARMToken(loginServer)
+	// Get a refresh token for registry
+	accessToken, err := factory.acrTokenProvider.GetACRRefreshToken(registry)
 	if err != nil {
-		err = errors.Wrap(err, "ACRKeychainFactory.Create: failed on GetACRTokenFromARMToken")
+		err = errors.Wrap(err, "ACRKeychainFactory.Create: failed on GetACRRefreshToken")
 		tracer.Error(err, "")
 		return nil, err
 	}
+
+	//Create an ACR keychain
 	return &ACRKeyChain{
 		Token: accessToken,
 	}, nil
 
 }
 
+
+// ACRKeyChain represents an ACR based keychain
 type ACRKeyChain struct {
 	Token string `json:"token"`
 }
-
+// Resolve Implements keychain required function, check if registry is ACR or not to decide it to return the auth with token
+// or anonymous (non acr dns suffix -> anonymous, otherwise -> IdenitytToken(refreshtoken based) auth bosed)
 func (b *ACRKeyChain) Resolve(resource authn.Resource) (authn.Authenticator, error) {
 	if !registryutils.IsRegistryEndpointACR(resource.RegistryStr()) {
 		return authn.Anonymous, nil
 	}
 	return authn.FromConfig(authn.AuthConfig{
+		// Identity token assigment specify it's a refresh token based auth - OAuth2
 		IdentityToken: b.Token,
 	}), nil
 }

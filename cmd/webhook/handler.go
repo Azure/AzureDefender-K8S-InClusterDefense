@@ -74,6 +74,7 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 
 	if req.Kind.Kind == admisionrequest.PodKind {
 
+		// Extract pod
 		pod, err := admisionrequest.UnmarshalPod(&req)
 		if err != nil {
 			wrappedError := errors.Wrap(err, "Handle handler failed to admisionrequest.UnmarshalPod req")
@@ -81,6 +82,7 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 			log.Fatal(wrappedError)
 		}
 
+		// Get container vulnerability scan info annotation operation for Pod
 		vulnerabilitySecAnnotationsPatch, err := handler.getPodContainersVulnerabilityScanInfoAnnotationsOperation(pod)
 		if err != nil {
 			wrappedError := errors.Wrap(err, "Handler.Handle Failed to getPodContainersVulnerabilityScanInfoAnnotationsOperation for Pod")
@@ -108,9 +110,12 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 	return response
 }
 
+// getPodContainersVulnerabilityScanInfoAnnotationsOperation receives a pod to generate a vuln scan annotation add operation
+// Get vuln scan infor from azdSecInfo provider, then create a json annotation for it on pods custom annotations of azd vuln scan info
 func (handler *Handler) getPodContainersVulnerabilityScanInfoAnnotationsOperation(pod *corev1.Pod) (*jsonpatch.JsonPatchOperation, error) {
 	tracer := handler.tracerProvider.GetTracer("getPodContainersVulnerabilityScanInfoAnnotationsOperation")
 
+	// Get pod's containers vulnerability scan info
 	vulnSecInfoContainers, err := handler.azdSecInfoProvider.GetContainersVulnerabilityScanInfo(&pod.Spec, &pod.ObjectMeta, &pod.TypeMeta)
 	if err != nil {
 		wrappedError := errors.Wrap(err, "Handler failed to GetContainersVulnerabilityScanInfo")
@@ -118,7 +123,9 @@ func (handler *Handler) getPodContainersVulnerabilityScanInfoAnnotationsOperatio
 		return nil, wrappedError
 	}
 
+	// Log result
 	tracer.Info("vulnSecInfoContainers", "vulnSecInfoContainers", vulnSecInfoContainers)
+
 	// Create the annotations add json patch operation
 	vulnerabilitySecAnnotationsPatch, err := annotations.CreateContainersVulnerabilityScanAnnotationPatchAdd(vulnSecInfoContainers)
 	if err != nil {

@@ -49,7 +49,8 @@ func main() {
 	metricSubmitterConfiguration := new(tivan.MetricSubmitterConfiguration)
 	tracerConfiguration := new(trace.TracerConfiguration)
 	instrumentationConfiguration := new(instrumentation.InstrumentationProviderConfiguration)
-	envAzureAuthorizerConfiguration := new(azureauth.EnvAzureAuthorizerConfiguration)
+	azdIdentityEnvAzureAuthorizerConfiguration := new(azureauth.EnvAzureAuthorizerConfiguration)
+	kubeletIdentityEnvAzureAuthorizerConfiguration := new(azureauth.EnvAzureAuthorizerConfiguration)
 
 	// Create a map between configuration object and key in main config file
 	keyConfigMap := map[string]interface{}{
@@ -59,7 +60,8 @@ func main() {
 		"webhook.HandlerConfiguration":                            handlerConfiguration,
 		"instrumentation.tivan.TivanInstrumentationConfiguration": tivanInstrumentationConfiguration,
 		"instrumentation.trace.TracerConfiguration":               tracerConfiguration,
-		"azureauth.envAzureAuthorizerConfiguration":               envAzureAuthorizerConfiguration}
+		"azdIdentity.EnvAzureAuthorizerConfiguration":             azdIdentityEnvAzureAuthorizerConfiguration,
+		"kubeletIdentity.EnvAzureAuthorizerConfiguration":         kubeletIdentityEnvAzureAuthorizerConfiguration}
 
 	for key, configObject := range keyConfigMap {
 		// Unmarshal the relevant parts of appConfig's data to each of the configuration objects
@@ -84,10 +86,10 @@ func main() {
 		log.Fatal("main.instrumentationProviderFactory.CreateInstrumentationProvider", err)
 	}
 
-	authorizerFactory := azureauth.NewEnvAzureAuthorizerFactory(envAzureAuthorizerConfiguration, new(azureauthwrappers.AzureAuthWrapper))
-	authorizer, err := authorizerFactory.CreateARMAuthorizer()
+	kubeletIdentityAuthorizerFactory := azureauth.NewEnvAzureAuthorizerFactory(azdIdentityEnvAzureAuthorizerConfiguration, new(azureauthwrappers.AzureAuthWrapper))
+	kubeletIdentityAuthorizer, err := kubeletIdentityAuthorizerFactory.CreateARMAuthorizer()
 	if err != nil {
-		log.Fatal("main.NewEnvAzureAuthorizerFactory.CreateARMAuthorizer", err)
+		log.Fatal("main.kubeletIdentityAuthorizerFactory.NewEnvAzureAuthorizerFactory.CreateARMAuthorizer", err)
 	}
 
 
@@ -96,15 +98,14 @@ func main() {
 	if err != nil {
 		log.Fatal("main.k8sclientconfig.GetConfig", err)
 	}
-	clientK8s, err :=  kubernetes.NewForConfig(k8sclientconfig)
+	clientK8s, err := kubernetes.NewForConfig(k8sclientconfig)
 	if err != nil {
 		log.Fatal("main.kubernetes.NewForConfig", err)
 	}
 
-	// TODO add kubelet client Id msi
-	bearerAuthorizer, ok := authorizer.(azureauth.IBearerAuthorizer)
-	if !ok{
-		log.Fatal("main.kubernetes.bearerAuthorizer type assertion", err)
+	bearerAuthorizer, ok := kubeletIdentityAuthorizer.(azureauth.IBearerAuthorizer)
+	if !ok {
+		log.Fatal("main.kubeletIdentityAuthorizer.bearerAuthorizer type assertion", err)
 
 	}
 
@@ -117,8 +118,13 @@ func main() {
 	registryClient := crane2.NewCraneRegistryClient(instrumentationProvider, new(registrywrappers.CraneWrapper), acrKeychainFactory, k8sKeychainFactory)
 
 	// ARG
+	azdIdentityAuthorizerFactory := azureauth.NewEnvAzureAuthorizerFactory(azdIdentityEnvAzureAuthorizerConfiguration, new(azureauthwrappers.AzureAuthWrapper))
+	azdIdentityAuthorizer, err := azdIdentityAuthorizerFactory.CreateARMAuthorizer()
+	if err != nil {
+		log.Fatal("main.azdIdentityAuthorizerFactory.NewEnvAzureAuthorizerFactory.CreateARMAuthorizer", err)
+	}
 	argBaseClient := argbase.New()
-	argBaseClient.Authorizer = authorizer
+	argBaseClient.Authorizer = azdIdentityAuthorizer
 	argClient := arg.NewARGClient(instrumentationProvider, argBaseClient)
 	argQueryGenerator, err := argqueries.CreateARGQueryGenerator(instrumentationProvider)
 	if err != nil {

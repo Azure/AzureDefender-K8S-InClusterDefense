@@ -9,10 +9,14 @@ import (
 	"github.com/pkg/errors"
 )
 
+// IACRTokenProvider responsible to provide a token to ACR registry
 type IACRTokenProvider interface {
-	GetACRTokenFromARMToken(registry string) (string, error)
+	// GetACRRefreshToken provide a refresh token (used for generating access-token to registry data plane)
+	// for registry provided
+	GetACRRefreshToken(registry string) (string, error)
 }
 
+// ACRTokenProvider azure based implementation of IACRTokenProvider
 type ACRTokenProvider struct {
 	tracerProvider        trace.ITracerProvider
 	metricSubmitter       metric.IMetricSubmitter
@@ -20,6 +24,7 @@ type ACRTokenProvider struct {
 	tokenExchanger IACRTokenExchanger
 }
 
+// NewACRTokenProvider Ctor
 func NewACRTokenProvider(instrumentationProvider instrumentation.IInstrumentationProvider, tokenExchanger IACRTokenExchanger ,azureBearerAuthorizer azureauth.IBearerAuthorizer) *ACRTokenProvider {
 	return &ACRTokenProvider{
 		tracerProvider:        instrumentationProvider.GetTracerProvider("ACRTokenProvider"),
@@ -29,8 +34,11 @@ func NewACRTokenProvider(instrumentationProvider instrumentation.IInstrumentatio
 	}
 }
 
-func (tokenProvider *ACRTokenProvider) GetACRTokenFromARMToken(registry string) (string, error) {
-	tracer := tokenProvider.tracerProvider.GetTracer("GetACRTokenFromARMToken")
+// GetACRRefreshToken provides a refresh token (used for generating access-token to registry data plane)
+//  for registry provided.
+// Refersh and extract ARM token from azure authorizer, then exchange it to refersh token using token exchanger
+func (tokenProvider *ACRTokenProvider) GetACRRefreshToken(registry string) (string, error) {
+	tracer := tokenProvider.tracerProvider.GetTracer("GetACRRefreshToken")
 	tracer.Info("Received", "registry", registry)
 
 	// Refresh token if needed
@@ -41,6 +49,8 @@ func (tokenProvider *ACRTokenProvider) GetACRTokenFromARMToken(registry string) 
 		return "", err
 	}
 	armToken := tokenProvider.azureBearerAuthorizer.TokenProvider().OAuthToken()
+
+	// Exchange arm token to ACR refresh token
 	registryRefreshToken, err := tokenProvider.tokenExchanger.ExchangeACRAccessToken(registry, armToken)
 	if err != nil {
 		err = errors.Wrap(err, "ACRTokenProvider.tokenExchanger.ExchangeACRAccessToken: failed")
@@ -48,6 +58,6 @@ func (tokenProvider *ACRTokenProvider) GetACRTokenFromARMToken(registry string) 
 		return "", err
 	}
 
-	// add caching? experation?
+	// TODO add caching + experation
 	return registryRefreshToken, nil
 }

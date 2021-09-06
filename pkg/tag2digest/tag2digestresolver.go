@@ -12,17 +12,13 @@ import (
 var (
 	nilArgError = errors.New("NilArgError")
 )
-
+// ITag2DigestResolver responsible to resolve resource's image to it's digest
 type ITag2DigestResolver interface {
+	// Resolve receives an image refernce and the resource deployed context and resturns image digest
 	Resolve(imageReference registry.IImageReference, authContext *ResourceContext) (string, error)
 }
 
-type ResourceContext struct {
-	Namespace          string
-	ImagePullSecrets   []string
-	ServiceAccountName string
-}
-
+// Tag2DigestResolver represents basic implementation of ITag2DigestResolver interface
 type Tag2DigestResolver struct {
 	//tracerProvider is tracer provider of AzdSecInfoProvider
 	tracerProvider trace.ITracerProvider
@@ -32,6 +28,7 @@ type Tag2DigestResolver struct {
 	registryClient registry.IRegistryClient
 }
 
+// NewTag2DigestResolver Ctor
 func NewTag2DigestResolver(instrumentationProvider instrumentation.IInstrumentationProvider, registryClient registry.IRegistryClient) *Tag2DigestResolver {
 	return &Tag2DigestResolver{
 		tracerProvider:  instrumentationProvider.GetTracerProvider("Tag2DigestResolver"),
@@ -39,10 +36,15 @@ func NewTag2DigestResolver(instrumentationProvider instrumentation.IInstrumentat
 		registryClient:  registryClient}
 }
 
+// Resolve receives an image refernce and the resource deployed context and resturns image digest
+// It first tries to see if it's a digest based image refernce - if so, extract it's digest
+// Then if it ACR bassed registry - tries to get digest using registry client's ACR attach auth method
+// If above fails or not applicable - tries to get digest using registry client's k8s auth method.
 func (resolver *Tag2DigestResolver) Resolve(imageReference registry.IImageReference, resourceCtx *ResourceContext) (string, error) {
 	tracer := resolver.tracerProvider.GetTracer("Resolve")
 	tracer.Info("Received:", "imageReference", imageReference, "resourceCtx", resourceCtx)
 
+	// Argument validation
 	if imageReference == nil || resourceCtx == nil {
 		err := errors.Wrap(nilArgError, "Tag2DigestResolver.Resolve")
 		tracer.Error(err, "")
@@ -61,6 +63,7 @@ func (resolver *Tag2DigestResolver) Resolve(imageReference registry.IImageRefere
 		digest, err := resolver.registryClient.GetDigestUsingACRAttachAuth(imageReference)
 		if err != nil {
 			// todo only on unauthorized and retry only on transient
+			// Failed to get digest using ACR attach auth method - continue and fall back to other methods
 			tracer.Error(err, "Failed on ACR auth -> continue to other types of auth")
 		}else{
 			return digest, nil
@@ -77,4 +80,12 @@ func (resolver *Tag2DigestResolver) Resolve(imageReference registry.IImageRefere
 
 	}
 	return  digest, nil
+}
+
+
+// ResourceContext represents deployed resource context to use for image digest extraction
+type ResourceContext struct {
+	Namespace          string
+	ImagePullSecrets   []string
+	ServiceAccountName string
 }

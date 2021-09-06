@@ -1,6 +1,9 @@
 package utils
 
 import (
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry"
+	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/suite"
 	"testing"
 )
@@ -10,48 +13,74 @@ type ExtractImageRefContextUtilsTestSuite struct {
 }
 
 func (suite *ExtractImageRefContextUtilsTestSuite) TestExtractRegistryAndRepositoryFromImageReferencePublicImageRef() {
-	ctx, err := ExtractImageRefContext("redis")
+	ref, err := GetImageReference("redis")
 	suite.Nil(err)
-	suite.Equal("index.docker.io", ctx.Registry)
-	suite.Equal("library/redis", ctx.Repository)
+	suite.Equal("index.docker.io", ref.Registry())
+	suite.Equal("library/redis", ref.Repository())
+	suite.Equal("redis", ref.Original())
+	tag, ok := ref.(*registry.Tag)
+	suite.True(ok)
+	suite.NotNil( tag)
+	suite.Equal("latest", tag.Tag())
 }
 
 func (suite *ExtractImageRefContextUtilsTestSuite) TestExtractRegistryAndRepositoryFromImageReferenceTag() {
-	ctx, err := ExtractImageRefContext("tomer.azurecr.io/redis:v1")
+	ref, err := GetImageReference("tomer.azurecr.io/redis:v1")
 	suite.Nil(err)
-	suite.Equal("tomer.azurecr.io", ctx.Registry)
-	suite.Equal("redis", ctx.Repository)
+	suite.Nil(err)
+	suite.Equal("tomer.azurecr.io", ref.Registry())
+	suite.Equal("redis", ref.Repository())
+	suite.Equal("tomer.azurecr.io/redis:v1", ref.Original())
+	tag, ok := ref.(*registry.Tag)
+	suite.True(ok)
+	suite.NotNil( tag)
+	suite.Equal("v1", tag.Tag())
 }
 
 func (suite *ExtractImageRefContextUtilsTestSuite) TestExtractImageRefContext_NoIdentifier() {
-	ctx, err := ExtractImageRefContext("tomer.azurecr.io/redis")
+	ref, err := GetImageReference("tomer.azurecr.io/redis")
 	suite.Nil(err)
-	suite.Equal("tomer.azurecr.io", ctx.Registry)
-	suite.Equal("redis", ctx.Repository)
+	suite.Equal("tomer.azurecr.io", ref.Registry())
+	suite.Equal("redis", ref.Repository())
+	suite.Equal("tomer.azurecr.io/redis", ref.Original())
+	tag, ok := ref.(*registry.Tag)
+	suite.True(ok)
+	suite.NotNil( tag)
+	suite.Equal("latest", tag.Tag())
 }
 
 func (suite *ExtractImageRefContextUtilsTestSuite) TestExtractImageRefContext_Digest_Parsed() {
 	imageRef := "tomer.azurecr.io/redis@sha256:4a1c4b21597c1b4415bdbecb28a3296c6b5e23ca4f9feeb599860a1dac6a0108"
-	ctx, err := ExtractImageRefContext(imageRef)
+	ref, err := GetImageReference(imageRef)
 	suite.Nil(err)
-	suite.Equal("tomer.azurecr.io", ctx.Registry)
-	suite.Equal("redis", ctx.Repository)
+	suite.Equal("tomer.azurecr.io", ref.Registry())
+	suite.Equal("redis", ref.Repository())
+	suite.Equal("tomer.azurecr.io/redis@sha256:4a1c4b21597c1b4415bdbecb28a3296c6b5e23ca4f9feeb599860a1dac6a0108", ref.Original())
+	digest, ok := ref.(*registry.Digest)
+	suite.True(ok)
+	suite.NotNil( digest)
+	suite.Equal("sha256:4a1c4b21597c1b4415bdbecb28a3296c6b5e23ca4f9feeb599860a1dac6a0108", digest.Digest())
 }
 
 func (suite *ExtractImageRefContextUtilsTestSuite) TestExtractImageRefContext_DigestBadFormat_Err() {
 	// The last 4 chars of the digest are deleted:
 	imageRef := "tomer.azurecr.io/redis@sha256:4a1c4b21597c1b4415bdbecb28a3296c6b5e23ca4f9feeb599860a1dac6a"
-	ctx, _ := ExtractImageRefContext(imageRef)
-	//suite.Equal(reflect.TypeOf(&name.ErrBadName{}), reflect.TypeOf(err))
-	suite.Nil(ctx)
+	ref, err := GetImageReference(imageRef)
+	err = errors.Cause(err)
+	_, ok := err.(*name.ErrBadName)
+	suite.True(ok)
+	suite.Nil(ref)
 }
 
 func (suite *ExtractImageRefContextUtilsTestSuite) TestExtractImageRefContext_TagAndDigest_ParsedDigestIgnoreTag() {
 	imageRef := "tomer.azurecr.io/redis:v1@sha256:4a1c4b21597c1b4415bdbecb28a3296c6b5e23ca4f9feeb599860a1dac6a0108"
-	ctx, err := ExtractImageRefContext(imageRef)
+	ref, err := GetImageReference(imageRef)
 	suite.Nil(err)
-	suite.Equal("tomer.azurecr.io", ctx.Registry)
-	suite.Equal("redis", ctx.Repository)
+	suite.Equal("tomer.azurecr.io/redis:v1@sha256:4a1c4b21597c1b4415bdbecb28a3296c6b5e23ca4f9feeb599860a1dac6a0108", ref.Original())
+	digest, ok := ref.(*registry.Digest)
+	suite.True(ok)
+	suite.NotNil(digest)
+	suite.Equal("sha256:4a1c4b21597c1b4415bdbecb28a3296c6b5e23ca4f9feeb599860a1dac6a0108", digest.Digest())
 }
 
 func TestExtractImageRefContext(t *testing.T) {

@@ -14,13 +14,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-const (
-
-)
-
 var (
-	// _containerNullError Null container error
-	_containerNullError = errors.New("Container received is null")
+	// nil argument error
+	nilArgError = errors.New("NilArgError")
 )
 
 // IAzdSecInfoProvider represents interface for providing azure defender security information
@@ -52,16 +48,17 @@ func NewAzdSecInfoProvider(instrumentationProvider instrumentation.IInstrumentat
 }
 
 
-// GetContainersVulnerabilityScanInfo receives api-resource pod spec containing containers list, and returns pod spec containers fetched ContainerVulnerabilityScanInfo
-// Pod template spec represents contianers to be deployed for all api-resources
+// GetContainersVulnerabilityScanInfo receives api-resource pod spec containing containers, resource deployed metadata and kind
+// Function returns evaluated ContainerVulnerabilityScanInfo for pod spec's container list (pod spec can be related to template of any resource creates pods eventually)
 func (provider *AzdSecInfoProvider) GetContainersVulnerabilityScanInfo(podSpec *corev1.PodSpec, resourceMetadata  *metav1.ObjectMeta, resourceKind *metav1.TypeMeta ) ([]*contracts.ContainerVulnerabilityScanInfo, error) {
 	tracer := provider.tracerProvider.GetTracer("GetContainersVulnerabilityScanInfo")
 	tracer.Info("Received:", "podSpec", podSpec, "resourceMetadata", resourceMetadata, "resourceKind", resourceKind)
 
-	// Arg validation
+	// Argument validation
 	if podSpec == nil || resourceMetadata == nil || resourceKind == nil {
-		tracer.Error(_containerNullError, "")
-		return nil, _containerNullError
+		err := errors.Wrap(nilArgError,"AzdSecInfoProvider.GetContainersVulnerabilityScanInfo")
+		tracer.Error(err, "")
+		return nil, err
 	}
 
 	// Convert pull secrets from reference object to strings
@@ -76,13 +73,13 @@ func (provider *AzdSecInfoProvider) GetContainersVulnerabilityScanInfo(podSpec *
 		ImagePullSecrets: imagePullSecrets,
 		ServiceAccountName: podSpec.ServiceAccountName,
 	}
-
 	tracer.Info("resourceCtx", "resourceCtx", resourceCtx)
 
+	// Initialize container vuln scan info list
 	vulnSecInfoContainers := []*contracts.ContainerVulnerabilityScanInfo{}
-	for _, container := range podSpec.InitContainers {
 
-		// Get container vulnerability scan information for init containers
+	// Get container vulnerability scan information for init containers
+	for _, container := range podSpec.InitContainers {
 		vulnerabilitySecInfo, err := provider.getSingleContainerVulnerabilityScanInfo(&container, resourceCtx)
 		if err != nil {
 			wrappedError := errors.Wrap(err, "Handler failed to GetContainersVulnerabilityScanInfo Init containers")
@@ -94,9 +91,8 @@ func (provider *AzdSecInfoProvider) GetContainersVulnerabilityScanInfo(podSpec *
 		vulnSecInfoContainers = append(vulnSecInfoContainers, vulnerabilitySecInfo)
 	}
 
+	// Get container vulnerability scan information for containers
 	for _, container := range podSpec.Containers {
-
-		// Get container vulnerability scan information for containers
 		vulnerabilitySecInfo, err := provider.getSingleContainerVulnerabilityScanInfo(&container, resourceCtx)
 		if err != nil {
 			wrappedError := errors.Wrap(err, "Handler failed to GetContainersVulnerabilityScanInfo Containers")
@@ -111,12 +107,13 @@ func (provider *AzdSecInfoProvider) GetContainersVulnerabilityScanInfo(podSpec *
 }
 
 
-// getSingleContainerVulnerabilityScanInfo receives container , and returns fetched ContainerVulnerabilityScanInfo
+// getSingleContainerVulnerabilityScanInfo receives a container and it's belogned deployed resource context, and returns fetched ContainerVulnerabilityScanInfo
 func (provider *AzdSecInfoProvider) getSingleContainerVulnerabilityScanInfo(container *corev1.Container, resourceCtx *tag2digest.ResourceContext) (*contracts.ContainerVulnerabilityScanInfo, error) {
 	tracer := provider.tracerProvider.GetTracer("getSingleContainerVulnerabilityScanInfo")
 	if container == nil {
-		tracer.Error(_containerNullError, "")
-		return nil, _containerNullError
+		err := errors.Wrap(nilArgError,"AzdSecInfoProvider.getSingleContainerVulnerabilityScanInfo")
+		tracer.Error(err, "")
+		return nil, err
 	}
 
 	tracer.Info("Received:", "container image ref", container.Image, "resourceCtx", resourceCtx)
@@ -154,7 +151,7 @@ func (provider *AzdSecInfoProvider) getSingleContainerVulnerabilityScanInfo(cont
 		return nil, err
 	}
 
-	// Tries to get image scan results for image
+	// 	Get image scan results for image
 	scanStatus, scanFindings, err = provider.argDataProvider.GetImageVulnerabilityScanResults(imageRef.Registry(), imageRef.Repository(), digest)
 	if err != nil {
 		err = errors.Wrap(err, "AzdSecInfoProvider.getContainerVulnerabilityScanResults")
