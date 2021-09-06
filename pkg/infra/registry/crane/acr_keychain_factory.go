@@ -1,10 +1,10 @@
-package cranekeychain
+package crane
 
 import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
-	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/auth/azure"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/acrauth"
 	registryutils "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/utils"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/pkg/errors"
@@ -19,10 +19,10 @@ type ACRKeychainFactory struct {
 	tracerProvider trace.ITracerProvider
 	// metricSubmitter is the metric submitter for the registry client.
 	metricSubmitter  metric.IMetricSubmitter
-	acrTokenProvider azure.IACRTokenProvider
+	acrTokenProvider acrauth.IACRTokenProvider
 }
 
-func NewACRKeychainFactory(instrumentationProvider instrumentation.IInstrumentationProvider, acrTokenProvider azure.IACRTokenProvider) *ACRKeychainFactory {
+func NewACRKeychainFactory(instrumentationProvider instrumentation.IInstrumentationProvider, acrTokenProvider acrauth.IACRTokenProvider) *ACRKeychainFactory {
 	return &ACRKeychainFactory{
 		tracerProvider:   instrumentationProvider.GetTracerProvider("ACRKeychainFactory"),
 		metricSubmitter:  instrumentationProvider.GetMetricSubmitter(),

@@ -5,14 +5,14 @@ import (
 	argqueries "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/dataproviders/arg/queries"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/azureauth"
 	azureauthwrappers "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/azureauth/wrappers"
-	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry"
-	registryauthazure "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/auth/azure"
-	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/auth/cranekeychain"
+	registryauthazure "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/acrauth"
+	crane2 "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/crane"
 	registrywrappers "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/wrappers"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/tag2digest"
 	argbase "github.com/Azure/azure-sdk-for-go/services/resourcegraph/mgmt/2021-03-01/resourcegraph"
 	"k8s.io/client-go/kubernetes"
 	"log"
+	"net/http"
 	k8sclientconfig "sigs.k8s.io/controller-runtime/pkg/client/config"
 
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/cmd/webhook"
@@ -101,19 +101,20 @@ func main() {
 		log.Fatal("main.kubernetes.NewForConfig", err)
 	}
 
-	// TODO add kublet client Id msi
+	// TODO add kubelet client Id msi
 	bearerAuthorizer, ok := authorizer.(azureauth.IBearerAuthorizer)
 	if !ok{
 		log.Fatal("main.kubernetes.bearerAuthorizer type assertion", err)
 
 	}
-	acrTokenProvider := registryauthazure.NewACRTokenProvider(instrumentationProvider, bearerAuthorizer)
 
-	k8sKeychainFactory := cranekeychain.NewK8SKeychainFactory(instrumentationProvider, clientK8s)
-	acrKeychain := cranekeychain.NewACRKeychainFactory(instrumentationProvider, acrTokenProvider)
+	acrTokenExchanger := registryauthazure.NewACRTokenExchanger(instrumentationProvider, &http.Client{})
+	acrTokenProvider := registryauthazure.NewACRTokenProvider(instrumentationProvider, acrTokenExchanger, bearerAuthorizer)
 
-	multiKeychainFactory := cranekeychain.NewMultiKeychainFactory(instrumentationProvider, k8sKeychainFactory, acrKeychain)
-	registryClient := registry.NewCraneRegistryClient(instrumentationProvider, new(registrywrappers.CraneWrapper), multiKeychainFactory)
+	k8sKeychainFactory := crane2.NewK8SKeychainFactory(instrumentationProvider, clientK8s)
+	acrKeychainFactory := crane2.NewACRKeychainFactory(instrumentationProvider, acrTokenProvider)
+
+	registryClient := crane2.NewCraneRegistryClient(instrumentationProvider, new(registrywrappers.CraneWrapper), acrKeychainFactory, k8sKeychainFactory)
 
 	// ARG
 	argBaseClient := argbase.New()

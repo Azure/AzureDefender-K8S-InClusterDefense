@@ -34,7 +34,7 @@ type Handler struct {
 	tracerProvider trace.ITracerProvider
 	// MetricSubmitter
 	metricSubmitter metric.IMetricSubmitter
-	// AzdSecInfoProvider provides azure defender security information
+	// AzdSecInfoProvider provides acrauth defender security information
 	azdSecInfoProvider azdsecinfo.IAzdSecInfoProvider
 	// Configurations handler's config.
 	configuration *HandlerConfiguration

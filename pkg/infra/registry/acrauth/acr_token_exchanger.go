@@ -1,8 +1,12 @@
-package azure
+package acrauth
 
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/httpclient"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
+	"github.com/pkg/errors"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -14,6 +18,14 @@ const (
 	scheme = "https"
 )
 
+var (
+	nilArgError = errors.New("NilArgError")
+)
+
+type IACRTokenExchanger interface {
+	ExchangeACRAccessToken(registry string, armToken string) (string, error)
+}
+
 type tokenResponse struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
@@ -21,9 +33,30 @@ type tokenResponse struct {
 	TokenType    string `json:"token_type"`
 }
 
-// exchangeACRAccessToken exchanges an ARM access token to an ACR access token
-func exchangeACRAccessToken(loginServer string, armToken string) (string, error) {
-	exchangeURL := fmt.Sprintf("%s://%s/oauth2/exchange", scheme, loginServer)
+type ACRTokenExchanger struct {
+	tracerProvider trace.ITracerProvider
+	httpClient     httpclient.IHttpClient
+}
+
+func NewACRTokenExchanger(instrumentationProvider instrumentation.IInstrumentationProvider, httpClient httpclient.IHttpClient) *ACRTokenExchanger {
+	return &ACRTokenExchanger{
+		tracerProvider: instrumentationProvider.GetTracerProvider("ACRTokenProvider"),
+		httpClient:     httpClient,
+	}
+}
+
+// ExchangeACRAccessToken exchanges an ARM access token to an ACR access token
+func (tokenExchanger *ACRTokenExchanger) ExchangeACRAccessToken(registry string, armToken string) (string, error) {
+	tracer := tokenExchanger.tracerProvider.GetTracer("ExchangeACRAccessToken")
+	tracer.Info("Received:", "registry", registry)
+
+	if registry == "" || armToken == "" {
+		err := errors.Wrap(nilArgError, "ACRTokenExchanger")
+		tracer.Error(err,"")
+		return "", err
+	}
+
+	exchangeURL := fmt.Sprintf("%s://%s/oauth2/exchange", scheme, registry)
 	ul, err := url.Parse(exchangeURL)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse token exchange url: %w", err)
@@ -31,7 +64,8 @@ func exchangeACRAccessToken(loginServer string, armToken string) (string, error)
 	parameters := url.Values{}
 	parameters.Add("grant_type", "access_token")
 	parameters.Add("service", ul.Hostname())
-	//parameters.Add("tenant", tenantID)
+	// Seems like tenantId is not required - if ever needed it should be added via:	//parameters.Add("tenant", tenantID) - maybe it is needed on cross tenant
+	// Not adding it for now...
 	parameters.Add("access_token", armToken)
 
 	req, err := http.NewRequest("POST", exchangeURL, strings.NewReader(parameters.Encode()))
@@ -42,11 +76,10 @@ func exchangeACRAccessToken(loginServer string, armToken string) (string, error)
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Add("Content-Length", strconv.Itoa(len(parameters.Encode())))
 
-	client := &http.Client{}
 	var resp *http.Response
 	defer closeResponse(resp)
 
-	resp, err = client.Do(req)
+	resp, err = tokenExchanger.httpClient.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("failed to send token exchange request: %w", err)
 	}
@@ -76,4 +109,3 @@ func closeResponse(resp *http.Response) {
 	}
 	resp.Body.Close()
 }
-

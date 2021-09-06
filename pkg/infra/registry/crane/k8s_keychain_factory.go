@@ -1,4 +1,4 @@
-package cranekeychain
+package crane
 
 import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
@@ -36,5 +36,6 @@ func (factory *K8SKeychainFactory) Create(namespace string, imagePullSecrets []s
 	tracer.Info("Received:", "namespace", namespace, "imagePullSecrets", imagePullSecrets, "serviceAccountName", serviceAccountName)
 
 	// TODO add support to not fail on non existant SA or Pull secret
+	// TODO this will fail if pull secrets does not exists or SA is not accessibile - need to add a fallback to try to skip this if it fails
 	return k8schain.New(context.Background(), factory.client, k8schain.Options{Namespace: namespace, ServiceAccountName: serviceAccountName, ImagePullSecrets: imagePullSecrets})
 }

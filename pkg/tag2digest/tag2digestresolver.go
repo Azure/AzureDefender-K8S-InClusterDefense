@@ -5,13 +5,22 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry"
-	registryauth "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/auth"
 	registryutils "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/utils"
 	"github.com/pkg/errors"
 )
 
+var (
+	nilArgError = errors.New("NilArgError")
+)
+
 type ITag2DigestResolver interface {
-	Resolve(imageReference string, authContext *registryauth.AuthContext) (string, error)
+	Resolve(imageReference registry.IImageReference, authContext *ResourceContext) (string, error)
+}
+
+type ResourceContext struct {
+	Namespace          string
+	ImagePullSecrets   []string
+	ServiceAccountName string
 }
 
 type Tag2DigestResolver struct {
@@ -30,44 +39,42 @@ func NewTag2DigestResolver(instrumentationProvider instrumentation.IInstrumentat
 		registryClient:  registryClient}
 }
 
-func (resolver *Tag2DigestResolver) Resolve(imageReference string, authContext *registryauth.AuthContext) (string, error) {
+func (resolver *Tag2DigestResolver) Resolve(imageReference registry.IImageReference, resourceCtx *ResourceContext) (string, error) {
 	tracer := resolver.tracerProvider.GetTracer("Resolve")
-	tracer.Info("Received:", "imageReference", imageReference, "authContext", authContext)
+	tracer.Info("Received:", "imageReference", imageReference, "resourceCtx", resourceCtx)
 
-	// First check if we can extract it from ref it self (digest based ref)
-	isDigestBasedImageRef, digest, err := registryutils.TryExtractDigestFromImageRef(imageReference)
-	if err != nil {
-		// Report error
-		err = errors.Wrap(err, "utils.TryExtractDigestFromImageRef:")
+	if imageReference == nil || resourceCtx == nil {
+		err := errors.Wrap(nilArgError, "Tag2DigestResolver.Resolve")
 		tracer.Error(err, "")
 		return "", err
-	} else if isDigestBasedImageRef {
-		tracer.Info("utils.TryExtractDigestFromImageRef return that it is digest based", "isDigestBasedImageRef", isDigestBasedImageRef, "digest", digest)
-		return digest, nil
-	} else {
-
-		if registryutils.IsRegistryEndpointACR(authContext.RegistryEndpoint) {
-			digest, err = resolver.registryClient.GetDigest(imageReference,
-				&registryauth.AuthConfig{
-					AuthType: registryauth.ACRAuth,
-					Context:  authContext})
-			if err != nil {
-				tracer.Error(err, "Failed on ACR auth -> continue to other types of auth")
-			}
-		}
-
-		digest, err = resolver.registryClient.GetDigest(imageReference,
-			&registryauth.AuthConfig{
-				AuthType: registryauth.K8SAuth,
-				Context:  authContext,
-			})
-
-		if err != nil {
-			err = errors.Wrap(err, "Tag2DigestResolver.Resolve: Failed to get digest on K8sAuth")
-			tracer.Error(err, "")
-			return "", err
-
-		}
-		return digest, nil
 	}
+
+	// First check if we can extract it from ref it self (digest based ref)
+	digestReference, ok := imageReference.(*registry.Digest)
+	if ok {
+		tracer.Info("ImageReference is digestReference return it is digest", "digestReference", digestReference, "digest", digestReference.Digest())
+		return digestReference.Digest(), nil
+	}
+
+	// ACR auth
+	if registryutils.IsRegistryEndpointACR(imageReference.Registry()) {
+		digest, err := resolver.registryClient.GetDigestUsingACRAttachAuth(imageReference)
+		if err != nil {
+			// todo only on unauthorized and retry only on transient
+			tracer.Error(err, "Failed on ACR auth -> continue to other types of auth")
+		}else{
+			return digest, nil
+		}
+	}
+
+	// Fallback to K8S auth
+	// TODO Add fallback on missing pull secret
+	digest, err := resolver.registryClient.GetDigestUsingK8SAuth(imageReference, resourceCtx.Namespace, resourceCtx.ImagePullSecrets, resourceCtx.ServiceAccountName)
+	if err != nil {
+		err = errors.Wrap(err, "Tag2DigestResolver.Resolve: Failed to get digest on K8sAuth")
+		tracer.Error(err, "")
+		return "", err
+
+	}
+	return  digest, nil
 }

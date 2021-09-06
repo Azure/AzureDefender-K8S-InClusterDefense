@@ -1,4 +1,4 @@
-package azure
+package acrauth
 
 import (
 	"context"
@@ -10,26 +10,28 @@ import (
 )
 
 type IACRTokenProvider interface {
-	GetACRTokenFromARMToken(loginServer string) (string, error)
+	GetACRTokenFromARMToken(registry string) (string, error)
 }
 
 type ACRTokenProvider struct {
 	tracerProvider        trace.ITracerProvider
 	metricSubmitter       metric.IMetricSubmitter
 	azureBearerAuthorizer azureauth.IBearerAuthorizer
+	tokenExchanger IACRTokenExchanger
 }
 
-func NewACRTokenProvider(instrumentationProvider instrumentation.IInstrumentationProvider, azureBearerAuthorizer azureauth.IBearerAuthorizer) *ACRTokenProvider {
+func NewACRTokenProvider(instrumentationProvider instrumentation.IInstrumentationProvider, tokenExchanger IACRTokenExchanger ,azureBearerAuthorizer azureauth.IBearerAuthorizer) *ACRTokenProvider {
 	return &ACRTokenProvider{
 		tracerProvider:        instrumentationProvider.GetTracerProvider("ACRTokenProvider"),
 		metricSubmitter:       instrumentationProvider.GetMetricSubmitter(),
 		azureBearerAuthorizer: azureBearerAuthorizer,
+		tokenExchanger: tokenExchanger,
 	}
 }
 
-func (tokenProvider *ACRTokenProvider) GetACRTokenFromARMToken(loginServer string) (string, error) {
+func (tokenProvider *ACRTokenProvider) GetACRTokenFromARMToken(registry string) (string, error) {
 	tracer := tokenProvider.tracerProvider.GetTracer("GetACRTokenFromARMToken")
-	tracer.Info("Received", "loginServer", loginServer)
+	tracer.Info("Received", "registry", registry)
 
 	// Refresh token if needed
 	err := azureauth.RefreshBearerAuthorizer(tokenProvider.azureBearerAuthorizer, context.Background())
@@ -39,9 +41,9 @@ func (tokenProvider *ACRTokenProvider) GetACRTokenFromARMToken(loginServer strin
 		return "", err
 	}
 	armToken := tokenProvider.azureBearerAuthorizer.TokenProvider().OAuthToken()
-	registryRefreshToken, err := exchangeACRAccessToken(loginServer, armToken)
+	registryRefreshToken, err := tokenProvider.tokenExchanger.ExchangeACRAccessToken(registry, armToken)
 	if err != nil {
-		err = errors.Wrap(err, "ACRTokenProvider.ExchangeACRAccessToken: failed")
+		err = errors.Wrap(err, "ACRTokenProvider.tokenExchanger.ExchangeACRAccessToken: failed")
 		tracer.Error(err, "")
 		return "", err
 	}

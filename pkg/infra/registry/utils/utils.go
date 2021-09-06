@@ -1,65 +1,40 @@
 package utils
 
 import (
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry"
 	name "github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 	"strings"
 )
 
 const (
-	digestDelim = "@"
-
 	// _azureContainerRegistrySuffix is the suffix of ACR public (todo extract per env maybe?)
 	azureContainerRegistrySuffix = ".azurecr.io"
 )
 
-// ImageRefContext represents image ref context - registry and repository
-type ImageRefContext struct {
-	// Registry image ref registry (e.g. "tomer.azurecr.io")
-	Registry string
-	// Repository image ref repository (e.g. "app/redis")
-	Repository string
-}
-
-//ExtractImageRefContext receives image reference string (e.g. tomer.azurecr.io/redis:v1)
-// Function extract and return received ref: registry and repository (e.g registry: "tomer.azurecr,io", repository:"redis")
-// If image reference is not in right format, returns error.
-func ExtractImageRefContext(imageRef string) (*ImageRefContext, error) {
+//GetImageReference receives image reference string (e.g. tomer.azurecr.io/redis:v1)
+// Function extract and return received ref: registry and repository and identifiers like digest/tag, also dsaves the original ref str
+// If image reference is not in right format or unknown, returns error.
+func GetImageReference(imageRef string) (registry.IImageReference, error) {
 	// Parse image ref
 	parsedRef, err := name.ParseReference(imageRef)
 	if err != nil {
 		// Couldn't parse image ref
-		return nil, errors.Wrap(err, "ExtractImageRefContext failed to parse imageRef")
+		return nil, errors.Wrap(err, "GetImageReference failed to parse imageRef")
 	}
 
-	ctx := &ImageRefContext{
-		// Extract image's string representation of registry
-		Registry: parsedRef.Context().RegistryStr(),
-		// Extract image's string representation of repository
-		Repository: parsedRef.Context().RepositoryStr(),
+	switch refTyped := parsedRef.(type) {
+	case name.Tag:
+		tag := registry.NewTag(imageRef, refTyped.RegistryStr(), refTyped.RepositoryStr(), refTyped.TagStr())
+		return tag, nil
+	case name.Digest:
+		digest := registry.NewDigest(imageRef, refTyped.RegistryStr(), refTyped.RepositoryStr(), refTyped.DigestStr())
+		return digest, nil
+	default:
+		return nil, errors.New("GetImageReference Unknown parsed Ref type")
 	}
-	return ctx, nil
-}
-
-func TryExtractDigestFromImageRef(imageRef string) (isDigestBasedImageRef bool, digest string, err error) {
-	if strings.Contains(imageRef, digestDelim) {
-		ref, err := name.ParseReference(imageRef)
-		if err != nil {
-			// Report error - should be a valid reference
-			err = errors.Wrap(err, "utils.TryExtractDigestFromImageRef:")
-			return false, "", err
-		}
-
-		digestImageRef, ok := ref.(name.Digest)
-		if ok {
-			// Digest based image ref - extract it from
-			return true, digestImageRef.DigestStr(), nil
-		}
-	}
-	return false, "", nil
 }
 
 func IsRegistryEndpointACR(registryEndpoint string) bool {
 	return strings.HasSuffix(strings.ToLower(registryEndpoint), azureContainerRegistrySuffix)
 }
-
