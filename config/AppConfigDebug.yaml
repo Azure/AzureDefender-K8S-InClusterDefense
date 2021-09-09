@@ -30,7 +30,7 @@ Azureauth:
     IsLocalDevelopmentMode: true
     MSIClientId: "" # This should be kept empty while you are running the service locally.
 
-Wrappers:
+Acr:
   CraneWrappersConfiguration:
     RetryAttempts: 3
     RetryDuration: 10

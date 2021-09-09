@@ -47,6 +47,7 @@ func main() {
 	instrumentationConfiguration := new(instrumentation.InstrumentationProviderConfiguration)
 	envAzureAuthorizerConfiguration := new(azureauth.EnvAzureAuthorizerConfiguration)
 	craneWrapper := new(registrywrappers.CraneWrapper)
+	argBaseClient := argbase.New()
 
 	// Create a map between configuration object and key in main config file
 	keyConfigMap := map[string]interface{}{
@@ -57,7 +58,8 @@ func main() {
 		"Instrumentation.tivan.TivanInstrumentationConfiguration": tivanInstrumentationConfiguration,
 		"Instrumentation.trace.TracerConfiguration":               tracerConfiguration,
 		"Azureauth.EnvAzureAuthorizerConfiguration":               envAzureAuthorizerConfiguration,
-		"Wrappers.CraneWrappersConfiguration":		   			   craneWrapper,
+		"Acr.CraneWrappersConfiguration":		   			   	   craneWrapper,
+		"Arg.ArgBaseClient.RetryPolicyConfiguration": 			   &argBaseClient.Client,
 	}
 
 	for key, configObject := range keyConfigMap {
@@ -93,20 +95,7 @@ func main() {
 	registryClient := registry.NewCraneRegistryClient(instrumentationProvider, craneWrapper)
 
 	// ARG
-	argBaseClient := argbase.New()
-	// config arg retry policy
-	argRetryPolicyConfiguration := AppConfig.SubConfig("Arg.ArgBaseClient.RetryPolicyConfiguration")
-	err = argRetryPolicyConfiguration.UnmarshalKey("RetryAttempts", &argBaseClient.RetryAttempts)
-	if err != nil {
-		log.Fatal("Unable to change number of retry attempts for arg base client", err)
-	}
-	var retryDuration time.Duration
-	err = argRetryPolicyConfiguration.UnmarshalKey("RetryDuration", &retryDuration)
-	if err != nil {
-		log.Fatal("Unable to change sleep duration between retries for arg base client", err)
-	}
-	argBaseClient.RetryDuration = retryDuration * time.Millisecond
-
+	argBaseClient.RetryDuration = argBaseClient.RetryDuration * time.Millisecond
 	argBaseClient.Authorizer = authorizer
 	argClient := arg.NewARGClient(instrumentationProvider, argBaseClient)
 	argQueryGenerator, err := argqueries.CreateARGQueryGenerator(instrumentationProvider)

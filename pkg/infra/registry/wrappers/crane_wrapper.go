@@ -9,11 +9,15 @@ import (
 type ICraneWrapper interface {
 	// Digest get image digest using image ref using crane Digest call
 	Digest(ref string) (string, error)
+	// DigestWithRetry calls Digest to get image's digest, with retries
+	DigestWithRetry(ref string) (res string, err error)
 }
 
 // CraneWrapper wraps crane operations
 type CraneWrapper struct{
+	// Number of attempts to retrieve digest from arg
 	retryAttempts int
+	// time duration between each retry
 	retryDuration	time.Duration
 }
 

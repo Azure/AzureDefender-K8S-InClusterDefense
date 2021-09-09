@@ -11,7 +11,7 @@ import (
 
 const (
 	_retryAttempts int = 3
-	_retryDuration time.Duration = 10
+	_retryDuration     = 10 * time.Millisecond
 )
 
 type TestSuite struct {

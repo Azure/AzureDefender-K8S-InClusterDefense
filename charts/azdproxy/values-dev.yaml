@@ -89,8 +89,8 @@ AzDProxy:
         IsLocalDevelopmentMode: false
         MSIClientId: "a554f933-695f-4ecf-abe4-2a7515e8c1b7"
 
-  # Wrappers policy values
-  wrappers:
+  # ACR policy values
+  acr:
     craneWrappers:
       RetryPolicyConfiguration:
         # Number of execution attempts
@@ -98,7 +98,7 @@ AzDProxy:
         # Sleep duration between retries (in milliseconds):
         RetryDuration: 10
 
-  # Arg values
+  # ARG values
   arg:
     ArgBaseClient:
       RetryPolicyConfiguration:
