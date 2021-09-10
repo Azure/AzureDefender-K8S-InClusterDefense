@@ -1,9 +1,9 @@
 {
   "properties": {
-    "displayName": "[Preview]: Kubernetes clusters should gate deployment of vulnerable images",
-    "policyType": "BuiltIn",
+    "displayName": "Kubernetes clusters should gate deployment of vulnerable images",
+    "policyType": "Custom",
     "mode": "Microsoft.Kubernetes.Data",
-    "description": "Protect your Kubernetes clusters and container workloads from potential threats by restricting deployment of container images with vulnerable software components. Use Azure Defender CI/CD scanning (https://docs.microsoft.com/en-us/azure/security-center/defender-for-container-registries-cicd) and Azure defender for container registries (https://docs.microsoft.com/en-us/azure/security-center/defender-for-container-registries-usage) to identify and patch vulnerabilities prior to deployment.",
+    "description": "Protect your Kubernetes clusters and container workloads from potential threats by restricting deployment of container images with vulnerable software components. Use Azure Defender CI/CD scanning (https://aka.ms/AzureDefenderCICDscanning) and Azure defender for container registries (https://aka.ms/AzureDefenderForContainerRegistries) to identify and patch vulnerabilities prior to deployment.",
     "metadata": {
       "version": "1.0.0-preview",
       "category": "Kubernetes",
@@ -17,11 +17,11 @@
           "description": "'Audit' allows a non-compliant resource to be created or updated, but flags it as non-compliant. 'Deny' blocks the non-compliant resource creation or update. 'Disabled' turns off the policy."
         },
         "allowedValues": [
-          "audit",
-          "deny",
-          "disabled"
+          "Audit",
+          "Deny",
+          "Disabled"
         ],
-        "defaultValue": "audit"
+        "defaultValue": "Audit"
       },
       "excludedNamespaces": {
         "type": "Array",
@@ -132,45 +132,51 @@
         },
         "defaultValue": []
       },
-      "highSeverityThreshold": {
-        "type": "int",
+      "severity": {
+        "type": "Object",
         "metadata": {
-          "displayName": "High severity threshold",
-          "description": "The number of allowed high severity findings for an image."
+          "displayName": "Severity threshold",
+          "description": "The number of allowed findings per severity for an image. e.g. \"{\"High\":0,\"Medium\":3,\"Low\":10}\""
         },
-        "defaultValue": 0
-      },
-      "mediumSeverityThreshold": {
-        "type": "int",
-        "metadata": {
-          "displayName": "Medium severity threshold",
-          "description": "The number of allowed medium severity findings for an image."
+        "defaultValue": {
+          "High": 0,
+          "Medium": 0,
+          "Low": 0
         },
-        "defaultValue": 0
-      },
-      "lowSeverityThreshold": {
-        "type": "int",
-        "metadata": {
-          "displayName": "Low severity threshold",
-          "description": "The number of allowed low severity findings for an image."
-        },
-        "defaultValue": 0
+        "schema": {
+          "type": "object",
+          "properties": {
+            "High": {
+              "type": "integer"
+            },
+            "Medium": {
+              "type": "integer"
+            },
+            "Low": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "High",
+            "Medium",
+            "Low"
+          ],
+          "additionalProperties": false
+        }
       }
     },
     "policyRule": {
       "if": {
         "field": "type",
         "in": [
-          "AKS Engine",
-          "Microsoft.Kubernetes/connectedClusters",
           "Microsoft.ContainerService/managedClusters"
         ]
       },
       "then": {
         "effect": "[parameters('effect')]",
         "details": {
-          "constraintTemplate": "https://store.policy.core.windows.net/kubernetes/block-vulnerables-images/v1/template.yaml",
-          "constraint": "https://store.policy.core.windows.net/kubernetes/block-vulnerables-images/v1/constraint.yaml",
+          "constraintTemplate": "https://store.policy.core.windows.net/kubernetes/container-no-vulnerable-images/v1/template.yaml",
+          "constraint": "https://store.policy.core.windows.net/kubernetes/container-no-vulnerable-images/v1/constraint.yaml",
           "excludedNamespaces": "[parameters('excludedNamespaces')]",
           "namespaces": "[parameters('namespaces')]",
           "labelSelector": "[parameters('labelSelector')]",
@@ -178,15 +184,12 @@
             "excludedImages": "[parameters('excludedImages')]",
             "severityThresholdForExcludingNotPatchableFindings": "[parameters('severityThresholdForExcludingNotPatchableFindings')]",
             "excludeFindingIDs": "[parameters('excludeFindingIDs')]",
-            "highSeverityThreshold": "[parameters('highSeverityThreshold')]",
-            "mediumSeverityThreshold": "[parameters('mediumSeverityThreshold')]",
-            "lowSeverityThreshold": "[parameters('lowSeverityThreshold')]"
+            "severity": "[parameters('severity')]"
           }
         }
       }
     }
   },
   "id": "/providers/Microsoft.Authorization/policyDefinitions/13cd7ae3-5bc0-4ac4-a62d-4f7c120b9759",
-  "type": "Microsoft.Authorization/policyDefinitions",
   "name": "13cd7ae3-5bc0-4ac4-a62d-4f7c120b9759"
 }
