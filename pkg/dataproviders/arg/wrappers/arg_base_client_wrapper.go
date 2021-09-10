@@ -6,7 +6,7 @@ import (
 )
 
 // IARGBaseClientWrapper is a wrapper interface for base client of arg
-type IARGBaseClientWrapper interface{
-	// Resources is wrappeing arg base client resources
+type IARGBaseClientWrapper interface {
+	// Resources is wrapping arg base client resources
 	Resources(ctx context.Context, query arg.QueryRequest) (result arg.QueryResponse, err error)
 }

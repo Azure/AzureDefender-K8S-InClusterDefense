@@ -1,9 +1,11 @@
 package trace
 
 // NoOpTracerProvider is implementation that does nothing of ITracerProvider
+// NoOp is used for testing/debugging.
 type NoOpTracerProvider struct {
 }
 
+// NewNoOpTracerProvider Ctor for NoOpTracerProvider
 func NewNoOpTracerProvider() *NoOpTracerProvider {
 	return &NoOpTracerProvider{}
 }
