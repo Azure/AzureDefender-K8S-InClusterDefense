@@ -94,6 +94,9 @@ func main() {
 	// Registry Client
 	registryClient := registry.NewCraneRegistryClient(instrumentationProvider, craneWrapper)
 
+	// ARC (set metrics and tracers)
+	craneWrapper.SetCraneWrapperInstrumentation(instrumentationProvider)
+
 	// ARG
 	argBaseClient.RetryDuration = argBaseClient.RetryDuration * time.Millisecond
 	argBaseClient.Authorizer = authorizer

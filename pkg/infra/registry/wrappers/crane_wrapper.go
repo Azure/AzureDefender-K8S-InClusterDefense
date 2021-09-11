@@ -1,6 +1,10 @@
 package wrappers
 
 import (
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
+	metric2 "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/metric"
 	"github.com/pkg/errors"
 	"time"
 )
@@ -15,11 +19,22 @@ type ICraneWrapper interface {
 
 // CraneWrapper wraps crane operations
 type CraneWrapper struct{
+	//tracerProvider
+	tracerProvider trace.ITracerProvider
+	//metricSubmitter
+	metricSubmitter metric.IMetricSubmitter
 	// Number of attempts to retrieve digest from arg
 	retryAttempts int
 	// time duration between each retry
 	retryDuration	time.Duration
 }
+
+// SetCraneWrapperInstrumentation sets the crane wrapper object's tracer and metric
+func (craneWrapper *CraneWrapper) SetCraneWrapperInstrumentation(instrumentationProvider instrumentation.IInstrumentationProvider) {
+	craneWrapper.tracerProvider = instrumentationProvider.GetTracerProvider("NewCraneWrapper")
+	craneWrapper.metricSubmitter = instrumentationProvider.GetMetricSubmitter()
+}
+
 
 // Digest get image digest using image ref using crane Digest call
 // Todo add auth options to pull secrets and ACR MSI based - currently only supports docker config auth
@@ -35,6 +50,7 @@ func (craneWrapper *CraneWrapper) Digest(ref string) (string, error) {
 
 // DigestWithRetry re-executing Digest in case of a failure according to retryPolicy
 func (craneWrapper *CraneWrapper) DigestWithRetry(ref string) (res string, err error) {
+	tracer := craneWrapper.tracerProvider.GetTracer("DigestWithRetry")
 	retryCount := 0
 	for retryCount < craneWrapper.retryAttempts{
 		// TODO change Digest call after Digest method has been implemented correctly
@@ -43,10 +59,14 @@ func (craneWrapper *CraneWrapper) DigestWithRetry(ref string) (res string, err e
 		if res, err = craneWrapper.Digest(ref); err == nil {
 			return res, nil
 		} else {
+			tracer.Error(err, "failed extracting digest from ARC", "attempt", retryCount)
 			retryCount += 1
 			// wait (i * craneWrapper.retryDuration) milliseconds between retries
 			time.Sleep(time.Duration(retryCount) * craneWrapper.retryDuration * time.Millisecond)
 		}
 	}
+
+	// Send metrics
+	craneWrapper.metricSubmitter.SendMetric(retryCount, metric2.NewCraneWrapperNumOfRetryAttempts())
 	return res, errors.Wrapf(err, "failed after %d retries due to error", retryCount)
 }

@@ -8,5 +8,5 @@ import "time"
 // util.GetDurationMilliseconds(startTime)
 func GetDurationMilliseconds(startTime time.Time) int {
 	endTime := time.Now().UTC()
-	return int(startTime.UTC().Sub(endTime).Milliseconds())
+	return int(endTime.UTC().Sub(startTime).Milliseconds())
 }

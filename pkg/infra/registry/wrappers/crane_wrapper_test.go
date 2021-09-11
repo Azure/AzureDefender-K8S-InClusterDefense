@@ -1,6 +1,7 @@
 package wrappers
 
 import (
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"regexp"
@@ -38,17 +39,14 @@ func (suite *TestSuite) TestCraneWrapper_NumberOfAttempts () {
 	// TODO remove skip once Digest does not return a static digest
 	suite.T().Skip()
 	// number of attempts is tested only if DigestWithRetry has failed
-	if err == nil {
-		suite.Fail("Digest hasn't failed")
-	} else {
-		// Extract number of actual attempts
-		numberOfRetries, err := strconv.Atoi(re.FindString(err.Error()))
-		// Fail the test in case extracted number of attempts can't be converted to int
-		if err != nil {
-			suite.Fail("Failed to convert extracted number of Attempts to int")
-		}
-		assert.Equal(suite.T(), numberOfRetries, _retryAttempts)
+	suite.NotNil(err, "Digest hasn't failed")
+	// Extract number of actual attempts
+	numberOfRetries, err := strconv.Atoi(re.FindString(err.Error()))
+	// Fail the test in case extracted number of attempts can't be converted to int
+	if err != nil {
+		suite.Fail("Failed to convert extracted number of Attempts to int")
 	}
+	assert.Equal(suite.T(), numberOfRetries, _retryAttempts)
 }
 
 // Test that the sleep duration between each retry is getting bigger (by a linear factor)
@@ -61,12 +59,12 @@ func (suite *TestSuite) TestCraneWrapper_RetriesBackOff () {
 		time.Sleep(_retryDuration)
 	}
 	// Calculate running time for static delay
-	constDurationTime := time.Now().Sub(startTime)
+	constDurationTime := util.GetDurationMilliseconds(startTime)
 	startTime = time.Now()
 	// TODO change empty string to a failing image tag
 	suite.craneWrapper.DigestWithRetry("")
 	// Calculate running time for increasing delay
-	increasingDurationTime := time.Now().Sub(startTime)
+	increasingDurationTime := util.GetDurationMilliseconds(startTime)
 	// TODO from > to <
 	assert.True(suite.T(), constDurationTime > increasingDurationTime, "retries back off delay is not increasing")
 }
