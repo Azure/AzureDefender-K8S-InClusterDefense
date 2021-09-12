@@ -32,9 +32,8 @@ func (client *CraneRegistryClient) GetDigest(imageRef string) (string, error) {
 	tracer := client.tracerProvider.GetTracer("GetDigest")
 	tracer.Info("Received image:", "imageRef", imageRef)
 
-	// TODO add retry policy
 	// Resolve digest
-	digest, err := client.craneWrapper.Digest(imageRef)
+	digest, err := client.craneWrapper.DigestWithRetry(imageRef, client.tracerProvider, client.metricSubmitter)
 	if err != nil {
 		// Report error
 		err = errors.Wrap(err, "CraneRegistryClient.GetDigest:")

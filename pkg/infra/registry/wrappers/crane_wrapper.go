@@ -1,11 +1,9 @@
 package wrappers
 
 import (
-	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
 	registrymetric "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/metric"
-	"github.com/modern-go/reflect2"
 	"github.com/pkg/errors"
 	"time"
 )
@@ -15,27 +13,24 @@ type ICraneWrapper interface {
 	// Digest get image digest using image ref using crane Digest call
 	Digest(ref string) (string, error)
 	// DigestWithRetry calls Digest to get image's digest, with retries
-	DigestWithRetry(ref string) (res string, err error)
+	DigestWithRetry(ref string, tracerProvider trace.ITracerProvider, metricSubmitter metric.IMetricSubmitter) (res string, err error)
 }
 
 // CraneWrapper wraps crane operations
-type CraneWrapper struct{
-	//tracerProvider
-	tracerProvider trace.ITracerProvider
-	//metricSubmitter
-	metricSubmitter metric.IMetricSubmitter
+type CraneWrapper struct {
 	// Number of attempts to retrieve digest from arg
-	retryAttempts int
+	RetryAttempts int
 	// time duration between each retry
-	retryDuration	time.Duration
+	RetryDuration time.Duration
 }
 
+/*
 // SetCraneWrapperInstrumentation sets the crane wrapper object's tracer and metric
 func (craneWrapper *CraneWrapper) SetCraneWrapperInstrumentation(instrumentationProvider instrumentation.IInstrumentationProvider) {
 	craneWrapper.tracerProvider = instrumentationProvider.GetTracerProvider("SetCraneWrapperInstrumentation")
 	craneWrapper.metricSubmitter = instrumentationProvider.GetMetricSubmitter()
 }
-
+*/
 
 // Digest get image digest using image ref using crane Digest call
 // Todo add auth options to pull secrets and ACR MSI based - currently only supports docker config auth
@@ -50,27 +45,24 @@ func (craneWrapper *CraneWrapper) Digest(ref string) (string, error) {
 }
 
 // DigestWithRetry re-executing Digest in case of a failure according to retryPolicy
-func (craneWrapper *CraneWrapper) DigestWithRetry(ref string) (res string, err error) {
-	if reflect2.IsNil(craneWrapper.tracerProvider) || reflect2.IsNil(craneWrapper.metricSubmitter) {
-		return "", errors.New("instrumentation wasn't initialized and passed properly")
-	}
-	tracer := craneWrapper.tracerProvider.GetTracer("DigestWithRetry")
-	retryCount := 0
-	for retryCount < craneWrapper.retryAttempts{
+func (craneWrapper *CraneWrapper) DigestWithRetry(ref string, tracerProvider trace.ITracerProvider, metricSubmitter metric.IMetricSubmitter) (res string, err error) {
+	tracer := tracerProvider.GetTracer("GetDigestWithRetries")
+	retryCount := 1
+	for retryCount < craneWrapper.RetryAttempts + 1{
 		// TODO change Digest call after Digest method has been implemented correctly
 		// TODO deal with cases for which we do not want to retry after method as been implemented
 		// Execute Digest and check if an error occurred. We want to retry if err is not nil
-		if res, err = craneWrapper.Digest(ref); err == nil {
+		if res, err = craneWrapper.Digest(ref); err != nil {
+			tracer.Info("Managed to extract digest", "attempts:", retryCount)
 			return res, nil
 		} else {
-			tracer.Error(err, "failed extracting digest from ARC", "attempt", retryCount)
+			tracer.Error(err, "failed extracting digest from ARC", "attempts:", retryCount)
 			retryCount += 1
-			// wait (i * craneWrapper.retryDuration) milliseconds between retries
-			time.Sleep(time.Duration(retryCount) * craneWrapper.retryDuration * time.Millisecond)
+			// wait (retryCount * craneWrapper.retryDuration) milliseconds between retries
+			time.Sleep(time.Duration(retryCount) * craneWrapper.RetryDuration * time.Millisecond)
 		}
 	}
-
 	// Send metrics
-	craneWrapper.metricSubmitter.SendMetric(retryCount, registrymetric.NewCraneWrapperNumOfRetryAttempts())
+	metricSubmitter.SendMetric(retryCount, registrymetric.NewCraneWrapperNumOfRetryAttempts())
 	return res, errors.Wrapf(err, "failed after %d retries due to error", retryCount)
 }

@@ -58,7 +58,7 @@ func main() {
 		"Instrumentation.tivan.TivanInstrumentationConfiguration": tivanInstrumentationConfiguration,
 		"Instrumentation.trace.TracerConfiguration":               tracerConfiguration,
 		"Azureauth.EnvAzureAuthorizerConfiguration":               envAzureAuthorizerConfiguration,
-		"Acr.CraneWrappersConfiguration":		   			   	   craneWrapper,
+		"Acr.CraneWrappersConfiguration":		   			   	   &craneWrapper,
 		"Arg.ArgBaseClient.RetryPolicyConfiguration": 			   &argBaseClient.Client,
 	}
 
@@ -66,7 +66,7 @@ func main() {
 		// Unmarshal the relevant parts of appConfig's data to each of the configuration objects
 		err = config.CreateSubConfiguration(AppConfig, key, configObject)
 		if err != nil {
-			log.Fatal("failed to load specific configuration data.", err)
+			log.Fatal("failed to load specific configuration data", err)
 		}
 	}
 
@@ -95,7 +95,7 @@ func main() {
 	registryClient := registry.NewCraneRegistryClient(instrumentationProvider, craneWrapper)
 
 	// ARC (set metrics and tracers)
-	craneWrapper.SetCraneWrapperInstrumentation(instrumentationProvider)
+	// craneWrapper.SetCraneWrapperInstrumentation(instrumentationProvider)
 
 	// ARG
 	argBaseClient.RetryDuration = argBaseClient.RetryDuration * time.Millisecond
