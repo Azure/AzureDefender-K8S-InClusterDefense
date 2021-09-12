@@ -4,7 +4,8 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
-	metric2 "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/metric"
+	registrymetric "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/metric"
+	"github.com/modern-go/reflect2"
 	"github.com/pkg/errors"
 	"time"
 )
@@ -31,7 +32,7 @@ type CraneWrapper struct{
 
 // SetCraneWrapperInstrumentation sets the crane wrapper object's tracer and metric
 func (craneWrapper *CraneWrapper) SetCraneWrapperInstrumentation(instrumentationProvider instrumentation.IInstrumentationProvider) {
-	craneWrapper.tracerProvider = instrumentationProvider.GetTracerProvider("NewCraneWrapper")
+	craneWrapper.tracerProvider = instrumentationProvider.GetTracerProvider("SetCraneWrapperInstrumentation")
 	craneWrapper.metricSubmitter = instrumentationProvider.GetMetricSubmitter()
 }
 
@@ -50,6 +51,9 @@ func (craneWrapper *CraneWrapper) Digest(ref string) (string, error) {
 
 // DigestWithRetry re-executing Digest in case of a failure according to retryPolicy
 func (craneWrapper *CraneWrapper) DigestWithRetry(ref string) (res string, err error) {
+	if reflect2.IsNil(craneWrapper.tracerProvider) || reflect2.IsNil(craneWrapper.metricSubmitter) {
+		return "", errors.New("instrumentation wasn't initialized and passed properly")
+	}
 	tracer := craneWrapper.tracerProvider.GetTracer("DigestWithRetry")
 	retryCount := 0
 	for retryCount < craneWrapper.retryAttempts{
@@ -67,6 +71,6 @@ func (craneWrapper *CraneWrapper) DigestWithRetry(ref string) (res string, err e
 	}
 
 	// Send metrics
-	craneWrapper.metricSubmitter.SendMetric(retryCount, metric2.NewCraneWrapperNumOfRetryAttempts())
+	craneWrapper.metricSubmitter.SendMetric(retryCount, registrymetric.NewCraneWrapperNumOfRetryAttempts())
 	return res, errors.Wrapf(err, "failed after %d retries due to error", retryCount)
 }
