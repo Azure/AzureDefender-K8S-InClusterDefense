@@ -10,7 +10,7 @@ spec:
   selector:
     matchLabels:
       run: redis
-  replicas: {{.Values.AzDProxy.cache.replicas}}
+  replicas: {{.Values.AzDProxy.cache.redisClient.replicas}}
   template:
     metadata:
       labels:
@@ -20,4 +20,4 @@ spec:
         - name: {{.Values.AzDProxy.prefixResourceDeployment}}-redis
           image: redis:buster
           ports:
-            - containerPort: {{.Values.AzDProxy.cache.targetport}}
+            - containerPort: {{.Values.AzDProxy.cache.redisClient.targetport}}

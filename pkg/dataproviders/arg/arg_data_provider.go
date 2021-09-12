@@ -28,6 +28,9 @@ type IARGDataProvider interface {
 	GetImageVulnerabilityScanResults(registry string, repository string, digest string) (scanStatus contracts.ScanStatus, scanFindings []*contracts.ScanFinding, err error)
 }
 
+// ARGDataProvider implements IARGDataProvider interface
+var _ IARGDataProvider = (*ARGDataProvider)(nil)
+
 // ARGDataProvider is a IARGDataProvider implementation
 type ARGDataProvider struct {
 	//tracerProvider

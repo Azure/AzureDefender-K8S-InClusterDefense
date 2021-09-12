@@ -4,6 +4,9 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
 )
 
+// HandlerNewRequestMetric implements metric.IMetric  interface
+var _ metric.IMetric = (*HandlerNewRequestMetric)(nil)
+
 // HandlerNewRequestMetric is metric for the requests kinds of the handler
 type HandlerNewRequestMetric struct {
 	// requestKing is the kind that the handler was got in the request (e.g. Pod).

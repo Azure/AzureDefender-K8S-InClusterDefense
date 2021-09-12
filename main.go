@@ -1,23 +1,21 @@
 package main
 
 import (
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/cmd/webhook"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/azdsecinfo"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/dataproviders/arg"
 	argqueries "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/dataproviders/arg/queries"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/azureauth"
 	azureauthwrappers "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/azureauth/wrappers"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/cache"
-	cachewrappers "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/cache/wrappers"
-	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry"
-	registrywrappers "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/wrappers"
-	argbase "github.com/Azure/azure-sdk-for-go/services/resourcegraph/mgmt/2021-03-01/resourcegraph"
-	"log"
-
-	"github.com/Azure/AzureDefender-K8S-InClusterDefense/cmd/webhook"
-	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/azdsecinfo"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/config"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/tivan"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry"
+	registrywrappers "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/wrappers"
+	argbase "github.com/Azure/azure-sdk-for-go/services/resourcegraph/mgmt/2021-03-01/resourcegraph"
+	"log"
 	"os"
 )
 
@@ -48,7 +46,8 @@ func main() {
 	instrumentationConfiguration := new(instrumentation.InstrumentationProviderConfiguration)
 	envAzureAuthorizerConfiguration := new(azureauth.EnvAzureAuthorizerConfiguration)
 
-	argDataProviderCacheConfiguration := new(cachewrappers.RedisBaseCacheClientConfiguration)
+	argDataProviderCacheConfiguration := new(cache.RedisCacheClientConfiguration)
+	tokensCacheConfiguration := new(cache.FreeCacheInMemClientConfiguration)
 
 	// Create a map between configuration object and key in main config file
 	keyConfigMap := map[string]interface{}{
@@ -60,6 +59,7 @@ func main() {
 		"instrumentation.trace.TracerConfiguration":               tracerConfiguration,
 		"azureauth.envAzureAuthorizerConfiguration":               envAzureAuthorizerConfiguration,
 		"cache.argDataProviderCacheConfiguration":                 argDataProviderCacheConfiguration,
+		"cache.tokensCacheConfiguration":                          tokensCacheConfiguration,
 	}
 
 	for key, configObject := range keyConfigMap {
@@ -97,6 +97,8 @@ func main() {
 	// ARG
 	//TODO complete it once we merge the rest of the PR's.
 	_ = cache.CreateRedisCacheClient(argDataProviderCacheConfiguration)
+	_ = cache.CreateFreeCacheInMemCacheClient(tokensCacheConfiguration)
+
 	argBaseClient := argbase.New()
 	argBaseClient.Authorizer = authorizer
 	argClient := arg.NewARGClient(instrumentationProvider, argBaseClient)

@@ -7,8 +7,11 @@ require (
 	github.com/Azure/go-autorest/autorest v0.11.19
 	github.com/Azure/go-autorest/autorest/azure/auth v0.5.8
 	github.com/Azure/go-autorest/autorest/validation v0.1.0 // indirect
+	github.com/cespare/xxhash/v2 v2.1.2 // indirect
+	github.com/coocood/freecache v1.1.1
 	github.com/go-logr/logr v0.4.0
-	github.com/go-redis/redis v6.15.9+incompatible
+	github.com/go-redis/redis/v8 v8.11.3
+	github.com/go-redis/redismock/v8 v8.0.6
 	github.com/google/go-containerregistry v0.6.0
 	github.com/modern-go/reflect2 v1.0.1
 	github.com/open-policy-agent/cert-controller v0.2.0

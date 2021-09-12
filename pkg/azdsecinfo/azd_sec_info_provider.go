@@ -29,6 +29,9 @@ type IAzdSecInfoProvider interface {
 	GetContainerVulnerabilityScanInfo(*corev1.Container) (*contracts.ContainerVulnerabilityScanInfo, error)
 }
 
+// AzdSecInfoProvider implements IAzdSecInfoProvider interface
+var _ IAzdSecInfoProvider = (*AzdSecInfoProvider)(nil)
+
 // AzdSecInfoProvider represents default implementation of IAzdSecInfoProvider interface
 type AzdSecInfoProvider struct {
 	//tracerProvider is tracer provider of AzdSecInfoProvider
