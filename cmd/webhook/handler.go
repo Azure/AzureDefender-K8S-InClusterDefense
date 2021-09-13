@@ -15,7 +15,6 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/cmd/webhook/annotations"
 	webhookmetric "github.com/Azure/AzureDefender-K8S-InClusterDefense/cmd/webhook/metric"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/azdsecinfo"
-	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/azdsecinfo/contracts"
 	"github.com/pkg/errors"
 	"gomodules.xyz/jsonpatch/v2"
 	corev1 "k8s.io/api/core/v1"
@@ -72,9 +71,10 @@ func NewHandler(azdSecInfoProvider azdsecinfo.IAzdSecInfoProvider, configuration
 // Handle processes the AdmissionRequest by invoking the underlying function.
 func (handler *Handler) Handle(ctx context.Context, req admission.Request) admission.Response {
 	startTime := time.Now().UTC()
+	tracer := handler.tracerProvider.GetTracer("Handle")
+
 	defer handler.metricSubmitter.SendMetric(util.GetDurationMilliseconds(startTime), webhookmetric.NewHandlerHandleLatencyMetric())
 
-	tracer := handler.tracerProvider.GetTracer("Handle")
 	if ctx == nil {
 		tracer.Error(errors.New("ctx received is nil"), "Handler.Handle")
 		// Exit with panic in case that the context is nil
@@ -127,43 +127,28 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 	return response
 }
 
+// getPodContainersVulnerabilityScanInfoAnnotationsOperation receives a pod to generate a vuln scan annotation add operation
+// Get vuln scan infor from azdSecInfo provider, then create a json annotation for it on pods custom annotations of azd vuln scan info
 func (handler *Handler) getPodContainersVulnerabilityScanInfoAnnotationsOperation(pod *corev1.Pod) (*jsonpatch.JsonPatchOperation, error) {
 	tracer := handler.tracerProvider.GetTracer("getPodContainersVulnerabilityScanInfoAnnotationsOperation")
-	vulnSecInfoContainers := []*contracts.ContainerVulnerabilityScanInfo{}
 	handler.metricSubmitter.SendMetric(len(pod.Spec.Containers)+len(pod.Spec.InitContainers), webhookmetric.NewHandlerNumOfContainersPerPodMetric())
 
-	for _, container := range pod.Spec.InitContainers {
-
-		// Get container vulnerability scan information for init containers
-		vulnerabilitySecInfo, err := handler.azdSecInfoProvider.GetContainerVulnerabilityScanInfo(&container)
-		if err != nil {
-			wrappedError := errors.Wrap(err, "Handler failed to GetContainersVulnerabilityScanInfo Init containers")
-			tracer.Error(wrappedError, "")
-			return nil, wrappedError
-		}
-
-		// Add it to slice
-		vulnSecInfoContainers = append(vulnSecInfoContainers, vulnerabilitySecInfo)
-	}
-
-	for _, container := range pod.Spec.Containers {
-
-		// Get container vulnerability scan information for containers
-		vulnerabilitySecInfo, err := handler.azdSecInfoProvider.GetContainerVulnerabilityScanInfo(&container)
-		if err != nil {
-			wrappedError := errors.Wrap(err, "Handler failed to GetContainersVulnerabilityScanInfo Containers")
-			tracer.Error(wrappedError, "")
-			return nil, wrappedError
-		}
-
-		// Add it to slice
-		vulnSecInfoContainers = append(vulnSecInfoContainers, vulnerabilitySecInfo)
-	}
-	// Create the annotations add json patch operation
-	vulnerabilitySecAnnotationsPatch, err := annotations.CreateContainersVulnerabilityScanAnnotationPatchAdd(vulnSecInfoContainers)
+	// Get pod's containers vulnerability scan info
+	vulnSecInfoContainers, err := handler.azdSecInfoProvider.GetContainersVulnerabilityScanInfo(&pod.Spec, &pod.ObjectMeta, &pod.TypeMeta)
 	if err != nil {
 		wrappedError := errors.Wrap(err, "Handler failed to GetContainersVulnerabilityScanInfo")
 		tracer.Error(wrappedError, "Handler.AzdSecInfoProvider.GetContainersVulnerabilityScanInfo")
+		return nil, wrappedError
+	}
+
+	// Log result
+	tracer.Info("vulnSecInfoContainers", "vulnSecInfoContainers", vulnSecInfoContainers)
+
+	// Create the annotations add json patch operation
+	vulnerabilitySecAnnotationsPatch, err := annotations.CreateContainersVulnerabilityScanAnnotationPatchAdd(vulnSecInfoContainers)
+	if err != nil {
+		wrappedError := errors.Wrap(err, "Handler failed to CreateContainersVulnerabilityScanAnnotationPatchAdd")
+		tracer.Error(wrappedError, "Handler.annotations.CreateContainersVulnerabilityScanAnnotationPatchAdd")
 		return nil, wrappedError
 	}
 

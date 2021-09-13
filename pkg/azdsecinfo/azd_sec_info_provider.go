@@ -7,26 +7,18 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
-	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry"
+	registryutils "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/utils"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/utils"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/tag2digest"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
-	"strings"
-)
-
-const (
-	// _azureContainerRegistrySuffix is the suffix of ACR public (todo extract per env maybe?)
-	_azureContainerRegistrySuffix = ".azurecr.io"
-)
-
-var (
-	// _containerNullError Null container error
-	_containerNullError = errors.New("Container received is null")
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // IAzdSecInfoProvider represents interface for providing azure defender security information
 type IAzdSecInfoProvider interface {
-	// GetContainerVulnerabilityScanInfo receives containers list, and returns their fetched ContainersVulnerabilityScanInfo
-	GetContainerVulnerabilityScanInfo(*corev1.Container) (*contracts.ContainerVulnerabilityScanInfo, error)
+	// GetContainersVulnerabilityScanInfo receives pod template spec containing containers list, and returns their fetched ContainersVulnerabilityScanInfo
+	GetContainersVulnerabilityScanInfo(podSpec *corev1.PodSpec, resourceMetadata *metav1.ObjectMeta, resourceKind *metav1.TypeMeta) ([]*contracts.ContainerVulnerabilityScanInfo, error)
 }
 
 // AzdSecInfoProvider implements IAzdSecInfoProvider interface
@@ -40,38 +32,94 @@ type AzdSecInfoProvider struct {
 	metricSubmitter metric.IMetricSubmitter
 	// argDataProvider is the ARG provider which provides any ARG data
 	argDataProvider arg.IARGDataProvider
-	// registryClient is the client of the registry which is used to resolve image's digest
-	registryClient registry.IRegistryClient
+	// tag2digestResolver is the resolver of images to their digests
+	tag2digestResolver tag2digest.ITag2DigestResolver
 }
 
 // NewAzdSecInfoProvider - AzdSecInfoProvider Ctor
-func NewAzdSecInfoProvider(instrumentationProvider instrumentation.IInstrumentationProvider, argDataProvider arg.IARGDataProvider, registryClient registry.IRegistryClient) *AzdSecInfoProvider {
+func NewAzdSecInfoProvider(instrumentationProvider instrumentation.IInstrumentationProvider, argDataProvider arg.IARGDataProvider, tag2digestResolver tag2digest.ITag2DigestResolver) *AzdSecInfoProvider {
 	return &AzdSecInfoProvider{
-		tracerProvider:  instrumentationProvider.GetTracerProvider("AzdSecInfoProvider"),
-		metricSubmitter: instrumentationProvider.GetMetricSubmitter(),
-		argDataProvider: argDataProvider,
-		registryClient:  registryClient,
+		tracerProvider:     instrumentationProvider.GetTracerProvider("AzdSecInfoProvider"),
+		metricSubmitter:    instrumentationProvider.GetMetricSubmitter(),
+		argDataProvider:    argDataProvider,
+		tag2digestResolver: tag2digestResolver,
 	}
 }
 
-// GetContainerVulnerabilityScanInfo receives containers list, and returns their fetched ContainerVulnerabilityScanInfo
-func (provider *AzdSecInfoProvider) GetContainerVulnerabilityScanInfo(container *corev1.Container) (*contracts.ContainerVulnerabilityScanInfo, error) {
-	tracer := provider.tracerProvider.GetTracer("GetContainerVulnerabilityScanInfo")
-	if container == nil {
-		tracer.Error(_containerNullError, "")
-		return nil, _containerNullError
-	}
+// GetContainersVulnerabilityScanInfo receives api-resource pod spec containing containers, resource deployed metadata and kind
+// Function returns evaluated ContainerVulnerabilityScanInfo for pod spec's container list (pod spec can be related to template of any resource creates pods eventually)
+func (provider *AzdSecInfoProvider) GetContainersVulnerabilityScanInfo(podSpec *corev1.PodSpec, resourceMetadata *metav1.ObjectMeta, resourceKind *metav1.TypeMeta) ([]*contracts.ContainerVulnerabilityScanInfo, error) {
+	tracer := provider.tracerProvider.GetTracer("GetContainersVulnerabilityScanInfo")
+	tracer.Info("Received:", "podSpec", podSpec, "resourceMetadata", resourceMetadata, "resourceKind", resourceKind)
 
-	tracer.Info("Container image ref", "container image ref", container.Image)
-
-	// Extracts image context
-	imageRefContext, err := registry.ExtractImageRefContext(container.Image)
-	if err != nil {
-		err = errors.Wrap(err, "AzdSecInfoProvider.GetContainerVulnerabilityScanInfo.registry.ExtractImageRefContext")
+	// Argument validation
+	if podSpec == nil || resourceMetadata == nil || resourceKind == nil {
+		err := errors.Wrap(utils.NilArgumentError, "AzdSecInfoProvider.GetContainersVulnerabilityScanInfo")
 		tracer.Error(err, "")
 		return nil, err
 	}
-	tracer.Info("Container image ref extracted context", "context", imageRefContext)
+
+	// Convert pull secrets from reference object to strings
+	imagePullSecrets := make([]string, 0, len(podSpec.ImagePullSecrets))
+	// element is a LocalObjectReference{Name}
+	for _, element := range podSpec.ImagePullSecrets {
+		imagePullSecrets = append(imagePullSecrets, element.Name)
+	}
+
+	// Build resource deployment context
+	resourceCtx := tag2digest.NewResourceContext(resourceMetadata.Namespace, imagePullSecrets, podSpec.ServiceAccountName)
+	tracer.Info("resourceCtx", "resourceCtx", resourceCtx)
+
+	// Initialize container vuln scan info list
+	vulnSecInfoContainers := make([]*contracts.ContainerVulnerabilityScanInfo, 0, len(podSpec.InitContainers) + len(podSpec.Containers))
+
+	// Get container vulnerability scan information for init containers
+	for _, container := range podSpec.InitContainers {
+		vulnerabilitySecInfo, err := provider.getSingleContainerVulnerabilityScanInfo(&container, resourceCtx)
+		if err != nil {
+			wrappedError := errors.Wrap(err, "Handler failed to GetContainersVulnerabilityScanInfo Init containers")
+			tracer.Error(wrappedError, "")
+			return nil, wrappedError
+		}
+
+		// Add it to slice
+		vulnSecInfoContainers = append(vulnSecInfoContainers, vulnerabilitySecInfo)
+	}
+
+	// Get container vulnerability scan information for containers
+	for _, container := range podSpec.Containers {
+		vulnerabilitySecInfo, err := provider.getSingleContainerVulnerabilityScanInfo(&container, resourceCtx)
+		if err != nil {
+			wrappedError := errors.Wrap(err, "Handler failed to GetContainersVulnerabilityScanInfo Containers")
+			tracer.Error(wrappedError, "")
+			return nil, wrappedError
+		}
+
+		// Add it to slice
+		vulnSecInfoContainers = append(vulnSecInfoContainers, vulnerabilitySecInfo)
+	}
+	return vulnSecInfoContainers, nil
+}
+
+// getSingleContainerVulnerabilityScanInfo receives a container and it's belogned deployed resource context, and returns fetched ContainerVulnerabilityScanInfo
+func (provider *AzdSecInfoProvider) getSingleContainerVulnerabilityScanInfo(container *corev1.Container, resourceCtx *tag2digest.ResourceContext) (*contracts.ContainerVulnerabilityScanInfo, error) {
+	tracer := provider.tracerProvider.GetTracer("getSingleContainerVulnerabilityScanInfo")
+	tracer.Info("Received:", "container image ref", container.Image, "resourceCtx", resourceCtx)
+
+	if container == nil || resourceCtx == nil {
+		err := errors.Wrap(utils.NilArgumentError, "AzdSecInfoProvider.getSingleContainerVulnerabilityScanInfo")
+		tracer.Error(err, "")
+		return nil, err
+	}
+
+	// Get image ref
+	imageRef, err := registryutils.GetImageReference(container.Image)
+	if err != nil {
+		err = errors.Wrap(err, "AzdSecInfoProvider.GetContainersVulnerabilityScanInfo.registry.GetImageReference")
+		tracer.Error(err, "")
+		return nil, err
+	}
+	tracer.Info("Container image ref extracted", "imageRef", imageRef)
 
 	//Set default values
 	var scanStatus = contracts.Unscanned
@@ -80,25 +128,25 @@ func (provider *AzdSecInfoProvider) GetContainerVulnerabilityScanInfo(container 
 	var additionalData = make(map[string]string)
 
 	// Checks if the image registry is not ACR.
-	if !strings.HasSuffix(strings.ToLower(imageRefContext.Registry), _azureContainerRegistrySuffix) {
-		tracer.Info("Image from another registry than ACR received", "Registry", imageRefContext.Registry)
-		additionalData["unscannedReason"] = fmt.Sprintf("Registry of image \"%v\" is not an ACR", imageRefContext.Registry)
+	if !registryutils.IsRegistryEndpointACR(imageRef.Registry()) {
+		tracer.Info("Image from another registry than ACR received", "Registry", imageRef.Registry())
+		additionalData["unscannedReason"] = fmt.Sprintf("Registry of image \"%v\" is not an ACR", imageRef.Registry())
 		info := buildContainerVulnerabilityScanInfoFromResult(container, digest, scanStatus, scanFindings, additionalData)
 		return info, nil
 	}
 
 	// Get image digest
-	digest, err = provider.registryClient.GetDigest(container.Image)
+	digest, err = provider.tag2digestResolver.Resolve(imageRef, resourceCtx)
 	if err != nil {
-		err = errors.Wrap(err, "AzdSecInfoProvider.GetContainerVulnerabilityScanInfo.registry.GetDigest")
+		err = errors.Wrap(err, "AzdSecInfoProvider.GetContainersVulnerabilityScanInfo.tag2digestResolver.Resolve")
 		tracer.Error(err, "")
 
 		// TODO support digest does not exists in registry or unauthorized to not fail...
 		return nil, err
 	}
 
-	// Tries to get image scan results for image
-	scanStatus, scanFindings, err = provider.argDataProvider.GetImageVulnerabilityScanResults(imageRefContext.Registry, imageRefContext.Repository, digest)
+	// 	Get image scan results for image
+	scanStatus, scanFindings, err = provider.argDataProvider.GetImageVulnerabilityScanResults(imageRef.Registry(), imageRef.Repository(), digest)
 	if err != nil {
 		err = errors.Wrap(err, "AzdSecInfoProvider.getContainerVulnerabilityScanResults")
 		tracer.Error(err, "")

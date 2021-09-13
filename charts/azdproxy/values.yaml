@@ -84,10 +84,16 @@ AzDProxy:
         TracerLevel: 0
 
   # Azure Auth values
-  azureauth:
-    envAzureAuthorizerConfiguration:
-      IsLocalDevelopmentMode: false
+  azdIdentity:
+    EnvAzureAuthorizerConfiguration:
       MSIClientId: "a554f933-695f-4ecf-abe4-2a7515e8c1b7"
+
+  kubeletIdentity:
+    EnvAzureAuthorizerConfiguration:
+      MSIClientId: "4446918a-1c6c-437e-9db1-018acb52efdc"
+
+  Deployment:
+    IsLocalDevelopment: false
 
   # Cache configuration
   cache:
