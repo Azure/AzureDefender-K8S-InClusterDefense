@@ -41,7 +41,7 @@ func (factory *ACRKeychainFactory) Create(registry string) (authn.Keychain, erro
 	tracer.Info("Received:", "registry", registry)
 
 	// Get a refresh token for registry
-	accessToken, err := factory.acrTokenProvider.GetACRRefreshToken(registry)
+	refreshToken, err := factory.acrTokenProvider.GetACRRefreshToken(registry)
 	if err != nil {
 		err = errors.Wrap(err, "ACRKeychainFactory.Create: failed on GetACRRefreshToken")
 		tracer.Error(err, "")
@@ -50,7 +50,7 @@ func (factory *ACRKeychainFactory) Create(registry string) (authn.Keychain, erro
 
 	//Create an ACR keychain
 	return &ACRKeyChain{
-		Token: accessToken,
+		Token: refreshToken,
 	}, nil
 
 }

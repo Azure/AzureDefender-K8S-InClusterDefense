@@ -9,11 +9,11 @@ import (
 
 const (
 	// _azureContainerRegistrySuffix is the suffix of ACR public (todo extract per env maybe?)
-	azureContainerRegistrySuffix = ".azurecr.io"
+	_azureContainerRegistrySuffix = ".azurecr.io"
 )
 
 //GetImageReference receives image reference string (e.g. tomer.azurecr.io/redis:v1)
-// Function extract and return received ref: registry and repository and identifiers like digest/tag, also dsaves the original ref str
+// Function extract and return received ref: registry and repository and identifiers like digest/tag, also saves the original ref str
 // If image reference is not in right format or unknown, returns error.
 func GetImageReference(imageRef string) (registry.IImageReference, error) {
 	// Parse image ref
@@ -38,5 +38,5 @@ func GetImageReference(imageRef string) (registry.IImageReference, error) {
 
 // IsRegistryEndpointACR return is registryEndpoing is ACR based (ACR suffix)
 func IsRegistryEndpointACR(registryEndpoint string) bool {
-	return strings.HasSuffix(strings.ToLower(registryEndpoint), azureContainerRegistrySuffix)
+	return strings.HasSuffix(strings.ToLower(registryEndpoint), _azureContainerRegistrySuffix)
 }

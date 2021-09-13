@@ -13,5 +13,3 @@ type IRegistryClient interface {
 	// K8S auth is based image pull secrets used in deployment or attached to service account to pull the image
 	GetDigestUsingK8SAuth(imageReference IImageReference, namespace string , imagePullSecrets []string, serviceAccountName string) (string, error)
 }
-
-

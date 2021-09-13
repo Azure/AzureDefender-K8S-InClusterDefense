@@ -86,10 +86,11 @@ AzDProxy:
   # Azure Auth values
   azdIdentity:
     EnvAzureAuthorizerConfiguration:
-      IsLocalDevelopmentMode: false
       MSIClientId: "a554f933-695f-4ecf-abe4-2a7515e8c1b7"
 
   kubeletIdentity:
     EnvAzureAuthorizerConfiguration:
-      IsLocalDevelopmentMode: false
       MSIClientId: "4446918a-1c6c-437e-9db1-018acb52efdc"
+
+  Deployment:
+    IsLocalDevelopment: false

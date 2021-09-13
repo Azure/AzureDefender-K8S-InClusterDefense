@@ -6,7 +6,7 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/azureauth"
 	azureauthwrappers "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/azureauth/wrappers"
 	registryauthazure "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/acrauth"
-	crane2 "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/crane"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/crane"
 	registrywrappers "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/wrappers"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/tag2digest"
 	argbase "github.com/Azure/azure-sdk-for-go/services/resourcegraph/mgmt/2021-03-01/resourcegraph"
@@ -112,10 +112,11 @@ func main() {
 	acrTokenExchanger := registryauthazure.NewACRTokenExchanger(instrumentationProvider, &http.Client{})
 	acrTokenProvider := registryauthazure.NewACRTokenProvider(instrumentationProvider, acrTokenExchanger, bearerAuthorizer)
 
-	k8sKeychainFactory := crane2.NewK8SKeychainFactory(instrumentationProvider, clientK8s)
-	acrKeychainFactory := crane2.NewACRKeychainFactory(instrumentationProvider, acrTokenProvider)
+	k8sKeychainFactory := crane.NewK8SKeychainFactory(instrumentationProvider, clientK8s)
+	acrKeychainFactory := crane.NewACRKeychainFactory(instrumentationProvider, acrTokenProvider)
 
-	registryClient := crane2.NewCraneRegistryClient(instrumentationProvider, new(registrywrappers.CraneWrapper), acrKeychainFactory, k8sKeychainFactory)
+	registryClient := crane.NewCraneRegistryClient(instrumentationProvider, new(registrywrappers.CraneWrapper), acrKeychainFactory, k8sKeychainFactory)
+	tag2digestResolver := tag2digest.NewTag2DigestResolver(instrumentationProvider, registryClient)
 
 	// ARG
 	azdIdentityAuthorizerFactory := azureauth.NewEnvAzureAuthorizerFactory(azdIdentityEnvAzureAuthorizerConfiguration, new(azureauthwrappers.AzureAuthWrapper))
@@ -133,7 +134,6 @@ func main() {
 
 	argDataProvider := arg.NewARGDataProvider(instrumentationProvider, argClient, argQueryGenerator)
 
-	tag2digestResolver := tag2digest.NewTag2DigestResolver(instrumentationProvider, registryClient)
 
 	// Handler and azdSecinfoProvider
 	azdSecInfoProvider := azdsecinfo.NewAzdSecInfoProvider(instrumentationProvider, argDataProvider, tag2digestResolver)

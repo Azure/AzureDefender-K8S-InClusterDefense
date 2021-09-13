@@ -6,7 +6,7 @@ metadata:
   labels:
   {{ include "common.labels" . | indent 6 }}
 rules:
-  # Cert-controller is using get,list and watch verbs on secrets - TODO - is this really needed for cert-ctrlr?
+  # Cert-controller is using get,list and watch verbs on secrets
   # Tag2Digest access to pull secrets
   - apiGroups: [ "" ]
     resources: [ "secrets" ]

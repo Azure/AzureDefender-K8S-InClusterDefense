@@ -18,9 +18,13 @@ type IACRTokenProvider interface {
 
 // ACRTokenProvider azure based implementation of IACRTokenProvider
 type ACRTokenProvider struct {
+	// tracerProvider providing tracers
 	tracerProvider        trace.ITracerProvider
+	// metricSubmitter submits metrics for class
 	metricSubmitter       metric.IMetricSubmitter
+	// azureBearerAuthorizer is a bearer based authorizer
 	azureBearerAuthorizer azureauth.IBearerAuthorizer
+	// tokenExchanger is exchanger to exchange the bearer token to a refresh token
 	tokenExchanger IACRTokenExchanger
 }
 

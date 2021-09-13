@@ -6,12 +6,10 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry"
 	registryutils "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/utils"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/utils"
 	"github.com/pkg/errors"
 )
 
-var (
-	nilArgError = errors.New("NilArgError")
-)
 // ITag2DigestResolver responsible to resolve resource's image to it's digest
 type ITag2DigestResolver interface {
 	// Resolve receives an image refernce and the resource deployed context and resturns image digest
@@ -46,7 +44,7 @@ func (resolver *Tag2DigestResolver) Resolve(imageReference registry.IImageRefere
 
 	// Argument validation
 	if imageReference == nil || resourceCtx == nil {
-		err := errors.Wrap(nilArgError, "Tag2DigestResolver.Resolve")
+		err := errors.Wrap(utils.NilArgumentError, "Tag2DigestResolver.Resolve")
 		tracer.Error(err, "")
 		return "", err
 	}
@@ -60,6 +58,7 @@ func (resolver *Tag2DigestResolver) Resolve(imageReference registry.IImageRefere
 
 	// ACR auth
 	if registryutils.IsRegistryEndpointACR(imageReference.Registry()) {
+		tracer.Info("ACR suffix so tries ACR  auth", "imageRef", imageReference)
 		digest, err := resolver.registryClient.GetDigestUsingACRAttachAuth(imageReference)
 		if err != nil {
 			// todo only on unauthorized and retry only on transient
@@ -69,23 +68,50 @@ func (resolver *Tag2DigestResolver) Resolve(imageReference registry.IImageRefere
 			return digest, nil
 		}
 	}
+	tracer.Info("Tries K8S chain auth", "imageRef", imageReference)
 
 	// Fallback to K8S auth
 	// TODO Add fallback on missing pull secret
-	digest, err := resolver.registryClient.GetDigestUsingK8SAuth(imageReference, resourceCtx.Namespace, resourceCtx.ImagePullSecrets, resourceCtx.ServiceAccountName)
+	digest, err := resolver.registryClient.GetDigestUsingK8SAuth(imageReference, resourceCtx.namespace, resourceCtx.imagePullSecrets, resourceCtx.serviceAccountName)
 	if err != nil {
-		err = errors.Wrap(err, "Tag2DigestResolver.Resolve: Failed to get digest on K8sAuth")
+		// todo only on unauthorized and retry only on transient
+		// Failed to get digest using K8S chain auth method - continue and fall back to other methods
+		tracer.Error(err, "Failed on K8S Chain auth -> continue to other types of auth")
+	}else{
+		return digest, nil
+	}
+
+	tracer.Info("Tries DefaultAuth", "imageRef", imageReference)
+
+	// Fallback to DefaultAuth
+	digest, err = resolver.registryClient.GetDigestUsingDefaultAuth(imageReference)
+	if err != nil {
+		err = errors.Wrap(err, "Tag2DigestResolver.Resolve: Failed to get digest on DefaultAuth")
 		tracer.Error(err, "")
 		return "", err
-
 	}
+
+	if digest == ""{
+		err = errors.Wrap(err, "Tag2DigestResolver.Resolve: Empty digest received by registry client")
+		tracer.Error(err, "")
+		return "", err
+	}
+
 	return  digest, nil
 }
 
 
 // ResourceContext represents deployed resource context to use for image digest extraction
 type ResourceContext struct {
-	Namespace          string
-	ImagePullSecrets   []string
-	ServiceAccountName string
+	namespace          string
+	imagePullSecrets   []string
+	serviceAccountName string
+}
+
+func NewResourceContext(namespace string, imagePullSecrets []string, serviceAccountName string) *ResourceContext{
+	return &ResourceContext{
+		namespace: namespace,
+		imagePullSecrets: imagePullSecrets,
+		serviceAccountName: serviceAccountName,
+	}
 }

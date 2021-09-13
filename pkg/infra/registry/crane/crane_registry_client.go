@@ -7,17 +7,14 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/wrappers"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/utils"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/crane"
 	"github.com/pkg/errors"
 )
 
 const (
-	userAgent = "azdproxy"
-)
-
-var (
-	nilArgError = errors.New("NilArgErrorReceived")
+	_userAgent = "azdproxy"
 )
 
 // CraneRegistryClient crane based implementation of the registry client interface registry.IRegistryClient
@@ -51,7 +48,7 @@ func (client *CraneRegistryClient) GetDigestUsingDefaultAuth(imageReference regi
 
 	// Argument validation
 	if imageReference == nil{
-		err := errors.Wrap(nilArgError, "CraneRegistryClient.GetDigestUsingDefaultAuth")
+		err := errors.Wrap(utils.NilArgumentError, "CraneRegistryClient.GetDigestUsingDefaultAuth")
 		tracer.Error(err,"")
 		return "", err
 	}
@@ -78,7 +75,7 @@ func (client *CraneRegistryClient) GetDigestUsingACRAttachAuth(imageReference re
 
 	// Argument validation
 	if imageReference == nil{
-		err := errors.Wrap(nilArgError, "CraneRegistryClient.GetDigestUsingACRAttachAuth")
+		err := errors.Wrap(utils.NilArgumentError, "CraneRegistryClient.GetDigestUsingACRAttachAuth")
 		tracer.Error(err,"")
 		return "", err
 	}
@@ -113,7 +110,7 @@ func (client *CraneRegistryClient) GetDigestUsingK8SAuth(imageReference registry
 
 	// Argument validaiton
 	if imageReference == nil{
-		err := errors.Wrap(nilArgError, "CraneRegistryClient.GetDigestUsingK8SAuth")
+		err := errors.Wrap(utils.NilArgumentError, "CraneRegistryClient.GetDigestUsingK8SAuth")
 		tracer.Error(err,"")
 		return "", err
 	}
@@ -141,7 +138,7 @@ func (client *CraneRegistryClient) GetDigestUsingK8SAuth(imageReference registry
 
 
 // getDigest private function that receives imageReference and a keychain, it wraps keychain received with multikeychain and appends the defaultkeychain as well
-// Then calls crane Digest fucntion using the multikeychian created and the client userAgent
+// Then calls crane Digest fucntion using the multikeychian created and the client _userAgent
 func (client *CraneRegistryClient) getDigest(imageReference registry.IImageReference, keychain authn.Keychain) (string, error) {
 	tracer := client.tracerProvider.GetTracer("getDigest")
 	receivedKeyChainType := fmt.Sprintf("%T", keychain)
@@ -151,8 +148,8 @@ func (client *CraneRegistryClient) getDigest(imageReference registry.IImageRefer
 	// TODO add retry policy
 	// Resolve digest using Options:
 	//  - multikeychain of received keychain and the default keychain,
-	// - userAgent of the client
-	digest, err := client.craneWrapper.Digest(imageReference.Original(), crane.WithAuthFromKeychain(authn.NewMultiKeychain(keychain, authn.DefaultKeychain)), crane.WithUserAgent(userAgent))
+	// - _userAgent of the client
+	digest, err := client.craneWrapper.Digest(imageReference.Original(), crane.WithAuthFromKeychain(authn.NewMultiKeychain(keychain, authn.DefaultKeychain)), crane.WithUserAgent(_userAgent))
 	if err != nil {
 		// Report error
 		err = errors.Wrapf(err, "CraneRegistryClient.getDigest with receivedKeyChainType %v", receivedKeyChainType)

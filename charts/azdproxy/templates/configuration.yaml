@@ -38,10 +38,10 @@ data:
           MdmNamespace: {{ .Values.AzDProxy.instrumentation.tivan.TivanInstrumentationConfiguration.MdmNamespace | quote}}
     azdIdentity:
       EnvAzureAuthorizerConfiguration:
-        IsLocalDevelopmentMode: {{.Values.AzDProxy.azdIdentity.EnvAzureAuthorizerConfiguration.IsLocalDevelopmentMode}}
+        IsLocalDevelopmentMode: {{.Values.AzDProxy.Deployment.IsLocalDevelopment}}
         MSIClientId: {{.Values.AzDProxy.azdIdentity.EnvAzureAuthorizerConfiguration.MSIClientId}}
     kubeletIdentity:
       EnvAzureAuthorizerConfiguration:
-        IsLocalDevelopmentMode: {{.Values.AzDProxy.kubeletIdentity.EnvAzureAuthorizerConfiguration.IsLocalDevelopmentMode}}
+        IsLocalDevelopmentMode: {{.Values.AzDProxy.Deployment.IsLocalDevelopment}}
         MSIClientId: {{.Values.AzDProxy.kubeletIdentity.EnvAzureAuthorizerConfiguration.MSIClientId}}
 
