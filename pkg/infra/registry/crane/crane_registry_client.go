@@ -17,6 +17,9 @@ const (
 	_userAgent = "azdproxy"
 )
 
+// CraneRegistryClient implements registry.IRegistryClient interface
+var _ registry.IRegistryClient = (*CraneRegistryClient)(nil)
+
 // CraneRegistryClient crane based implementation of the registry client interface registry.IRegistryClient
 type CraneRegistryClient struct {
 	// tracerProvider is the tracer provider for the registry client
@@ -33,9 +36,9 @@ type CraneRegistryClient struct {
 // NewCraneRegistryClient Constructor for the registry client
 func NewCraneRegistryClient(instrumentationProvider instrumentation.IInstrumentationProvider, craneWrapper wrappers.ICraneWrapper, acrKeychainFactory IACRKeychainFactory, k8sKeychainFactory IK8SKeychainFactory) *CraneRegistryClient {
 	return &CraneRegistryClient{
-		tracerProvider:              instrumentationProvider.GetTracerProvider("CraneRegistryClient"),
-		metricSubmitter:             instrumentationProvider.GetMetricSubmitter(),
-		craneWrapper:                craneWrapper,
+		tracerProvider:     instrumentationProvider.GetTracerProvider("CraneRegistryClient"),
+		metricSubmitter:    instrumentationProvider.GetMetricSubmitter(),
+		craneWrapper:       craneWrapper,
 		acrKeychainFactory: acrKeychainFactory,
 		k8sKeychainFactory: k8sKeychainFactory,
 	}
@@ -47,9 +50,9 @@ func (client *CraneRegistryClient) GetDigestUsingDefaultAuth(imageReference regi
 	tracer.Info("Received image:", "imageReference", imageReference)
 
 	// Argument validation
-	if imageReference == nil{
+	if imageReference == nil {
 		err := errors.Wrap(utils.NilArgumentError, "CraneRegistryClient.GetDigestUsingDefaultAuth")
-		tracer.Error(err,"")
+		tracer.Error(err, "")
 		return "", err
 	}
 
@@ -74,9 +77,9 @@ func (client *CraneRegistryClient) GetDigestUsingACRAttachAuth(imageReference re
 	tracer.Info("Received image:", "imageReference", imageReference)
 
 	// Argument validation
-	if imageReference == nil{
+	if imageReference == nil {
 		err := errors.Wrap(utils.NilArgumentError, "CraneRegistryClient.GetDigestUsingACRAttachAuth")
-		tracer.Error(err,"")
+		tracer.Error(err, "")
 		return "", err
 	}
 
@@ -104,14 +107,14 @@ func (client *CraneRegistryClient) GetDigestUsingACRAttachAuth(imageReference re
 // GetDigestUsingK8SAuth receives image reference and get it's digest using K8S secerts and auth
 // K8S auth is based image pull secrets used in deployment or attached to service account to pull the image
 // Authenticate with multikeychain with k8skeychain and default keychain
-func (client *CraneRegistryClient) GetDigestUsingK8SAuth(imageReference registry.IImageReference, namespace string , imagePullSecrets []string, serviceAccountName string) (string, error) {
+func (client *CraneRegistryClient) GetDigestUsingK8SAuth(imageReference registry.IImageReference, namespace string, imagePullSecrets []string, serviceAccountName string) (string, error) {
 	tracer := client.tracerProvider.GetTracer("GetDigestUsingK8SAuth")
 	tracer.Info("Received image:", "imageReference", imageReference, "namespace", namespace, "imagePullSecrets", imagePullSecrets, "serviceAccountName", serviceAccountName)
 
 	// Argument validaiton
-	if imageReference == nil{
+	if imageReference == nil {
 		err := errors.Wrap(utils.NilArgumentError, "CraneRegistryClient.GetDigestUsingK8SAuth")
-		tracer.Error(err,"")
+		tracer.Error(err, "")
 		return "", err
 	}
 
@@ -136,14 +139,12 @@ func (client *CraneRegistryClient) GetDigestUsingK8SAuth(imageReference registry
 	return digest, nil
 }
 
-
 // getDigest private function that receives imageReference and a keychain, it wraps keychain received with multikeychain and appends the defaultkeychain as well
 // Then calls crane Digest fucntion using the multikeychian created and the client _userAgent
 func (client *CraneRegistryClient) getDigest(imageReference registry.IImageReference, keychain authn.Keychain) (string, error) {
 	tracer := client.tracerProvider.GetTracer("getDigest")
 	receivedKeyChainType := fmt.Sprintf("%T", keychain)
 	tracer.Info("Received image:", "imageReference", imageReference.Original(), "receivedKeyChainType", receivedKeyChainType)
-
 
 	// TODO add retry policy
 	// Resolve digest using Options:
@@ -163,4 +164,3 @@ func (client *CraneRegistryClient) getDigest(imageReference registry.IImageRefer
 	tracer.Info("Image resolved successfully", "imageRef", imageReference.Original(), "digest", digest)
 	return digest, nil
 }
-

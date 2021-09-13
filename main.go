@@ -8,6 +8,10 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/azureauth"
 	azureauthwrappers "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/azureauth/wrappers"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/cache"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/config"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/tivan"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
 	registryauthazure "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/acrauth"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/crane"
 	registrywrappers "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/wrappers"
@@ -16,19 +20,8 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"log"
 	"net/http"
-	k8sclientconfig "sigs.k8s.io/controller-runtime/pkg/client/config"
-
-	"github.com/Azure/AzureDefender-K8S-InClusterDefense/cmd/webhook"
-	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/azdsecinfo"
-	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/config"
-	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
-	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/tivan"
-	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
-	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry"
-	registrywrappers "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/wrappers"
-	argbase "github.com/Azure/azure-sdk-for-go/services/resourcegraph/mgmt/2021-03-01/resourcegraph"
-	"log"
 	"os"
+	k8sclientconfig "sigs.k8s.io/controller-runtime/pkg/client/config"
 )
 
 const (
@@ -71,8 +64,7 @@ func main() {
 		"instrumentation.tivan.TivanInstrumentationConfiguration": tivanInstrumentationConfiguration,
 		"instrumentation.trace.TracerConfiguration":               tracerConfiguration,
 		"azdIdentity.EnvAzureAuthorizerConfiguration":             azdIdentityEnvAzureAuthorizerConfiguration,
-		"kubeletIdentity.EnvAzureAuthorizerConfiguration":         kubeletIdentityEnvAzureAuthorizerConfiguration}
-		"azureauth.envAzureAuthorizerConfiguration":               envAzureAuthorizerConfiguration,
+		"kubeletIdentity.EnvAzureAuthorizerConfiguration":         kubeletIdentityEnvAzureAuthorizerConfiguration,
 		"cache.argDataProviderCacheConfiguration":                 argDataProviderCacheConfiguration,
 		"cache.tokensCacheConfiguration":                          tokensCacheConfiguration,
 	}
@@ -106,13 +98,12 @@ func main() {
 		log.Fatal("main.kubeletIdentityAuthorizerFactory.NewEnvAzureAuthorizerFactory.CreateARMAuthorizer", err)
 	}
 
-
 	// Registry Client
-	k8sclientconfig, err := k8sclientconfig.GetConfig()
+	k8sClientConfig, err := k8sclientconfig.GetConfig()
 	if err != nil {
 		log.Fatal("main.k8sclientconfig.GetConfig", err)
 	}
-	clientK8s, err := kubernetes.NewForConfig(k8sclientconfig)
+	clientK8s, err := kubernetes.NewForConfig(k8sClientConfig)
 	if err != nil {
 		log.Fatal("main.kubernetes.NewForConfig", err)
 	}
@@ -151,7 +142,6 @@ func main() {
 	}
 
 	argDataProvider := arg.NewARGDataProvider(instrumentationProvider, argClient, argQueryGenerator)
-
 
 	// Handler and azdSecinfoProvider
 	azdSecInfoProvider := azdsecinfo.NewAzdSecInfoProvider(instrumentationProvider, argDataProvider, tag2digestResolver)

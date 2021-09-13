@@ -9,3 +9,6 @@ type IHttpClient interface {
 	// Do is interface that for http client do  - initate an http call and return the response.
 	Do(req *http.Request) (*http.Response, error)
 }
+
+// http.Client implements IHttpClient interface
+var _ IHttpClient = (*http.Client)(nil)

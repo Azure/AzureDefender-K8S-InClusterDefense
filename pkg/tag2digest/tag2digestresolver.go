@@ -12,9 +12,12 @@ import (
 
 // ITag2DigestResolver responsible to resolve resource's image to it's digest
 type ITag2DigestResolver interface {
-	// Resolve receives an image refernce and the resource deployed context and resturns image digest
+	// Resolve receives an image reference and the resource deployed context and resturns image digest
 	Resolve(imageReference registry.IImageReference, authContext *ResourceContext) (string, error)
 }
+
+// Tag2DigestResolver implements ITag2DigestResolver interface
+var _ ITag2DigestResolver = (*Tag2DigestResolver)(nil)
 
 // Tag2DigestResolver represents basic implementation of ITag2DigestResolver interface
 type Tag2DigestResolver struct {
@@ -64,7 +67,7 @@ func (resolver *Tag2DigestResolver) Resolve(imageReference registry.IImageRefere
 			// todo only on unauthorized and retry only on transient
 			// Failed to get digest using ACR attach auth method - continue and fall back to other methods
 			tracer.Error(err, "Failed on ACR auth -> continue to other types of auth")
-		}else{
+		} else {
 			return digest, nil
 		}
 	}
@@ -77,7 +80,7 @@ func (resolver *Tag2DigestResolver) Resolve(imageReference registry.IImageRefere
 		// todo only on unauthorized and retry only on transient
 		// Failed to get digest using K8S chain auth method - continue and fall back to other methods
 		tracer.Error(err, "Failed on K8S Chain auth -> continue to other types of auth")
-	}else{
+	} else {
 		return digest, nil
 	}
 
@@ -91,15 +94,14 @@ func (resolver *Tag2DigestResolver) Resolve(imageReference registry.IImageRefere
 		return "", err
 	}
 
-	if digest == ""{
+	if digest == "" {
 		err = errors.Wrap(err, "Tag2DigestResolver.Resolve: Empty digest received by registry client")
 		tracer.Error(err, "")
 		return "", err
 	}
 
-	return  digest, nil
+	return digest, nil
 }
-
 
 // ResourceContext represents deployed resource context to use for image digest extraction
 type ResourceContext struct {
@@ -108,10 +110,10 @@ type ResourceContext struct {
 	serviceAccountName string
 }
 
-func NewResourceContext(namespace string, imagePullSecrets []string, serviceAccountName string) *ResourceContext{
+func NewResourceContext(namespace string, imagePullSecrets []string, serviceAccountName string) *ResourceContext {
 	return &ResourceContext{
-		namespace: namespace,
-		imagePullSecrets: imagePullSecrets,
+		namespace:          namespace,
+		imagePullSecrets:   imagePullSecrets,
 		serviceAccountName: serviceAccountName,
 	}
 }
