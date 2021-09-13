@@ -36,8 +36,12 @@ data:
         TivanInstrumentationConfiguration:
           ComponentName: {{ .Chart.Name | quote}}
           MdmNamespace: {{ .Values.AzDProxy.instrumentation.tivan.TivanInstrumentationConfiguration.MdmNamespace | quote}}
-    azureauth:
-      envAzureAuthorizerConfiguration:
-        IsLocalDevelopmentMode: {{.Values.AzDProxy.azureauth.envAzureAuthorizerConfiguration.IsLocalDevelopmentMode}}
-        MSIClientId: {{.Values.AzDProxy.azureauth.envAzureAuthorizerConfiguration.MSIClientId}}
+    azdIdentity:
+      EnvAzureAuthorizerConfiguration:
+        IsLocalDevelopmentMode: {{.Values.AzDProxy.Deployment.IsLocalDevelopment}}
+        MSIClientId: {{.Values.AzDProxy.azdIdentity.EnvAzureAuthorizerConfiguration.MSIClientId}}
+    kubeletIdentity:
+      EnvAzureAuthorizerConfiguration:
+        IsLocalDevelopmentMode: {{.Values.AzDProxy.Deployment.IsLocalDevelopment}}
+        MSIClientId: {{.Values.AzDProxy.kubeletIdentity.EnvAzureAuthorizerConfiguration.MSIClientId}}
 
