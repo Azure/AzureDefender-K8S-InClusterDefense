@@ -45,37 +45,30 @@ var (
 
 	_firstContainerVulnerabilityScanInfo  = &contracts.ContainerVulnerabilityScanInfo{Name: "Lior"}
 	_secondContainerVulnerabilityScanInfo = &contracts.ContainerVulnerabilityScanInfo{Name: "Or"}
-	_thirdContainerVulnerabilityScanInfo  = &contracts.ContainerVulnerabilityScanInfo{Name: "Tomer"}
 )
 
 type TestSuite struct {
 	suite.Suite
 	azdSecProviderMock *azdsecinfoMocks.IAzdSecInfoProvider
-	scanInfoList       *contracts.ContainerVulnerabilityScanInfoList
-	containers         []corev1.Container
-	pod                *corev1.Pod
-	req                *admission.Request
 }
 
 // This will run before each test in the suite
 func (suite *TestSuite) SetupTest() {
-	// Create default req
-	suite.containers = []corev1.Container{_containers[0]}
-	suite.pod = createPodForTests(suite.containers, nil)
-	suite.req = createRequestForTests(suite.pod)
-
 	// Mock
 	suite.azdSecProviderMock = &azdsecinfoMocks.IAzdSecInfoProvider{}
-	suite.azdSecProviderMock.On("GetContainerVulnerabilityScanInfo", &_containers[0]).Return(_firstContainerVulnerabilityScanInfo, nil).Once()
-	suite.azdSecProviderMock.On("GetContainerVulnerabilityScanInfo", &_containers[1]).Return(_secondContainerVulnerabilityScanInfo, nil).Once()
-	suite.azdSecProviderMock.On("GetContainerVulnerabilityScanInfo", &_containers[2]).Return(_thirdContainerVulnerabilityScanInfo, nil).Once()
 }
 
 func (suite *TestSuite) Test_Handle_DryRunTrue_ShouldNotPatched() {
 	// Setup
+	containers := []corev1.Container{_containers[0]}
+	pod := createPodForTests(containers, nil)
+	req := createRequestForTests(pod)
+	expectedInfo := []*contracts.ContainerVulnerabilityScanInfo{_firstContainerVulnerabilityScanInfo}
+	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", &pod.Spec, &pod.ObjectMeta, &pod.TypeMeta).Return(expectedInfo, nil).Once()
+
 	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: true}, instrumentation.NewNoOpInstrumentationProvider())
 	// Act
-	resp := handler.Handle(context.Background(), *suite.req)
+	resp := handler.Handle(context.Background(), *req)
 	// Test
 	suite.Equal(metav1.StatusReason(_notPatchedDryRun), resp.Result.Reason)
 	suite.Emptyf(resp.Patches, "response.Patches should be empty on dryrun mode")
@@ -83,9 +76,15 @@ func (suite *TestSuite) Test_Handle_DryRunTrue_ShouldNotPatched() {
 
 func (suite *TestSuite) Test_Handle_DryRunFalse_ShouldPatched() {
 	// Setup
+	containers := []corev1.Container{_containers[0]}
+	pod := createPodForTests(containers, nil)
+	req := createRequestForTests(pod)
+	expectedInfo := []*contracts.ContainerVulnerabilityScanInfo{_firstContainerVulnerabilityScanInfo}
+	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", &pod.Spec, &pod.ObjectMeta, &pod.TypeMeta).Return(expectedInfo, nil).Once()
+
 	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider())
 	// Act
-	resp := handler.Handle(context.Background(), *suite.req)
+	resp := handler.Handle(context.Background(), *req)
 	// Test
 	suite.Equal(metav1.StatusReason(_patched), resp.Result.Reason)
 }
@@ -99,6 +98,8 @@ func (suite *TestSuite) Test_Handle_OneContainerZeroInitContainer_ShouldPatchedO
 	containers := []corev1.Container{_containers[0]}
 	pod := createPodForTests(containers, nil)
 	req := createRequestForTests(pod)
+	expectedInfo := []*contracts.ContainerVulnerabilityScanInfo{_firstContainerVulnerabilityScanInfo}
+	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", &pod.Spec, &pod.ObjectMeta, &pod.TypeMeta).Return(expectedInfo, nil).Once()
 
 	expected := []*contracts.ContainerVulnerabilityScanInfo{
 		_firstContainerVulnerabilityScanInfo,
@@ -121,10 +122,8 @@ func (suite *TestSuite) Test_Handle_TwoContainerZeroInitContainer_ShouldPatchedT
 	containers := []corev1.Container{_containers[0], _containers[1]}
 	pod := createPodForTests(containers, nil)
 	req := createRequestForTests(pod)
-
-	expected := []*contracts.ContainerVulnerabilityScanInfo{
-		_firstContainerVulnerabilityScanInfo,
-		_secondContainerVulnerabilityScanInfo}
+	expectedInfo := []*contracts.ContainerVulnerabilityScanInfo{_firstContainerVulnerabilityScanInfo, _secondContainerVulnerabilityScanInfo}
+	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", &pod.Spec, &pod.ObjectMeta, &pod.TypeMeta).Return(expectedInfo, nil).Once()
 
 	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider())
 
@@ -134,7 +133,7 @@ func (suite *TestSuite) Test_Handle_TwoContainerZeroInitContainer_ShouldPatchedT
 	suite.Equal(1, len(resp.Patches))
 	patch := resp.Patches[0]
 
-	suite.checkPatch(expected, patch)
+	suite.checkPatch(expectedInfo, patch)
 }
 
 func (suite *TestSuite) Test_Handle_ZeroContainerOneInitContainer_ShouldPatchedOne() {
@@ -143,9 +142,8 @@ func (suite *TestSuite) Test_Handle_ZeroContainerOneInitContainer_ShouldPatchedO
 	pod := createPodForTests(nil, containers)
 	req := createRequestForTests(pod)
 
-	expected := []*contracts.ContainerVulnerabilityScanInfo{
-		_firstContainerVulnerabilityScanInfo,
-	}
+	expectedInfo := []*contracts.ContainerVulnerabilityScanInfo{_firstContainerVulnerabilityScanInfo}
+	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", &pod.Spec, &pod.ObjectMeta, &pod.TypeMeta).Return(expectedInfo, nil).Once()
 
 	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider())
 
@@ -155,7 +153,7 @@ func (suite *TestSuite) Test_Handle_ZeroContainerOneInitContainer_ShouldPatchedO
 	//Test
 	suite.Equal(1, len(resp.Patches))
 	patch := resp.Patches[0]
-	suite.checkPatch(expected, patch)
+	suite.checkPatch(expectedInfo, patch)
 }
 
 func (suite *TestSuite) Test_Handle_ZeroContainerTwoInitContainer_ShouldPatchedTwo() {
@@ -164,10 +162,8 @@ func (suite *TestSuite) Test_Handle_ZeroContainerTwoInitContainer_ShouldPatchedT
 	pod := createPodForTests(nil, containers)
 	req := createRequestForTests(pod)
 
-	expected := []*contracts.ContainerVulnerabilityScanInfo{
-		_firstContainerVulnerabilityScanInfo,
-		_secondContainerVulnerabilityScanInfo,
-	}
+	expectedInfo := []*contracts.ContainerVulnerabilityScanInfo{_firstContainerVulnerabilityScanInfo, _secondContainerVulnerabilityScanInfo}
+	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", &pod.Spec, &pod.ObjectMeta, &pod.TypeMeta).Return(expectedInfo, nil).Once()
 
 	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider())
 
@@ -177,7 +173,7 @@ func (suite *TestSuite) Test_Handle_ZeroContainerTwoInitContainer_ShouldPatchedT
 	//Test
 	suite.Equal(1, len(resp.Patches))
 	patch := resp.Patches[0]
-	suite.checkPatch(expected, patch)
+	suite.checkPatch(expectedInfo, patch)
 }
 
 func (suite *TestSuite) Test_Handle_OneContainerOneInitContainer_ShouldPatchedTwo() {
@@ -186,10 +182,8 @@ func (suite *TestSuite) Test_Handle_OneContainerOneInitContainer_ShouldPatchedTw
 	pod := createPodForTests(nil, containers)
 	req := createRequestForTests(pod)
 
-	expected := []*contracts.ContainerVulnerabilityScanInfo{
-		_firstContainerVulnerabilityScanInfo,
-		_secondContainerVulnerabilityScanInfo,
-	}
+	expectedInfo := []*contracts.ContainerVulnerabilityScanInfo{_firstContainerVulnerabilityScanInfo, _secondContainerVulnerabilityScanInfo}
+	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", &pod.Spec, &pod.ObjectMeta, &pod.TypeMeta).Return(expectedInfo, nil).Once()
 
 	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider())
 
@@ -198,7 +192,7 @@ func (suite *TestSuite) Test_Handle_OneContainerOneInitContainer_ShouldPatchedTw
 	// Test
 	suite.Equal(1, len(resp.Patches))
 	patch := resp.Patches[0]
-	suite.checkPatch(expected, patch)
+	suite.checkPatch(expectedInfo, patch)
 }
 
 func (suite *TestSuite) checkPatch(expected []*contracts.ContainerVulnerabilityScanInfo, patch jsonpatch.JsonPatchOperation) {
@@ -258,6 +252,7 @@ func createPodForTests(containers []corev1.Container, initContainers []corev1.Co
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "podTest",
 		},
+		TypeMeta: metav1.TypeMeta{},
 		Spec: corev1.PodSpec{
 			Containers:     containers,
 			InitContainers: initContainers,
