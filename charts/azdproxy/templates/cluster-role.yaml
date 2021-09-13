@@ -7,6 +7,7 @@ metadata:
   {{ include "common.labels" . | indent 6 }}
 rules:
   # Cert-controller is using get,list and watch verbs on secrets
+  # Tag2Digest access to pull secrets
   - apiGroups: [ "" ]
     resources: [ "secrets" ]
     verbs: [ "list", "get", "watch" ]
@@ -24,3 +25,7 @@ rules:
     resources: [ "mutatingwebhookconfigurations" ]
     verbs: [ "create","delete","get","list","patch","update","watch" ]
     resourceNames: [ "{{ .Values.AzDProxy.prefixResourceDeployment }}-mutating-webhook-configuration" ]
+    # Tag2Digest access to pull secrets
+  - apiGroups: [ "" ]
+    resources: [ "serviceaccounts" ]
+    verbs: [ "list", "get", "watch" ]

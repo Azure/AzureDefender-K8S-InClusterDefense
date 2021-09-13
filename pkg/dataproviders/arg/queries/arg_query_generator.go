@@ -4,7 +4,7 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
-	"github.com/pkg/errors"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/utils"
 	"strings"
 	"text/template"
 )
@@ -12,10 +12,6 @@ import (
 const (
 	// _imageScanTemplateName is constant that represent the template name that will be used when creating go template.
 	_imageScanTemplateName = "ImageVulnerabilityScanQuery"
-)
-
-var (
-	_nilArgumentError = errors.New("Received Null Argument")
 )
 
 // ARGQueryGenerator QueryGenerator creates ARG queries from pre-defined templates
@@ -51,8 +47,8 @@ func CreateARGQueryGenerator(instrumentationProvider instrumentation.IInstrument
 func (generator *ARGQueryGenerator) GenerateImageVulnerabilityScanQuery(queryParameters *ContainerVulnerabilityScanResultsQueryParameters) (string, error) {
 	tracer := generator.tracerProvider.GetTracer("GenerateImageVulnerabilityScanQuery")
 	if queryParameters == nil {
-		tracer.Error(_nilArgumentError, "queryParameters is nil")
-		return "", _nilArgumentError
+		tracer.Error(utils.NilArgumentError, "queryParameters is nil")
+		return "", utils.NilArgumentError
 	}
 	tracer.Info("Generate new query", "queryParameters", queryParameters)
 	// Execute template using parameters
