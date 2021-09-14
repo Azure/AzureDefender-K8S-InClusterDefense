@@ -1,27 +1,26 @@
 package main
 
 import (
-	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/dataproviders/arg"
-	argqueries "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/dataproviders/arg/queries"
-	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/azureauth"
-	azureauthwrappers "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/azureauth/wrappers"
-	registryauthazure "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/acrauth"
-	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/crane"
-	registrywrappers "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/wrappers"
-	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/tag2digest"
-	argbase "github.com/Azure/azure-sdk-for-go/services/resourcegraph/mgmt/2021-03-01/resourcegraph"
-	"k8s.io/client-go/kubernetes"
-	"log"
-	"time"
-	"net/http"
-	k8sclientconfig "sigs.k8s.io/controller-runtime/pkg/client/config"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/cmd/webhook"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/azdsecinfo"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/dataproviders/arg"
+	argqueries "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/dataproviders/arg/queries"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/dataproviders/arg/wrappers"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/azureauth"
+	azureauthwrappers "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/azureauth/wrappers"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/config"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/tivan"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
+	registryauthazure "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/acrauth"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/crane"
+	registrywrappers "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/wrappers"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/tag2digest"
+	"k8s.io/client-go/kubernetes"
+	"log"
+	"net/http"
 	"os"
+	k8sclientconfig "sigs.k8s.io/controller-runtime/pkg/client/config"
 )
 
 const (
@@ -52,20 +51,20 @@ func main() {
 	azdIdentityEnvAzureAuthorizerConfiguration := new(azureauth.EnvAzureAuthorizerConfiguration)
 	kubeletIdentityEnvAzureAuthorizerConfiguration := new(azureauth.EnvAzureAuthorizerConfiguration)
 	craneWrapper := new(registrywrappers.CraneWrapper)
-	argBaseClient := argbase.New()
+	argBaseClientConfiguration := new(wrappers.ARGBaseClientConfiguration)
 
 	// Create a map between configuration object and key in main config file
 	keyConfigMap := map[string]interface{}{
-		"Webhook.ManagerConfiguration":                            managerConfiguration,
-		"Webhook.CertRotatorConfiguration":                        certRotatorConfiguration,
-		"Webhook.ServerConfiguration":                             serverConfiguration,
-		"Webhook.HandlerConfiguration":                            handlerConfiguration,
-		"Instrumentation.tivan.TivanInstrumentationConfiguration": tivanInstrumentationConfiguration,
-		"Instrumentation.trace.TracerConfiguration":               tracerConfiguration,
-		"azdIdentity.EnvAzureAuthorizerConfiguration":             azdIdentityEnvAzureAuthorizerConfiguration,
-		"kubeletIdentity.EnvAzureAuthorizerConfiguration":         kubeletIdentityEnvAzureAuthorizerConfiguration,
-		"Acr.CraneWrappersConfiguration":		   			   	   &craneWrapper,
-		"Arg.ArgBaseClient.RetryPolicyConfiguration": 			   &argBaseClient.Client,
+		"webhook.managerConfiguration":                            managerConfiguration,
+		"webhook.certRotatorConfiguration":                        certRotatorConfiguration,
+		"webhook.serverConfiguration":                             serverConfiguration,
+		"webhook.handlerConfiguration":                            handlerConfiguration,
+		"instrumentation.tivan.tivanInstrumentationConfiguration": tivanInstrumentationConfiguration,
+		"instrumentation.trace.tracerConfiguration":               tracerConfiguration,
+		"azdIdentity.envAzureAuthorizerConfiguration":             azdIdentityEnvAzureAuthorizerConfiguration,
+		"kubeletIdentity.envAzureAuthorizerConfiguration":         kubeletIdentityEnvAzureAuthorizerConfiguration,
+		"arg.argBaseClient.retryPolicyConfiguration": 			   argBaseClientConfiguration,
+		"acr.craneWrappersConfiguration":		   			   	   &craneWrapper,
 	}
 
 	for key, configObject := range keyConfigMap {
@@ -129,7 +128,7 @@ func main() {
 	if err != nil {
 		log.Fatal("main.azdIdentityAuthorizerFactory.NewEnvAzureAuthorizerFactory.CreateARMAuthorizer", err)
 	}
-	argBaseClient.RetryDuration = argBaseClient.RetryDuration * time.Millisecond
+	argBaseClient, err := argBaseClientConfiguration.NewArgBaseClientWrapper()
 	argBaseClient.Authorizer = azdIdentityAuthorizer
 	argClient := arg.NewARGClient(instrumentationProvider, argBaseClient)
 	argQueryGenerator, err := argqueries.CreateARGQueryGenerator(instrumentationProvider)

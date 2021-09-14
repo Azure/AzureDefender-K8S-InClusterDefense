@@ -66,7 +66,7 @@ azDProxy:
       # -- The mount path of the volume.
       mountPath: "/config"
     # Path of the configuration file
-    filePath: "/config/AppConfig.yaml"
+    filePath: "/config/appConfig.yaml"
 
   # Instrumentation values
   instrumentation:
@@ -98,17 +98,21 @@ azDProxy:
   # ACR policy values
   acr:
     craneWrappers:
-      RetryPolicyConfiguration:
+      retryPolicyConfiguration:
         # Number of retry attempts
-        RetryAttempts: 3
+        retryAttempts: 3
         # Sleep duration between retries (in milliseconds):
-        RetryDuration: 10
+        retryDuration: 10
+        # timeunit for the backoff duration
+        timeUnit: "ms"
 
   # ARG values
   arg:
-    ArgBaseClient:
-      RetryPolicyConfiguration:
+    argBaseClient:
+      retryPolicyConfiguration:
         # Number of retry attempts
-        RetryAttempts: 3
+        retryAttempts: 3
         # Sleep duration between retries (in milliseconds):
-        RetryDuration: 100
+        retryDuration: 100
+        # timeunit for the backoff duration
+        timeUnit: "ms"

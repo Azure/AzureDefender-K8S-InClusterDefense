@@ -31,7 +31,7 @@ azdIdentity:
     mSIClientId: "" # This should be kept empty while you are running the service locally.
 
 kubeletIdentity:
-  eEnvAzureAuthorizerConfiguration:
+  envAzureAuthorizerConfiguration:
     isLocalDevelopmentMode: true
     mSIClientId: "" # This should be kept empty while you are running the service locally.
 
@@ -39,9 +39,11 @@ acr:
   craneWrappersConfiguration:
     retryAttempts: 3
     retryDuration: 10
+    timeUnit: "ms"
 
-Arg:
-  ArgBaseClient:
-    RetryPolicyConfiguration:
-      RetryAttempts: 3
-      RetryDuration: 100
+arg:
+  argBaseClient:
+    retryPolicyConfiguration:
+      retryAttempts: 3
+      retryDuration: 100
+      timeUnit: "ms"

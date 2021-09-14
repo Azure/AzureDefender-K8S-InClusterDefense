@@ -66,7 +66,7 @@ azDProxy:
       # -- The mount path of the volume.
       mountPath: "/config"
     # Path of the configuration file
-    filePath: "/config/AppConfig.yaml"
+    filePath: "/config/appConfig.yaml"
 
   # Instrumentation values
   instrumentation:
@@ -103,6 +103,8 @@ azDProxy:
         retryAttempts: 3
         # Sleep duration between retries (in milliseconds):
         retryDuration: 10
+        # timeunit for the backoff duration
+        timeUnit: "ms"
 
   # ARG values
   arg:
@@ -112,3 +114,5 @@ azDProxy:
         retryAttempts: 3
         # Sleep duration between retries (in milliseconds):
         retryDuration: 100
+        # timeunit for the backoff duration
+        timeUnit: "ms"
