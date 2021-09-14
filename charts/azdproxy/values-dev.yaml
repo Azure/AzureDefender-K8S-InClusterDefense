@@ -1,7 +1,7 @@
 # Default values for  dev environment AzDProxy.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
-AzDProxy:
+azDProxy:
   # -- common prefix name for all resources.
   prefixResourceDeployment: azure-defender-proxy
   # Webhook values
@@ -23,23 +23,23 @@ AzDProxy:
       # -- The mount path of the volume.
       mountPath: "/certs"
     # Configuration values of Cert Rotator.
-    CertRotatorConfiguration:
+    certRotatorConfiguration:
       # -- secret name
-      SecretName: "cert"
+      secretName: "cert"
       # -- service name
-      ServiceName: "service"
+      serviceName: "service"
       # -- webhook name
-      WebhookName: "mutating-webhook-configuration"
+      webhookName: "mutating-webhook-configuration"
       # -- ca name
-      CaName: "ca"
+      caName: "ca"
     # Configuration values of server.
-    ServerConfiguration:
+    serverConfiguration:
       # -- is the cert rotation enabled.
-      EnableCertRotation: true
+      enableCertRotation: true
     # Configuration values of handler.
-    HandlerConfiguration:
+    handlerConfiguration:
       # -- is the run on dry mode.
-      RunOnDryRunMode: false
+      runOnDryRunMode: false
 
     # -- The resources of the webhook.
     resources:
@@ -74,35 +74,35 @@ AzDProxy:
     # Tivan values
     tivan:
       # Values for Tivan's instrumentation configuration:
-      TivanInstrumentationConfiguration:
-        MdmNamespace: "Tivan.Collector.Pods"
+      tivanInstrumentationConfiguration:
+        mdmNamespace: "Tivan.Collector.Pods"
 
     # Trace values
     trace:
       # Values for tracer's configuration:
-      TracerConfiguration:
-        TracerLevel: 0
+      tracerConfiguration:
+        tracerLevel: 0
 
     # Azure Auth values
     azureauth:
       envAzureAuthorizerConfiguration:
-        IsLocalDevelopmentMode: false
-        MSIClientId: "a554f933-695f-4ecf-abe4-2a7515e8c1b7"
+        isLocalDevelopmentMode: false
+        mSIClientId: "a554f933-695f-4ecf-abe4-2a7515e8c1b7"
 
   # ACR policy values
   acr:
     craneWrappers:
-      RetryPolicyConfiguration:
+      retryPolicyConfiguration:
         # Number of execution attempts
-        RetryAttempts: 3
+        retryAttempts: 3
         # Sleep duration between retries (in milliseconds):
-        RetryDuration: 10
+        retryDuration: 10
 
   # ARG values
   arg:
-    ArgBaseClient:
-      RetryPolicyConfiguration:
+    argBaseClient:
+      retryPolicyConfiguration:
         # Number of retry attempts
-        RetryAttempts: 3
+        retryAttempts: 3
         # Sleep duration between retries (in milliseconds):
-        RetryDuration: 100
+        retryDuration: 100

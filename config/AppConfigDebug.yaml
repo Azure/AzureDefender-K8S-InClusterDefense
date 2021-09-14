@@ -1,39 +1,39 @@
 # A static app's configuration file. Used for local debugging.
-Webhook:
-  CertRotatorConfiguration:
-    SecretName: "azure-defender-proxy-cert"
-    ServiceName: "azure-defender-proxy-service"
-    WebhookName: "azure-defender-proxy-mutating-webhook-configuration"
-    CaName: "azure-defender-proxy-ca"
-    CaOrganization: "azure-defender-proxy"
-    CertDir: "/certs"
-    Namespace: "kube-system"
-  ManagerConfiguration:
-    Port: 8000
-    CertDir: "/certs"
-  ServerConfiguration:
-    Path: "/mutate"
-    EnableCertRotation: true
-  HandlerConfiguration:
-    DryRun: false
-Instrumentation:
-  Trace:
-    TracerConfiguration:
-      TracerLevel: 0
-  Tivan:
-    TivanInstrumentationConfiguration:
-      ComponentName: "azdproxy"
-      MdmNamespace: "Tivan.Collector.Pods"
+webhook:
+  certRotatorConfiguration:
+    secretName: "azure-defender-proxy-cert"
+    serviceName: "azure-defender-proxy-service"
+    webhookName: "azure-defender-proxy-mutating-webhook-configuration"
+    caName: "azure-defender-proxy-ca"
+    caOrganization: "azure-defender-proxy"
+    certDir: "/certs"
+    namespace: "kube-system"
+  managerConfiguration:
+    port: 8000
+    certDir: "/certs"
+  serverConfiguration:
+    path: "/mutate"
+    enableCertRotation: true
+  handlerConfiguration:
+    dryRun: false
+instrumentation:
+  trace:
+    tracerConfiguration:
+      tracerLevel: 0
+  tivan:
+    tivanInstrumentationConfiguration:
+      componentName: "azdproxy"
+      mdmNamespace: "Tivan.Collector.Pods"
 
-Azureauth:
-  EnvAzureAuthorizerConfiguration:
-    IsLocalDevelopmentMode: true
-    MSIClientId: "" # This should be kept empty while you are running the service locally.
+azureauth:
+  envAzureAuthorizerConfiguration:
+    isLocalDevelopmentMode: true
+    mSIClientId: "" # This should be kept empty while you are running the service locally.
 
-Acr:
-  CraneWrappersConfiguration:
-    RetryAttempts: 3
-    RetryDuration: 10
+acr:
+  craneWrappersConfiguration:
+    retryAttempts: 3
+    retryDuration: 10
 
 Arg:
   ArgBaseClient:
