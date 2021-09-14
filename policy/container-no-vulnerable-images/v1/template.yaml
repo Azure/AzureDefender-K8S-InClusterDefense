@@ -21,7 +21,7 @@ spec:
             severityThresholdForExcludingNotPatchableFindings:
               type: string
 
-            exlcudeFindingIDs:
+            excludeFindingIDs:
               type: array
               items:
                 type: string
@@ -37,11 +37,10 @@ spec:
                   type: integer
 
 
-  #TODO add auto generation to reduce support overhead to copy changes each time.. leaving it a bit risky
   targets:
     - target: admission.k8s.gatekeeper.sh
       rego: |
-        package k8sazuredefendervulnerableimages
+        package k8sazuredefenderblockvulnerableimages
         # This violation checks if there is a container with unscanned scanStatus.
         violation[{"msg":msg, "details": details}] {
             # Extract containers
@@ -50,7 +49,7 @@ spec:
             # Check if the scan status of the container is unscanned.
             container["scanStatus"] == "unscanned"
             # Construct violation msg:
-            msg := sprintf("Unscanned image found in the container %v", [container.name])
+            msg := sprintf("Unscanned image found in the container <%v>", [container.name])
             details := container
         }
         # This violation checks if there is some container that it's sum of the severities of the scanFindings are exceed some thresholds.
@@ -64,15 +63,15 @@ spec:
             scanFindings := filterScanFindings(container["scanFindings"])
             isSeverityAboveThreshold(scanFindings)
             # Construct violation msg
-            msg := sprintf("Found vulnerable container: %v", [container.name])
+            msg := sprintf("Found vulnerable container: <%v>", [container.name])
             details := {"Container": container, "ScanFindings": scanFindings}
         }
         # Extract the containers from the review object.
         getApplicableContainersScanInfo(review) = containers{
           # Extract ContainerVulnerabilityScanInfoList
           containerVulnerabilityScanInfoList := getContainerVulnerabilityScanInfoList(review)
-          # Verify that the uid request that appears in containerVulnerabilityScanInfoList is match to the uid request of the request.
-          not isStaleAnnotations(containerVulnerabilityScanInfoList)
+          # Check the the anotatins are new (if not, don't throw any violation)
+          not areTheAnnotationsStale(containerVulnerabilityScanInfoList)
           # Filter containers from containerVulnerabilityScanInfoList
           containers := filterContainers(containerVulnerabilityScanInfoList["containers"])
         }
@@ -83,8 +82,8 @@ spec:
           scanResults := review.object.metadata.annotations["azuredefender.io/containers.vulnerability.scan.info"]
           containerVulnerabilityScanInfoList := json.unmarshal(scanResults)
         }
-        # Check if the annotations are stale - we check it because in case continue with evaluation only if the annotations are not stale.
-        isStaleAnnotations(containerVulnerabilityScanInfoList){
+        # Check if the annotations are stale - we use the time in the "managedFields" field.
+        areTheAnnotationsStale(containerVulnerabilityScanInfoList){
             # Extract enrichment timestamp.
             timestamp := containerVulnerabilityScanInfoList["generatedTimestamp"]
             enrichmentTimestamp := time.parse_rfc3339_ns(timestamp)
@@ -123,12 +122,12 @@ spec:
         # Filter all scanfindings that appear in the excludeFindingIDsList.
         filterScanFindingsExcludedFindings(scanFindings) = out{
           out = [scanFinding | 	scanFinding := scanFindings[_]
-          not isScanFindingAppearsInExlcudeFindingIDsList(scanFinding)]
+          not isScanFindingAppearsInexcludeFindingIDsList(scanFinding)]
         }
         # Checks if the scanFinding appers in the list of the excluded findings id:
-        isScanFindingAppearsInExlcudeFindingIDsList(scanFinding){
+        isScanFindingAppearsInexcludeFindingIDsList(scanFinding){
           scanFindingID := scanFinding["id"]
-          excludedScanFinding := input.parameters.exlcudeFindingIDs[_]
+          excludedScanFinding := input.parameters.excludeFindingIDs[_]
           scanFindingID == excludedScanFinding
         }
         # Filter all scanfindings that are not patchable and their severity is below severityThresholdForExcludingNotPatchableFindings.
@@ -144,7 +143,7 @@ spec:
           not scanFinding["patchable"]
           # Create map between severity to the integer level. None = 0, Low = 1, Medium = 2, High = 3
           severityToLevel := {"None":0, "Low":1, "Medium":2, "High": 3}
-          # Check that the level of the scanFindexamplesing is above the threshold level.
+          # Check that the level of the scanFinding is above the threshold level.
           severityToLevel[scanFinding["severity"]] > severityToLevel[input.parameters.severityThresholdForExcludingNotPatchableFindings]
         }
         # Checks if the total of High severity is above the threshold
