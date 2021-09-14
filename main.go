@@ -5,12 +5,16 @@ import (
 	argqueries "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/dataproviders/arg/queries"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/azureauth"
 	azureauthwrappers "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/azureauth/wrappers"
-	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry"
+	registryauthazure "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/acrauth"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/crane"
 	registrywrappers "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/wrappers"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/tag2digest"
 	argbase "github.com/Azure/azure-sdk-for-go/services/resourcegraph/mgmt/2021-03-01/resourcegraph"
+	"k8s.io/client-go/kubernetes"
 	"log"
 	"time"
-
+	"net/http"
+	k8sclientconfig "sigs.k8s.io/controller-runtime/pkg/client/config"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/cmd/webhook"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/azdsecinfo"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/config"
@@ -45,7 +49,8 @@ func main() {
 	metricSubmitterConfiguration := new(tivan.MetricSubmitterConfiguration)
 	tracerConfiguration := new(trace.TracerConfiguration)
 	instrumentationConfiguration := new(instrumentation.InstrumentationProviderConfiguration)
-	envAzureAuthorizerConfiguration := new(azureauth.EnvAzureAuthorizerConfiguration)
+	azdIdentityEnvAzureAuthorizerConfiguration := new(azureauth.EnvAzureAuthorizerConfiguration)
+	kubeletIdentityEnvAzureAuthorizerConfiguration := new(azureauth.EnvAzureAuthorizerConfiguration)
 	craneWrapper := new(registrywrappers.CraneWrapper)
 	argBaseClient := argbase.New()
 
@@ -57,7 +62,8 @@ func main() {
 		"Webhook.HandlerConfiguration":                            handlerConfiguration,
 		"Instrumentation.tivan.TivanInstrumentationConfiguration": tivanInstrumentationConfiguration,
 		"Instrumentation.trace.TracerConfiguration":               tracerConfiguration,
-		"Azureauth.EnvAzureAuthorizerConfiguration":               envAzureAuthorizerConfiguration,
+		"azdIdentity.EnvAzureAuthorizerConfiguration":             azdIdentityEnvAzureAuthorizerConfiguration,
+		"kubeletIdentity.EnvAzureAuthorizerConfiguration":         kubeletIdentityEnvAzureAuthorizerConfiguration,
 		"Acr.CraneWrappersConfiguration":		   			   	   &craneWrapper,
 		"Arg.ArgBaseClient.RetryPolicyConfiguration": 			   &argBaseClient.Client,
 	}
@@ -85,18 +91,46 @@ func main() {
 		log.Fatal("main.instrumentationProviderFactory.CreateInstrumentationProvider", err)
 	}
 
-	authorizerFactory := azureauth.NewEnvAzureAuthorizerFactory(envAzureAuthorizerConfiguration, new(azureauthwrappers.AzureAuthWrapper))
-	authorizer, err := authorizerFactory.CreateARMAuthorizer()
+	kubeletIdentityAuthorizerFactory := azureauth.NewEnvAzureAuthorizerFactory(azdIdentityEnvAzureAuthorizerConfiguration, new(azureauthwrappers.AzureAuthWrapper))
+	kubeletIdentityAuthorizer, err := kubeletIdentityAuthorizerFactory.CreateARMAuthorizer()
 	if err != nil {
-		log.Fatal("main.NewEnvAzureAuthorizerFactory.CreateARMAuthorizer", err)
+		log.Fatal("main.kubeletIdentityAuthorizerFactory.NewEnvAzureAuthorizerFactory.CreateARMAuthorizer", err)
 	}
 
+
+	k8sclientconfig, err := k8sclientconfig.GetConfig()
+	if err != nil {
+		log.Fatal("main.k8sclientconfig.GetConfig", err)
+	}
+	clientK8s, err := kubernetes.NewForConfig(k8sclientconfig)
+	if err != nil {
+		log.Fatal("main.kubernetes.NewForConfig", err)
+	}
+
+	bearerAuthorizer, ok := kubeletIdentityAuthorizer.(azureauth.IBearerAuthorizer)
+	if !ok {
+		log.Fatal("main.kubeletIdentityAuthorizer.bearerAuthorizer type assertion", err)
+
+	}
+
+	acrTokenExchanger := registryauthazure.NewACRTokenExchanger(instrumentationProvider, &http.Client{})
+	acrTokenProvider := registryauthazure.NewACRTokenProvider(instrumentationProvider, acrTokenExchanger, bearerAuthorizer)
+
+	k8sKeychainFactory := crane.NewK8SKeychainFactory(instrumentationProvider, clientK8s)
+	acrKeychainFactory := crane.NewACRKeychainFactory(instrumentationProvider, acrTokenProvider)
+
 	// Registry Client
-	registryClient := registry.NewCraneRegistryClient(instrumentationProvider, craneWrapper)
+	registryClient := crane.NewCraneRegistryClient(instrumentationProvider, new(registrywrappers.CraneWrapper), acrKeychainFactory, k8sKeychainFactory)
+	tag2digestResolver := tag2digest.NewTag2DigestResolver(instrumentationProvider, registryClient)
 
 	// ARG
+	azdIdentityAuthorizerFactory := azureauth.NewEnvAzureAuthorizerFactory(azdIdentityEnvAzureAuthorizerConfiguration, new(azureauthwrappers.AzureAuthWrapper))
+	azdIdentityAuthorizer, err := azdIdentityAuthorizerFactory.CreateARMAuthorizer()
+	if err != nil {
+		log.Fatal("main.azdIdentityAuthorizerFactory.NewEnvAzureAuthorizerFactory.CreateARMAuthorizer", err)
+	}
 	argBaseClient.RetryDuration = argBaseClient.RetryDuration * time.Millisecond
-	argBaseClient.Authorizer = authorizer
+	argBaseClient.Authorizer = azdIdentityAuthorizer
 	argClient := arg.NewARGClient(instrumentationProvider, argBaseClient)
 	argQueryGenerator, err := argqueries.CreateARGQueryGenerator(instrumentationProvider)
 	if err != nil {
@@ -106,7 +140,7 @@ func main() {
 	argDataProvider := arg.NewARGDataProvider(instrumentationProvider, argClient, argQueryGenerator)
 
 	// Handler and azdSecinfoProvider
-	azdSecInfoProvider := azdsecinfo.NewAzdSecInfoProvider(instrumentationProvider, argDataProvider, registryClient)
+	azdSecInfoProvider := azdsecinfo.NewAzdSecInfoProvider(instrumentationProvider, argDataProvider, tag2digestResolver)
 	handler := webhook.NewHandler(azdSecInfoProvider, handlerConfiguration, instrumentationProvider)
 
 	// Manager and server

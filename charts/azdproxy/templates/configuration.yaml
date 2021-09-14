@@ -36,10 +36,14 @@ data:
         tivanInstrumentationConfiguration:
           componentName: {{ .Chart.Name | quote}}
           mdmNamespace: {{ .Values.AzDProxy.instrumentation.tivan.TivanInstrumentationConfiguration.MdmNamespace | quote}}
-    azureauth:
+    azdIdentity:
       envAzureAuthorizerConfiguration:
         isLocalDevelopmentMode: {{.Values.AzDProxy.azureauth.envAzureAuthorizerConfiguration.IsLocalDevelopmentMode}}
         mSIClientId: {{.Values.AzDProxy.azureauth.envAzureAuthorizerConfiguration.MSIClientId}}
+    kubeletIdentity:
+      envAzureAuthorizerConfiguration:
+        isLocalDevelopmentMode: {{.Values.AzDProxy.Deployment.IsLocalDevelopment}}
+        mSIClientId: {{.Values.AzDProxy.kubeletIdentity.EnvAzureAuthorizerConfiguration.MSIClientId}}
     acr:
       craneWrappersConfiguration:
           retryAttempts: {{ .Values.AzDProxy.wrappers.craneWrappers.RetryPolicyConfiguration.retryCount }}

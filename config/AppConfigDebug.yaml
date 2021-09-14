@@ -25,8 +25,13 @@ instrumentation:
       componentName: "azdproxy"
       mdmNamespace: "Tivan.Collector.Pods"
 
-azureauth:
+azdIdentity:
   envAzureAuthorizerConfiguration:
+    isLocalDevelopmentMode: true
+    mSIClientId: "" # This should be kept empty while you are running the service locally.
+
+kubeletIdentity:
+  eEnvAzureAuthorizerConfiguration:
     isLocalDevelopmentMode: true
     mSIClientId: "" # This should be kept empty while you are running the service locally.
 
@@ -40,4 +45,3 @@ Arg:
     RetryPolicyConfiguration:
       RetryAttempts: 3
       RetryDuration: 100
-
