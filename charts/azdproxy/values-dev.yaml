@@ -102,9 +102,7 @@ azDProxy:
         # Number of execution attempts
         retryAttempts: 3
         # Sleep duration between retries (in milliseconds):
-        retryDuration: 10
-        # timeunit for the backoff duration
-        timeUnit: "ms"
+        retryDuration: "10ms"
 
   # ARG values
   arg:
@@ -113,6 +111,4 @@ azDProxy:
         # Number of retry attempts
         retryAttempts: 3
         # Sleep duration between retries (in milliseconds):
-        retryDuration: 100
-        # timeunit for the backoff duration
-        timeUnit: "ms"
+        retryDuration: "100ms"

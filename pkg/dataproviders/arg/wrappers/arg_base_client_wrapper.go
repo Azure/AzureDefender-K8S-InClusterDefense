@@ -2,7 +2,9 @@ package wrappers
 
 import (
 	"context"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/utils"
 	argbase "github.com/Azure/azure-sdk-for-go/services/resourcegraph/mgmt/2021-03-01/resourcegraph"
+	"github.com/Azure/go-autorest/autorest"
 	"github.com/pkg/errors"
 	"time"
 )
@@ -11,27 +13,22 @@ import (
 type IARGBaseClientWrapper interface {
 	// Resources is wrapping arg base client resources
 	Resources(ctx context.Context, query argbase.QueryRequest) (result argbase.QueryResponse, err error)
-
-}
-
-type ARGBaseClientConfiguration struct {
-	// Number of attempts to retrieve digest from arg
-	RetryAttempts int
-	// time duration between each retry
-	RetryDuration time.Duration
-	// time-units for the backoff duration
-	TimeUnit string
 }
 
 // NewArgBaseClientWrapper get authorizer from auth.NewAuthorizerFromCLIWithResource
-func (wrapper *ARGBaseClientConfiguration) NewArgBaseClientWrapper() (argbase.BaseClient, error) {
+func NewArgBaseClientWrapper(retryPolicyConfiguration *utils.RetryPolicyConfiguration, authorizer autorest.Authorizer) (*argbase.BaseClient, error) {
+	// Create new client
 	argBaseClient := argbase.New()
-	argBaseClient.RetryAttempts = wrapper.RetryAttempts
-	parsedTimeUnit, err := time.ParseDuration(wrapper.TimeUnit)
-	if err != nil{
-		return argBaseClient, errors.Wrapf(err, "cannot parse given time unit", wrapper.TimeUnit)
+	// Assign the retry policy configuration to the client.
+	argBaseClient.RetryAttempts = retryPolicyConfiguration.RetryAttempts
+	retryDuration, err := time.ParseDuration(retryPolicyConfiguration.RetryDuration)
+	if err != nil {
+		return nil, errors.Wrapf(err, "cannot parse given retry duration <(%v)>", retryPolicyConfiguration.RetryDuration)
 	}
-	argBaseClient.RetryDuration = wrapper.RetryDuration * parsedTimeUnit
-	return argBaseClient, nil
-}
+	argBaseClient.RetryDuration = retryDuration
 
+	// Assign the authorizer to the client.
+	argBaseClient.Authorizer = authorizer
+
+	return &argBaseClient, nil
+}

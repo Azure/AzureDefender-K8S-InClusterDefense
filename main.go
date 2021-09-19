@@ -15,6 +15,7 @@ import (
 	registryauthazure "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/acrauth"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/crane"
 	registrywrappers "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/wrappers"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/utils"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/tag2digest"
 	"k8s.io/client-go/kubernetes"
 	"log"
@@ -50,8 +51,8 @@ func main() {
 	instrumentationConfiguration := new(instrumentation.InstrumentationProviderConfiguration)
 	azdIdentityEnvAzureAuthorizerConfiguration := new(azureauth.EnvAzureAuthorizerConfiguration)
 	kubeletIdentityEnvAzureAuthorizerConfiguration := new(azureauth.EnvAzureAuthorizerConfiguration)
-	craneWrapper := new(registrywrappers.CraneWrapper)
-	argBaseClientConfiguration := new(wrappers.ARGBaseClientConfiguration)
+	craneWrapperRetryPolicyConfiguration := new(utils.RetryPolicyConfiguration)
+	argBaseClientRetryPolicyConfiguration := new(utils.RetryPolicyConfiguration)
 
 	// Create a map between configuration object and key in main config file
 	keyConfigMap := map[string]interface{}{
@@ -63,8 +64,8 @@ func main() {
 		"instrumentation.trace.tracerConfiguration":               tracerConfiguration,
 		"azdIdentity.envAzureAuthorizerConfiguration":             azdIdentityEnvAzureAuthorizerConfiguration,
 		"kubeletIdentity.envAzureAuthorizerConfiguration":         kubeletIdentityEnvAzureAuthorizerConfiguration,
-		"arg.argBaseClient.retryPolicyConfiguration": 			   argBaseClientConfiguration,
-		"acr.craneWrappersConfiguration":		   			   	   &craneWrapper,
+		"arg.argBaseClient.retryPolicyConfiguration":              argBaseClientRetryPolicyConfiguration,
+		"acr.craneWrappersConfiguration.retryPolicyConfiguration": craneWrapperRetryPolicyConfiguration,
 	}
 
 	for key, configObject := range keyConfigMap {
@@ -96,7 +97,6 @@ func main() {
 		log.Fatal("main.kubeletIdentityAuthorizerFactory.NewEnvAzureAuthorizerFactory.CreateARMAuthorizer", err)
 	}
 
-
 	k8sclientconfig, err := k8sclientconfig.GetConfig()
 	if err != nil {
 		log.Fatal("main.k8sclientconfig.GetConfig", err)
@@ -118,8 +118,9 @@ func main() {
 	k8sKeychainFactory := crane.NewK8SKeychainFactory(instrumentationProvider, clientK8s)
 	acrKeychainFactory := crane.NewACRKeychainFactory(instrumentationProvider, acrTokenProvider)
 
+	craneWrapper := registrywrappers.NewCraneWrapper(craneWrapperRetryPolicyConfiguration)
 	// Registry Client
-	registryClient := crane.NewCraneRegistryClient(instrumentationProvider, new(registrywrappers.CraneWrapper), acrKeychainFactory, k8sKeychainFactory)
+	registryClient := crane.NewCraneRegistryClient(instrumentationProvider, craneWrapper, acrKeychainFactory, k8sKeychainFactory)
 	tag2digestResolver := tag2digest.NewTag2DigestResolver(instrumentationProvider, registryClient)
 
 	// ARG
@@ -128,8 +129,10 @@ func main() {
 	if err != nil {
 		log.Fatal("main.azdIdentityAuthorizerFactory.NewEnvAzureAuthorizerFactory.CreateARMAuthorizer", err)
 	}
-	argBaseClient, err := argBaseClientConfiguration.NewArgBaseClientWrapper()
-	argBaseClient.Authorizer = azdIdentityAuthorizer
+	argBaseClient, err := wrappers.NewArgBaseClientWrapper(argBaseClientRetryPolicyConfiguration, azdIdentityAuthorizer)
+	if err != nil {
+		log.Fatal("main.NewArgBaseClientWrapper", err)
+	}
 	argClient := arg.NewARGClient(instrumentationProvider, argBaseClient)
 	argQueryGenerator, err := argqueries.CreateARGQueryGenerator(instrumentationProvider)
 	if err != nil {

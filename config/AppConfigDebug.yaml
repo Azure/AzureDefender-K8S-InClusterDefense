@@ -37,13 +37,12 @@ kubeletIdentity:
 
 acr:
   craneWrappersConfiguration:
-    retryAttempts: 3
-    retryDuration: 10
-    timeUnit: "ms"
+    retryPolicyConfiguration:
+      retryAttempts: 3
+      retryDuration: "10ms"
 
 arg:
   argBaseClient:
     retryPolicyConfiguration:
       retryAttempts: 3
-      retryDuration: 100
-      timeUnit: "ms"
+      retryDuration: "100ms"

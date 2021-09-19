@@ -46,13 +46,11 @@ data:
         mSIClientId: {{.Values.azDProxy.kubeletIdentity.envAzureAuthorizerConfiguration.mSIClientId}}
     acr:
       craneWrappersConfiguration:
+        retryPolicyConfiguration:
           retryAttempts: {{ .Values.azDProxy.acr.craneWrappers.retryPolicyConfiguration.retryAttempts }}
           retryDuration: {{ .Values.azDProxy.acr.craneWrappers.retryPolicyConfiguration.retryDuration }}
-          timeUnit: {{ .Values.azDProxy.acr.craneWrappers.retryPolicyConfiguration.timeUnit }}
     arg:
       argBaseClient:
         retryPolicyConfiguration:
           retryAttempts: {{ .Values.azDProxy.arg.argBaseClient.retryPolicyConfiguration.retryAttempts }}
           retryDuration: {{ .Values.azDProxy.arg.argBaseClient.retryPolicyConfiguration.retryDuration }}
-          timeUnit: {{ .Values.azDProxy.arg.argBaseClient.retryPolicyConfiguration.timeUnit }}
-
