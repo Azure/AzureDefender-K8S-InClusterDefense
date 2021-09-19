@@ -4,6 +4,8 @@ package mocks
 
 import (
 	contracts "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/azdsecinfo/contracts"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	mock "github.com/stretchr/testify/mock"
 
 	v1 "k8s.io/api/core/v1"
@@ -14,22 +16,22 @@ type IAzdSecInfoProvider struct {
 	mock.Mock
 }
 
-// GetContainerVulnerabilityScanInfo provides a mock function with given fields: _a0
-func (_m *IAzdSecInfoProvider) GetContainerVulnerabilityScanInfo(_a0 *v1.Container) (*contracts.ContainerVulnerabilityScanInfo, error) {
-	ret := _m.Called(_a0)
+// GetContainersVulnerabilityScanInfo provides a mock function with given fields: podSpec, resourceMetadata, resourceKind
+func (_m *IAzdSecInfoProvider) GetContainersVulnerabilityScanInfo(podSpec *v1.PodSpec, resourceMetadata *metav1.ObjectMeta, resourceKind *metav1.TypeMeta) ([]*contracts.ContainerVulnerabilityScanInfo, error) {
+	ret := _m.Called(podSpec, resourceMetadata, resourceKind)
 
-	var r0 *contracts.ContainerVulnerabilityScanInfo
-	if rf, ok := ret.Get(0).(func(*v1.Container) *contracts.ContainerVulnerabilityScanInfo); ok {
-		r0 = rf(_a0)
+	var r0 []*contracts.ContainerVulnerabilityScanInfo
+	if rf, ok := ret.Get(0).(func(*v1.PodSpec, *metav1.ObjectMeta, *metav1.TypeMeta) []*contracts.ContainerVulnerabilityScanInfo); ok {
+		r0 = rf(podSpec, resourceMetadata, resourceKind)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*contracts.ContainerVulnerabilityScanInfo)
+			r0 = ret.Get(0).([]*contracts.ContainerVulnerabilityScanInfo)
 		}
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(*v1.Container) error); ok {
-		r1 = rf(_a0)
+	if rf, ok := ret.Get(1).(func(*v1.PodSpec, *metav1.ObjectMeta, *metav1.TypeMeta) error); ok {
+		r1 = rf(podSpec, resourceMetadata, resourceKind)
 	} else {
 		r1 = ret.Error(1)
 	}
