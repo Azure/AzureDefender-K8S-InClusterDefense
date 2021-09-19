@@ -1,7 +1,7 @@
 # Default values for AzDProxy.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
-azDProxy:
+AzDProxy:
   # -- common prefix name for all resources.
   prefixResourceDeployment: azure-defender-proxy
   # Webhook values
