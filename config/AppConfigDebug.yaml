@@ -43,8 +43,8 @@ cache:
     targetport: 6379
 
   argDataProviderCacheConfiguration:
-    Addr: "azure-defender-proxy-redis-service:6379"
-    Db: 0
+    address: "azure-defender-proxy-redis-service:6379"
+    table: 0
 
   tokensCacheConfiguration:
     # In bytes, where 1024 * 1024 represents a single Megabyte, and 100 * 1024*1024 represents 100 Megabytes.

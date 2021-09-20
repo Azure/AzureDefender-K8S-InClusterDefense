@@ -53,8 +53,8 @@ data:
         targetport: {{.Values.AzDProxy.cache.redisClient.targetport}}
 
       argDataProviderCacheConfiguration:
-        Addr: {{.Values.AzDProxy.cache.argDataProviderCacheConfiguration.Addr}}
-        Db: {{.Values.AzDProxy.cache.argDataProviderCacheConfiguration.Db}}
+        address: {{.Values.AzDProxy.cache.argDataProviderCacheConfiguration.address}}
+        table: {{.Values.AzDProxy.cache.argDataProviderCacheConfiguration.table}}
 
       tokensCacheConfiguration:
         cacheSize: {{.Values.AzDProxy.cache.tokensCacheConfiguration.cacheSize}} # in Bytes

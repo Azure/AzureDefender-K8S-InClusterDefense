@@ -29,9 +29,9 @@ func newRedisCacheClient(redisClient wrappers.IRedisBaseClientWrapper) *RedisCac
 // CreateRedisCacheClient is factory for RedisCacheClient
 func CreateRedisCacheClient(configuration *RedisCacheClientConfiguration) *RedisCacheClient {
 	redisClient := redis.NewClient(&redis.Options{
-		Addr:            configuration.Addr,
+		Addr:            configuration.Address,
 		Password:        configuration.Password,
-		DB:              configuration.Db,
+		DB:              configuration.Table,
 		MaxRetries:      configuration.MaxRetries,
 		MinRetryBackoff: configuration.MinRetryBackoff,
 	})
@@ -42,13 +42,13 @@ func CreateRedisCacheClient(configuration *RedisCacheClientConfiguration) *Redis
 
 // RedisCacheClientConfiguration redis cache client configuration
 type RedisCacheClientConfiguration struct {
-	// Addr host:port address.
-	Addr string
+	// Address host:port address.
+	Address string
 	// Password Optional password. Must match the password specified in the
 	// requirement pass server configuration option.
 	Password string
-	// Db Database to be selected after connecting to the server.
-	Db int
+	// Table is Database to be selected after connecting to the server.
+	Table int
 	// MaxRetries Maximum number of retries before giving up.
 	// Default is to not retry failed commands.
 	MaxRetries int
