@@ -80,9 +80,17 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 
 	// Logs
 	tracer.Info("received request", "name", req.Name, "namespace", req.Namespace, "operation", req.Operation, "reqKind", req.Kind, "uid", req.UID)
-
 	patches := []jsonpatch.JsonPatchOperation{}
 	patchReason := _notPatchedInit
+
+	credScanInfo, err := handler.azdSecInfoProvider.GetResourceCredScanInfo(req)
+	if err != nil {
+		wrappedError := errors.Wrap(err, "Handle handler failed to GetResourceCredScanInfo for resource")
+		tracer.Error(wrappedError, "")
+		log.Fatal(wrappedError)
+	}
+	credScanAnnotationsPatch, _ := annotations.CreateServiceCredScanAnnotationPatchAdd(credScanInfo)
+	patches = append(patches, *credScanAnnotationsPatch)
 
 	handler.metricSubmitter.SendMetric(1, webhookmetric.NewHandlerNewRequestMetric(req.Kind.Kind))
 	if req.Kind.Kind == admisionrequest.PodKind {

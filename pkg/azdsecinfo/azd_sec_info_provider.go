@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/azdsecinfo/contracts"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/dataproviders/arg"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/dataproviders/credscan"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
@@ -13,12 +14,15 @@ import (
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
 // IAzdSecInfoProvider represents interface for providing azure defender security information
 type IAzdSecInfoProvider interface {
 	// GetContainersVulnerabilityScanInfo receives pod template spec containing containers list, and returns their fetched ContainersVulnerabilityScanInfo
 	GetContainersVulnerabilityScanInfo(podSpec *corev1.PodSpec, resourceMetadata *metav1.ObjectMeta, resourceKind *metav1.TypeMeta) ([]*contracts.ContainerVulnerabilityScanInfo, error)
+
+	GetResourceCredScanInfo(resourceMetadata admission.Request)([]*credscan.CredScanInfo, error)
 }
 
 // AzdSecInfoProvider represents default implementation of IAzdSecInfoProvider interface
@@ -31,17 +35,25 @@ type AzdSecInfoProvider struct {
 	argDataProvider arg.IARGDataProvider
 	// tag2digestResolver is the resolver of images to their digests
 	tag2digestResolver tag2digest.ITag2DigestResolver
+	//credscanDataProvider is the credscan provider which provides
+	credscanDataProvider credscan.ICredScanDataProvider
 }
 
 // NewAzdSecInfoProvider - AzdSecInfoProvider Ctor
-func NewAzdSecInfoProvider(instrumentationProvider instrumentation.IInstrumentationProvider, argDataProvider arg.IARGDataProvider, tag2digestResolver tag2digest.ITag2DigestResolver) *AzdSecInfoProvider {
+func NewAzdSecInfoProvider(instrumentationProvider instrumentation.IInstrumentationProvider, argDataProvider arg.IARGDataProvider, tag2digestResolver tag2digest.ITag2DigestResolver, credScanProvider credscan.ICredScanDataProvider) *AzdSecInfoProvider {
 	return &AzdSecInfoProvider{
 		tracerProvider:     instrumentationProvider.GetTracerProvider("AzdSecInfoProvider"),
 		metricSubmitter:    instrumentationProvider.GetMetricSubmitter(),
 		argDataProvider:    argDataProvider,
 		tag2digestResolver: tag2digestResolver,
+		credscanDataProvider: credScanProvider,
 	}
 }
+
+func (provider *AzdSecInfoProvider) GetResourceCredScanInfo(resourceMetadata admission.Request)([]*credscan.CredScanInfo, error){
+	return provider.credscanDataProvider.GetCredScanResults(resourceMetadata)
+}
+
 
 // GetContainersVulnerabilityScanInfo receives api-resource pod spec containing containers, resource deployed metadata and kind
 // Function returns evaluated ContainerVulnerabilityScanInfo for pod spec's container list (pod spec can be related to template of any resource creates pods eventually)

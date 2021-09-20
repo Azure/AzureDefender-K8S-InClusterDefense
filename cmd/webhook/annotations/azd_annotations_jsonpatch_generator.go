@@ -2,6 +2,7 @@ package annotations
 
 import (
 	"encoding/json"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/dataproviders/credscan"
 	"time"
 
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/azdsecinfo/contracts"
@@ -33,6 +34,23 @@ func CreateContainersVulnerabilityScanAnnotationPatchAdd(containersScanInfoList 
 
 	// Create an add operation to annotations to add or create if annotations are empty
 	patch := jsonpatch.NewOperation(_addPatchOperation, _annotationPatchPath, map[string]string{contracts.ContainersVulnerabilityScanInfoAnnotationName: serVulnerabilitySecInfo})
+	return &patch, nil
+}
+
+func CreateServiceCredScanAnnotationPatchAdd(serviceCredScanInfoList []*credscan.CredScanInfo) (*jsonpatch.JsonPatchOperation, error) {
+	scanInfoList := &credscan.CredScanInfoList{
+		GeneratedTimestamp: time.Now().UTC(),
+		CredScanResults:         serviceCredScanInfoList,
+	}
+
+	// Marshal the scan info list (annotations can only be strings)
+	serVulnerabilitySecInfo, err := marshalAnnotationInnerObject(scanInfoList)
+	if err != nil {
+		return nil, errors.Wrap(err, "AzdAnnotationsPatchGenerator failed marshaling scanInfoList during CreateServiceCredScanAnnotationPatchAdd")
+	}
+
+	// Create an add operation to annotations to add or create if annotations are empty
+	patch := jsonpatch.NewOperation(_addPatchOperation, _annotationPatchPath, map[string]string{"credScan.scan.info": serVulnerabilitySecInfo})
 	return &patch, nil
 }
 

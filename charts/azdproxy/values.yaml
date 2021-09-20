@@ -94,3 +94,13 @@ AzDProxy:
 
   Deployment:
     IsLocalDevelopment: false
+
+  # CredScan
+    # -- common prefix name for all resources sidecar.
+    prefixResourceDeploymentSideCar: azure-defender-proxy-sidecar
+    # Image values:
+    imageSideCar:
+      # -- Official image.
+      name: "credscanwebapi.azurecr.io/crescanwebapi"
+      # -- Default for always. in case that you want to use local registry, change to 'Never'.
+      pullPolicy: "Always"
