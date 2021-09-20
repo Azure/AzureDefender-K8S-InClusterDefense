@@ -149,7 +149,7 @@ func (client *CraneRegistryClient) getDigest(imageReference registry.IImageRefer
 	// Resolve digest using Options:
 	//  - multikeychain of received keychain and the default keychain,
 	// - _userAgent of the client
-	digest, err := client.craneWrapper.Digest(imageReference.Original(), crane.WithAuthFromKeychain(authn.NewMultiKeychain(keychain, authn.DefaultKeychain)), crane.WithUserAgent(_userAgent))
+	digest, err := client.craneWrapper.DigestWithRetry(imageReference.Original(), client.tracerProvider, client.metricSubmitter, crane.WithAuthFromKeychain(authn.NewMultiKeychain(keychain, authn.DefaultKeychain)), crane.WithUserAgent(_userAgent))
 	if err != nil {
 		// Report error
 		err = errors.Wrapf(err, "CraneRegistryClient.getDigest with receivedKeyChainType %v", receivedKeyChainType)

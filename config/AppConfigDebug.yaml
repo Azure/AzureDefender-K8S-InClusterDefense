@@ -1,36 +1,48 @@
 # A static app's configuration file. Used for local debugging.
 webhook:
-  CertRotatorConfiguration:
-    SecretName: "azure-defender-proxy-cert"
-    ServiceName: "azure-defender-proxy-service"
-    WebhookName: "azure-defender-proxy-mutating-webhook-configuration"
-    CaName: "azure-defender-proxy-ca"
-    CaOrganization: "azure-defender-proxy"
-    CertDir: "/certs"
-    Namespace: "kube-system"
-  ManagerConfiguration:
-    Port: 8000
-    CertDir: "/certs"
-  ServerConfiguration:
-    Path: "/mutate"
-    EnableCertRotation: true
-  HandlerConfiguration:
-    DryRun: false
+  certRotatorConfiguration:
+    secretName: "azure-defender-proxy-cert"
+    serviceName: "azure-defender-proxy-service"
+    webhookName: "azure-defender-proxy-mutating-webhook-configuration"
+    caName: "azure-defender-proxy-ca"
+    caOrganization: "azure-defender-proxy"
+    certDir: "/certs"
+    namespace: "kube-system"
+  managerConfiguration:
+    port: 8000
+    certDir: "/certs"
+  serverConfiguration:
+    path: "/mutate"
+    enableCertRotation: true
+  handlerConfiguration:
+    dryRun: false
 instrumentation:
   trace:
-    TracerConfiguration:
-      TracerLevel: 0
+    tracerConfiguration:
+      tracerLevel: 0
   tivan:
-    TivanInstrumentationConfiguration:
-      ComponentName: "azdproxy"
-      MdmNamespace: "Tivan.Collector.Pods"
+    tivanInstrumentationConfiguration:
+      componentName: "azdproxy"
+      mdmNamespace: "Tivan.Collector.Pods"
 
 azdIdentity:
-  EnvAzureAuthorizerConfiguration:
-      IsLocalDevelopmentMode: true
-      MSIClientId: "" # This should be kept empty while you are running the service locally.
+  envAzureAuthorizerConfiguration:
+    isLocalDevelopmentMode: true
+    mSIClientId: "" # This should be kept empty while you are running the service locally.
 
 kubeletIdentity:
-  EnvAzureAuthorizerConfiguration:
-    IsLocalDevelopmentMode: true
-    MSIClientId: "" # This should be kept empty while you are running the service locally.
+  envAzureAuthorizerConfiguration:
+    isLocalDevelopmentMode: true
+    mSIClientId: "" # This should be kept empty while you are running the service locally.
+
+acr:
+  craneWrappersConfiguration:
+    retryPolicyConfiguration:
+      retryAttempts: 3
+      retryDuration: "10ms"
+
+arg:
+  argBaseClient:
+    retryPolicyConfiguration:
+      retryAttempts: 3
+      retryDuration: "100ms"

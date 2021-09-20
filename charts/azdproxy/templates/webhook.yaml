@@ -20,8 +20,8 @@ spec:
       serviceAccountName: {{.Values.AzDProxy.prefixResourceDeployment}}-admin
       containers:
         - name: {{.Values.AzDProxy.prefixResourceDeploymentSideCar}}-webhook
-          image: '{{ .Values.AzDProxy.webhook.imageSideCar.name }}'
-          imagePullPolicy: '{{ .Values.AzDProxy.webhook.imageSideCar.pullPolicy }}'
+          image: '{{ .Values.AzDProxy.imageSideCar.name }}'
+          imagePullPolicy: '{{ .Values.AzDProxy.imageSideCar.pullPolicy }}'
         # TODO : Add securityContext section.
         - name: {{.Values.AzDProxy.prefixResourceDeployment}}-webhook
           image: '{{ .Values.AzDProxy.webhook.image.name }}'

@@ -18,7 +18,7 @@ var (
 	_errArgQueryResponseIsNotAnObjectListFormat = fmt.Errorf("ARGClient.QueryResources ARG query response data is not an object list")
 )
 
-// IARGClient is an interface for our arg client implemntation
+// IARGClient is an interface for our arg client implementation
 type IARGClient interface {
 	// QueryResources gets a query and return an array object as a result
 	QueryResources(query string) ([]interface{}, error)
