@@ -86,7 +86,7 @@ func (suite *TestSuite) Test_Handle_DryRunFalse_ShouldPatched() {
 	// Act
 	resp := handler.Handle(context.Background(), *req)
 	// Test
-	suite.Equal(metav1.StatusReason(_patched), resp.Result.Reason)
+	suite.Equal(metav1.StatusReason(_patchedReason), resp.Result.Reason)
 }
 
 func (suite *TestSuite) Test_Handle_RequestKindIsNotPod_ShouldNotPatchedInit() {

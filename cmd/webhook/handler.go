@@ -3,8 +3,10 @@ package webhook
 
 import (
 	"context"
+	"fmt"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric/util"
-	"log"
+	admissionv1 "k8s.io/api/admission/v1"
+	"net/http"
 	"time"
 
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
@@ -21,18 +23,22 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
-// patchReason enum status reason of patching
-type patchReason string
+// responseReason enum status reason of admission response
+type responseReason string
 
 const (
-	// _patched in case that the handler patched to the webhook.
-	_patched patchReason = "Patched"
-	// _notPatchedInit is the initialized of the patchReason of the handle.
-	_notPatchedInit patchReason = "NotPatchedInit"
-	// _notPatchedDryRun in case that DryRun of Handler is True.
-	_notPatchedDryRun patchReason = "NotPatchedDryRun"
-	// _notPatchedNotSupportedKind in case that the resource kind of the request is not supported king
-	_notPatchedNotSupportedKind patchReason = "NotPatchedNotSupportedKind"
+	// _patchedReason in case that the handler patched to the webhook.
+	_patchedReason responseReason = "Patched"
+	// _notPatchedReason not patched response reason.
+	_notPatchedReason responseReason = "NotPatched"
+	// _notPatchedErrorReason not patched due to error response reason.
+	_notPatchedErrorReason responseReason = "NotPatchedError"
+	// _notPatchedDryRunReason in case that DryRun of Handler is True.
+	_notPatchedHandlerDryRunReason responseReason = "NotPatchedHandlerDryRun"
+	// _noMutationForOperationOrKindReason in case that the resource kind of the request is not supported king
+	_noMutationForOperationOrKindReason responseReason = "NotPatchedNotSupportedKind"
+	// _noSelfManagementReason in case of resource in same namespace
+	_noSelfManagementReason responseReason = "NotPatchedNotSupportedKind"
 )
 
 // Handler implements the admission.Handle interface that each webhook have to implement.
@@ -52,6 +58,8 @@ type Handler struct {
 type HandlerConfiguration struct {
 	// DryRun is flag that if it's true, it handles request but doesn't mutate the pod spec.
 	DryRun bool
+	// Namespace is the namespace where the handler pod is running
+	Namespace string
 }
 
 // NewHandler Constructor for Handler
@@ -69,59 +77,83 @@ func NewHandler(azdSecInfoProvider azdsecinfo.IAzdSecInfoProvider, configuration
 func (handler *Handler) Handle(ctx context.Context, req admission.Request) admission.Response {
 	startTime := time.Now().UTC()
 	tracer := handler.tracerProvider.GetTracer("Handle")
-
-	defer handler.metricSubmitter.SendMetric(util.GetDurationMilliseconds(startTime), webhookmetric.NewHandlerHandleLatencyMetric())
-
-	if ctx == nil {
-		tracer.Error(errors.New("ctx received is nil"), "Handler.Handle")
-		// Exit with panic in case that the context is nil
-		log.Fatal("Can't handle requests when the context (ctx) is nil")
-	}
+	response := admission.Response{}
+	reason := _notPatchedReason
+	var err error
+	defer func() {
+		if r := recover(); r != nil {
+			err, ok := r.(error)
+			if !ok {
+				err = errors.New(fmt.Sprint(r))
+			}
+			tracer.Error(err, "Handler handle Panic error")
+			// Re throw panic
+			panic(r)
+		}
+		// Repost response latency
+		handler.metricSubmitter.SendMetric(util.GetDurationMilliseconds(startTime), webhookmetric.NewHandlerHandleLatencyMetric(req.Kind.Kind, response.Allowed, string(reason)))
+	}()
 
 	// Logs
+	tracer.Info("received ctx", "ctx", ctx)
 	tracer.Info("received request", "name", req.Name, "namespace", req.Namespace, "operation", req.Operation, "reqKind", req.Kind, "uid", req.UID)
 
-	patches := []jsonpatch.JsonPatchOperation{}
-	patchReason := _notPatchedInit
+	handler.metricSubmitter.SendMetric(1, webhookmetric.NewHandlerNewRequestMetric(req.Kind.Kind, string(req.Operation)))
 
-	handler.metricSubmitter.SendMetric(1, webhookmetric.NewHandlerNewRequestMetric(req.Kind.Kind))
-	if req.Kind.Kind == admisionrequest.PodKind {
+	// If it's the same namespace of the mutaiton webheook
+	// TODO: replace with non-all namespace exclusion but a list excluded namespaces/pods
+	if req.Namespace == handler.configuration.Namespace {
+		return admission.Allowed(string(_noSelfManagementReason))
+	}
 
-		pod, err := admisionrequest.UnmarshalPod(&req)
+	// If pod create or update request
+	if req.Kind.Kind == admisionrequest.PodKind && (req.Operation == admissionv1.Create || req.Operation != admissionv1.Update) {
+		response, err = handler.handlePodCreateUpdateRequest(req)
 		if err != nil {
-			wrappedError := errors.Wrap(err, "Handle handler failed to admisionrequest.UnmarshalPod req")
-			tracer.Error(wrappedError, "")
-			log.Fatal(wrappedError)
+			err = errors.Wrap(err, "Handler.Handle received error on handlePodCreateUpdateRequest")
+			tracer.Error(err, "")
+			response = handler.admissionErrorResponse(errors.Wrap(err, string(_notPatchedErrorReason)))
 		}
 
-		vulnerabilitySecAnnotationsPatch, err := handler.getPodContainersVulnerabilityScanInfoAnnotationsOperation(pod)
-		if err != nil {
-			wrappedError := errors.Wrap(err, "Handler.Handle Failed to getPodContainersVulnerabilityScanInfoAnnotationsOperation for Pod")
-			tracer.Error(wrappedError, "")
-			log.Fatal(wrappedError)
-		}
-
-		// Add to response patches
-		patches = append(patches, *vulnerabilitySecAnnotationsPatch)
-
-		// update patch reason
-		patchReason = _patched
 	} else {
-		patchReason = _notPatchedNotSupportedKind
+		response = admission.Allowed(string(_noMutationForOperationOrKindReason))
 	}
 
 	// In case of dryrun=true:  reset all patch operations
 	if handler.configuration.DryRun {
-		tracer.Info("not mutating resource, because handler is on dryrun mode")
-		patches = []jsonpatch.JsonPatchOperation{}
-		patchReason = _notPatchedDryRun
+		tracer.Info("Handler.handlePodCreateUpdateRequest not mutating resource, because handler is on dryrun mode")
+		response = admission.Allowed(string(_notPatchedHandlerDryRunReason))
 	}
 
-	// Patch all patches operations
-	response := admission.Patched(string(patchReason), patches...)
 	tracer.Info("Responded", "response", response)
 
 	return response
+}
+
+func (handler *Handler) handlePodCreateUpdateRequest(req admission.Request) (admission.Response, error) {
+	tracer := handler.tracerProvider.GetTracer("handlePodCreateUpdateRequest")
+
+	patches := []jsonpatch.JsonPatchOperation{}
+
+	pod, err := admisionrequest.UnmarshalPod(&req)
+	if err != nil {
+		err = errors.Wrap(err, "Handler.handlePodCreateUpdateRequest failed to admisionrequest.UnmarshalPod req")
+		tracer.Error(err, "")
+		return admission.Response{}, err
+	}
+
+	vulnerabilitySecAnnotationsPatch, err := handler.getPodContainersVulnerabilityScanInfoAnnotationsOperation(pod)
+	if err != nil {
+		err = errors.Wrap(err, "Handler.handlePodCreateUpdateRequest Failed to getPodContainersVulnerabilityScanInfoAnnotationsOperation for Pod")
+		tracer.Error(err, "")
+		return admission.Response{}, err
+	}
+
+	// Add to response patches
+	patches = append(patches, *vulnerabilitySecAnnotationsPatch)
+
+	// Patch all patches operations
+	return admission.Patched(string(_patchedReason), patches...), nil
 }
 
 // getPodContainersVulnerabilityScanInfoAnnotationsOperation receives a pod to generate a vuln scan annotation add operation
@@ -150,4 +182,11 @@ func (handler *Handler) getPodContainersVulnerabilityScanInfoAnnotationsOperatio
 	}
 
 	return vulnerabilitySecAnnotationsPatch, nil
+}
+
+// admissionErrorResponse generates an admission response error in case of handler failing to process request
+func (handler *Handler) admissionErrorResponse(err error) admission.Response {
+	tracer := handler.tracerProvider.GetTracer("admissionErrorResponse")
+	tracer.Error(err, "")
+	return admission.Errored(int32(http.StatusInternalServerError), err)
 }

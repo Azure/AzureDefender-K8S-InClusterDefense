@@ -28,6 +28,7 @@ data:
         EnableCertRotation: {{.Values.AzDProxy.webhook.ServerConfiguration.EnableCertRotation}}
       HandlerConfiguration:
         DryRun: {{.Values.AzDProxy.webhook.HandlerConfiguration.RunOnDryRunMode}}
+        Namespace: {{.Release.Namespace | quote}}
     instrumentation:
       trace:
         TracerConfiguration:

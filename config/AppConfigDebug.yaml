@@ -16,6 +16,7 @@ webhook:
     EnableCertRotation: true
   HandlerConfiguration:
     DryRun: false
+    Namespace: "kube-system"
 instrumentation:
   trace:
     TracerConfiguration:
