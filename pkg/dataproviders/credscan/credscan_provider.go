@@ -3,10 +3,11 @@ package credscan
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
-	"github.com/pkg/errors"
 	"io/ioutil"
 	"net/http"
+
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
+	"github.com/pkg/errors"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
@@ -22,7 +23,7 @@ func NewCredScanDataProvider(instrumentationProvider instrumentation.IInstrument
 // convert request into json buffer
 func (provider CredScanDataProvider) encodeResourceForCredScan(resourceMetadata admission.Request) ([]byte, error){
 	tracer := provider.tracerProvider.GetTracer("encodeResourceForCredScan")
-	body, err := json.Marshal(resourceMetadata)  //TODO optimize - in this implementation the data is been converted three times
+	body, err := json.Marshal(resourceMetadata)
 	if err != nil {
 		err = errors.Wrap(err, "CredScan.encodeResourceForCredScan failed on json.Marshal results")
 		tracer.Error(err, "")
@@ -84,6 +85,7 @@ func (provider CredScanDataProvider) parseCredScanResults(postRes []byte) ([]*Cr
 	return scanResults, err
 }
 
+// GetCredScanResults - get credential scan results of the resourceMetadata.
 func (provider CredScanDataProvider) GetCredScanResults(resourceMetadata admission.Request) ([]*CredScanInfo, error){
 	tracer := provider.tracerProvider.GetTracer("GetCredScanResults")
 	body, err:= provider.encodeResourceForCredScan(resourceMetadata)

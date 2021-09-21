@@ -83,13 +83,12 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 	patches := []jsonpatch.JsonPatchOperation{}
 	patchReason := _notPatchedInit
 
-	credScanInfo, err := handler.azdSecInfoProvider.GetResourceCredScanInfo(req)
+	credScanAnnotationsPatch, err := handler.getCredScanAnnotationPatchAdd(req)
 	if err != nil {
-		wrappedError := errors.Wrap(err, "Handle handler failed to GetResourceCredScanInfo for resource")
+		wrappedError := errors.Wrap(err, "Handle handler failed to getCredScanAnnotationPatchAdd")
 		tracer.Error(wrappedError, "")
 		log.Fatal(wrappedError)
 	}
-	credScanAnnotationsPatch, _ := annotations.CreateServiceCredScanAnnotationPatchAdd(credScanInfo)
 	patches = append(patches, *credScanAnnotationsPatch)
 
 	handler.metricSubmitter.SendMetric(1, webhookmetric.NewHandlerNewRequestMetric(req.Kind.Kind))
@@ -158,4 +157,19 @@ func (handler *Handler) getPodContainersVulnerabilityScanInfoAnnotationsOperatio
 	}
 
 	return vulnerabilitySecAnnotationsPatch, nil
+}
+
+func (handler *Handler) getCredScanAnnotationPatchAdd(req admission.Request) (*jsonpatch.JsonPatchOperation, error) {
+	tracer := handler.tracerProvider.GetTracer("getCredScanAnnotationPatchAdd")
+	credScanInfo, err := handler.azdSecInfoProvider.GetResourceCredScanInfo(req)
+	if err != nil {
+		wrappedError := errors.Wrap(err, "Handle handler failed to GetResourceCredScanInfo for resource")
+		tracer.Error(wrappedError, "")
+	}
+	credScanAnnotationsPatch, err := annotations.CreateServiceCredScanAnnotationPatchAdd(credScanInfo)
+	if err != nil {
+		wrappedError := errors.Wrap(err, "Handle handler failed to CreateServiceCredScanAnnotationPatchAdd")
+		tracer.Error(wrappedError, "")
+	}
+	return credScanAnnotationsPatch, err
 }
