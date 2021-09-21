@@ -23,23 +23,23 @@ AzDProxy:
       # -- The mount path of the volume.
       mountPath: "/certs"
     # Configuration values of Cert Rotator.
-    CertRotatorConfiguration:
+    certRotatorConfiguration:
       # -- secret name
-      SecretName: "cert"
+      secretName: "cert"
       # -- service name
-      ServiceName: "service"
+      serviceName: "service"
       # -- webhook name
-      WebhookName: "mutating-webhook-configuration"
+      webhookName: "mutating-webhook-configuration"
       # -- ca name
-      CaName: "ca"
+      caName: "ca"
     # Configuration values of server.
-    ServerConfiguration:
+    serverConfiguration:
       # -- is the cert rotation enabled.
-      EnableCertRotation: true
+      enableCertRotation: true
     # Configuration values of handler.
-    HandlerConfiguration:
+    handlerConfiguration:
       # -- is the run on dry mode.
-      RunOnDryRunMode: false
+      runOnDryRunMode: false
 
     # -- The resources of the webhook.
     resources:
@@ -66,7 +66,7 @@ AzDProxy:
       # -- The mount path of the volume.
       mountPath: "/config"
     # Path of the configuration file
-    filePath: "/config/AppConfig.yaml"
+    filePath: "/config/appConfig.yaml"
 
   # Instrumentation values
   instrumentation:
@@ -74,23 +74,41 @@ AzDProxy:
     # Tivan values
     tivan:
       # Values for Tivan's instrumentation configuration:
-      TivanInstrumentationConfiguration:
-        MdmNamespace: "Tivan.Collector.Pods"
+      tivanInstrumentationConfiguration:
+        mdmNamespace: "Tivan.Collector.Pods"
 
     # Trace values
     trace:
       # Values for tracer's configuration:
-      TracerConfiguration:
-        TracerLevel: 0
+      tracerConfiguration:
+        tracerLevel: 0
 
   # Azure Auth values
   azdIdentity:
-    EnvAzureAuthorizerConfiguration:
-      MSIClientId: "a554f933-695f-4ecf-abe4-2a7515e8c1b7"
+    envAzureAuthorizerConfiguration:
+      mSIClientId: "a554f933-695f-4ecf-abe4-2a7515e8c1b7"
 
   kubeletIdentity:
-    EnvAzureAuthorizerConfiguration:
-      MSIClientId: "4446918a-1c6c-437e-9db1-018acb52efdc"
+    envAzureAuthorizerConfiguration:
+      mSIClientId: "4446918a-1c6c-437e-9db1-018acb52efdc"
 
-  Deployment:
-    IsLocalDevelopment: false
+  deployment:
+    isLocalDevelopment: false
+
+  # ACR policy values
+  acr:
+    craneWrappers:
+      retryPolicyConfiguration:
+        # Number of retry attempts
+        retryAttempts: 3
+        # Sleep duration between retries (in milliseconds):
+        retryDuration: "10ms"
+
+  # ARG values
+  arg:
+    argBaseClient:
+      retryPolicyConfiguration:
+        # Number of retry attempts
+        retryAttempts: 3
+        # Sleep duration between retries (in milliseconds):
+        retryDuration: "100ms"

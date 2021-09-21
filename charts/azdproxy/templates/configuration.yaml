@@ -10,39 +10,48 @@ metadata:
   {{ include "common.labels" . | indent 6 }}
 # Application's configuration settings. Arranged by project's filesystem hierarchy
 data:
-  AppConfig.yaml: |-
+  appConfig.yaml: |-
     webhook:
-      CertRotatorConfiguration:
-        SecretName: "{{ .Values.AzDProxy.prefixResourceDeployment }}-{{.Values.AzDProxy.webhook.CertRotatorConfiguration.SecretName }}"
-        ServiceName: "{{ .Values.AzDProxy.prefixResourceDeployment }}-{{.Values.AzDProxy.webhook.CertRotatorConfiguration.ServiceName }}"
-        WebhookName: "{{ .Values.AzDProxy.prefixResourceDeployment }}-{{.Values.AzDProxy.webhook.CertRotatorConfiguration.WebhookName }}"
-        CaName: "{{ .Values.AzDProxy.prefixResourceDeployment }}-{{.Values.AzDProxy.webhook.CertRotatorConfiguration.CaName }}"
-        CaOrganization: "{{ .Values.AzDProxy.prefixResourceDeployment }}"
-        CertDir: {{.Values.AzDProxy.webhook.volume.mountPath | quote}}
-        Namespace: {{.Release.Namespace | quote}}
-      ManagerConfiguration:
-        Port: {{.Values.AzDProxy.service.targetPort}}
-        CertDir: {{.Values.AzDProxy.webhook.volume.mountPath | quote}}
-      ServerConfiguration:
-        Path: {{.Values.AzDProxy.webhook.mutationPath | quote}}
-        EnableCertRotation: {{.Values.AzDProxy.webhook.ServerConfiguration.EnableCertRotation}}
-      HandlerConfiguration:
-        DryRun: {{.Values.AzDProxy.webhook.HandlerConfiguration.RunOnDryRunMode}}
-        Namespace: {{.Release.Namespace | quote}}
+      certRotatorConfiguration:
+        secretName: "{{ .Values.AzDProxy.prefixResourceDeployment }}-{{.Values.AzDProxy.webhook.certRotatorConfiguration.secretName }}"
+        serviceName: "{{ .Values.AzDProxy.prefixResourceDeployment }}-{{.Values.AzDProxy.webhook.certRotatorConfiguration.serviceName }}"
+        webhookName: "{{ .Values.AzDProxy.prefixResourceDeployment }}-{{.Values.AzDProxy.webhook.certRotatorConfiguration.webhookName }}"
+        caName: "{{ .Values.AzDProxy.prefixResourceDeployment }}-{{.Values.AzDProxy.webhook.certRotatorConfiguration.caName }}"
+        caOrganization: "{{ .Values.AzDProxy.prefixResourceDeployment }}"
+        certDir: {{.Values.AzDProxy.webhook.volume.mountPath | quote}}
+        namespace: {{.Release.Namespace | quote}}
+      managerConfiguration:
+        port: {{.Values.AzDProxy.service.targetPort}}
+        certDir: {{.Values.AzDProxy.webhook.volume.mountPath | quote}}
+      serverConfiguration:
+        path: {{.Values.AzDProxy.webhook.mutationPath | quote}}
+        enableCertRotation: {{.Values.AzDProxy.webhook.serverConfiguration.enableCertRotation}}
+      handlerConfiguration:
+        dryRun: {{.Values.AzDProxy.webhook.handlerConfiguration.runOnDryRunMode}}
+        namespace: {{.Release.Namespace | quote}}
     instrumentation:
       trace:
-        TracerConfiguration:
-          TracerLevel: {{.Values.AzDProxy.instrumentation.trace.TracerConfiguration.TracerLevel }}
+        tracerConfiguration:
+          tracerLevel: {{.Values.AzDProxy.instrumentation.trace.tracerConfiguration.tracerLevel }}
       tivan:
-        TivanInstrumentationConfiguration:
-          ComponentName: {{ .Chart.Name | quote}}
-          MdmNamespace: {{ .Values.AzDProxy.instrumentation.tivan.TivanInstrumentationConfiguration.MdmNamespace | quote}}
+        tivanInstrumentationConfiguration:
+          componentName: {{ .Chart.Name | quote}}
+          mdmNamespace: {{ .Values.AzDProxy.instrumentation.tivan.tivanInstrumentationConfiguration.mdmNamespace | quote}}
     azdIdentity:
-      EnvAzureAuthorizerConfiguration:
-        IsLocalDevelopmentMode: {{.Values.AzDProxy.Deployment.IsLocalDevelopment}}
-        MSIClientId: {{.Values.AzDProxy.azdIdentity.EnvAzureAuthorizerConfiguration.MSIClientId}}
+      envAzureAuthorizerConfiguration:
+        isLocalDevelopmentMode: {{.Values.AzDProxy.deployment.isLocalDevelopment}}
+        mSIClientId: {{.Values.AzDProxy.azdIdentity.envAzureAuthorizerConfiguration.mSIClientId}}
     kubeletIdentity:
-      EnvAzureAuthorizerConfiguration:
-        IsLocalDevelopmentMode: {{.Values.AzDProxy.Deployment.IsLocalDevelopment}}
-        MSIClientId: {{.Values.AzDProxy.kubeletIdentity.EnvAzureAuthorizerConfiguration.MSIClientId}}
-
+      envAzureAuthorizerConfiguration:
+        isLocalDevelopmentMode: {{.Values.AzDProxy.deployment.isLocalDevelopment}}
+        mSIClientId: {{.Values.AzDProxy.kubeletIdentity.envAzureAuthorizerConfiguration.mSIClientId}}
+    acr:
+      craneWrappersConfiguration:
+        retryPolicyConfiguration:
+          retryAttempts: {{ .Values.AzDProxy.acr.craneWrappers.retryPolicyConfiguration.retryAttempts }}
+          retryDuration: {{ .Values.AzDProxy.acr.craneWrappers.retryPolicyConfiguration.retryDuration }}
+    arg:
+      argBaseClient:
+        retryPolicyConfiguration:
+          retryAttempts: {{ .Values.AzDProxy.arg.argBaseClient.retryPolicyConfiguration.retryAttempts }}
+          retryDuration: {{ .Values.AzDProxy.arg.argBaseClient.retryPolicyConfiguration.retryDuration }}

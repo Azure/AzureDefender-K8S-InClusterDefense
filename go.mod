@@ -13,6 +13,7 @@ require (
 	github.com/modern-go/reflect2 v1.0.1
 	github.com/open-policy-agent/cert-controller v0.2.0
 	github.com/pkg/errors v0.9.1
+	github.com/sethvargo/go-retry v0.1.0
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/viper v1.8.1
 	github.com/stretchr/testify v1.7.0

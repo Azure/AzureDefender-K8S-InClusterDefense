@@ -19,19 +19,31 @@ webhook:
     Namespace: "kube-system"
 instrumentation:
   trace:
-    TracerConfiguration:
-      TracerLevel: 0
+    tracerConfiguration:
+      tracerLevel: 0
   tivan:
-    TivanInstrumentationConfiguration:
-      ComponentName: "azdproxy"
-      MdmNamespace: "Tivan.Collector.Pods"
+    tivanInstrumentationConfiguration:
+      componentName: "azdproxy"
+      mdmNamespace: "Tivan.Collector.Pods"
 
 azdIdentity:
-  EnvAzureAuthorizerConfiguration:
-      IsLocalDevelopmentMode: true
-      MSIClientId: "" # This should be kept empty while you are running the service locally.
+  envAzureAuthorizerConfiguration:
+    isLocalDevelopmentMode: true
+    mSIClientId: "" # This should be kept empty while you are running the service locally.
 
 kubeletIdentity:
-  EnvAzureAuthorizerConfiguration:
-    IsLocalDevelopmentMode: true
-    MSIClientId: "" # This should be kept empty while you are running the service locally.
+  envAzureAuthorizerConfiguration:
+    isLocalDevelopmentMode: true
+    mSIClientId: "" # This should be kept empty while you are running the service locally.
+
+acr:
+  craneWrappersConfiguration:
+    retryPolicyConfiguration:
+      retryAttempts: 3
+      retryDuration: "10ms"
+
+arg:
+  argBaseClient:
+    retryPolicyConfiguration:
+      retryAttempts: 3
+      retryDuration: "100ms"
