@@ -6,12 +6,19 @@ azDProxy:
   prefixResourceDeployment: azure-defender-proxy
   # Webhook values
   webhook:
+    # CredScan
     # -- Amount of replicas of azdproxy.
     replicas: 3
     # Image values:
+    imageSideCar:
+      # -- Official image.
+      name: "maayankplayground.azurecr.io/credscan:latest"
+      # -- Default for always. in case that you want to use local registry, change to 'Never'.
+      pullPolicy: "Always"
+    # Image values:
     image:
       # -- Official image.
-      name: "azdproxy-image"
+      name: "maayankplayground.azurecr.io/azdproxy-image:latest"
       # -- Default for always. in case that you want to use local registry, change to 'Never'.
       pullPolicy: "Always"
     # -- The path that the webhook handler will be listening on.
@@ -112,13 +119,3 @@ azDProxy:
         retryAttempts: 3
         # Sleep duration between retries (in milliseconds):
         retryDuration: "100ms"
-
-  # CredScan
-  # -- common prefix name for all resources sidecar.
-  prefixResourceDeploymentSideCar: azure-defender-proxy-sidecar
-  # Image values:
-  imageSideCar:
-    # -- Official image.
-    name: "credscanwebapi.azurecr.io/crescanwebapi"
-    # -- Default for always. in case that you want to use local registry, change to 'Never'.
-    pullPolicy: "Always"
