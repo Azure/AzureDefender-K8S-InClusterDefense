@@ -1,0 +1,12 @@
+# *** You will always be compliant with this policy if AzureDefenderInClusterDefense is not installed in your cluster.
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sAzureDefenderBlockResourcesWithSecrets
+metadata:
+  name: block-resources-with-secrets
+spec:
+  match:
+    kinds:
+      - apiGroups: [ "","apps" ]
+        kinds: [ "Pod","Deployment","ReplicaSet","StatefulSet","DaemonSet","Job","CronJob","ReplicationController" ]
+  parameters:
+    threshold: 60
