@@ -2,7 +2,7 @@ package tivan
 
 import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
-	tivanInstrumentation "tivan.ms/libs/instrumentation"
+	tivanInstrumentation "github.com/Azure/Tivan-Libs/pkg/instrumentation"
 )
 
 // tivanMetric implements tivanInstrumentation.Metric interface

@@ -17,7 +17,9 @@ spec:
         run: redis
     spec:
       containers:
+        # TODO : Add securityContext section.
         - name: {{.Values.AzDProxy.prefixResourceDeployment}}-redis
-          image: redis:buster
+          image: {{.Values.AzDProxy.cache.redisClient.image}}
+          imagePullPolicy: 'Always'
           ports:
             - containerPort: {{.Values.AzDProxy.cache.redisClient.targetport}}

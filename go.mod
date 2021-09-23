@@ -3,11 +3,11 @@ module github.com/Azure/AzureDefender-K8S-InClusterDefense
 go 1.16
 
 require (
+	github.com/Azure/Tivan-Libs v0.0.0-20210920204608-02209d89b4b6
 	github.com/Azure/azure-sdk-for-go v56.3.0+incompatible
 	github.com/Azure/go-autorest/autorest v0.11.19
 	github.com/Azure/go-autorest/autorest/adal v0.9.13
 	github.com/Azure/go-autorest/autorest/azure/auth v0.5.8
-	github.com/Azure/go-autorest/autorest/validation v0.1.0 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/coocood/freecache v1.1.1
 	github.com/go-logr/logr v0.4.0
@@ -18,7 +18,6 @@ require (
 	github.com/modern-go/reflect2 v1.0.1
 	github.com/open-policy-agent/cert-controller v0.2.0
 	github.com/pkg/errors v0.9.1
-	github.com/sethvargo/go-retry v0.1.0
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/viper v1.8.1
 	github.com/stretchr/testify v1.7.0
@@ -32,5 +31,4 @@ require (
 	k8s.io/klog/v2 v2.8.0
 	k8s.io/kube-openapi v0.0.0-20210421082810-95288971da7e // indirect
 	sigs.k8s.io/controller-runtime v0.9.0
-	tivan.ms/libs/instrumentation v0.0.0-20210803101155-9c6cc8e668ee
 )

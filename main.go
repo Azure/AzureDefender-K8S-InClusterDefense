@@ -8,11 +8,8 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/dataproviders/arg/wrappers"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/azureauth"
 	azureauthwrappers "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/azureauth/wrappers"
-	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/config"
-	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
-	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/tivan"
-	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/cache"
+	cachewrappers "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/cache/wrappers"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/config"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/tivan"
@@ -59,8 +56,8 @@ func main() {
 	craneWrapperRetryPolicyConfiguration := new(utils.RetryPolicyConfiguration)
 	argBaseClientRetryPolicyConfiguration := new(utils.RetryPolicyConfiguration)
 
-	argDataProviderCacheConfiguration := new(cache.RedisCacheClientConfiguration)
-	tokensCacheConfiguration := new(cache.FreeCacheInMemClientConfiguration)
+	argDataProviderCacheConfiguration := new(cachewrappers.RedisCacheClientConfiguration)
+	tokensCacheConfiguration := new(cachewrappers.FreeCacheInMemWrapperCacheConfiguration)
 
 	// Create a map between configuration object and key in main config file
 	keyConfigMap := map[string]interface{}{
@@ -74,15 +71,6 @@ func main() {
 		"kubeletIdentity.envAzureAuthorizerConfiguration":         kubeletIdentityEnvAzureAuthorizerConfiguration,
 		"arg.argBaseClient.retryPolicyConfiguration":              argBaseClientRetryPolicyConfiguration,
 		"acr.craneWrappersConfiguration.retryPolicyConfiguration": craneWrapperRetryPolicyConfiguration,
-	}
-		"webhook.ManagerConfiguration":                            managerConfiguration,
-		"webhook.CertRotatorConfiguration":                        certRotatorConfiguration,
-		"webhook.ServerConfiguration":                             serverConfiguration,
-		"webhook.HandlerConfiguration":                            handlerConfiguration,
-		"instrumentation.tivan.TivanInstrumentationConfiguration": tivanInstrumentationConfiguration,
-		"instrumentation.trace.TracerConfiguration":               tracerConfiguration,
-		"azdIdentity.EnvAzureAuthorizerConfiguration":             azdIdentityEnvAzureAuthorizerConfiguration,
-		"kubeletIdentity.EnvAzureAuthorizerConfiguration":         kubeletIdentityEnvAzureAuthorizerConfiguration,
 		"cache.argDataProviderCacheConfiguration":                 argDataProviderCacheConfiguration,
 		"cache.tokensCacheConfiguration":                          tokensCacheConfiguration,
 	}
@@ -116,7 +104,6 @@ func main() {
 		log.Fatal("main.kubeletIdentityAuthorizerFactory.NewEnvAzureAuthorizerFactory.CreateARMAuthorizer", err)
 	}
 
-	k8sclientconfig, err := k8sclientconfig.GetConfig()
 	// Registry Client
 	k8sClientConfig, err := k8sclientconfig.GetConfig()
 	if err != nil {
@@ -146,8 +133,10 @@ func main() {
 
 	// ARG
 	//TODO complete it once we merge the rest of the PR's.
-	_ = cache.CreateRedisCacheClient(argDataProviderCacheConfiguration)
-	_ = cache.CreateFreeCacheInMemCacheClient(tokensCacheConfiguration)
+	argDataProviderRedisCacheBaseClient := cachewrappers.NewRedisBaseClientWrapper(argDataProviderCacheConfiguration)
+	_ = cache.NewRedisCacheClient(instrumentationProvider, argDataProviderRedisCacheBaseClient)
+	tag2digestCache := cachewrappers.NewFreeCacheInMem(tokensCacheConfiguration)
+	_ = cache.NewFreeCacheInMemCacheClient(instrumentationProvider, tag2digestCache)
 
 	azdIdentityAuthorizerFactory := azureauth.NewEnvAzureAuthorizerFactory(azdIdentityEnvAzureAuthorizerConfiguration, new(azureauthwrappers.AzureAuthWrapper))
 	azdIdentityAuthorizer, err := azdIdentityAuthorizerFactory.CreateARMAuthorizer()

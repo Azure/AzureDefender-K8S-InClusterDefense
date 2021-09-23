@@ -10,7 +10,7 @@ import (
 )
 
 // arg.BaseClient implements IARGBaseClientWrapper interface
-var _ IARGBaseClientWrapper = (*arg.BaseClient)(nil)
+var _ IARGBaseClientWrapper = (*argbase.BaseClient)(nil)
 
 // IARGBaseClientWrapper is a wrapper interface for base client of arg
 type IARGBaseClientWrapper interface {

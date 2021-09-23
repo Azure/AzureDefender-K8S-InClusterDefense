@@ -2,6 +2,7 @@ package cache
 
 import (
 	"context"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/go-redis/redis/v8"
 	"github.com/go-redis/redismock/v8"
 	"github.com/pkg/errors"
@@ -32,7 +33,7 @@ func (suite *TestSuite) Test_Get_KeyIsExist_ShouldReturnValue() {
 
 	clientMock, mock := redismock.NewClientMock()
 	mock.ExpectGet(_key).SetVal(expectedValue)
-	client := newRedisCacheClient(clientMock)
+	client := NewRedisCacheClient(instrumentation.NewNoOpInstrumentationProvider(), clientMock)
 
 	// Act
 	actual, err := client.Get(_ctx, _key)
@@ -46,7 +47,7 @@ func (suite *TestSuite) Test_Get_KeyIsNotExist_ShouldReturnErr() {
 	// Setup
 	clientMock, mock := redismock.NewClientMock()
 	mock.ExpectGet(_key).SetErr(errors.New("key is not exist"))
-	client := newRedisCacheClient(clientMock)
+	client := NewRedisCacheClient(instrumentation.NewNoOpInstrumentationProvider(), clientMock)
 
 	// Act
 	_, err := client.Get(_ctx, _key)
@@ -60,7 +61,7 @@ func (suite *TestSuite) Test_Set_NewKey_ShouldReturnNil() {
 	duration := time.Duration(3)
 	clientMock, mock := redismock.NewClientMock()
 	mock.ExpectSet(_key, _value, duration).RedisNil()
-	client := newRedisCacheClient(clientMock)
+	client := NewRedisCacheClient(instrumentation.NewNoOpInstrumentationProvider(), clientMock)
 
 	// Act
 	err := client.Set(_ctx, _key, _value, duration)
@@ -72,11 +73,11 @@ func (suite *TestSuite) Test_Set_NegativeExpiration_ShouldReturnErr() {
 	duration := time.Duration(-3)
 	clientMock, mock := redismock.NewClientMock()
 	mock.ExpectSet(_key, _value, duration).SetVal(_value)
-	client := newRedisCacheClient(clientMock)
+	client := NewRedisCacheClient(instrumentation.NewNoOpInstrumentationProvider(), clientMock)
 
 	// Act
 	err := client.Set(_ctx, _key, _value, duration)
-	suite.IsType(&NegativeExpirationError{}, err)
+	suite.IsType(&NegativeExpirationCacheError{}, err)
 }
 
 // We need this function to kick off the test suite, otherwise

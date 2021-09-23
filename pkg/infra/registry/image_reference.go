@@ -19,6 +19,20 @@ type Digest struct {
 	digest string
 }
 
+// NewDigest Digest ctor
+func NewDigest(original string, registry string, repository string, digest string) *Digest {
+	imageReference := newImageReference(original, registry, repository)
+	return &Digest{
+		imageReference: *imageReference,
+		digest:         digest,
+	}
+}
+
+// Digest return the digest part of the reference
+func (d *Digest) Digest() string {
+	return d.digest
+}
+
 // Tag implements IImageReference interface
 var _ IImageReference = (*Tag)(nil)
 
@@ -26,6 +40,20 @@ var _ IImageReference = (*Tag)(nil)
 type Tag struct {
 	imageReference
 	tag string
+}
+
+// NewTag Tag ctor
+func NewTag(original string, registry string, repository string, tag string) *Tag {
+	imageReference := newImageReference(original, registry, repository)
+	return &Tag{
+		imageReference: *imageReference,
+		tag:            tag,
+	}
+}
+
+// Tag return the tag part of the reference
+func (t *Tag) Tag() string {
+	return t.tag
 }
 
 // imageReference implements IImageReference interface
@@ -45,34 +73,6 @@ func newImageReference(original string, registry string, repository string) *ima
 		repository: repository,
 		original:   original,
 	}
-}
-
-// NewTag Tag ctor
-func NewTag(original string, registry string, repository string, tag string) *Tag {
-	imageReference := newImageReference(original, registry, repository)
-	return &Tag{
-		imageReference: *imageReference,
-		tag:            tag,
-	}
-}
-
-// Tag return the tag part of the reference
-func (t *Tag) Tag() string {
-	return t.tag
-}
-
-// NewDigest Digest ctor
-func NewDigest(original string, registry string, repository string, digest string) *Digest {
-	imageReference := newImageReference(original, registry, repository)
-	return &Digest{
-		imageReference: *imageReference,
-		digest:         digest,
-	}
-}
-
-// Digest return the digest part of the reference
-func (d *Digest) Digest() string {
-	return d.digest
 }
 
 // Registry image ref registry (e.g. "tomer.azurecr.io")
