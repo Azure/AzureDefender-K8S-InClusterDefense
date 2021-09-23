@@ -1,8 +1,8 @@
 package tivan
 
 import (
-	tivanInstrumentation "github.com/Azure/Tivan-Libs/pkg/instrumentation"
 	"github.com/pkg/errors"
+	tivanInstrumentation "tivan.ms/libs/instrumentation"
 )
 
 // TivanInstrumentationConfiguration is the configuration that is needed to create tivan's instrumentation

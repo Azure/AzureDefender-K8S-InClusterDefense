@@ -3,7 +3,8 @@ module github.com/Azure/AzureDefender-K8S-InClusterDefense
 go 1.16
 
 require (
-	github.com/Azure/Tivan-Libs v0.0.0-20210920204608-02209d89b4b6
+	tivan.ms/libs/instrumentation v0.0.0-20210803101155-9c6cc8e668ee
+
 	github.com/Azure/azure-sdk-for-go v56.3.0+incompatible
 	github.com/Azure/go-autorest/autorest v0.11.19
 	github.com/Azure/go-autorest/autorest/adal v0.9.13
