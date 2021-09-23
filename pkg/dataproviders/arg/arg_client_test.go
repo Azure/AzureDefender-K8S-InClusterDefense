@@ -41,7 +41,7 @@ func (suite *TestSuite) SetupTest() {
 func (suite *TestSuite) Test_QueryResources_ReturnedErrorFromArgBaseClient_ShouldReturnError() {
 	// Setup
 	suite.argBaseClientWrapperMock.On("Resources", context.Background(), mock.AnythingOfType("resourcegraph.QueryRequest")).Return(_emptyQueryResponse, _emptyErrorString)
-	client := NewARGClient(instrumentation.NewNoOpInstrumentationProvider(), suite.argBaseClientWrapperMock)
+	client := NewARGClient(instrumentation.NewNoOpInstrumentationProvider(), suite.argBaseClientWrapperMock, _getARGClientConfiguration())
 
 	// Act
 	resources, err := client.QueryResources(_invalidQuery)
@@ -56,7 +56,7 @@ func (suite *TestSuite) Test_QueryResources_ResponseDataIsNil_ShouldReturnError(
 	totalRecords := int64(1)
 	response := resourcegraph.QueryResponse{TotalRecords: &totalRecords}
 	suite.argBaseClientWrapperMock.On("Resources", context.Background(), mock.AnythingOfType("resourcegraph.QueryRequest")).Return(response, nil)
-	client := NewARGClient(instrumentation.NewNoOpInstrumentationProvider(), suite.argBaseClientWrapperMock)
+	client := NewARGClient(instrumentation.NewNoOpInstrumentationProvider(), suite.argBaseClientWrapperMock, _getARGClientConfiguration())
 
 	// Act
 	resources, err := client.QueryResources(_invalidQuery)
@@ -71,7 +71,7 @@ func (suite *TestSuite) Test_QueryResources_ResponseTotalRecordsIsNil_ShouldRetu
 	totalRecords := int64(1)
 	response := resourcegraph.QueryResponse{Data: &totalRecords}
 	suite.argBaseClientWrapperMock.On("Resources", context.Background(), mock.AnythingOfType("resourcegraph.QueryRequest")).Return(response, nil)
-	client := NewARGClient(instrumentation.NewNoOpInstrumentationProvider(), suite.argBaseClientWrapperMock)
+	client := NewARGClient(instrumentation.NewNoOpInstrumentationProvider(), suite.argBaseClientWrapperMock, _getARGClientConfiguration())
 
 	// Act
 	resources, err := client.QueryResources(_invalidQuery)
@@ -87,7 +87,7 @@ func (suite *TestSuite) Test_QueryResources_ResponseBadFormatOfResponseData_Shou
 	totalRecords := int64(0)
 	response := resourcegraph.QueryResponse{Data: tableData, TotalRecords: &totalRecords}
 	suite.argBaseClientWrapperMock.On("Resources", context.Background(), mock.AnythingOfType("resourcegraph.QueryRequest")).Return(response, nil)
-	client := NewARGClient(instrumentation.NewNoOpInstrumentationProvider(), suite.argBaseClientWrapperMock)
+	client := NewARGClient(instrumentation.NewNoOpInstrumentationProvider(), suite.argBaseClientWrapperMock, _getARGClientConfiguration())
 	client.argQueryReqOptions.ResultFormat = resourcegraph.ResultFormatTable
 
 	// Act
@@ -104,7 +104,7 @@ func (suite *TestSuite) Test_QueryResources_ResponseZeroData_ShouldReturnEmptyAr
 	totalRecords := int64(0)
 	response := resourcegraph.QueryResponse{Data: arrayData, TotalRecords: &totalRecords}
 	suite.argBaseClientWrapperMock.On("Resources", context.Background(), mock.AnythingOfType("resourcegraph.QueryRequest")).Return(response, nil)
-	client := NewARGClient(instrumentation.NewNoOpInstrumentationProvider(), suite.argBaseClientWrapperMock)
+	client := NewARGClient(instrumentation.NewNoOpInstrumentationProvider(), suite.argBaseClientWrapperMock, _getARGClientConfiguration())
 
 	// Act
 	resources, err := client.QueryResources(_invalidQuery)
@@ -122,7 +122,7 @@ func (suite *TestSuite) Test_QueryResources_Response2Items_ShouldReturnArrayWith
 	totalRecords := int64(2)
 	response := resourcegraph.QueryResponse{Data: arrayData, TotalRecords: &totalRecords, Count: &totalRecords}
 	suite.argBaseClientWrapperMock.On("Resources", context.Background(), mock.AnythingOfType("resourcegraph.QueryRequest")).Return(response, nil)
-	client := NewARGClient(instrumentation.NewNoOpInstrumentationProvider(), suite.argBaseClientWrapperMock)
+	client := NewARGClient(instrumentation.NewNoOpInstrumentationProvider(), suite.argBaseClientWrapperMock, _getARGClientConfiguration())
 
 	// Act
 	resources, err := client.QueryResources(_invalidQuery)
@@ -160,7 +160,7 @@ func (suite *TestSuite) Test_QueryResources_Response3ItemsTop2_ShouldReturnArray
 	requestSkipTokenNotNilArgument := mock.MatchedBy(func(req resourcegraph.QueryRequest) bool { return req.Options.SkipToken != nil })
 	suite.argBaseClientWrapperMock.On("Resources", context.Background(), requestSkipTokenNotNilArgument).Return(secondResponse, nil)
 
-	client := NewARGClient(instrumentation.NewNoOpInstrumentationProvider(), suite.argBaseClientWrapperMock)
+	client := NewARGClient(instrumentation.NewNoOpInstrumentationProvider(), suite.argBaseClientWrapperMock, _getARGClientConfiguration())
 
 	// Act
 	resources, err := client.QueryResources(_invalidQuery)
@@ -199,7 +199,7 @@ func (suite *TestSuite) Test_QueryResources_ResponseErrorInTheSecondPage_ShouldR
 	requestSkipTokenNotNilArgument := mock.MatchedBy(func(req resourcegraph.QueryRequest) bool { return req.Options.SkipToken != nil })
 	suite.argBaseClientWrapperMock.On("Resources", context.Background(), requestSkipTokenNotNilArgument).Return(secondResponse, nil)
 
-	client := NewARGClient(instrumentation.NewNoOpInstrumentationProvider(), suite.argBaseClientWrapperMock)
+	client := NewARGClient(instrumentation.NewNoOpInstrumentationProvider(), suite.argBaseClientWrapperMock, _getARGClientConfiguration())
 
 	// Act
 	resources, err := client.QueryResources(_invalidQuery)
@@ -213,4 +213,9 @@ func (suite *TestSuite) Test_QueryResources_ResponseErrorInTheSecondPage_ShouldR
 // "go test" won't know about our tests
 func TestArgClientTestSuite(t *testing.T) {
 	suite.Run(t, new(TestSuite))
+}
+
+func _getARGClientConfiguration() *ARGClientConfiguration {
+	return &ARGClientConfiguration{Subscriptions: []string{}}
+
 }

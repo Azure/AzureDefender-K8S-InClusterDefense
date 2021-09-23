@@ -51,6 +51,9 @@ data:
           retryAttempts: {{ .Values.AzDProxy.acr.craneWrappers.retryPolicyConfiguration.retryAttempts }}
           retryDuration: {{ .Values.AzDProxy.acr.craneWrappers.retryPolicyConfiguration.retryDuration }}
     arg:
+      argClientConfiguration:
+        subscriptions: {{ .Values.AzDProxy.arg.argClientConfiguration.subscriptions }}
+
       argBaseClient:
         retryPolicyConfiguration:
           retryAttempts: {{ .Values.AzDProxy.arg.argBaseClient.retryPolicyConfiguration.retryAttempts }}

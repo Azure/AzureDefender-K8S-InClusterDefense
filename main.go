@@ -53,6 +53,7 @@ func main() {
 	kubeletIdentityEnvAzureAuthorizerConfiguration := new(azureauth.EnvAzureAuthorizerConfiguration)
 	craneWrapperRetryPolicyConfiguration := new(utils.RetryPolicyConfiguration)
 	argBaseClientRetryPolicyConfiguration := new(utils.RetryPolicyConfiguration)
+	argClientConfiguration := new(arg.ARGClientConfiguration)
 
 	// Create a map between configuration object and key in main config file
 	keyConfigMap := map[string]interface{}{
@@ -66,6 +67,7 @@ func main() {
 		"kubeletIdentity.envAzureAuthorizerConfiguration":         kubeletIdentityEnvAzureAuthorizerConfiguration,
 		"arg.argBaseClient.retryPolicyConfiguration":              argBaseClientRetryPolicyConfiguration,
 		"acr.craneWrappersConfiguration.retryPolicyConfiguration": craneWrapperRetryPolicyConfiguration,
+		"arg.argClientConfiguration":                              argClientConfiguration,
 	}
 
 	for key, configObject := range keyConfigMap {
@@ -133,7 +135,7 @@ func main() {
 	if err != nil {
 		log.Fatal("main.NewArgBaseClientWrapper", err)
 	}
-	argClient := arg.NewARGClient(instrumentationProvider, argBaseClient)
+	argClient := arg.NewARGClient(instrumentationProvider, argBaseClient, argClientConfiguration)
 	argQueryGenerator, err := argqueries.CreateARGQueryGenerator(instrumentationProvider)
 	if err != nil {
 		log.Fatal("main.CreateARGQueryGenerator", err)
