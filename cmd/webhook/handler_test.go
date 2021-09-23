@@ -70,7 +70,7 @@ func (suite *TestSuite) Test_Handle_DryRunTrue_ShouldNotPatched() {
 	// Act
 	resp := handler.Handle(context.Background(), *req)
 	// Test
-	suite.Equal(metav1.StatusReason(_notPatchedDryRun), resp.Result.Reason)
+	suite.Equal(metav1.StatusReason(_notPatchedHandlerDryRunReason), resp.Result.Reason)
 	suite.Emptyf(resp.Patches, "response.Patches should be empty on dryrun mode")
 }
 
@@ -89,8 +89,60 @@ func (suite *TestSuite) Test_Handle_DryRunFalse_ShouldPatched() {
 	suite.Equal(metav1.StatusReason(_patchedReason), resp.Result.Reason)
 }
 
-func (suite *TestSuite) Test_Handle_RequestKindIsNotPod_ShouldNotPatchedInit() {
+func (suite *TestSuite) Test_Handle_RequestKindIsNotPod_ShouldNotPatched() {
+	// Setup
+	containers := []corev1.Container{_containers[0]}
+	pod := createPodForTests(containers, nil)
+	req := createRequestForTests(pod)
+	req.Kind.Kind = "NotPodKind"
 
+	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider())
+	// Act
+	resp := handler.Handle(context.Background(), *req)
+	// Test
+	suite.Equal(metav1.StatusReason(_noMutationForKindReason), resp.Result.Reason)
+}
+
+func (suite *TestSuite) Test_Handle_RequestDeleteOperation_ShouldNotPatched() {
+	// Setup
+	containers := []corev1.Container{_containers[0]}
+	pod := createPodForTests(containers, nil)
+	req := createRequestForTests(pod)
+	req.Operation = admissionv1.Delete
+
+	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider())
+	// Act
+	resp := handler.Handle(context.Background(), *req)
+	// Test
+	suite.Equal(metav1.StatusReason(_noMutationForOperationReason), resp.Result.Reason)
+}
+
+func (suite *TestSuite) Test_Handle_RequestConnectOperation_ShouldNotPatched() {
+	// Setup
+	containers := []corev1.Container{_containers[0]}
+	pod := createPodForTests(containers, nil)
+	req := createRequestForTests(pod)
+	req.Operation = admissionv1.Connect
+
+	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider())
+	// Act
+	resp := handler.Handle(context.Background(), *req)
+	// Test
+	suite.Equal(metav1.StatusReason(_noMutationForOperationReason), resp.Result.Reason)
+}
+
+func (suite *TestSuite) Test_Handle_RequestUpdateOperation_ShouldNotPatched() {
+	// Setup
+	containers := []corev1.Container{_containers[0]}
+	pod := createPodForTests(containers, nil)
+	req := createRequestForTests(pod)
+	req.Operation = admissionv1.Update
+
+	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider())
+	// Act
+	resp := handler.Handle(context.Background(), *req)
+	// Test
+	suite.Equal(metav1.StatusReason(_noMutationForOperationReason), resp.Result.Reason)
 }
 
 func (suite *TestSuite) Test_Handle_OneContainerZeroInitContainer_ShouldPatchedOne() {
@@ -234,7 +286,9 @@ func createRequestForTests(pod *corev1.Pod) *admission.Request {
 
 	return &admission.Request{
 		AdmissionRequest: admissionv1.AdmissionRequest{
-			Name: "podTest",
+			Name:      "podTest",
+			Namespace: "default",
+			Operation: admissionv1.Create,
 			Kind: metav1.GroupVersionKind{
 				Kind:    "Pod",
 				Group:   "",

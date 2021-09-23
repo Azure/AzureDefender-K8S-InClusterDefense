@@ -35,10 +35,12 @@ const (
 	_notPatchedErrorReason responseReason = "NotPatchedError"
 	// _notPatchedDryRunReason in case that DryRun of Handler is True.
 	_notPatchedHandlerDryRunReason responseReason = "NotPatchedHandlerDryRun"
-	// _noMutationForOperationOrKindReason in case that the resource kind of the request is not supported king
-	_noMutationForOperationOrKindReason responseReason = "NotPatchedNotSupportedKind"
+	// _noMutationForOperationOrKindReason in case that the resource kind of the request is not supported kind
+	_noMutationForKindReason responseReason = "NotPatchedNotSupportedKind"
+	// _noMutationForOperationOrKindReason in case that the resource kind of the request is not supported kind
+	_noMutationForOperationReason responseReason = "NotPatchedNotSupportedOperation"
 	// _noSelfManagementReason in case of resource in same namespace
-	_noSelfManagementReason responseReason = "NotPatchedNotSupportedKind"
+	_noSelfManagementReason responseReason = "NotPatchedResourceInTheSameNsOfHandler"
 )
 
 // Handler implements the admission.Handle interface that each webhook have to implement.
@@ -98,38 +100,39 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 	tracer.Info("received ctx", "ctx", ctx)
 	tracer.Info("received request", "name", req.Name, "namespace", req.Namespace, "operation", req.Operation, "reqKind", req.Kind, "uid", req.UID)
 
-	handler.metricSubmitter.SendMetric(1, webhookmetric.NewHandlerNewRequestMetric(req.Kind.Kind, string(req.Operation)))
+	handler.metricSubmitter.SendMetric(1, webhookmetric.NewHandlerNewRequestMetric(req.Kind.Kind, req.Operation))
 
-	// If it's the same namespace of the mutaiton webheook
-	// TODO: replace with non-all namespace exclusion but a list excluded namespaces/pods
-	if req.Namespace == handler.configuration.Namespace {
-		return admission.Allowed(string(_noSelfManagementReason))
+	// Check if the request should be filtered.
+	shouldBeFiltered, returnedResponse := handler.shouldRequestBeFiltered(req, &reason)
+	if shouldBeFiltered {
+		return *returnedResponse
 	}
 
-	// If pod create or update request
-	if req.Kind.Kind == admisionrequest.PodKind && (req.Operation == admissionv1.Create || req.Operation != admissionv1.Update) {
-		response, err = handler.handlePodCreateUpdateRequest(req)
-		if err != nil {
-			err = errors.Wrap(err, "Handler.Handle received error on handlePodCreateUpdateRequest")
-			tracer.Error(err, "")
-			response = handler.admissionErrorResponse(errors.Wrap(err, string(_notPatchedErrorReason)))
-		}
-
-	} else {
-		response = admission.Allowed(string(_noMutationForOperationOrKindReason))
+	response, err = handler.handlePodCreateUpdateRequest(req)
+	if err != nil {
+		err = errors.Wrap(err, "Handler.Handle received error on handlePodCreateUpdateRequest")
+		tracer.Error(err, "")
+		reason = _notPatchedErrorReason
+		response = handler.admissionErrorResponse(errors.Wrap(err, string(reason)))
+		return response
 	}
 
 	// In case of dryrun=true:  reset all patch operations
 	if handler.configuration.DryRun {
-		tracer.Info("Handler.handlePodCreateUpdateRequest not mutating resource, because handler is on dryrun mode")
-		response = admission.Allowed(string(_notPatchedHandlerDryRunReason))
+		tracer.Info("Handler.handlePodCreateUpdateRequest not mutating resource, because handler is on dryrun mode.", "ResponseInCaseOfNotDryRun", response)
+		reason = _notPatchedHandlerDryRunReason
+		// Override response with clean response.
+		response = admission.Allowed(string(reason))
+		return response
 	}
 
+	reason = _patchedReason
 	tracer.Info("Responded", "response", response)
 
 	return response
 }
 
+// handlePodCreateUpdateRequest
 func (handler *Handler) handlePodCreateUpdateRequest(req admission.Request) (admission.Response, error) {
 	tracer := handler.tracerProvider.GetTracer("handlePodCreateUpdateRequest")
 
@@ -188,5 +191,41 @@ func (handler *Handler) getPodContainersVulnerabilityScanInfoAnnotationsOperatio
 func (handler *Handler) admissionErrorResponse(err error) admission.Response {
 	tracer := handler.tracerProvider.GetTracer("admissionErrorResponse")
 	tracer.Error(err, "")
-	return admission.Errored(int32(http.StatusInternalServerError), err)
+	response := admission.Errored(int32(http.StatusInternalServerError), err)
+	return response
+}
+
+// shouldRequestBeFiltered checks if the request should be filtered.
+// In case that it should be filtered, it returns true and the admission.Response.
+// In case that it shouldn't be filtered, it returns false and nil
+func (handler *Handler) shouldRequestBeFiltered(req admission.Request, reason *responseReason) (bool, *admission.Response) {
+	tracer := handler.tracerProvider.GetTracer("shouldRequestBeFiltered")
+	// If it's the same namespace of the mutation webhook
+	// TODO: replace with non-all namespace exclusion but a list excluded namespaces/pods
+	if req.Namespace == handler.configuration.Namespace {
+		tracer.Info("Request filtered out due to it is in the same namespace as the handler.", "ReqUID", req.UID, "Namespace", req.Namespace)
+		*reason = _noSelfManagementReason
+		response := admission.Allowed(string(*reason))
+		return true, &response
+	}
+
+	// Filter if the kind is not pod.
+	if req.Kind.Kind != admisionrequest.PodKind {
+		tracer.Info("Request filtered out due to the request is not supported kind.", "ReqUID", req.UID, "ReqKind", req.Kind.Kind)
+		*reason = _noMutationForKindReason
+		response := admission.Allowed(string(*reason))
+		return true, &response
+	}
+
+	// Filter if the operation is not Create
+	if req.Operation != admissionv1.Create {
+		tracer.Info("Request filtered out due to the request is not supported operation.", "ReqUID", req.UID, "ReqOperation", req.Operation)
+		*reason = _noMutationForOperationReason
+		response := admission.Allowed(string(*reason))
+		return true, &response
+	}
+
+	tracer.Info("Request shouldn't be filtered out.", "ReqUID", req.UID)
+	// Request shouldn't be filtered out.
+	return false, nil
 }

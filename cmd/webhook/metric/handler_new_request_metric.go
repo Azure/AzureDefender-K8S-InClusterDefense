@@ -2,6 +2,7 @@ package metric
 
 import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
+	admissionv1 "k8s.io/api/admission/v1"
 )
 
 // HandlerNewRequestMetric is metric for the requests kinds of the handler
@@ -13,10 +14,10 @@ type HandlerNewRequestMetric struct {
 }
 
 // NewHandlerNewRequestMetric Ctor
-func NewHandlerNewRequestMetric(kind string, operation string) *HandlerNewRequestMetric {
+func NewHandlerNewRequestMetric(kind string, operation admissionv1.Operation) *HandlerNewRequestMetric {
 	return &HandlerNewRequestMetric{
-		requestKind: kind,
-		requestOperation: operation,
+		requestKind:      kind,
+		requestOperation: string(operation),
 	}
 }
 
