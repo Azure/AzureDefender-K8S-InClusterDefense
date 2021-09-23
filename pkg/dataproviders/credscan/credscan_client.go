@@ -9,14 +9,7 @@ import (
 
 const (
 	// cred scan server url - the sidecar
-	_credScanServerUrl = "http://localhost:500/scanString"
-
-	_threshold = 75
-
-	_scanStatusHealthy = "healthy"
-
-	_scanStatusUnhealthy = "unhealthy"
-
+	_credScanServerUrl = "http://localhost:80/scanString"
 )
 
 //interface_____________________________________________________________________________________________________________
@@ -49,9 +42,6 @@ type CredScanInfo struct {
 
 	// a number represent the MatchingConfidence of the weakness (from 1 to 100)
 	MatchingConfidence float64 `json:"MatchingConfidence"`
-
-	// scanStatus == healthy -> no secret found. scanStatus == unhealthy -> secret found
-	ScanStatus string
 }
 
 

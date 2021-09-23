@@ -50,3 +50,5 @@ spec:
         - name: {{.Values.AzDProxy.configuration.volume.name}}
           configMap:
             name: {{.Values.AzDProxy.prefixResourceDeployment}}-config
+      imagePullSecrets:
+        - name: myregistrykey

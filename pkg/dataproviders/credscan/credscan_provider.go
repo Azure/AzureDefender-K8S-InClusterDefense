@@ -74,14 +74,6 @@ func (provider CredScanDataProvider) parseCredScanResults(postRes []byte) ([]*Cr
 		tracer.Error(err, "")
 		return nil, err
 	}
-
-	for _, match := range scanResults {
-		if match.MatchingConfidence > _threshold {
-			match.ScanStatus = _scanStatusUnhealthy
-		}else{
-			match.ScanStatus = _scanStatusHealthy
-		}
-	}
 	return scanResults, err
 }
 
