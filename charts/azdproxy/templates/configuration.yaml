@@ -13,44 +13,44 @@ data:
   appConfig.yaml: |-
     webhook:
       certRotatorConfiguration:
-        secretName: "{{ .Values.azDProxy.prefixResourceDeployment }}-{{.Values.azDProxy.webhook.certRotatorConfiguration.secretName }}"
-        serviceName: "{{ .Values.azDProxy.prefixResourceDeployment }}-{{.Values.azDProxy.webhook.certRotatorConfiguration.serviceName }}"
-        webhookName: "{{ .Values.azDProxy.prefixResourceDeployment }}-{{.Values.azDProxy.webhook.certRotatorConfiguration.webhookName }}"
-        caName: "{{ .Values.azDProxy.prefixResourceDeployment }}-{{.Values.azDProxy.webhook.certRotatorConfiguration.caName }}"
-        caOrganization: "{{ .Values.azDProxy.prefixResourceDeployment }}"
-        certDir: {{.Values.azDProxy.webhook.volume.mountPath | quote}}
+        secretName: "{{ .Values.AzDProxy.prefixResourceDeployment }}-{{.Values.AzDProxy.webhook.certRotatorConfiguration.secretName }}"
+        serviceName: "{{ .Values.AzDProxy.prefixResourceDeployment }}-{{.Values.AzDProxy.webhook.certRotatorConfiguration.serviceName }}"
+        webhookName: "{{ .Values.AzDProxy.prefixResourceDeployment }}-{{.Values.AzDProxy.webhook.certRotatorConfiguration.webhookName }}"
+        caName: "{{ .Values.AzDProxy.prefixResourceDeployment }}-{{.Values.AzDProxy.webhook.certRotatorConfiguration.caName }}"
+        caOrganization: "{{ .Values.AzDProxy.prefixResourceDeployment }}"
+        certDir: {{.Values.AzDProxy.webhook.volume.mountPath | quote}}
         namespace: {{.Release.Namespace | quote}}
       managerConfiguration:
-        port: {{.Values.azDProxy.service.targetPort}}
-        certDir: {{.Values.azDProxy.webhook.volume.mountPath | quote}}
+        port: {{.Values.AzDProxy.service.targetPort}}
+        certDir: {{.Values.AzDProxy.webhook.volume.mountPath | quote}}
       serverConfiguration:
-        path: {{.Values.azDProxy.webhook.mutationPath | quote}}
-        enableCertRotation: {{.Values.azDProxy.webhook.serverConfiguration.enableCertRotation}}
+        path: {{.Values.AzDProxy.webhook.mutationPath | quote}}
+        enableCertRotation: {{.Values.AzDProxy.webhook.serverConfiguration.enableCertRotation}}
       handlerConfiguration:
-        dryRun: {{.Values.azDProxy.webhook.handlerConfiguration.runOnDryRunMode}}
+        dryRun: {{.Values.AzDProxy.webhook.handlerConfiguration.runOnDryRunMode}}
     instrumentation:
       trace:
         tracerConfiguration:
-          tracerLevel: {{.Values.azDProxy.instrumentation.trace.tracerConfiguration.tracerLevel }}
+          tracerLevel: {{.Values.AzDProxy.instrumentation.trace.tracerConfiguration.tracerLevel }}
       tivan:
         tivanInstrumentationConfiguration:
           componentName: {{ .Chart.Name | quote}}
-          mdmNamespace: {{ .Values.azDProxy.instrumentation.tivan.tivanInstrumentationConfiguration.mdmNamespace | quote}}
+          mdmNamespace: {{ .Values.AzDProxy.instrumentation.tivan.tivanInstrumentationConfiguration.mdmNamespace | quote}}
     azdIdentity:
       envAzureAuthorizerConfiguration:
-        isLocalDevelopmentMode: {{.Values.azDProxy.deployment.isLocalDevelopment}}
-        mSIClientId: {{.Values.azDProxy.azdIdentity.envAzureAuthorizerConfiguration.mSIClientId}}
+        isLocalDevelopmentMode: {{.Values.AzDProxy.deployment.isLocalDevelopment}}
+        mSIClientId: {{.Values.AzDProxy.azdIdentity.envAzureAuthorizerConfiguration.mSIClientId}}
     kubeletIdentity:
       envAzureAuthorizerConfiguration:
-        isLocalDevelopmentMode: {{.Values.azDProxy.deployment.isLocalDevelopment}}
-        mSIClientId: {{.Values.azDProxy.kubeletIdentity.envAzureAuthorizerConfiguration.mSIClientId}}
+        isLocalDevelopmentMode: {{.Values.AzDProxy.deployment.isLocalDevelopment}}
+        mSIClientId: {{.Values.AzDProxy.kubeletIdentity.envAzureAuthorizerConfiguration.mSIClientId}}
     acr:
       craneWrappersConfiguration:
         retryPolicyConfiguration:
-          retryAttempts: {{ .Values.azDProxy.acr.craneWrappers.retryPolicyConfiguration.retryAttempts }}
-          retryDuration: {{ .Values.azDProxy.acr.craneWrappers.retryPolicyConfiguration.retryDuration }}
+          retryAttempts: {{ .Values.AzDProxy.acr.craneWrappers.retryPolicyConfiguration.retryAttempts }}
+          retryDuration: {{ .Values.AzDProxy.acr.craneWrappers.retryPolicyConfiguration.retryDuration }}
     arg:
       argBaseClient:
         retryPolicyConfiguration:
-          retryAttempts: {{ .Values.azDProxy.arg.argBaseClient.retryPolicyConfiguration.retryAttempts }}
-          retryDuration: {{ .Values.azDProxy.arg.argBaseClient.retryPolicyConfiguration.retryDuration }}
+          retryAttempts: {{ .Values.AzDProxy.arg.argBaseClient.retryPolicyConfiguration.retryAttempts }}
+          retryDuration: {{ .Values.AzDProxy.arg.argBaseClient.retryPolicyConfiguration.retryDuration }}
