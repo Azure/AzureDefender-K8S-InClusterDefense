@@ -33,7 +33,7 @@ func CreateContainersVulnerabilityScanAnnotationPatchAdd(containersScanInfoList 
 	}
 
 	// Create an add operation to annotations to add or create if annotations are empty
-	patch := jsonpatch.NewOperation(_addPatchOperation, _annotationPatchPath, map[string]string{contracts.ContainersVulnerabilityScanInfoAnnotationName: serVulnerabilitySecInfo})
+	patch := jsonpatch.NewOperation(_addPatchOperation, _annotationPatchPath + "/" + contracts.ContainersVulnerabilityScanInfoAnnotationName, serVulnerabilitySecInfo)
 	return &patch, nil
 }
 

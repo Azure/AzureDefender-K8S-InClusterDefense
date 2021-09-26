@@ -9,4 +9,4 @@ spec:
       - apiGroups: [ "","apps" ]
         kinds: [ "Pod","Deployment","ReplicaSet","StatefulSet","DaemonSet","Job","CronJob","ReplicationController" ]
   parameters:
-    MatchingConfidenceThresholdForExcludingResourceWithSecrets: 60
+    MatchingConfidenceThresholdForExcludingResourceWithSecrets: {{ .Values.MatchingConfidenceThresholdForExcludingResourceWithSecrets }}
