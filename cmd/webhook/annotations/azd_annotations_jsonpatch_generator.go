@@ -50,7 +50,7 @@ func CreateServiceCredScanAnnotationPatchAdd(serviceCredScanInfoList []*credscan
 	}
 
 	// Create an add operation to annotations to add or create if annotations are empty
-	patch := jsonpatch.NewOperation(_addPatchOperation, _annotationPatchPath, map[string]string{"credScan.scan.info": serVulnerabilitySecInfo})
+	patch := jsonpatch.NewOperation(_addPatchOperation, _annotationPatchPath + "/credScan.scan.info", serVulnerabilitySecInfo)
 	return &patch, nil
 }
 

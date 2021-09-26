@@ -83,14 +83,6 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 	patches := []jsonpatch.JsonPatchOperation{}
 	patchReason := _notPatchedInit
 
-	credScanAnnotationsPatch, err := handler.getCredScanAnnotationPatchAdd(req)
-	if err != nil {
-		wrappedError := errors.Wrap(err, "Handle handler failed to getCredScanAnnotationPatchAdd")
-		tracer.Error(wrappedError, "")
-		log.Fatal(wrappedError)
-	}
-	patches = append(patches, *credScanAnnotationsPatch)
-
 	handler.metricSubmitter.SendMetric(1, webhookmetric.NewHandlerNewRequestMetric(req.Kind.Kind))
 	if req.Kind.Kind == admisionrequest.PodKind {
 
@@ -116,6 +108,14 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 	} else {
 		patchReason = _notPatchedNotSupportedKind
 	}
+
+	credScanAnnotationsPatch, err := handler.getCredScanAnnotationPatchAdd(req)
+	if err != nil {
+		wrappedError := errors.Wrap(err, "Handle handler failed to getCredScanAnnotationPatchAdd")
+		tracer.Error(wrappedError, "")
+		log.Fatal(wrappedError)
+	}
+	patches = append(patches, *credScanAnnotationsPatch)
 
 	// In case of dryrun=true:  reset all patch operations
 	if handler.configuration.DryRun {
