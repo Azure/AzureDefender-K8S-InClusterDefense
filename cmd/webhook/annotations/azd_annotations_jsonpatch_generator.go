@@ -33,7 +33,7 @@ func CreateContainersVulnerabilityScanAnnotationPatchAdd(containersScanInfoList 
 	}
 
 	// Create an add operation to annotations to add or create if annotations are empty
-	patch := jsonpatch.NewOperation(_addPatchOperation, _annotationPatchPath + "/" + contracts.ContainersVulnerabilityScanInfoAnnotationName, serVulnerabilitySecInfo)
+	patch := jsonpatch.NewOperation(_addPatchOperation, _annotationPatchPath, map[string]string{contracts.ContainersVulnerabilityScanInfoAnnotationName: serVulnerabilitySecInfo})
 	return &patch, nil
 }
 
@@ -44,13 +44,13 @@ func CreateServiceCredScanAnnotationPatchAdd(serviceCredScanInfoList []*credscan
 	}
 
 	// Marshal the scan info list (annotations can only be strings)
-	serVulnerabilitySecInfo, err := marshalAnnotationInnerObject(scanInfoList)
+	serCredSecInfo, err := marshalAnnotationInnerObject(scanInfoList)
 	if err != nil {
 		return nil, errors.Wrap(err, "AzdAnnotationsPatchGenerator failed marshaling scanInfoList during CreateServiceCredScanAnnotationPatchAdd")
 	}
 
-	// Create an add operation to annotations to add or create if annotations are empty
-	patch := jsonpatch.NewOperation(_addPatchOperation, _annotationPatchPath + "/credScan.scan.info", serVulnerabilitySecInfo)
+	// Create an add operation to annotations
+	patch := jsonpatch.NewOperation(_addPatchOperation, _annotationPatchPath + credscan.CredScanInfoAnnotationName, serCredSecInfo)
 	return &patch, nil
 }
 

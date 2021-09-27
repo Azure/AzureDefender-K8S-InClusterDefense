@@ -10,6 +10,7 @@ import (
 const (
 	// cred scan server url - the sidecar
 	_credScanServerUrl = "http://localhost:80/scanString"
+	CredScanInfoAnnotationName = "/credScan.scan.info"
 )
 
 //interface_____________________________________________________________________________________________________________
