@@ -1,17 +1,16 @@
-# code for rego playground
 package k8sazuredefenderblockresourceswithsecrets
 
-default threshold = 0
-
+# This violation checks if the resource contain secrets.
 violation[{"msg": msg, "details": details}] {
-    weaknesses := getResourceweaknesses(input)
+    weaknesses := getResourceweaknesses(input.review)
     weakness := weaknesses.CredScanInfo[_]
-    weakness.MatchingConfidence > threshold
+    weakness.MatchingConfidence > input.parameters.matchingConfidenceThresholdForExcludingResourceWithSecrets
     msg := sprintf("secret found in the resource. The secret type is: <%v>", [weakness.credentialInfo.name])
     details := weakness
-}
+    }
 
+# Gets review object and returns unnmarshelled scan resulsts (i.e. as array of scan results).
 getResourceweaknesses(review) = weaknesses{
-    scanResults := review.metadata.annotations["credScan.scan.info"]
+    scanResults := review.object.metadata.annotations["credScan.scan.info"]
     weaknesses := json.unmarshal(scanResults)
-}
+  }
