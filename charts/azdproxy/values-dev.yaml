@@ -99,10 +99,12 @@ AzDProxy:
   acr:
     craneWrappers:
       retryPolicyConfiguration:
-        # Number of execution attempts
+        # Number of retry attempts
         retryAttempts: 3
         # Sleep duration between retries (in milliseconds):
-        retryDuration: "10ms"
+        retryDuration: 10
+        # Timeunit for the backoff duration
+        timeUnit: "ms"
 
   # ARG values
   arg:
@@ -111,4 +113,6 @@ AzDProxy:
         # Number of retry attempts
         retryAttempts: 3
         # Sleep duration between retries (in milliseconds):
-        retryDuration: "100ms"
+        retryDuration: 100
+        # Timeunit for the backoff duration
+        timeUnit: "ms"
