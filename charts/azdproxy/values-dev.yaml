@@ -112,8 +112,6 @@ AzDProxy:
         retryAttempts: 3
         # Sleep duration between retries (in milliseconds):
         retryDuration: "100ms"
-  Deployment:
-    IsLocalDevelopment: false
 
     # Cache configuration
   cache:

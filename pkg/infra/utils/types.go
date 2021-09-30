@@ -17,11 +17,7 @@ func GetType(object interface{}) string {
 func GetTypeWithoutPackage(object interface{}) string {
 	fullObjectType := GetType(object)
 	// In case that the type contains prefix
-	lastIndexOfDot := strings.LastIndex(fullObjectType, ".")
-	if lastIndexOfDot == -1 {
-		return fullObjectType
-	}
-
-	objectType := fullObjectType[lastIndexOfDot+1:]
+	arr := strings.SplitAfter(fullObjectType, ".")
+	objectType := arr[len(arr)-1]
 	return objectType
 }
