@@ -15,6 +15,8 @@ import (
 const (
 	// _missingKeyErrorFreeCacheString is that is returned from freecache in case that the key is not found.
 	_missingKeyErrorFreeCacheString = "entry not found"
+	// client type of free cache.
+	_freeCacheClientType clientType = "FreeCacheInMemCacheClient"
 )
 
 // FreeCacheInMemCacheClient implements ICacheClient  interface
@@ -45,7 +47,7 @@ func (client *FreeCacheInMemCacheClient) Get(ctx context.Context, key string) (s
 	tracer.Info("Get key executed", "Key", key)
 
 	operationStatus := operations.MISS
-	defer client.metricSubmitter.SendMetric(1, cachemetrics.NewCacheOperationMetric(client, operations.GET, operationStatus))
+	defer client.metricSubmitter.SendMetric(1, cachemetrics.NewCacheOperationMetric(client, operationStatus))
 
 	entry, err := client.freeCache.Get([]byte(key))
 	// Check if key is missing
@@ -71,12 +73,11 @@ func (client *FreeCacheInMemCacheClient) Set(ctx context.Context, key string, va
 	tracer := client.tracerProvider.GetTracer("Set")
 	tracer.Info("Set new key", "Key", key, "Value", value, "Expiration", expiration)
 
-	operationStatus := operations.MISS
-	defer client.metricSubmitter.SendMetric(1, cachemetrics.NewCacheOperationMetric(client, operations.SET, operationStatus))
-
 	if expiration < 0 {
 		err := NewNegativeExpirationCacheError(expiration)
 		tracer.Error(err, "", "Key", key, "Value", value, "Expiration", expiration)
+		client.metricSubmitter.SendMetric(1, cachemetrics.NewSetErrEncounteredMetric(err, _freeCacheClientType))
+
 		return err
 	}
 
@@ -85,10 +86,11 @@ func (client *FreeCacheInMemCacheClient) Set(ctx context.Context, key string, va
 	err := client.freeCache.Set([]byte(key), []byte(value), expirationInt)
 	if err != nil {
 		tracer.Error(err, "Failed to set a key", "Key", key, "Value", value, "Expiration", expiration)
+		client.metricSubmitter.SendMetric(1, cachemetrics.NewSetErrEncounteredMetric(err, _freeCacheClientType))
+
 		return err
 	}
 
-	operationStatus = operations.HIT
 	tracer.Info("Key was added successfully", "Key", key, "value", value)
 	return nil
 }

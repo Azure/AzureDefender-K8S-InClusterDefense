@@ -12,6 +12,10 @@ import (
 	"time"
 )
 
+const (
+	_redisClientType = "RedisCacheClient"
+)
+
 // RedisCacheClient implements ICacheClient interface
 var _ ICacheClient = (*RedisCacheClient)(nil)
 
@@ -43,7 +47,7 @@ func (client *RedisCacheClient) Get(ctx context.Context, key string) (string, er
 	tracer.Info("Get key executed", "Key", key)
 
 	operationStatus := operations.MISS
-	defer client.metricSubmitter.SendMetric(1, cachemetrics.NewCacheOperationMetric(client, operations.GET, operationStatus))
+	defer client.metricSubmitter.SendMetric(1, cachemetrics.NewCacheOperationMetric(client, operationStatus))
 
 	value, err := client.redisClient.Get(ctx, key).Result()
 	// Check if key is missing.
@@ -70,21 +74,21 @@ func (client *RedisCacheClient) Set(ctx context.Context, key string, value strin
 	tracer := client.tracerProvider.GetTracer("Set")
 	tracer.Info("Set new key", "Key", key, "Value", value, "Expiration", expiration)
 
-	operationStatus := operations.MISS
-	defer client.metricSubmitter.SendMetric(1, cachemetrics.NewCacheOperationMetric(client, operations.SET, operationStatus))
-
 	if expiration < 0 {
 		err := NewNegativeExpirationCacheError(expiration)
 		tracer.Error(err, "", "Key", key, "Value", value, "Expiration", expiration)
+		client.metricSubmitter.SendMetric(1, cachemetrics.NewSetErrEncounteredMetric(err, _redisClientType))
+
 		return err
 	}
 
 	if err := client.redisClient.Set(ctx, key, value, expiration).Err(); err != nil {
 		tracer.Error(err, "Failed to set a key", "Key", key, "Value", value, "Expiration", expiration)
+		client.metricSubmitter.SendMetric(1, cachemetrics.NewSetErrEncounteredMetric(err, _redisClientType))
+
 		return err
 	}
 
-	operationStatus = operations.HIT
 	tracer.Info("Key was added successfully", "Key", key, "value", value)
 	return nil
 }
