@@ -54,10 +54,12 @@ func (client *FreeCacheInMemCacheClient) Get(ctx context.Context, key string) (s
 	if (err != nil && strings.ToLower(err.Error()) == _missingKeyErrorFreeCacheString) || entry == nil {
 		err = NewMissingKeyCacheError(key)
 		tracer.Error(err, "", "Key", key)
+		client.metricSubmitter.SendMetric(1, cachemetrics.NewGetErrEncounteredMetric(err, _freeCacheClientType))
 		return "", err
 		// Unexpected error was returned from freecache client.
 	} else if err != nil {
 		tracer.Error(err, "Failed to get a key", "Key", key, "value", string(entry))
+		client.metricSubmitter.SendMetric(1, cachemetrics.NewGetErrEncounteredMetric(err, _freeCacheClientType))
 		return "", err
 	}
 

@@ -3,8 +3,6 @@ module github.com/Azure/AzureDefender-K8S-InClusterDefense
 go 1.16
 
 require (
-	tivan.ms/libs/instrumentation v0.0.0-20210803101155-9c6cc8e668ee
-
 	github.com/Azure/azure-sdk-for-go v56.3.0+incompatible
 	github.com/Azure/go-autorest/autorest v0.11.19
 	github.com/Azure/go-autorest/autorest/adal v0.9.13
@@ -32,4 +30,6 @@ require (
 	k8s.io/klog/v2 v2.8.0
 	k8s.io/kube-openapi v0.0.0-20210421082810-95288971da7e // indirect
 	sigs.k8s.io/controller-runtime v0.9.0
+	sigs.k8s.io/yaml v1.3.0 // indirect
+	tivan.ms/libs/instrumentation v0.0.0-20210803101155-9c6cc8e668ee
 )

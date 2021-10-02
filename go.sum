@@ -1443,6 +1443,8 @@ sigs.k8s.io/structured-merge-diff/v4 v4.1.0/go.mod h1:bJZC9H9iH24zzfZ/41RGcq60oK
 sigs.k8s.io/yaml v1.1.0/go.mod h1:UJmg0vDUVViEyp3mgSv9WPwZCDxu4rQW1olrI1uml+o=
 sigs.k8s.io/yaml v1.2.0 h1:kr/MCeFWJWTwyaHoR9c8EjH9OumOmoF9YGiZd7lFm/Q=
 sigs.k8s.io/yaml v1.2.0/go.mod h1:yfXDCHCao9+ENCvLSE62v9VSji2MKu5jeNfTrofGhJc=
+sigs.k8s.io/yaml v1.3.0 h1:a2VclLzOGrwOHDiV8EfBGhvjHvP46CtW5j6POvhYGGo=
+sigs.k8s.io/yaml v1.3.0/go.mod h1:GeOyir5tyXNByN85N/dRIT9es5UQNerPYEKK56eTBm8=
 tivan.ms/libs/common v0.0.0-20210801072952-3e804bf20582 h1:dzuIDVbRmuQhaJf5n7cLm9Knl+y2BtIvfkNmqWYYOpk=
 tivan.ms/libs/common v0.0.0-20210801072952-3e804bf20582/go.mod h1:e7oijzILP4T3LwruT8mczb+de8YX2E0NBUfHhchmrcU=
 tivan.ms/libs/instrumentation v0.0.0-20210803101155-9c6cc8e668ee h1:5eJW0LrHMyi+6T7967BJE78ESWAahYXhH420/sVR3xI=

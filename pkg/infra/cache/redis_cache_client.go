@@ -54,10 +54,12 @@ func (client *RedisCacheClient) Get(ctx context.Context, key string) (string, er
 	if err == redis.Nil {
 		err = NewMissingKeyCacheError(key)
 		tracer.Error(err, "", "Key", key)
+		client.metricSubmitter.SendMetric(1, cachemetrics.NewGetErrEncounteredMetric(err, _redisClientType))
 		return "", err
 		// Unexpected error from redis client
 	} else if err != nil {
 		tracer.Error(err, "Failed to get a key", "Context", ctx, "Key", key)
+		client.metricSubmitter.SendMetric(1, cachemetrics.NewGetErrEncounteredMetric(err, _redisClientType))
 		return "", err
 	}
 

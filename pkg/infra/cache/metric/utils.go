@@ -9,3 +9,9 @@ func NewSetErrEncounteredMetric(err error, clientType string) *util.ErrorEncount
 	errContext := clientType + "SetFailed"
 	return util.NewErrorEncounteredMetric(err, errContext)
 }
+
+// NewGetErrEncounteredMetric returns *util.ErrorEncounteredMetric when Get operation failed of some ICacheClient failed.
+func NewGetErrEncounteredMetric(err error, clientType string) *util.ErrorEncounteredMetric {
+	errContext := clientType + "GetFailed"
+	return util.NewErrorEncounteredMetric(err, errContext)
+}
