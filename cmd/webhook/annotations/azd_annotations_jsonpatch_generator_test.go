@@ -11,7 +11,7 @@ import (
 
 const (
 	_expectedTestAddPatchOperation   = "add"
-	_expectedTestAnnotationPatchPath = "/metadata/annotations"
+	_expectedTestAnnotationPatchPath = "/metadata/annotations/azuredefender.io~1containers.vulnerability.scan.info"	// '~1' is json patch escape to '/'
 )
 
 type TestSuite struct {
@@ -61,11 +61,7 @@ func (suite *TestSuite) Test_CreateContainersVulnerabilityScanAnnotationPatchAdd
 	suite.Equal(_expectedTestAnnotationPatchPath, result.Path)
 
 	// Get data string
-	mapAnnotations, ok := result.Value.(map[string]string)
-	suite.True(ok)
-
-	suite.Equal(1, len(mapAnnotations))
-	strValue, ok := mapAnnotations[contracts.ContainersVulnerabilityScanInfoAnnotationName]
+	strValue, ok := result.Value.(string)
 	suite.True(ok)
 
 	// Unmarshal

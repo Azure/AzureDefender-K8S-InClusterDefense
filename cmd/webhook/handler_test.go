@@ -24,7 +24,7 @@ import (
 
 const (
 	_expectedTestAddPatchOperation   = "add"
-	_expectedTestAnnotationPatchPath = "/metadata/annotations"
+	_expectedTestAnnotationPatchPath = "/metadata/annotations/azuredefender.io~1containers.vulnerability.scan.info"	// '~1' is json patch escape to '/'
 )
 
 var (
@@ -65,7 +65,6 @@ func (suite *TestSuite) Test_Handle_DryRunTrue_ShouldNotPatched() {
 	req := createRequestForTests(pod)
 	expectedInfo := []*contracts.ContainerVulnerabilityScanInfo{_firstContainerVulnerabilityScanInfo}
 	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", &pod.Spec, &pod.ObjectMeta, &pod.TypeMeta).Return(expectedInfo, nil).Once()
-
 	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: true}, instrumentation.NewNoOpInstrumentationProvider())
 	// Act
 	resp := handler.Handle(context.Background(), *req)
@@ -201,11 +200,7 @@ func (suite *TestSuite) checkPatch(expected []*contracts.ContainerVulnerabilityS
 	suite.Equal(_expectedTestAnnotationPatchPath, patch.Path)
 
 	// Get data string
-	mapAnnotations, ok := patch.Value.(map[string]string)
-	suite.True(ok)
-
-	suite.Equal(1, len(mapAnnotations))
-	strValue, ok := mapAnnotations[contracts.ContainersVulnerabilityScanInfoAnnotationName]
+	strValue, ok := patch.Value.(string)
 	suite.True(ok)
 
 	// Unmarshal
