@@ -6,8 +6,6 @@ import (
 	argbase "github.com/Azure/azure-sdk-for-go/services/resourcegraph/mgmt/2021-03-01/resourcegraph"
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/pkg/errors"
-	"strconv"
-	"time"
 )
 
 // IARGBaseClientWrapper is a wrapper interface for base client of arg
@@ -22,7 +20,7 @@ func NewArgBaseClientWrapper(retryPolicyConfiguration *utils.RetryPolicyConfigur
 	argBaseClient := argbase.New()
 	// Assign the retry policy configuration to the client.
 	argBaseClient.RetryAttempts = retryPolicyConfiguration.RetryAttempts
-	retryDuration, err := time.ParseDuration(strconv.Itoa(retryPolicyConfiguration.RetryDuration) + retryPolicyConfiguration.TimeUnit)
+	retryDuration, err := retryPolicyConfiguration.GetBackOffDuration()
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot parse given retry duration <(%v)>", retryPolicyConfiguration.RetryDuration)
 	}

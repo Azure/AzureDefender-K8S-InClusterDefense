@@ -49,8 +49,10 @@ data:
         retryPolicyConfiguration:
           retryAttempts: {{ .Values.AzDProxy.acr.craneWrappers.retryPolicyConfiguration.retryAttempts }}
           retryDuration: {{ .Values.AzDProxy.acr.craneWrappers.retryPolicyConfiguration.retryDuration }}
+          timeUnit: {{ .Values.AzDProxy.acr.craneWrappers.retryPolicyConfiguration.timeUnit | quote}}
     arg:
       argBaseClient:
         retryPolicyConfiguration:
           retryAttempts: {{ .Values.AzDProxy.arg.argBaseClient.retryPolicyConfiguration.retryAttempts }}
           retryDuration: {{ .Values.AzDProxy.arg.argBaseClient.retryPolicyConfiguration.retryDuration }}
+          timeUnit: {{ .Values.AzDProxy.arg.argBaseClient.retryPolicyConfiguration.timeUnit | quote}}
