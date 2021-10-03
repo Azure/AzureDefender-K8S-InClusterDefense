@@ -18,8 +18,8 @@ type CacheClientGetMetric struct {
 	operationStatus operations.OPERATION_STATUS
 }
 
-// NewCacheOperationMetric  Ctor for ArgDataProviderResponseLatencyMetric
-func NewCacheOperationMetric(cacheType interface{}, operationStatus operations.OPERATION_STATUS) *CacheClientGetMetric {
+// NewCacheClientGetMetric  Ctor for ArgDataProviderResponseLatencyMetric
+func NewCacheClientGetMetric(cacheType interface{}, operationStatus operations.OPERATION_STATUS) *CacheClientGetMetric {
 	return &CacheClientGetMetric{
 		cacheType:       utils.GetType(cacheType),
 		operationStatus: operationStatus,

@@ -55,6 +55,7 @@ func main() {
 	kubeletIdentityEnvAzureAuthorizerConfiguration := new(azureauth.EnvAzureAuthorizerConfiguration)
 	craneWrapperRetryPolicyConfiguration := new(utils.RetryPolicyConfiguration)
 	argBaseClientRetryPolicyConfiguration := new(utils.RetryPolicyConfiguration)
+	redisCacheClientRetryPolicyConfiguration := new(utils.RetryPolicyConfiguration)
 
 	argDataProviderCacheConfiguration := new(cachewrappers.RedisCacheClientConfiguration)
 	tokensCacheConfiguration := new(cachewrappers.FreeCacheInMemWrapperCacheConfiguration)
@@ -73,6 +74,7 @@ func main() {
 		"acr.craneWrappersConfiguration.retryPolicyConfiguration": craneWrapperRetryPolicyConfiguration,
 		"cache.argDataProviderCacheConfiguration":                 argDataProviderCacheConfiguration,
 		"cache.tokensCacheConfiguration":                          tokensCacheConfiguration,
+		"cache.redisClient.retryPolicyConfiguration":              craneWrapperRetryPolicyConfiguration,
 	}
 
 	for key, configObject := range keyConfigMap {
@@ -134,7 +136,7 @@ func main() {
 	// ARG
 	//TODO complete it once we merge the rest of the PR's.
 	argDataProviderRedisCacheBaseClient := cachewrappers.NewRedisBaseClientWrapper(argDataProviderCacheConfiguration)
-	_ = cache.NewRedisCacheClient(instrumentationProvider, argDataProviderRedisCacheBaseClient)
+	_ = cache.NewRedisCacheClient(instrumentationProvider, argDataProviderRedisCacheBaseClient, redisCacheClientRetryPolicyConfiguration)
 	tag2digestCache := cachewrappers.NewFreeCacheInMem(tokensCacheConfiguration)
 	_ = cache.NewFreeCacheInMemCacheClient(instrumentationProvider, tag2digestCache)
 

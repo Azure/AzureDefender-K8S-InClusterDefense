@@ -59,10 +59,15 @@ data:
 
     # Cache configuration
     cache:
+
       redisClient:
         replicas: {{.Values.AzDProxy.cache.redisClient.replicas}}
         port: {{.Values.AzDProxy.cache.redisClient.port}}
         targetport: {{.Values.AzDProxy.cache.redisClient.port}}
+        retryPolicyConfiguration:
+          retryAttempts: {{ .Values.AzDProxy.cache.redisClient.retryPolicyConfiguration.retryAttempts }}
+          retryDuration: {{ .Values.AzDProxy.cache.redisClient.retryPolicyConfiguration.retryDuration }}
+          timeUnit: {{ .Values.AzDProxy.cache.redisClient.retryPolicyConfiguration.timeUnit }}
 
       argDataProviderCacheConfiguration:
         address: {{.Values.AzDProxy.cache.argDataProviderCacheConfiguration.address}}

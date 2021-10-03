@@ -127,6 +127,14 @@ AzDProxy:
       # -- the port that redis cache will be listened.
       port: 6379
 
+      retryPolicyConfiguration:
+        #  -- Number of retry attempts
+        retryAttempts: 3
+        #  -- Sleep duration between retries (in milliseconds):
+        retryDuration: 10
+        #  -- Timeunit for the backoff duration
+        timeUnit: "ms"
+
     argDataProviderCacheConfiguration:
       # TODO Change this address to helm function
       # -- Address that the redis client will listen to. set to redis service + the port of the service.

@@ -47,7 +47,7 @@ func (client *FreeCacheInMemCacheClient) Get(ctx context.Context, key string) (s
 	tracer.Info("Get key executed", "Key", key)
 
 	operationStatus := operations.MISS
-	defer client.metricSubmitter.SendMetric(1, cachemetrics.NewCacheOperationMetric(client, operationStatus))
+	defer client.metricSubmitter.SendMetric(1, cachemetrics.NewCacheClientGetMetric(client, operationStatus))
 
 	entry, err := client.freeCache.Get([]byte(key))
 	// Check if key is missing

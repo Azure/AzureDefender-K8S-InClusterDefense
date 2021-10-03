@@ -41,20 +41,21 @@ func (*CraneWrapper) Digest(ref string, opt ...crane.Option) (string, error) {
 }
 
 // DigestWithRetry re-executing Digest in case of a failure according to retryPolicy
-func (craneWrapper *CraneWrapper) DigestWithRetry(imageReference string, tracerProvider trace.ITracerProvider, metricSubmitter metric.IMetricSubmitter, opt ...crane.Option) (res string, err error) {
+func (craneWrapper *CraneWrapper) DigestWithRetry(imageReference string, tracerProvider trace.ITracerProvider, metricSubmitter metric.IMetricSubmitter, opt ...crane.Option) (string, error) {
 	tracer := tracerProvider.GetTracer("GetDigestWithRetries")
 	retryCount := 1
 	retryDuration, err := craneWrapper.retryPolicyConfiguration.GetBackOffDuration()
 	if err != nil {
-		return res, errors.Wrapf(err, "cannot parse given retry duration <(%v)>", craneWrapper.retryPolicyConfiguration.RetryDuration)
+		return "", errors.Wrapf(err, "cannot parse given retry duration <(%v)>", craneWrapper.retryPolicyConfiguration.RetryDuration)
 	}
 	for retryCount < craneWrapper.retryPolicyConfiguration.RetryAttempts+1 {
 		// TODO deal with cases for which we do not want to retry after method as been implemented
 		// Execute Digest and check if an error occurred. We want to retry if err is not nil
-		if res, err = craneWrapper.Digest(imageReference, opt...); err != nil {
+		if res, err := craneWrapper.Digest(imageReference, opt...); err == nil {
 			tracer.Info("Managed to extract digest", "attempts:", retryCount)
 			return res, nil
 		} else {
+			//TODO Check err type and decide if return err or retry.
 			tracer.Error(err, "failed extracting digest from ARC", "attempts:", retryCount)
 			retryCount += 1
 
@@ -64,5 +65,5 @@ func (craneWrapper *CraneWrapper) DigestWithRetry(imageReference string, tracerP
 	}
 	// Send metrics
 	metricSubmitter.SendMetric(retryCount, registrymetric.NewCraneWrapperNumOfRetryAttempts())
-	return res, errors.Wrapf(err, "failed after %d retries due to error", retryCount)
+	return "", errors.Wrapf(err, "failed after %d retries due to error", retryCount)
 }

@@ -111,7 +111,7 @@ func (client *CraneRegistryClient) GetDigestUsingK8SAuth(imageReference registry
 	tracer := client.tracerProvider.GetTracer("GetDigestUsingK8SAuth")
 	tracer.Info("Received image:", "imageReference", imageReference, "namespace", namespace, "imagePullSecrets", imagePullSecrets, "serviceAccountName", serviceAccountName)
 
-	// Argument validaiton
+	// Argument validation
 	if imageReference == nil {
 		err := errors.Wrap(utils.NilArgumentError, "CraneRegistryClient.GetDigestUsingK8SAuth")
 		tracer.Error(err, "")
@@ -126,11 +126,18 @@ func (client *CraneRegistryClient) GetDigestUsingK8SAuth(imageReference registry
 		return "", err
 	}
 
-	// Get digest and passing key chain
+	// Get digest and passing keychain
 	digest, err := client.getDigest(imageReference, k8sKeychain)
 	if err != nil {
 		// Report error
 		err = errors.Wrap(err, "Failed with client.getDigest:")
+		tracer.Error(err, "")
+		return "", err
+	}
+
+	if digest == "" {
+		// Report error
+		err = errors.Wrap(err, "Failed with client.getDigest: digest is empty ")
 		tracer.Error(err, "")
 		return "", err
 	}

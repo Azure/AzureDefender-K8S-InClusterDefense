@@ -56,6 +56,11 @@ cache:
     port: 6379
     targetport: 6379
 
+    retryPolicyConfiguration:
+      retryAttempts: 3
+      retryDuration: 10
+      timeUnit: "ms"
+
   argDataProviderCacheConfiguration:
     address: "azure-defender-proxy-redis-service:6379"
     table: 0
