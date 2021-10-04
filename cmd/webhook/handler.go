@@ -103,9 +103,10 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 	handler.metricSubmitter.SendMetric(1, webhookmetric.NewHandlerNewRequestMetric(req.Kind.Kind, req.Operation))
 
 	// Check if the request should be filtered.
-	shouldBeFiltered, returnedResponse := handler.shouldRequestBeFiltered(req, &reason)
+	shouldBeFiltered, reason := handler.shouldRequestBeFiltered(req)
 	if shouldBeFiltered {
-		return *returnedResponse
+		response = admission.Allowed(string(reason))
+		return response
 	}
 
 	response, err = handler.handlePodCreateUpdateRequest(req)
@@ -198,34 +199,34 @@ func (handler *Handler) admissionErrorResponse(err error) admission.Response {
 // shouldRequestBeFiltered checks if the request should be filtered.
 // In case that it should be filtered, it returns true and the admission.Response.
 // In case that it shouldn't be filtered, it returns false and nil
-func (handler *Handler) shouldRequestBeFiltered(req admission.Request, reason *responseReason) (bool, *admission.Response) {
+func (handler *Handler) shouldRequestBeFiltered(req admission.Request) (bool, responseReason) {
 	tracer := handler.tracerProvider.GetTracer("shouldRequestBeFiltered")
 	// If it's the same namespace of the mutation webhook
 	// TODO: replace with non-all namespace exclusion but a list excluded namespaces/pods
 	if req.Namespace == handler.configuration.Namespace {
 		tracer.Info("Request filtered out due to it is in the same namespace as the handler.", "ReqUID", req.UID, "Namespace", req.Namespace)
-		*reason = _noSelfManagementReason
-		response := admission.Allowed(string(*reason))
-		return true, &response
+		//*reason =
+		//response := admission.Allowed(string(*reason))
+		return true, _noSelfManagementReason
 	}
 
 	// Filter if the kind is not pod.
 	if req.Kind.Kind != admisionrequest.PodKind {
 		tracer.Info("Request filtered out due to the request is not supported kind.", "ReqUID", req.UID, "ReqKind", req.Kind.Kind)
-		*reason = _noMutationForKindReason
-		response := admission.Allowed(string(*reason))
-		return true, &response
+		//*reason = _noMutationForKindReason
+		//response := admission.Allowed(string(*reason))
+		return true, _noMutationForKindReason
 	}
 
 	// Filter if the operation is not Create
 	if req.Operation != admissionv1.Create {
 		tracer.Info("Request filtered out due to the request is not supported operation.", "ReqUID", req.UID, "ReqOperation", req.Operation)
-		*reason = _noMutationForOperationReason
-		response := admission.Allowed(string(*reason))
-		return true, &response
+		//*reason = _noMutationForOperationReason
+		//response := admission.Allowed(string(*reason))
+		return true, _noMutationForOperationReason
 	}
 
 	tracer.Info("Request shouldn't be filtered out.", "ReqUID", req.UID)
 	// Request shouldn't be filtered out.
-	return false, nil
+	return false, _patchedReason
 }
