@@ -54,6 +54,7 @@ func main() {
 	craneWrapperRetryPolicyConfiguration := new(utils.RetryPolicyConfiguration)
 	argBaseClientRetryPolicyConfiguration := new(utils.RetryPolicyConfiguration)
 	argClientConfiguration := new(arg.ARGClientConfiguration)
+	deploymentConfiguration := new(utils.DeploymentConfiguration)
 
 	// Create a map between configuration object and key in main config file
 	keyConfigMap := map[string]interface{}{
@@ -68,6 +69,7 @@ func main() {
 		"arg.argBaseClient.retryPolicyConfiguration":              argBaseClientRetryPolicyConfiguration,
 		"acr.craneWrappersConfiguration.retryPolicyConfiguration": craneWrapperRetryPolicyConfiguration,
 		"arg.argClientConfiguration":                              argClientConfiguration,
+		"deployment":                                              deploymentConfiguration,
 	}
 
 	for key, configObject := range keyConfigMap {
@@ -77,6 +79,8 @@ func main() {
 			log.Fatal("failed to load specific configuration data", err)
 		}
 	}
+
+	// Create deployment singleton.
 
 	// Create Tivan's instrumentation
 	tivanInstrumentationResult, err := tivan.NewTivanInstrumentationResult(tivanInstrumentationConfiguration)

@@ -16,7 +16,6 @@ webhook:
     enableCertRotation: true
   handlerConfiguration:
     dryRun: false
-    namespace: "kube-system"
 instrumentation:
   trace:
     tracerConfiguration:
@@ -28,12 +27,10 @@ instrumentation:
 
 azdIdentity:
   envAzureAuthorizerConfiguration:
-    isLocalDevelopmentMode: true
     mSIClientId: "" # This should be kept empty while you are running the service locally.
 
 kubeletIdentity:
   envAzureAuthorizerConfiguration:
-    isLocalDevelopmentMode: true
     mSIClientId: "" # This should be kept empty while you are running the service locally.
 
 acr:
@@ -53,3 +50,7 @@ arg:
       retryAttempts: 3
       retryDuration: 100
       timeUnit: "ms"
+
+  deployment:
+    isLocalDevelopment:  true
+    namespace: "kube-system"

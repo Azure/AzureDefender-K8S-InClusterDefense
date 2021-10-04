@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric/util"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/utils"
 	admissionv1 "k8s.io/api/admission/v1"
 	"net/http"
 	"time"
@@ -60,8 +61,6 @@ type Handler struct {
 type HandlerConfiguration struct {
 	// DryRun is flag that if it's true, it handles request but doesn't mutate the pod spec.
 	DryRun bool
-	// Namespace is the namespace where the handler pod is running
-	Namespace string
 }
 
 // NewHandler Constructor for Handler
@@ -203,7 +202,7 @@ func (handler *Handler) shouldRequestBeFiltered(req admission.Request) (bool, re
 	tracer := handler.tracerProvider.GetTracer("shouldRequestBeFiltered")
 	// If it's the same namespace of the mutation webhook
 	// TODO: replace with non-all namespace exclusion but a list excluded namespaces/pods
-	if req.Namespace == handler.configuration.Namespace {
+	if req.Namespace == utils.GetDeploymentInstance().GetNamespace() {
 		tracer.Info("Request filtered out due to it is in the same namespace as the handler.", "ReqUID", req.UID, "Namespace", req.Namespace)
 		//*reason =
 		//response := admission.Allowed(string(*reason))

@@ -28,7 +28,6 @@ data:
         enableCertRotation: {{.Values.AzDProxy.webhook.serverConfiguration.enableCertRotation}}
       handlerConfiguration:
         dryRun: {{.Values.AzDProxy.webhook.handlerConfiguration.runOnDryRunMode}}
-        namespace: {{.Release.Namespace | quote}}
     instrumentation:
       trace:
         tracerConfiguration:
@@ -39,11 +38,9 @@ data:
           mdmNamespace: {{ .Values.AzDProxy.instrumentation.tivan.tivanInstrumentationConfiguration.mdmNamespace | quote}}
     azdIdentity:
       envAzureAuthorizerConfiguration:
-        isLocalDevelopmentMode: {{.Values.AzDProxy.deployment.isLocalDevelopment}}
         mSIClientId: {{.Values.AzDProxy.azdIdentity.envAzureAuthorizerConfiguration.mSIClientId}}
     kubeletIdentity:
       envAzureAuthorizerConfiguration:
-        isLocalDevelopmentMode: {{.Values.AzDProxy.deployment.isLocalDevelopment}}
         mSIClientId: {{.Values.AzDProxy.kubeletIdentity.envAzureAuthorizerConfiguration.mSIClientId}}
     acr:
       craneWrappersConfiguration:
@@ -60,3 +57,7 @@ data:
           retryAttempts: {{ .Values.AzDProxy.arg.argBaseClient.retryPolicyConfiguration.retryAttempts }}
           retryDuration: {{ .Values.AzDProxy.arg.argBaseClient.retryPolicyConfiguration.retryDuration }}
           timeUnit: {{ .Values.AzDProxy.arg.argBaseClient.retryPolicyConfiguration.timeUnit | quote}}
+
+    deployment:
+      isLocalDevelopment:  {{ .Values.AzDProxy.deployment.isLocalDevelopment }}
+      namespace: {{ .Release.Namespace | quote}}

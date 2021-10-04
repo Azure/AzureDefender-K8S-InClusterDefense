@@ -1,6 +1,7 @@
 package azureauth
 
 import (
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/utils"
 	"testing"
 
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/azureauth/mocks"
@@ -15,8 +16,7 @@ const (
 )
 
 var _configuration = &EnvAzureAuthorizerConfiguration{
-	IsLocalDevelopmentMode: false,
-	MSIClientId:            CLIENT_ID,
+	MSIClientId: CLIENT_ID,
 }
 
 var _expectedValues = map[string]string{
@@ -39,6 +39,8 @@ type TestSuite struct {
 
 // This will run before each test in the suite
 func (suite *TestSuite) SetupTest() {
+	utils.UpdateDeploymentForTests(&utils.DeploymentConfiguration{IsLocalDevelopment: false})
+
 	suite.values = map[string]string{}
 	suite.env = &azure.PublicCloud
 	suite.authSettingsMock = &mocks.IEnvironmentSettingsWrapper{}
@@ -50,6 +52,7 @@ func (suite *TestSuite) SetupTest() {
 // This is an example test that will always succeed
 func (suite *TestSuite) TestAzureAuthorizerFromEnvFactory_CreateArmAuthorizer_NonDevelopmentMode_ClientIdAndResourceAuthUsingEnv() {
 
+	utils.UpdateDeploymentForTests(&utils.DeploymentConfiguration{IsLocalDevelopment: false})
 	suite.authSettingsMock.On("GetEnvironment").Return(suite.env).Once()
 	suite.authSettingsMock.On("GetValues").Return(suite.values).Twice()
 	suite.authSettingsMock.On("GetAuthorizer").Return(suite.authorizer, nil).Once()
@@ -64,7 +67,7 @@ func (suite *TestSuite) TestAzureAuthorizerFromEnvFactory_CreateArmAuthorizer_No
 
 func (suite *TestSuite) TestEnvAzureAuthorizerFactory_CreateArmAuthorizer_DevelopmentMode_ResourceAuthUsingCLI() {
 
-	_configuration.IsLocalDevelopmentMode = true
+	utils.UpdateDeploymentForTests(&utils.DeploymentConfiguration{IsLocalDevelopment: true})
 	suite.authSettingsMock.On("GetEnvironment").Return(suite.env).Once()
 	suite.authSettingsMock.On("GetValues").Return(suite.values).Times(3)
 	suite.authWrapperMock.On("GetSettingsFromEnvironment").Return(suite.authSettingsMock, nil).Once()
