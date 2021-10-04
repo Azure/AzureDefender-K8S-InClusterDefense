@@ -12,15 +12,16 @@ import (
 )
 
 const (
-	_retryAttempts    int = 3
-	_retryDuration        = 10 * time.Millisecond
-	_retryDurationStr     = "10ms"
+	_retryAttempts int = 3
+	_retryDuration     = 10
+	_timeUnit          = "ms"
 )
 
 var (
 	retryPolicyConfiguration = &utils.RetryPolicyConfiguration{
 		RetryAttempts: _retryAttempts,
-		RetryDuration: _retryDurationStr,
+		RetryDuration: _retryDuration,
+		TimeUnit:      _timeUnit,
 	}
 )
 
