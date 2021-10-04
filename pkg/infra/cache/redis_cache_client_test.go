@@ -67,7 +67,7 @@ func (suite *TestSuite) Test_Set_NewKey_ShouldReturnNil() {
 
 	// Act
 	err := client.Set(_ctx, _key, _value, duration)
-	suite.IsType(redis.Nil, err)
+	suite.Nil(err)
 }
 
 func (suite *TestSuite) Test_Set_NegativeExpiration_ShouldReturnErr() {
