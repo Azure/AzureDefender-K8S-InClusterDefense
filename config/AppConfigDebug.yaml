@@ -40,7 +40,8 @@ acr:
   craneWrappersConfiguration:
     retryPolicyConfiguration:
       retryAttempts: 3
-      retryDuration: "10ms"
+      retryDuration: 10
+      timeUnit: "ms"
 
 arg:
   argClientConfiguration:
@@ -50,4 +51,5 @@ arg:
   argBaseClient:
     retryPolicyConfiguration:
       retryAttempts: 3
-      retryDuration: "100ms"
+      retryDuration: 100
+      timeUnit: "ms"
