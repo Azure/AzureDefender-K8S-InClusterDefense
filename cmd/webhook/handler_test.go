@@ -259,3 +259,20 @@ func createPodForTests(containers []corev1.Container, initContainers []corev1.Co
 		},
 	}
 }
+//
+//func createPodWithAnnotationsForTests(containers []corev1.Container, initContainers []corev1.Container) *corev1.Pod {
+//	return &corev1.Pod{
+//		ObjectMeta: metav1.ObjectMeta{
+//			Name: "podTest",
+//			Annotations: map[string]string{
+//				"cluster-autoscaler.kubernetes.io/safe-to-evict" : "true",
+//				"container.seccomp.security.alpha.kubernetes.io/manager" : "runtime/default",
+//			},
+//		},
+//		TypeMeta: metav1.TypeMeta{},
+//		Spec: corev1.PodSpec{
+//			Containers:     containers,
+//			InitContainers: initContainers,
+//		},
+//	}
+//}

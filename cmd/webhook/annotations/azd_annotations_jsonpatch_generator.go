@@ -2,6 +2,7 @@ package annotations
 
 import (
 	"encoding/json"
+	corev1 "k8s.io/api/core/v1"
 	"time"
 
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/azdsecinfo/contracts"
@@ -19,7 +20,7 @@ const (
 // CreateContainersVulnerabilityScanAnnotationPatchAdd creates and return an add type json patch to add to annotations map a new key value of ContainersVulnerabilityScanInfoAnnotationName.
 // The function creates a scanInfoList from the provided containers scan info  slice of type contracts.ContainerVulnerabilityScanInfoList serialize/marshal it and set it as a value string to key annotation
 // Contracts.ContainersVulnerabilityScanInfoAnnotationName (azuredefender.io/containers.vulnerability.scan.info)
-func CreateContainersVulnerabilityScanAnnotationPatchAdd(containersScanInfoList []*contracts.ContainerVulnerabilityScanInfo) (*jsonpatch.JsonPatchOperation, error) {
+func CreateContainersVulnerabilityScanAnnotationPatchAdd(containersScanInfoList []*contracts.ContainerVulnerabilityScanInfo, pod *corev1.Pod) (*jsonpatch.JsonPatchOperation, error) {
 	scanInfoList := &contracts.ContainerVulnerabilityScanInfoList{
 		GeneratedTimestamp: time.Now().UTC(),
 		Containers:         containersScanInfoList,
@@ -30,9 +31,15 @@ func CreateContainersVulnerabilityScanAnnotationPatchAdd(containersScanInfoList 
 	if err != nil {
 		return nil, errors.Wrap(err, "AzdAnnotationsPatchGenerator failed marshaling scanInfoList during CreateContainersVulnerabilityScanAnnotationPatchAdd")
 	}
+	// create annotations map and add to the map serVulnerabilitySecInfo. If the pod's annotations is nil create a new map
+	annotations := pod.GetAnnotations()
+	if annotations == nil {
+		annotations = make(map[string]string)
+	}
+	annotations[contracts.ContainersVulnerabilityScanInfoAnnotationName] = serVulnerabilitySecInfo
 
 	// Create an add operation to annotations to add or create if annotations are empty
-	patch := jsonpatch.NewOperation(_addPatchOperation, _annotationPatchPath, map[string]string{contracts.ContainersVulnerabilityScanInfoAnnotationName: serVulnerabilitySecInfo})
+	patch := jsonpatch.NewOperation(_addPatchOperation, _annotationPatchPath, annotations)
 	return &patch, nil
 }
 
@@ -48,5 +55,3 @@ func marshalAnnotationInnerObject(object interface{}) (string, error) {
 	ser := string(marshaledVulnerabilitySecInfo)
 	return ser, nil
 }
-
-///

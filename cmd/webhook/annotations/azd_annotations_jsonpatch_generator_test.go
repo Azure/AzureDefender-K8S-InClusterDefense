@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/azdsecinfo/contracts"
 	"github.com/stretchr/testify/suite"
+	corev1 "k8s.io/api/core/v1"
 	"reflect"
 	"testing"
 	"time"
@@ -55,7 +56,7 @@ func (suite *TestSuite) SetupSuite() {
 }
 
 func (suite *TestSuite) Test_CreateContainersVulnerabilityScanAnnotationPatchAdd_TwoContainersScanInfo_AnnotationsGeneratedAsExpected() {
-	result, err := CreateContainersVulnerabilityScanAnnotationPatchAdd(suite.containersScanInfo)
+	result, err := CreateContainersVulnerabilityScanAnnotationPatchAdd(suite.containersScanInfo, &corev1.Pod{})
 	suite.Nil(err)
 	suite.Equal(_expectedTestAddPatchOperation, result.Operation)
 	suite.Equal(_expectedTestAnnotationPatchPath, result.Path)
