@@ -21,3 +21,11 @@ func GetTypeWithoutPackage(object interface{}) string {
 	objectType := arr[len(arr)-1]
 	return objectType
 }
+
+// GetSizeInBytes returns the size of value in bytes.
+func GetSizeInBytes(value string) int {
+	// The reason for using len is exlpained in the following link:  https://www.golangprograms.com/golang-get-number-of-bytes-and-runes-in-a-string.html
+	// In GoLang Strings are UTF-8 encoded, this means each character called rune can be of 1 to 4 bytes long.
+	// So len returns the num of bytes that string takes.
+	return len(value)
+}

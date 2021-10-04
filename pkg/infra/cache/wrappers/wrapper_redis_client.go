@@ -48,6 +48,6 @@ func NewRedisBaseClientWrapper(configuration *RedisCacheClientConfiguration) *re
 		MaxRetries:      configuration.MaxRetries,
 		MinRetryBackoff: configuration.MinRetryBackoff,
 	})
-	//_, _ = redisClient.Ping(context.Background()).Result()
+
 	return redisClient
 }

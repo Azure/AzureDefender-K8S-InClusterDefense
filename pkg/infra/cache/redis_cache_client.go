@@ -8,9 +8,9 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/retrypolicy"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/utils"
 	"github.com/go-redis/redis/v8"
-	"github.com/pkg/errors"
 	"time"
 )
 
@@ -32,17 +32,17 @@ type RedisCacheClient struct {
 	//metricSubmitter
 	metricSubmitter metric.IMetricSubmitter
 	//retryPolicy retry policy for communication with redis cluster.
-	retryPolicyConfiguration *utils.RetryPolicyConfiguration
+	retryPolicy *retrypolicy.RetryPolicy
 }
 
 // NewRedisCacheClient is factory for RedisCacheClient
-func NewRedisCacheClient(instrumentationProvider instrumentation.IInstrumentationProvider, redisBaseClient wrappers.IRedisBaseClientWrapper, retryPolicy *utils.RetryPolicyConfiguration) *RedisCacheClient {
+func NewRedisCacheClient(instrumentationProvider instrumentation.IInstrumentationProvider, redisBaseClient wrappers.IRedisBaseClientWrapper, retryPolicy *retrypolicy.RetryPolicy) *RedisCacheClient {
 
 	return &RedisCacheClient{
-		tracerProvider:           instrumentationProvider.GetTracerProvider("RedisCacheClient"),
-		metricSubmitter:          instrumentationProvider.GetMetricSubmitter(),
-		redisClient:              redisBaseClient,
-		retryPolicyConfiguration: retryPolicy,
+		tracerProvider:  instrumentationProvider.GetTracerProvider("RedisCacheClient"),
+		metricSubmitter: instrumentationProvider.GetMetricSubmitter(),
+		redisClient:     redisBaseClient,
+		retryPolicy:     retryPolicy,
 	}
 }
 
@@ -50,43 +50,31 @@ func NewRedisCacheClient(instrumentationProvider instrumentation.IInstrumentatio
 func (client *RedisCacheClient) Get(ctx context.Context, key string) (string, error) {
 	tracer := client.tracerProvider.GetTracer("Get")
 	tracer.Info("Get key executed", "Key", key)
-	// Default operation status is MISS, if we achive the end of the function then the operation changed to HIT.
-	operationStatus := operations.MISS
-	retryCount := 0
-	defer client.metricSubmitter.SendMetric(retryCount-1, cachemetrics.NewCacheClientGetMetric(client, operationStatus))
 
-	retryDuration, err := client.retryPolicyConfiguration.GetBackOffDuration()
-	if err != nil {
-		return "", errors.Wrapf(err, "cannot parse given retry duration <(%v)>", client.retryPolicyConfiguration.RetryDuration)
+	// Create action and handle for retry policy
+	var action retrypolicy.ActionString = func() (string, error) {
+		return client.redisClient.Get(ctx, key).Result()
 	}
 
-	// Update retryCount to 1
-	retryCount = 1
-	var value string
-	for retryCount < client.retryPolicyConfiguration.RetryAttempts+1 {
-		value, err = client.redisClient.Get(ctx, key).Result()
-		// Check if key is missing, we don't have to retry and return error.
-		if err == redis.Nil {
+	var handle retrypolicy.Handle = func(err error) bool {
+		if err == redis.Nil { // In case that key is missing
+			client.metricSubmitter.SendMetric(1, cachemetrics.NewCacheClientGetMetric(client, operations.MISS))
+			tracer.Info("Missing Key", "Key", key)
 			err = NewMissingKeyCacheError(key)
-			break
-			// Unexpected error from redis client - retry.
-		} else if err != nil {
-			retryCount += 1
-			// wait (retryCount * craneWrapper.retryDuration) milliseconds between retries
-			time.Sleep(time.Duration(retryCount) * retryDuration)
-			// Get succeed.
-		} else {
-			break
+			return true
 		}
-	}
 
-	if err != nil {
 		client.metricSubmitter.SendMetric(1, cachemetrics.NewGetErrEncounteredMetric(err, _redisClientType))
 		tracer.Error(err, "", "key", key)
-		return "", err
+		return false
 	}
 
-	operationStatus = operations.HIT
+	value, err := client.retryPolicy.RetryActionString(action, handle)
+	if err != nil {
+		return "", err
+	}
+	// Get succeed.
+	client.metricSubmitter.SendMetric(1, cachemetrics.NewCacheClientGetMetric(client, operations.HIT))
 	tracer.Info("Key found", "Key", key, "value", value)
 	return value, nil
 }
@@ -114,6 +102,7 @@ func (client *RedisCacheClient) Set(ctx context.Context, key string, value strin
 		return err
 	}
 
+	client.metricSubmitter.SendMetric(utils.GetSizeInBytes(value), cachemetrics.NewAddItemToCacheMetric(_redisClientType))
 	tracer.Info("Key was added successfully", "Key", key, "value", value)
 	return nil
 }

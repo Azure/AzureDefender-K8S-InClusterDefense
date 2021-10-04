@@ -1,6 +1,7 @@
 package metric
 
 import (
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric/util"
 )
 
@@ -14,4 +15,10 @@ func NewSetErrEncounteredMetric(err error, clientType string) *util.ErrorEncount
 func NewGetErrEncounteredMetric(err error, clientType string) *util.ErrorEncounteredMetric {
 	errContext := clientType + "GetFailed"
 	return util.NewErrorEncounteredMetric(err, errContext)
+}
+
+// NewAddItemToCacheMetric creates new add item metric.
+func NewAddItemToCacheMetric(clientType string) *metric.DimensionlessMetric {
+	metricName := clientType + "AddItemToCache"
+	return metric.NewDimensionlessMetric(metricName)
 }

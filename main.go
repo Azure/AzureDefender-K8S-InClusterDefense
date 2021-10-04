@@ -17,7 +17,7 @@ import (
 	registryauthazure "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/acrauth"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/crane"
 	registrywrappers "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/wrappers"
-	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/utils"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/retrypolicy"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/tag2digest"
 	"k8s.io/client-go/kubernetes"
 	"log"
@@ -53,9 +53,9 @@ func main() {
 	instrumentationConfiguration := new(instrumentation.InstrumentationProviderConfiguration)
 	azdIdentityEnvAzureAuthorizerConfiguration := new(azureauth.EnvAzureAuthorizerConfiguration)
 	kubeletIdentityEnvAzureAuthorizerConfiguration := new(azureauth.EnvAzureAuthorizerConfiguration)
-	craneWrapperRetryPolicyConfiguration := new(utils.RetryPolicyConfiguration)
-	argBaseClientRetryPolicyConfiguration := new(utils.RetryPolicyConfiguration)
-	redisCacheClientRetryPolicyConfiguration := new(utils.RetryPolicyConfiguration)
+	craneWrapperRetryPolicyConfiguration := new(retrypolicy.RetryPolicy)
+	argBaseClientRetryPolicyConfiguration := new(retrypolicy.RetryPolicy)
+	redisCacheClientRetryPolicyConfiguration := new(retrypolicy.RetryPolicy)
 
 	argDataProviderCacheConfiguration := new(cachewrappers.RedisCacheClientConfiguration)
 	tokensCacheConfiguration := new(cachewrappers.FreeCacheInMemWrapperCacheConfiguration)
@@ -140,7 +140,7 @@ func main() {
 	tag2digestCache := cachewrappers.NewFreeCacheInMem(tokensCacheConfiguration)
 	_ = cache.NewFreeCacheInMemCacheClient(instrumentationProvider, tag2digestCache)
 
-	azdIdentityAuthorizerFactory := azureauth.NewEnvAzureAuthorizerFactory(azdIdentityEnvAzureAuthorizerConfiguration, new(azureauthwrappers.AzureAuthWrapper))
+	azdIdentityAuthorizerFactory := azureauth.NewEnvAzureAuthorizerFactory(kubeletIdentityEnvAzureAuthorizerConfiguration, new(azureauthwrappers.AzureAuthWrapper))
 	azdIdentityAuthorizer, err := azdIdentityAuthorizerFactory.CreateARMAuthorizer()
 	if err != nil {
 		log.Fatal("main.azdIdentityAuthorizerFactory.NewEnvAzureAuthorizerFactory.CreateARMAuthorizer", err)

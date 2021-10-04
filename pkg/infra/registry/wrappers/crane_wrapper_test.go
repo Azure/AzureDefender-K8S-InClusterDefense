@@ -2,7 +2,7 @@ package wrappers
 
 import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric/util"
-	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/utils"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/retrypolicy"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"regexp"
@@ -18,7 +18,7 @@ const (
 )
 
 var (
-	retryPolicyConfiguration = &utils.RetryPolicyConfiguration{
+	retryPolicy = &retrypolicy.RetryPolicy{
 		RetryAttempts: _retryAttempts,
 		RetryDuration: _retryDuration,
 		TimeUnit:      _timeUnit,
@@ -32,7 +32,7 @@ type TestSuite struct {
 
 // This will run before each test in the suit
 func (suite *TestSuite) SetupTest() {
-	suite.craneWrapper = NewCraneWrapper(retryPolicyConfiguration)
+	suite.craneWrapper = NewCraneWrapper(retryPolicy)
 }
 
 // Test the amount of actual retries is equal _retryAttempts (by a linear factor)

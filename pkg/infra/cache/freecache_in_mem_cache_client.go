@@ -8,6 +8,7 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/utils"
 	"strings"
 	"time"
 )
@@ -42,35 +43,35 @@ func NewFreeCacheInMemCacheClient(instrumentationProvider instrumentation.IInstr
 	}
 }
 
+// Get a key from FreeInMemCache.
+// Returns MissingKeyCacheError if ket is not exist.
 func (client *FreeCacheInMemCacheClient) Get(ctx context.Context, key string) (string, error) {
 	tracer := client.tracerProvider.GetTracer("Get")
 	tracer.Info("Get key executed", "Key", key)
 
-	operationStatus := operations.MISS
-	defer client.metricSubmitter.SendMetric(1, cachemetrics.NewCacheClientGetMetric(client, operationStatus))
-
 	entry, err := client.freeCache.Get([]byte(key))
 	// Check if key is missing
 	if (err != nil && strings.ToLower(err.Error()) == _missingKeyErrorFreeCacheString) || entry == nil {
+		tracer.Info("Missing key", "Key", key)
 		err = NewMissingKeyCacheError(key)
-		tracer.Error(err, "", "Key", key)
-		client.metricSubmitter.SendMetric(1, cachemetrics.NewGetErrEncounteredMetric(err, _freeCacheClientType))
+		client.metricSubmitter.SendMetric(1, cachemetrics.NewCacheClientGetMetric(client, operations.MISS))
 		return "", err
-		// Unexpected error was returned from freecache client.
-	} else if err != nil {
+
+	} else if err != nil { // Unexpected error was returned from freecache client.
 		tracer.Error(err, "Failed to get a key", "Key", key, "value", string(entry))
 		client.metricSubmitter.SendMetric(1, cachemetrics.NewGetErrEncounteredMetric(err, _freeCacheClientType))
 		return "", err
 	}
 
-	operationStatus = operations.HIT
 	// Convert entry ([]byte) to string
 	value := string(entry)
 
+	client.metricSubmitter.SendMetric(1, cachemetrics.NewCacheClientGetMetric(client, operations.HIT))
 	tracer.Info("Key found", "Key", key, "value", value)
 	return value, nil
 }
 
+// Set
 func (client *FreeCacheInMemCacheClient) Set(ctx context.Context, key string, value string, expiration time.Duration) error {
 	tracer := client.tracerProvider.GetTracer("Set")
 	tracer.Info("Set new key", "Key", key, "Value", value, "Expiration", expiration)
@@ -93,6 +94,7 @@ func (client *FreeCacheInMemCacheClient) Set(ctx context.Context, key string, va
 		return err
 	}
 
+	client.metricSubmitter.SendMetric(utils.GetSizeInBytes(value), cachemetrics.NewAddItemToCacheMetric(_freeCacheClientType))
 	tracer.Info("Key was added successfully", "Key", key, "value", value)
 	return nil
 }

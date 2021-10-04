@@ -3,11 +3,9 @@ package wrappers
 import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
-	registrymetric "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/metric"
-	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/utils"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/retrypolicy"
 	"github.com/google/go-containerregistry/pkg/crane"
 	"github.com/pkg/errors"
-	"time"
 )
 
 // ICraneWrapper wraps crane operations
@@ -20,14 +18,14 @@ type ICraneWrapper interface {
 
 // CraneWrapper wraps crane operations
 type CraneWrapper struct {
-	// retryPolicyConfiguration is the the manager of the retry policy of the crane wrapper.
-	retryPolicyConfiguration *utils.RetryPolicyConfiguration
+	// retryPolicy is the manager of the retry policy of the crane wrapper.
+	retryPolicy *retrypolicy.RetryPolicy
 }
 
 // NewCraneWrapper Cto'r for CraneWrapper
-func NewCraneWrapper(retryPolicyConfiguration *utils.RetryPolicyConfiguration) *CraneWrapper {
+func NewCraneWrapper(retryPolicyConfiguration *retrypolicy.RetryPolicy) *CraneWrapper {
 	return &CraneWrapper{
-		retryPolicyConfiguration: retryPolicyConfiguration,
+		retryPolicy: retryPolicyConfiguration,
 	}
 }
 
@@ -42,28 +40,25 @@ func (*CraneWrapper) Digest(ref string, opt ...crane.Option) (string, error) {
 
 // DigestWithRetry re-executing Digest in case of a failure according to retryPolicy
 func (craneWrapper *CraneWrapper) DigestWithRetry(imageReference string, tracerProvider trace.ITracerProvider, metricSubmitter metric.IMetricSubmitter, opt ...crane.Option) (string, error) {
-	tracer := tracerProvider.GetTracer("GetDigestWithRetries")
-	retryCount := 1
-	retryDuration, err := craneWrapper.retryPolicyConfiguration.GetBackOffDuration()
-	if err != nil {
-		return "", errors.Wrapf(err, "cannot parse given retry duration <(%v)>", craneWrapper.retryPolicyConfiguration.RetryDuration)
-	}
-	for retryCount < craneWrapper.retryPolicyConfiguration.RetryAttempts+1 {
-		// TODO deal with cases for which we do not want to retry after method as been implemented
-		// Execute Digest and check if an error occurred. We want to retry if err is not nil
-		if res, err := craneWrapper.Digest(imageReference, opt...); err == nil {
-			tracer.Info("Managed to extract digest", "attempts:", retryCount)
-			return res, nil
-		} else {
-			//TODO Check err type and decide if return err or retry.
-			tracer.Error(err, "failed extracting digest from ARC", "attempts:", retryCount)
-			retryCount += 1
+	tracer := tracerProvider.GetTracer("DigestWithRetry")
 
-			// wait (retryCount * craneWrapper.retryDuration) milliseconds between retries
-			time.Sleep(time.Duration(retryCount) * retryDuration)
-		}
+	var action retrypolicy.ActionString = func() (string, error) {
+		return craneWrapper.Digest(imageReference, opt...)
 	}
-	// Send metrics
-	metricSubmitter.SendMetric(retryCount, registrymetric.NewCraneWrapperNumOfRetryAttempts())
-	return "", errors.Wrapf(err, "failed after %d retries due to error", retryCount)
+
+	var handle retrypolicy.Handle = func(error) bool {
+		// TODO deal with cases for which we do not want to retry after method as been implemented
+		return false
+	}
+
+	digest, err := craneWrapper.retryPolicy.RetryActionString(action, handle)
+
+	if err != nil {
+		err := errors.Wrapf(err, "failed to extract digest of image %v", imageReference)
+		tracer.Error(err, "")
+		return "", err
+	}
+
+	tracer.Info("Managed to extract digest", "Image ref", imageReference, "digest", digest)
+	return digest, nil
 }

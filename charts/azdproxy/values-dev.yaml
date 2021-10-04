@@ -86,11 +86,11 @@ AzDProxy:
   # Azure Auth values
   azdIdentity:
     envAzureAuthorizerConfiguration:
-      mSIClientId: "a554f933-695f-4ecf-abe4-2a7515e8c1b7"
+      mSIClientId: "a554f933-695f-4ecf-abe4-2a7515e8c1b7" # BlockIdentityDev MI
 
   kubeletIdentity:
     envAzureAuthorizerConfiguration:
-      mSIClientId: "4446918a-1c6c-437e-9db1-018acb52efdc"
+      mSIClientId: "f4a700f6-e852-4cfd-8408-2ed6d3843759" # cluster-dev-agentpool MI
 
   deployment:
     isLocalDevelopment: false
