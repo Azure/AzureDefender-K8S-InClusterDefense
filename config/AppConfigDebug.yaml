@@ -51,6 +51,6 @@ arg:
       retryDuration: 100
       timeUnit: "ms"
 
-  deployment:
-    isLocalDevelopment:  true
-    namespace: "kube-system"
+deployment:
+  isLocalDevelopment:  true
+  namespace: "kube-system"

@@ -199,33 +199,32 @@ func (handler *Handler) admissionErrorResponse(err error) admission.Response {
 // In case that it should be filtered, it returns true and the admission.Response.
 // In case that it shouldn't be filtered, it returns false and nil
 func (handler *Handler) shouldRequestBeFiltered(req admission.Request) (bool, responseReason) {
+	// TODO add filter on blacklist namespaces.
 	tracer := handler.tracerProvider.GetTracer("shouldRequestBeFiltered")
 	// If it's the same namespace of the mutation webhook
-	// TODO: replace with non-all namespace exclusion but a list excluded namespaces/pods
 	if req.Namespace == utils.GetDeploymentInstance().GetNamespace() {
 		tracer.Info("Request filtered out due to it is in the same namespace as the handler.", "ReqUID", req.UID, "Namespace", req.Namespace)
-		//*reason =
-		//response := admission.Allowed(string(*reason))
 		return true, _noSelfManagementReason
 	}
 
 	// Filter if the kind is not pod.
 	if req.Kind.Kind != admisionrequest.PodKind {
 		tracer.Info("Request filtered out due to the request is not supported kind.", "ReqUID", req.UID, "ReqKind", req.Kind.Kind)
-		//*reason = _noMutationForKindReason
-		//response := admission.Allowed(string(*reason))
 		return true, _noMutationForKindReason
 	}
 
 	// Filter if the operation is not Create
-	if req.Operation != admissionv1.Create {
+	if !isOperationAllowed(&req.Operation) {
 		tracer.Info("Request filtered out due to the request is not supported operation.", "ReqUID", req.UID, "ReqOperation", req.Operation)
-		//*reason = _noMutationForOperationReason
-		//response := admission.Allowed(string(*reason))
 		return true, _noMutationForOperationReason
 	}
 
 	tracer.Info("Request shouldn't be filtered out.", "ReqUID", req.UID)
 	// Request shouldn't be filtered out.
 	return false, _patchedReason
+}
+
+// isOperationAllowed returns boolean if the operation is allowed.
+func isOperationAllowed(operation *admissionv1.Operation) bool {
+	return *operation == admissionv1.Create || *operation == admissionv1.Update
 }

@@ -18,8 +18,8 @@ type deployment struct {
 type DeploymentConfiguration struct {
 	// IsLocalDevelopment is boolean that indicate if we are in local development or not.
 	IsLocalDevelopment bool
-	// namespace  is the namespace where the server is running
-	namespace string
+	// Namespace  is the Namespace where the server is running
+	Namespace string
 }
 
 // NewDeployment creates new deployment in case of singleton is not initialized yet.
@@ -43,9 +43,9 @@ func (d *deployment) IsLocalDevelopment() bool {
 	return d.configuration.IsLocalDevelopment
 }
 
-// GetNamespace returns the namespace where the server is running
+// GetNamespace returns the Namespace where the server is running
 func (d *deployment) GetNamespace() string {
-	return d.configuration.namespace
+	return d.configuration.Namespace
 }
 
 // UpdateDeploymentForTests is used for update the singleton for tests purpose.

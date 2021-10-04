@@ -9,6 +9,7 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/azdsecinfo/contracts"
 	azdsecinfoMocks "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/azdsecinfo/mocks"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/utils"
 	"github.com/stretchr/testify/suite"
 	"gomodules.xyz/jsonpatch/v2"
 	admissionv1 "k8s.io/api/admission/v1"
@@ -54,6 +55,8 @@ type TestSuite struct {
 
 // This will run before each test in the suite
 func (suite *TestSuite) SetupTest() {
+	// Update deployment - is needed for set default namespace as empty.
+	utils.UpdateDeploymentForTests(&utils.DeploymentConfiguration{Namespace: "kube-system"})
 	// Mock
 	suite.azdSecProviderMock = &azdsecinfoMocks.IAzdSecInfoProvider{}
 }
@@ -131,18 +134,20 @@ func (suite *TestSuite) Test_Handle_RequestConnectOperation_ShouldNotPatched() {
 	suite.Equal(metav1.StatusReason(_noMutationForOperationReason), resp.Result.Reason)
 }
 
-func (suite *TestSuite) Test_Handle_RequestUpdateOperation_ShouldNotPatched() {
+func (suite *TestSuite) Test_Handle_RequestUpdateOperation_ShouldPatched() {
 	// Setup
 	containers := []corev1.Container{_containers[0]}
 	pod := createPodForTests(containers, nil)
 	req := createRequestForTests(pod)
 	req.Operation = admissionv1.Update
+	expectedInfo := []*contracts.ContainerVulnerabilityScanInfo{_firstContainerVulnerabilityScanInfo}
+	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", &pod.Spec, &pod.ObjectMeta, &pod.TypeMeta).Return(expectedInfo, nil).Once()
 
 	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider())
 	// Act
 	resp := handler.Handle(context.Background(), *req)
 	// Test
-	suite.Equal(metav1.StatusReason(_noMutationForOperationReason), resp.Result.Reason)
+	suite.Equal(metav1.StatusReason(_patchedReason), resp.Result.Reason)
 }
 
 func (suite *TestSuite) Test_Handle_OneContainerZeroInitContainer_ShouldPatchedOne() {
@@ -304,7 +309,8 @@ func createRequestForTests(pod *corev1.Pod) *admission.Request {
 func createPodForTests(containers []corev1.Container, initContainers []corev1.Container) *corev1.Pod {
 	return &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "podTest",
+			Name:      "podTest",
+			Namespace: "default",
 		},
 		TypeMeta: metav1.TypeMeta{},
 		Spec: corev1.PodSpec{
