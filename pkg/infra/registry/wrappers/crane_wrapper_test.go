@@ -1,6 +1,7 @@
 package wrappers
 
 import (
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric/util"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/retrypolicy"
 	"github.com/stretchr/testify/assert"
@@ -18,7 +19,7 @@ const (
 )
 
 var (
-	retryPolicy = &retrypolicy.RetryPolicy{
+	retryPolicyConfiguration = &retrypolicy.RetryPolicyConfiguration{
 		RetryAttempts: _retryAttempts,
 		RetryDuration: _retryDuration,
 		TimeUnit:      _timeUnit,
@@ -32,6 +33,7 @@ type TestSuite struct {
 
 // This will run before each test in the suit
 func (suite *TestSuite) SetupTest() {
+	retryPolicy, _ := retrypolicy.NewRetryPolicy(instrumentation.NewNoOpInstrumentationProvider(), retryPolicyConfiguration)
 	suite.craneWrapper = NewCraneWrapper(retryPolicy)
 }
 

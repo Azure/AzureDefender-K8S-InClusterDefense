@@ -32,11 +32,11 @@ type RedisCacheClient struct {
 	//metricSubmitter
 	metricSubmitter metric.IMetricSubmitter
 	//retryPolicy retry policy for communication with redis cluster.
-	retryPolicy *retrypolicy.RetryPolicy
+	retryPolicy retrypolicy.IRetryPolicy
 }
 
 // NewRedisCacheClient is factory for RedisCacheClient
-func NewRedisCacheClient(instrumentationProvider instrumentation.IInstrumentationProvider, redisBaseClient wrappers.IRedisBaseClientWrapper, retryPolicy *retrypolicy.RetryPolicy) *RedisCacheClient {
+func NewRedisCacheClient(instrumentationProvider instrumentation.IInstrumentationProvider, redisBaseClient wrappers.IRedisBaseClientWrapper, retryPolicy retrypolicy.IRetryPolicy) *RedisCacheClient {
 
 	return &RedisCacheClient{
 		tracerProvider:  instrumentationProvider.GetTracerProvider("RedisCacheClient"),
@@ -95,10 +95,18 @@ func (client *RedisCacheClient) Set(ctx context.Context, key string, value strin
 		return err
 	}
 
-	if err := client.redisClient.Set(ctx, key, value, expiration).Err(); err != nil {
-		tracer.Error(err, "Failed to set a key", "Key", key, "Value", value, "Expiration", expiration)
-		client.metricSubmitter.SendMetric(1, cachemetrics.NewSetErrEncounteredMetric(err, _redisClientType))
+	var action retrypolicy.ActionError = func() error {
+		return client.redisClient.Set(ctx, key, value, expiration).Err()
+	}
 
+	var handle retrypolicy.Handle = func(err error) bool {
+		return err == redis.Nil
+	}
+
+	err := client.retryPolicy.RetryActionError(action, handle)
+	if err != nil && err != redis.Nil {
+		client.metricSubmitter.SendMetric(1, cachemetrics.NewSetErrEncounteredMetric(err, _redisClientType))
+		tracer.Error(err, "Failed to set a key", "Key", key, "Value", value, "Expiration", expiration)
 		return err
 	}
 

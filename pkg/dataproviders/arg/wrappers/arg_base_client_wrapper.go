@@ -18,14 +18,14 @@ type IARGBaseClientWrapper interface {
 }
 
 // NewArgBaseClientWrapper get authorizer from auth.NewAuthorizerFromCLIWithResource
-func NewArgBaseClientWrapper(retryPolicy *retrypolicy.RetryPolicy, authorizer autorest.Authorizer) (*argbase.BaseClient, error) {
+func NewArgBaseClientWrapper(retryPolicyConfig *retrypolicy.RetryPolicyConfiguration, authorizer autorest.Authorizer) (*argbase.BaseClient, error) {
 	// Create new client
 	argBaseClient := argbase.New()
 	// Assign the retry policy configuration to the client.
-	argBaseClient.RetryAttempts = retryPolicy.RetryAttempts
-	retryDuration, err := retryPolicy.GetBackOffDuration()
+	argBaseClient.RetryAttempts = retryPolicyConfig.RetryAttempts
+	retryDuration, err := retrypolicy.GetBackOffDuration(retryPolicyConfig)
 	if err != nil {
-		return nil, errors.Wrapf(err, "cannot parse given retry duration <(%v)>", retryPolicy.RetryDuration)
+		return nil, errors.Wrapf(err, "cannot parse given retry duration <(%v)>", retryPolicyConfig.RetryDuration)
 	}
 	argBaseClient.RetryDuration = retryDuration
 

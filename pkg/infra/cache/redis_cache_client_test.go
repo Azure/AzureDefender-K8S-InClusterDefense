@@ -24,8 +24,9 @@ const (
 )
 
 var (
-	_ctx         = context.Background()
-	_retryPolicy = retrypolicy.RetryPolicy{RetryAttempts: 1, RetryDuration: 10, TimeUnit: "ms"}
+	_ctx                      = context.Background()
+	_retryPolicyConfiguration = &retrypolicy.RetryPolicyConfiguration{RetryAttempts: 1, RetryDuration: 10, TimeUnit: "ms"}
+	_retryPolicy, _           = retrypolicy.NewRetryPolicy(instrumentation.NewNoOpInstrumentationProvider(), _retryPolicyConfiguration)
 )
 
 func (suite *TestSuite) Test_Get_KeyIsExist_ShouldReturnValue() {
@@ -34,7 +35,7 @@ func (suite *TestSuite) Test_Get_KeyIsExist_ShouldReturnValue() {
 
 	clientMock, mock := redismock.NewClientMock()
 	mock.ExpectGet(_key).SetVal(expectedValue)
-	client := NewRedisCacheClient(instrumentation.NewNoOpInstrumentationProvider(), clientMock, &_retryPolicy)
+	client := NewRedisCacheClient(instrumentation.NewNoOpInstrumentationProvider(), clientMock, _retryPolicy)
 
 	// Act
 	actual, err := client.Get(_ctx, _key)
@@ -48,7 +49,7 @@ func (suite *TestSuite) Test_Get_KeyIsNotExist_ShouldReturnErr() {
 	// Setup
 	clientMock, mock := redismock.NewClientMock()
 	mock.ExpectGet(_key).SetErr(redis.Nil)
-	client := NewRedisCacheClient(instrumentation.NewNoOpInstrumentationProvider(), clientMock, &_retryPolicy)
+	client := NewRedisCacheClient(instrumentation.NewNoOpInstrumentationProvider(), clientMock, _retryPolicy)
 
 	// Act
 	_, err := client.Get(_ctx, _key)
@@ -62,7 +63,7 @@ func (suite *TestSuite) Test_Set_NewKey_ShouldReturnNil() {
 	duration := time.Duration(3)
 	clientMock, mock := redismock.NewClientMock()
 	mock.ExpectSet(_key, _value, duration).RedisNil()
-	client := NewRedisCacheClient(instrumentation.NewNoOpInstrumentationProvider(), clientMock, &_retryPolicy)
+	client := NewRedisCacheClient(instrumentation.NewNoOpInstrumentationProvider(), clientMock, _retryPolicy)
 
 	// Act
 	err := client.Set(_ctx, _key, _value, duration)
@@ -74,7 +75,7 @@ func (suite *TestSuite) Test_Set_NegativeExpiration_ShouldReturnErr() {
 	duration := time.Duration(-3)
 	clientMock, mock := redismock.NewClientMock()
 	mock.ExpectSet(_key, _value, duration).SetVal(_value)
-	client := NewRedisCacheClient(instrumentation.NewNoOpInstrumentationProvider(), clientMock, &_retryPolicy)
+	client := NewRedisCacheClient(instrumentation.NewNoOpInstrumentationProvider(), clientMock, _retryPolicy)
 
 	// Act
 	err := client.Set(_ctx, _key, _value, duration)

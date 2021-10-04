@@ -53,9 +53,9 @@ func main() {
 	instrumentationConfiguration := new(instrumentation.InstrumentationProviderConfiguration)
 	azdIdentityEnvAzureAuthorizerConfiguration := new(azureauth.EnvAzureAuthorizerConfiguration)
 	kubeletIdentityEnvAzureAuthorizerConfiguration := new(azureauth.EnvAzureAuthorizerConfiguration)
-	craneWrapperRetryPolicyConfiguration := new(retrypolicy.RetryPolicy)
-	argBaseClientRetryPolicyConfiguration := new(retrypolicy.RetryPolicy)
-	redisCacheClientRetryPolicyConfiguration := new(retrypolicy.RetryPolicy)
+	craneWrapperRetryPolicyConfiguration := new(retrypolicy.RetryPolicyConfiguration)
+	argBaseClientRetryPolicyConfiguration := new(retrypolicy.RetryPolicyConfiguration)
+	redisCacheClientRetryPolicyConfiguration := new(retrypolicy.RetryPolicyConfiguration)
 
 	argDataProviderCacheConfiguration := new(cachewrappers.RedisCacheClientConfiguration)
 	tokensCacheConfiguration := new(cachewrappers.FreeCacheInMemWrapperCacheConfiguration)
@@ -74,7 +74,7 @@ func main() {
 		"acr.craneWrappersConfiguration.retryPolicyConfiguration": craneWrapperRetryPolicyConfiguration,
 		"cache.argDataProviderCacheConfiguration":                 argDataProviderCacheConfiguration,
 		"cache.tokensCacheConfiguration":                          tokensCacheConfiguration,
-		"cache.redisClient.retryPolicyConfiguration":              craneWrapperRetryPolicyConfiguration,
+		"cache.redisClient.retryPolicyConfiguration":              redisCacheClientRetryPolicyConfiguration,
 	}
 
 	for key, configObject := range keyConfigMap {
@@ -128,7 +128,11 @@ func main() {
 	k8sKeychainFactory := crane.NewK8SKeychainFactory(instrumentationProvider, clientK8s)
 	acrKeychainFactory := crane.NewACRKeychainFactory(instrumentationProvider, acrTokenProvider)
 
-	craneWrapper := registrywrappers.NewCraneWrapper(craneWrapperRetryPolicyConfiguration)
+	craneWrapperRetryPolicy, err := retrypolicy.NewRetryPolicy(instrumentationProvider, craneWrapperRetryPolicyConfiguration)
+	if err != nil {
+		log.Fatal("main.retrypolicy.NewRetryPolicy", err)
+	}
+	craneWrapper := registrywrappers.NewCraneWrapper(craneWrapperRetryPolicy)
 	// Registry Client
 	registryClient := crane.NewCraneRegistryClient(instrumentationProvider, craneWrapper, acrKeychainFactory, k8sKeychainFactory)
 	tag2digestResolver := tag2digest.NewTag2DigestResolver(instrumentationProvider, registryClient)
@@ -136,7 +140,11 @@ func main() {
 	// ARG
 	//TODO complete it once we merge the rest of the PR's.
 	argDataProviderRedisCacheBaseClient := cachewrappers.NewRedisBaseClientWrapper(argDataProviderCacheConfiguration)
-	_ = cache.NewRedisCacheClient(instrumentationProvider, argDataProviderRedisCacheBaseClient, redisCacheClientRetryPolicyConfiguration)
+	redisCacheRetryPolicy, err := retrypolicy.NewRetryPolicy(instrumentationProvider, redisCacheClientRetryPolicyConfiguration)
+	if err != nil {
+		log.Fatal("main.retrypolicy.NewRetryPolicy", err)
+	}
+	_ = cache.NewRedisCacheClient(instrumentationProvider, argDataProviderRedisCacheBaseClient, redisCacheRetryPolicy)
 	tag2digestCache := cachewrappers.NewFreeCacheInMem(tokensCacheConfiguration)
 	_ = cache.NewFreeCacheInMemCacheClient(instrumentationProvider, tag2digestCache)
 

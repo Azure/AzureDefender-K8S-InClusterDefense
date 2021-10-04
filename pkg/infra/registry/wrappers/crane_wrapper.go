@@ -19,13 +19,13 @@ type ICraneWrapper interface {
 // CraneWrapper wraps crane operations
 type CraneWrapper struct {
 	// retryPolicy is the manager of the retry policy of the crane wrapper.
-	retryPolicy *retrypolicy.RetryPolicy
+	retryPolicy retrypolicy.IRetryPolicy
 }
 
 // NewCraneWrapper Cto'r for CraneWrapper
-func NewCraneWrapper(retryPolicyConfiguration *retrypolicy.RetryPolicy) *CraneWrapper {
+func NewCraneWrapper(retryPolicy retrypolicy.IRetryPolicy) *CraneWrapper {
 	return &CraneWrapper{
-		retryPolicy: retryPolicyConfiguration,
+		retryPolicy: retryPolicy,
 	}
 }
 
