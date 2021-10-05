@@ -43,7 +43,7 @@ func CreateContainersVulnerabilityScanAnnotationPatchAdd(containersScanInfoList 
 	}
 
 	// Create an add operation to annotations to add or create if annotations are empty
-	// **important note** any future changes to the pod's annotation map will result in changing the json patch.
+	// **important note** any future changes to the pod's annotation map will result in changing the json patch because annotations is a map reference.
 	patch := jsonpatch.NewOperation(_addPatchOperation, _annotationPatchPath, annotations)
 	return &patch, nil
 }
