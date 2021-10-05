@@ -120,7 +120,6 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 	// Patch all patches operations
 	response := admission.Patched(string(patchReason), patches...)
 	tracer.Info("Responded", "response", response)
-
 	return response
 }
 

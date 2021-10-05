@@ -18,9 +18,12 @@ const (
 	_annotationPatchPath = "/metadata/annotations"
 )
 
-// CreateContainersVulnerabilityScanAnnotationPatchAdd creates and return an add type json patch to add to annotations map a new key value of ContainersVulnerabilityScanInfoAnnotationName.
-// The function creates a scanInfoList from the provided containers scan info  slice of type contracts.ContainerVulnerabilityScanInfoList serialize/marshal it and set it as a value string to key annotation
+// CreateContainersVulnerabilityScanAnnotationPatchAdd returns an add type json patch in order to add to annotations map a new key value of ContainersVulnerabilityScanInfoAnnotationName.
+// It does so by adding to the exiting map the new key value and setting the updated map as the json patch value.
+// The function creates a scanInfoList from the provided containers scan info  slice of type contracts.ContainerVulnerabilityScanInfoList serialize/marshal it and set it as a value string to the new key annotation
 // Contracts.ContainersVulnerabilityScanInfoAnnotationName (azuredefender.io/containers.vulnerability.scan.info)
+// If the annotations map doesn't exist, it creates a new map and add the key value before setting it as the json patch value.
+// As a result, the annotations are updated with no override of the existing values.
 func CreateContainersVulnerabilityScanAnnotationPatchAdd(containersScanInfoList []*contracts.ContainerVulnerabilityScanInfo, pod *corev1.Pod) (*jsonpatch.JsonPatchOperation, error) {
 	scanInfoList := &contracts.ContainerVulnerabilityScanInfoList{
 		GeneratedTimestamp: time.Now().UTC(),
@@ -34,11 +37,10 @@ func CreateContainersVulnerabilityScanAnnotationPatchAdd(containersScanInfoList 
 	}
 
 	// Create annotations map and add to the map serVulnerabilitySecInfo. If the pod's annotations is nil create a new map
-	annotations, err := getPodAnnotationsOrDefault(pod)
+	annotations, err := updateAnnotations(pod, contracts.ContainersVulnerabilityScanInfoAnnotationName, serVulnerabilitySecInfo)
 	if err != nil {
-		return nil, errors.Wrap(err, "AzdAnnotationsPatchGenerator failed getting pod's annotations because pod is nil during CreateContainersVulnerabilityScanAnnotationPatchAdd")
+		return nil, errors.Wrap(err, "AzdAnnotationsPatchGenerator failed updating annotations because pod is nil during CreateContainersVulnerabilityScanAnnotationPatchAdd")
 	}
-	annotations[contracts.ContainersVulnerabilityScanInfoAnnotationName] = serVulnerabilitySecInfo
 
 	// Create an add operation to annotations to add or create if annotations are empty
 	// **important note** any future changes to the pod's annotation map will result in changing the json patch.
@@ -59,8 +61,10 @@ func marshalAnnotationInnerObject(object interface{}) (string, error) {
 	return ser, nil
 }
 
-// getPodAnnotationsOrDefault return the annotations of the given pod. If there are no annotations to the pod, return default empty map
-func getPodAnnotationsOrDefault(pod *corev1.Pod) (map[string]string, error){
+// updateAnnotations update the annotations of a given pod with the given key and value.
+// If annotations map not exist - create a new map and add the key.
+// Return the annotations map
+func updateAnnotations(pod *corev1.Pod, key string, value string) (map[string]string, error){
 	if pod == nil {
 		return nil, utils.NilArgumentError
 	}
@@ -68,5 +72,6 @@ func getPodAnnotationsOrDefault(pod *corev1.Pod) (map[string]string, error){
 	if annotations == nil {
 		annotations = make(map[string]string)
 	}
+	annotations[key]=value
 	return annotations, nil
 }
