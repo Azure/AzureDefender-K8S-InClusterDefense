@@ -35,7 +35,14 @@ func NewCraneWrapper(retryPolicy retrypolicy.IRetryPolicy) *CraneWrapper {
 // ACR ref: // https://github.com/Azure/acr-docker-credential-helper/blob/master/src/docker-credential-acr/acr_login.go
 func (*CraneWrapper) Digest(ref string, opt ...crane.Option) (string, error) {
 	//(resolved digest of tomerwdevops.azurecr.io/imagescan:62 - https://ms.portal.azure.com/#@microsoft.onmicrosoft.com/resource/subscriptions/4009f3ee-43c4-4f19-97e4-32b6f2285a68/resourceGroups/tomerwdevops/providers/Microsoft.ContainerRegistry/registries/tomerwdevops/repository)
-	return crane.Digest(ref, opt...)
+	digest, err := crane.Digest(ref, opt...)
+	// Crane is not checking cases that digest is empty //TODO why does it happen?
+	if digest == "" {
+		err = errors.Wrapf(err, "failed to extract digest of image ref <%s>. crane returned empty digest", ref)
+		return "", err
+	}
+
+	return digest, err
 }
 
 // DigestWithRetry re-executing Digest in case of a failure according to retryPolicy
