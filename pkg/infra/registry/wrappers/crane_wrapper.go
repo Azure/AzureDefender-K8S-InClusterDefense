@@ -44,7 +44,7 @@ func (*CraneWrapper) Digest(ref string, opt ...crane.Option) (string, error) {
 func (craneWrapper *CraneWrapper) DigestWithRetry(imageReference string, tracerProvider trace.ITracerProvider, metricSubmitter metric.IMetricSubmitter, opt ...crane.Option) (res string, err error) {
 	tracer := tracerProvider.GetTracer("GetDigestWithRetries")
 	retryCount := 1
-	retryDuration, err := time.ParseDuration(craneWrapper.retryPolicyConfiguration.RetryDuration)
+	retryDuration, err := craneWrapper.retryPolicyConfiguration.GetBackOffDuration()
 	if err != nil {
 		return res, errors.Wrapf(err, "cannot parse given retry duration <(%v)>", craneWrapper.retryPolicyConfiguration.RetryDuration)
 	}
