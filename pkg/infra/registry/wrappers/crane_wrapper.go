@@ -49,16 +49,11 @@ func (*CraneWrapper) Digest(ref string, opt ...crane.Option) (string, error) {
 func (craneWrapper *CraneWrapper) DigestWithRetry(imageReference string, tracerProvider trace.ITracerProvider, metricSubmitter metric.IMetricSubmitter, opt ...crane.Option) (string, error) {
 	tracer := tracerProvider.GetTracer("DigestWithRetry")
 
-	var action retrypolicy.ActionString = func() (string, error) {
-		return craneWrapper.Digest(imageReference, opt...)
-	}
-
-	var handle retrypolicy.Handle = func(error) bool {
+	digest, err := craneWrapper.retryPolicy.RetryActionString(
+		func() (string, error) { return craneWrapper.Digest(imageReference, opt...) },
 		// TODO deal with cases for which we do not want to retry after method as been implemented
-		return false
-	}
-
-	digest, err := craneWrapper.retryPolicy.RetryActionString(action, handle)
+		func(error) bool { return false },
+	)
 
 	if err != nil {
 		err := errors.Wrapf(err, "failed to extract digest of image %v", imageReference)

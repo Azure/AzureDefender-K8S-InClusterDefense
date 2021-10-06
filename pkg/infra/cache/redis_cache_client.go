@@ -95,15 +95,11 @@ func (client *RedisCacheClient) Set(ctx context.Context, key string, value strin
 		return err
 	}
 
-	var action retrypolicy.ActionError = func() error {
-		return client.redisClient.Set(ctx, key, value, expiration).Err()
-	}
+	err := client.retryPolicy.RetryAction(
+		func() error { return client.redisClient.Set(ctx, key, value, expiration).Err() },
+		func(err error) bool { return err == redis.Nil },
+	)
 
-	var handle retrypolicy.Handle = func(err error) bool {
-		return err == redis.Nil
-	}
-
-	err := client.retryPolicy.RetryActionError(action, handle)
 	if err != nil && err != redis.Nil {
 		client.metricSubmitter.SendMetric(1, cachemetrics.NewSetErrEncounteredMetric(err, _redisClientType))
 		tracer.Error(err, "Failed to set a key", "Key", key, "Value", value, "Expiration", expiration)

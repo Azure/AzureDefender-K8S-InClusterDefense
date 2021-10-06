@@ -19,16 +19,16 @@ type Handle func(error) bool
 type (
 	// ActionString is action function that returns string and error
 	ActionString func() (string, error)
-	// ActionError is action function that returns error
-	ActionError func() error
+	// Action is action function that returns error
+	Action func() error
 )
 
 // IRetryPolicy interface for retrypolicy
 type IRetryPolicy interface {
 	// RetryActionString try to execute action that returns string,error
 	RetryActionString(action ActionString, handle Handle) (value string, err error)
-	// RetryActionError try to execute action that returns only error
-	RetryActionError(action ActionError, handle Handle) (err error)
+	// RetryAction try to execute action that returns only error
+	RetryAction(action Action, handle Handle) (err error)
 }
 
 // RetryPolicy implements IRetryPolicy interface
@@ -81,7 +81,7 @@ func NewRetryPolicy(instrumentationProvider instrumentation.IInstrumentationProv
 func (r *RetryPolicy) RetryActionString(action ActionString, handle Handle) (value string, err error) {
 	tracer := r.tracerProvider.GetTracer("RetryActionString")
 	if action == nil || handle == nil {
-		err := errors.New("action and handle can't be nil")
+		err = errors.Wrap(utils.NilArgumentError, "action and handle can't be nil")
 		tracer.Error(err, "")
 		return "", err
 	}
@@ -90,7 +90,7 @@ func (r *RetryPolicy) RetryActionString(action ActionString, handle Handle) (val
 	retryCount := 1
 	for retryCount <= r.retryAttempts {
 		// Act
-		value, err := action()
+		value, err = action()
 
 		if err != nil && handle(err) { // Check if handle knows how to handle with error.
 			tracer.Info("failed but encountered with handled err", "err", err)
@@ -112,11 +112,11 @@ func (r *RetryPolicy) RetryActionString(action ActionString, handle Handle) (val
 	return "", err
 }
 
-// RetryActionError retry to run the action with retryPolicy
-func (r *RetryPolicy) RetryActionError(action ActionError, handle Handle) (err error) {
+// RetryAction retry to run the action with retryPolicy
+func (r *RetryPolicy) RetryAction(action Action, handle Handle) (err error) {
 	tracer := r.tracerProvider.GetTracer("RetryActionString")
 	if action == nil || handle == nil {
-		err = errors.New("action and handle can't be nil")
+		err = errors.Wrap(utils.NilArgumentError, "action and handle can't be nil")
 		tracer.Error(err, "")
 		return err
 	}
@@ -151,7 +151,10 @@ func (r *RetryPolicy) RetryActionError(action ActionError, handle Handle) (err e
 // to a return a time.Duration object of the backoff duration
 func GetBackOffDuration(configuration *RetryPolicyConfiguration) (duration time.Duration, err error) {
 	if configuration == nil {
-		return 0, errors.Wrap(utils.NilArgumentError, "configuration can't be nil")
+		return 0, errors.Wrap(utils.NilArgumentError, "_configuration can't be nil")
+	} else if configuration.RetryDuration <= 0 {
+		return 0, errors.New("RetryDuration must be > 0")
 	}
+
 	return time.ParseDuration(strconv.Itoa(configuration.RetryDuration) + configuration.TimeUnit)
 }

@@ -90,7 +90,8 @@ AzDProxy:
 
   kubeletIdentity:
     envAzureAuthorizerConfiguration:
-      mSIClientId: "f4a700f6-e852-4cfd-8408-2ed6d3843759" # cluster-dev-agentpool MI
+      #      mSIClientId: "f4a700f6-e852-4cfd-8408-2ed6d3843759" # cluster-dev-agentpool MI - TODO  using the same as arg - BUG with AcrPull Perm
+      mSIClientId: "a554f933-695f-4ecf-abe4-2a7515e8c1b7" # BlockIdentityDev MI
 
   deployment:
     isLocalDevelopment: false
