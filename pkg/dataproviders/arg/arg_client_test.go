@@ -215,6 +215,7 @@ func TestArgClientTestSuite(t *testing.T) {
 	suite.Run(t, new(TestSuite))
 }
 
+// _getARGClientConfiguration returns default ARGClientConfiguration. needed for tests
 func _getARGClientConfiguration() *ARGClientConfiguration {
 	return &ARGClientConfiguration{Subscriptions: []string{}}
 

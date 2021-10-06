@@ -1,6 +1,6 @@
 package utils
 
-import "errors"
+import "github.com/pkg/errors"
 
 var (
 	// _singleton is the only instance of deployment struct.
@@ -27,6 +27,8 @@ type DeploymentConfiguration struct {
 func NewDeployment(configuration *DeploymentConfiguration) (*deployment, error) {
 	if _singleton != nil {
 		return nil, errors.New("can't create another instance of Deployment")
+	} else if configuration == nil {
+		return nil, errors.Wrap(NilArgumentError, "*DeploymentConfiguration can't be nil")
 	}
 	_singleton = &deployment{configuration: configuration}
 	return _singleton, nil
