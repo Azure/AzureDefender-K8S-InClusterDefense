@@ -44,31 +44,6 @@ func NewCraneRegistryClient(instrumentationProvider instrumentation.IInstrumenta
 	}
 }
 
-// GetDigestUsingDefaultAuth receives image reference and get it's digest using the default docker config auth
-func (client *CraneRegistryClient) GetDigestUsingDefaultAuth(imageReference registry.IImageReference) (string, error) {
-	tracer := client.tracerProvider.GetTracer("GetDigestUsingDefaultAuth")
-	tracer.Info("Received image:", "imageReference", imageReference)
-
-	// Argument validation
-	if imageReference == nil {
-		err := errors.Wrap(utils.NilArgumentError, "CraneRegistryClient.GetDigestUsingDefaultAuth")
-		tracer.Error(err, "")
-		return "", err
-	}
-
-	// Get digest
-	digest, err := client.getDigest(imageReference, authn.DefaultKeychain)
-	if err != nil {
-		// Report error
-		err = errors.Wrap(err, "Failed with client.getDigest:")
-		tracer.Error(err, "")
-		return "", err
-	}
-
-	tracer.Info("Image resolved successfully", "imageRef", imageReference, "digest", digest)
-	return digest, nil
-}
-
 // GetDigestUsingACRAttachAuth receives image reference and get it's digest using ACR attach authntication
 // ACR attach auth is based MSI token used to access the registry
 // Authenticate with multikeychain with acrkeychain and default keychain
@@ -135,9 +110,27 @@ func (client *CraneRegistryClient) GetDigestUsingK8SAuth(imageReference registry
 		return "", err
 	}
 
-	if digest == "" {
+	tracer.Info("Image resolved successfully", "imageRef", imageReference, "digest", digest)
+	return digest, nil
+}
+
+// GetDigestUsingDefaultAuth receives image reference and get it's digest using the default docker config auth
+func (client *CraneRegistryClient) GetDigestUsingDefaultAuth(imageReference registry.IImageReference) (string, error) {
+	tracer := client.tracerProvider.GetTracer("GetDigestUsingDefaultAuth")
+	tracer.Info("Received image:", "imageReference", imageReference)
+
+	// Argument validation
+	if imageReference == nil {
+		err := errors.Wrap(utils.NilArgumentError, "CraneRegistryClient.GetDigestUsingDefaultAuth")
+		tracer.Error(err, "")
+		return "", err
+	}
+
+	// Get digest
+	digest, err := client.getDigest(imageReference, authn.DefaultKeychain)
+	if err != nil {
 		// Report error
-		err = errors.Wrap(err, "Failed with client.getDigest: digest is empty ")
+		err = errors.Wrap(err, "Failed with client.getDigest:")
 		tracer.Error(err, "")
 		return "", err
 	}
@@ -147,7 +140,7 @@ func (client *CraneRegistryClient) GetDigestUsingK8SAuth(imageReference registry
 }
 
 // getDigest private function that receives imageReference and a keychain, it wraps keychain received with multikeychain and appends the defaultkeychain as well
-// Then calls crane Digest fucntion using the multikeychian created and the client _userAgent
+// Then calls crane Digest function using the multikeychian created and the client _userAgent
 func (client *CraneRegistryClient) getDigest(imageReference registry.IImageReference, keychain authn.Keychain) (string, error) {
 	tracer := client.tracerProvider.GetTracer("getDigest")
 	receivedKeyChainType := fmt.Sprintf("%T", keychain)
@@ -158,6 +151,7 @@ func (client *CraneRegistryClient) getDigest(imageReference registry.IImageRefer
 	//  - multikeychain of received keychain and the default keychain,
 	// - _userAgent of the client
 	digest, err := client.craneWrapper.DigestWithRetry(imageReference.Original(), client.tracerProvider, client.metricSubmitter, crane.WithAuthFromKeychain(authn.NewMultiKeychain(keychain, authn.DefaultKeychain)), crane.WithUserAgent(_userAgent))
+
 	if err != nil {
 		// Report error
 		err = errors.Wrapf(err, "CraneRegistryClient.getDigest with receivedKeyChainType %v", receivedKeyChainType)
