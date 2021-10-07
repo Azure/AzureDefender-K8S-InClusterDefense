@@ -19,6 +19,7 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/crane"
 	registrywrappers "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/wrappers"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/retrypolicy"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/utils"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/tag2digest"
 	"k8s.io/client-go/kubernetes"
 	"log"
@@ -54,8 +55,6 @@ func main() {
 	instrumentationConfiguration := new(instrumentation.InstrumentationProviderConfiguration)
 	azdIdentityEnvAzureAuthorizerConfiguration := new(azureauth.EnvAzureAuthorizerConfiguration)
 	kubeletIdentityEnvAzureAuthorizerConfiguration := new(azureauth.EnvAzureAuthorizerConfiguration)
-	craneWrapperRetryPolicyConfiguration := new(utils.RetryPolicyConfiguration)
-	argBaseClientRetryPolicyConfiguration := new(utils.RetryPolicyConfiguration)
 	argClientConfiguration := new(arg.ARGClientConfiguration)
 	deploymentConfiguration := new(utils.DeploymentConfiguration)
 	craneWrapperRetryPolicyConfiguration := new(retrypolicy.RetryPolicyConfiguration)
