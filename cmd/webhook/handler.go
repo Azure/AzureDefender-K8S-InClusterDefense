@@ -108,9 +108,9 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 		return response
 	}
 
-	response, err = handler.handleRequest(&req)
+	response, err = handler.handlePodRequest(&req)
 	if err != nil {
-		err = errors.Wrap(err, "Handler.Handle received error on handleRequest")
+		err = errors.Wrap(err, "Handler.Handle received error on handlePodRequest")
 		tracer.Error(err, "")
 		reason = _notPatchedErrorReason
 		response = handler.admissionErrorResponse(errors.Wrap(err, string(reason)))
@@ -119,7 +119,7 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 
 	// In case of dryrun=true:  reset all patch operations
 	if handler.configuration.DryRun {
-		tracer.Info("Handler.handleRequest not mutating resource, because handler is on dryrun mode.", "ResponseInCaseOfNotDryRun", response)
+		tracer.Info("Handler.handlePodRequest not mutating resource, because handler is on dryrun mode.", "ResponseInCaseOfNotDryRun", response)
 		reason = _notPatchedHandlerDryRunReason
 		// Override response with clean response.
 		response = admission.Allowed(string(reason))
@@ -132,22 +132,22 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 	return response
 }
 
-// handleRequest gets request that should be handled and returned the response with the relevant patches.
-func (handler *Handler) handleRequest(req *admission.Request) (admission.Response, error) {
-	tracer := handler.tracerProvider.GetTracer("handleRequest")
+// handlePodRequest gets request that should be handled and returned the response with the relevant patches.
+func (handler *Handler) handlePodRequest(req *admission.Request) (admission.Response, error) {
+	tracer := handler.tracerProvider.GetTracer("handlePodRequest")
 
 	patches := []jsonpatch.JsonPatchOperation{}
 
 	pod, err := admisionrequest.UnmarshalPod(req)
 	if err != nil {
-		err = errors.Wrap(err, "Handler.handleRequest failed to admisionrequest.UnmarshalPod req")
+		err = errors.Wrap(err, "Handler.handlePodRequest failed to admisionrequest.UnmarshalPod req")
 		tracer.Error(err, "")
 		return admission.Response{}, err
 	}
 
 	vulnerabilitySecAnnotationsPatch, err := handler.getPodContainersVulnerabilityScanInfoAnnotationsOperation(pod)
 	if err != nil {
-		err = errors.Wrap(err, "Handler.handleRequest Failed to getPodContainersVulnerabilityScanInfoAnnotationsOperation for Pod")
+		err = errors.Wrap(err, "Handler.handlePodRequest Failed to getPodContainersVulnerabilityScanInfoAnnotationsOperation for Pod")
 		tracer.Error(err, "")
 		return admission.Response{}, err
 	}
