@@ -66,11 +66,12 @@ func marshalAnnotationInnerObject(object interface{}) (string, error) {
 // Return the annotations map
 func updateAnnotations(pod *corev1.Pod, key string, value string) (map[string]string, error){
 	if pod == nil {
-		return nil, utils.NilArgumentError
+		return nil, errors.Wrap(utils.NilArgumentError, "updateAnnotations got nil pod")
 	}
 	annotations := pod.GetAnnotations()
 	if annotations == nil {
 		annotations = make(map[string]string)
+		pod.SetAnnotations(annotations)
 	}
 	annotations[key]=value
 	return annotations, nil
