@@ -35,18 +35,31 @@ type ARGClient struct {
 	argBaseClientWrapper wrappers.IARGBaseClientWrapper
 	//argQueryReqOptions is the options for query evaluation of the ARGClient
 	argQueryReqOptions *arg.QueryRequestOptions
+	subscriptions      *[]string
+}
+
+type ARGClientConfiguration struct {
+	// Subscriptions is array of subscriptions that will be the scope of the query to ARG.
+	Subscriptions []string
 }
 
 // NewARGClient Constructor
-func NewARGClient(instrumentationProvider instrumentation.IInstrumentationProvider, argBaseClientWrapper wrappers.IARGBaseClientWrapper) *ARGClient {
+func NewARGClient(instrumentationProvider instrumentation.IInstrumentationProvider, argBaseClientWrapper wrappers.IARGBaseClientWrapper, configuration *ARGClientConfiguration) *ARGClient {
 	// We need this var for unittests - in unittests we reduce it from 1000 to smaller number.
 	requestQueryTop := int32(MAX_TOP_RESULTS_IN_PAGE_OF_ARG)
+	subscriptions := &configuration.Subscriptions
+	// If the subscriptions is empty then work on tenat scope.
+	// TODO Is it the behavior that we want? bad performance.
+	if len(*subscriptions) == 0 {
+		subscriptions = nil
+	}
 
 	return &ARGClient{
 		tracerProvider:       instrumentationProvider.GetTracerProvider("ARGClient"),
 		metricSubmitter:      instrumentationProvider.GetMetricSubmitter(),
 		argBaseClientWrapper: argBaseClientWrapper,
 		argQueryReqOptions:   &arg.QueryRequestOptions{ResultFormat: arg.ResultFormatObjectArray, Top: &requestQueryTop},
+		subscriptions:        subscriptions,
 	}
 }
 
@@ -123,9 +136,9 @@ func (client *ARGClient) initDefaultQueryRequest(query string) arg.QueryRequest 
 
 	// Create the query request
 	request := arg.QueryRequest{
-		Query:   &query,
-		Options: &requestOptions,
-		//TODO Add subscriptions?
+		Query:         &query,
+		Options:       &requestOptions,
+		Subscriptions: client.subscriptions,
 	}
 	return request
 }

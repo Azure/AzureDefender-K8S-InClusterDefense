@@ -109,6 +109,10 @@ AzDProxy:
 
   # ARG values
   arg:
+    argClientConfiguration:
+      # TODO change it to dynamic subscription that will be updated in the installation script.
+      subscriptions: [ "4009f3ee-43c4-4f19-97e4-32b6f2285a68" ]
+
     argBaseClient:
       retryPolicyConfiguration:
         # Number of retry attempts

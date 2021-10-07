@@ -1,6 +1,7 @@
 package azureauth
 
 import (
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/utils"
 	"github.com/pkg/errors"
 
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/azureauth/wrappers"
@@ -35,9 +36,6 @@ type EnvAzureAuthorizerFactory struct {
 
 // EnvAzureAuthorizerConfiguration Factory configuration to create an azure authorizer from environment (env variables or managed identity)
 type EnvAzureAuthorizerConfiguration struct {
-	// IsLocalDevelopmentMode is factory set to local development
-	IsLocalDevelopmentMode bool
-
 	// MSI client id
 	MSIClientId string
 }
@@ -82,7 +80,7 @@ func (factory *EnvAzureAuthorizerFactory) createAuthorizer(settings wrappers.IEn
 	settings.GetValues()[auth.ClientID] = factory.configuration.MSIClientId
 
 	// If not
-	if !factory.configuration.IsLocalDevelopmentMode {
+	if !utils.GetDeploymentInstance().IsLocalDevelopment() {
 		return settings.GetAuthorizer()
 	}
 	// Else - Local development

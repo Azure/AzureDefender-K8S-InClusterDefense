@@ -157,6 +157,17 @@ func (client *CraneRegistryClient) getDigest(imageReference registry.IImageRefer
 		err = errors.Wrapf(err, "CraneRegistryClient.getDigest with receivedKeyChainType %v", receivedKeyChainType)
 		tracer.Error(err, "")
 
+		// TODO: add errors.Is/As - didnt work for me for some reason
+		//transportError, ok := errors.Cause(err).(*transport.Error)
+		//if ok{
+		//	tracer.Info("transportError", "transportError", transportError)
+		//	for _, elemError := range transportError.Errors{
+		//		if(elemError.Code == transport.ManifestUnknownErrorCode || elemError.Code == transport.NameUnknownErrorCode || elemError.Code == transport.NameInvalidErrorCode){
+		//			tracer.Info("elemError.Code", "elemError.Code", elemError.Code)
+		//		}
+		//	}
+		//}
+
 		// TODO return wrapped error type to handle on caller
 		return "", err
 	}

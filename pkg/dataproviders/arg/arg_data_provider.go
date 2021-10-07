@@ -154,6 +154,7 @@ func (provider *ARGDataProvider) getImageScanDataFromARGQueryScanResult(scanResu
 	if len(scanResultsQueryResponseObjectList) == 0 {
 		// Unscanned - no results found
 		tracer.Info("Set to Unscanned scan data")
+		//TODO Check that this metric in the correct place (The value always 0, move this metric to another place).
 		provider.metricSubmitter.SendMetric(util.GetDurationMilliseconds(startTime), argmetric.NewArgDataProviderResponseLatencyMetricWithGetImageVulnerabilityScanResultsQuery(contracts.Unscanned))
 		// Return unscanned and return nil array of findings
 		return contracts.Unscanned, nil, nil

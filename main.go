@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/cmd/webhook"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/azdsecinfo"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/dataproviders/arg"
@@ -53,6 +54,10 @@ func main() {
 	instrumentationConfiguration := new(instrumentation.InstrumentationProviderConfiguration)
 	azdIdentityEnvAzureAuthorizerConfiguration := new(azureauth.EnvAzureAuthorizerConfiguration)
 	kubeletIdentityEnvAzureAuthorizerConfiguration := new(azureauth.EnvAzureAuthorizerConfiguration)
+	craneWrapperRetryPolicyConfiguration := new(utils.RetryPolicyConfiguration)
+	argBaseClientRetryPolicyConfiguration := new(utils.RetryPolicyConfiguration)
+	argClientConfiguration := new(arg.ARGClientConfiguration)
+	deploymentConfiguration := new(utils.DeploymentConfiguration)
 	craneWrapperRetryPolicyConfiguration := new(retrypolicy.RetryPolicyConfiguration)
 	argBaseClientRetryPolicyConfiguration := new(retrypolicy.RetryPolicyConfiguration)
 	redisCacheClientRetryPolicyConfiguration := new(retrypolicy.RetryPolicyConfiguration)
@@ -72,6 +77,8 @@ func main() {
 		"kubeletIdentity.envAzureAuthorizerConfiguration":         kubeletIdentityEnvAzureAuthorizerConfiguration,
 		"arg.argBaseClient.retryPolicyConfiguration":              argBaseClientRetryPolicyConfiguration,
 		"acr.craneWrappersConfiguration.retryPolicyConfiguration": craneWrapperRetryPolicyConfiguration,
+		"arg.argClientConfiguration":                              argClientConfiguration,
+		"deployment":                                              deploymentConfiguration,
 		"cache.argDataProviderCacheConfiguration":                 argDataProviderCacheConfiguration,
 		"cache.tokensCacheConfiguration":                          tokensCacheConfiguration,
 		"cache.redisClient.retryPolicyConfiguration":              redisCacheClientRetryPolicyConfiguration,
@@ -81,10 +88,15 @@ func main() {
 		// Unmarshal the relevant parts of appConfig's data to each of the configuration objects
 		err = config.CreateSubConfiguration(AppConfig, key, configObject)
 		if err != nil {
-			log.Fatal("failed to load specific configuration data", err)
+			errMsg := fmt.Sprintf("Failed to load specifc configuration data. \nkey: <%s>\nobjectType: <%T>", key, configObject)
+			log.Fatal(errMsg /*Once cache PR is merged, change this to GetType()*/)
 		}
 	}
 
+	// Create deployment singleton.
+	if _, err := utils.NewDeployment(deploymentConfiguration); err != nil {
+		log.Fatal("main.NewDeployment", err)
+	}
 	// Create Tivan's instrumentation
 	tivanInstrumentationResult, err := tivan.NewTivanInstrumentationResult(tivanInstrumentationConfiguration)
 	if err != nil {
@@ -157,7 +169,7 @@ func main() {
 	if err != nil {
 		log.Fatal("main.NewArgBaseClientWrapper", err)
 	}
-	argClient := arg.NewARGClient(instrumentationProvider, argBaseClient)
+	argClient := arg.NewARGClient(instrumentationProvider, argBaseClient, argClientConfiguration)
 	argQueryGenerator, err := argqueries.CreateARGQueryGenerator(instrumentationProvider)
 	if err != nil {
 		log.Fatal("main.CreateARGQueryGenerator", err)

@@ -142,6 +142,7 @@ func (provider *AzdSecInfoProvider) getSingleContainerVulnerabilityScanInfo(cont
 		tracer.Error(err, "")
 
 		// TODO support digest does not exists in registry or unauthorized to not fail...
+		// Add indication in tag2digest resolver on unauthorized to image to set as unscanned.
 		return nil, err
 	}
 
