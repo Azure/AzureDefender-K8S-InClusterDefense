@@ -71,7 +71,7 @@ func (provider *AzdSecInfoProvider) GetContainersVulnerabilityScanInfo(podSpec *
 	// Initialize container vuln scan info list
 	vulnSecInfoContainers := make([]*contracts.ContainerVulnerabilityScanInfo, 0, len(podSpec.InitContainers) + len(podSpec.Containers))
 
-	// Get container vulnerability scan information for init containers
+	// insert container vulnerability scan information for init containers to vulnSecInfoContainers
 	initContainersErr := provider.updateVulnSecInfoContainers(&podSpec.InitContainers, &vulnSecInfoContainers, resourceCtx)
 	if initContainersErr != nil {
 		wrappedError := errors.Wrap(initContainersErr, "Handler failed to updateVulnSecInfoContainers on Init containers")
@@ -79,7 +79,7 @@ func (provider *AzdSecInfoProvider) GetContainersVulnerabilityScanInfo(podSpec *
 		return nil, wrappedError
 	}
 
-	// Get container vulnerability scan information for containers
+	// insert container vulnerability scan information for containers to vulnSecInfoContainers
 	containersErr := provider.updateVulnSecInfoContainers(&podSpec.Containers, &vulnSecInfoContainers, resourceCtx)
 	if containersErr != nil {
 		wrappedError := errors.Wrap(containersErr, "Handler failed to updateVulnSecInfoContainers on Containers")
@@ -90,8 +90,8 @@ func (provider *AzdSecInfoProvider) GetContainersVulnerabilityScanInfo(podSpec *
 	return vulnSecInfoContainers, nil
 }
 
-// updateVulnSecInfoContainers is updating vulnSecInfoContainers array with the given containers scan results.
-// It runs each container scan in parallel and returns only when all scans are finished and array is updated
+// updateVulnSecInfoContainers is updating vulnSecInfoContainers array with the scan results of the given containers .
+// It runs each container scan in parallel and returns only when all the scans are finished and the array is updated
 func (provider *AzdSecInfoProvider) updateVulnSecInfoContainers(containers *[]corev1.Container, vulnSecInfoContainers *[]*contracts.ContainerVulnerabilityScanInfo, resourceCtx *tag2digest.ResourceContext) error {
 	tracer := provider.tracerProvider.GetTracer("updateVulnSecInfoContainers")
 	azdSecInfoProviderSync := NewAzdSecInfoProviderSync()
