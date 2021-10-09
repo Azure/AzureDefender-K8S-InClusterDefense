@@ -38,11 +38,9 @@ data:
           mdmNamespace: {{ .Values.AzDProxy.instrumentation.tivan.tivanInstrumentationConfiguration.mdmNamespace | quote}}
     azdIdentity:
       envAzureAuthorizerConfiguration:
-        isLocalDevelopmentMode: {{.Values.AzDProxy.deployment.isLocalDevelopment}}
         mSIClientId: {{.Values.AzDProxy.azdIdentity.envAzureAuthorizerConfiguration.mSIClientId}}
     kubeletIdentity:
       envAzureAuthorizerConfiguration:
-        isLocalDevelopmentMode: {{.Values.AzDProxy.deployment.isLocalDevelopment}}
         mSIClientId: {{.Values.AzDProxy.kubeletIdentity.envAzureAuthorizerConfiguration.mSIClientId}}
     acr:
       craneWrappersConfiguration:
@@ -51,8 +49,15 @@ data:
           retryDuration: {{ .Values.AzDProxy.acr.craneWrappers.retryPolicyConfiguration.retryDuration }}
           timeUnit: {{ .Values.AzDProxy.acr.craneWrappers.retryPolicyConfiguration.timeUnit | quote}}
     arg:
+      argClientConfiguration:
+        subscriptions: {{ .Values.AzDProxy.arg.argClientConfiguration.subscriptions }}
+
       argBaseClient:
         retryPolicyConfiguration:
           retryAttempts: {{ .Values.AzDProxy.arg.argBaseClient.retryPolicyConfiguration.retryAttempts }}
           retryDuration: {{ .Values.AzDProxy.arg.argBaseClient.retryPolicyConfiguration.retryDuration }}
           timeUnit: {{ .Values.AzDProxy.arg.argBaseClient.retryPolicyConfiguration.timeUnit | quote}}
+
+    deployment:
+      isLocalDevelopment:  {{ .Values.AzDProxy.deployment.isLocalDevelopment }}
+      namespace: {{ .Release.Namespace | quote}}
