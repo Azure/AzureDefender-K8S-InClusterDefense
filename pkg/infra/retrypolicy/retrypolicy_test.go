@@ -132,7 +132,7 @@ func (suite *TestSuite) Test_GetBackOffDuration_InvalidConfigurationInvalidTimeU
 func (suite *TestSuite) Test_RetryActionString_ActionNil_ShouldReturnError() {
 	// Setup
 	var action ActionString = nil
-	var handle Handle = func(error) bool { suite.countActions += 1; return false }
+	var handle ShouldRetryOnSpecificError = func(error) bool { suite.countActions += 1; return false }
 	// Act
 	actual, err := suite.retryPolicy.RetryActionString(action, handle)
 	// Test
@@ -144,7 +144,7 @@ func (suite *TestSuite) Test_RetryActionString_ActionNil_ShouldReturnError() {
 func (suite *TestSuite) Test_RetryActionString_HandleNil_ShouldReturnError() {
 	// Setup
 	var action ActionString = func() (string, error) { suite.countActions += 1; return "lior", nil }
-	var handle Handle = nil
+	var handle ShouldRetryOnSpecificError = nil
 	// Act
 	actual, err := suite.retryPolicy.RetryActionString(action, handle)
 	// Test
@@ -157,7 +157,7 @@ func (suite *TestSuite) Test_RetryActionString_HandledError_ShouldBeExecutedOnce
 	// Setup
 	errForTest := &err1ForTests{}
 	var action ActionString = func() (string, error) { suite.countActions += 1; return "", errForTest }
-	var handle Handle = func(err error) bool {
+	var handle ShouldRetryOnSpecificError = func(err error) bool {
 		_, ok := err.(*err1ForTests)
 		return ok
 	}
@@ -177,7 +177,7 @@ func (suite *TestSuite) Test_RetryActionString_UnHandledError_ShouldBeExecutedFe
 		suite.countActions += 1
 		return "", errForTest
 	}
-	var handle Handle = func(err error) bool {
+	var handle ShouldRetryOnSpecificError = func(err error) bool {
 		_, ok := err.(*err2ForTests)
 		return ok
 	}
@@ -201,7 +201,7 @@ func (suite *TestSuite) Test_RetryActionString_HandledErrorSecondTime_ShouldBeEx
 		}
 		return "", errForTest
 	}
-	var handle Handle = func(err error) bool {
+	var handle ShouldRetryOnSpecificError = func(err error) bool {
 		_, ok := err.(*err2ForTests)
 		return ok
 	}
@@ -218,7 +218,7 @@ func (suite *TestSuite) Test_RetryActionString_NoError_ShouldBeExecutedOnce() {
 	// Setup
 	var action ActionString = func() (string, error) { suite.countActions += 1; return "lior", nil }
 
-	var handle Handle = func(err error) bool {
+	var handle ShouldRetryOnSpecificError = func(err error) bool {
 		_, ok := err.(*err2ForTests)
 		return ok
 	}
@@ -241,7 +241,7 @@ func (suite *TestSuite) Test_RetryAction_NoErrorSecondTime_ShouldBeExecutedTwice
 		}
 		return "", errForTest
 	}
-	var handle Handle = func(err error) bool {
+	var handle ShouldRetryOnSpecificError = func(err error) bool {
 		_, ok := err.(*err2ForTests)
 		return ok
 	}
@@ -257,7 +257,7 @@ func (suite *TestSuite) Test_RetryAction_NoErrorSecondTime_ShouldBeExecutedTwice
 func (suite *TestSuite) Test_RetryAction_ActionNil_ShouldReturnError() {
 	// Setup
 	var action Action = nil
-	var handle Handle = func(error) bool { suite.countActions += 1; return false }
+	var handle ShouldRetryOnSpecificError = func(error) bool { suite.countActions += 1; return false }
 	// Act
 	err := suite.retryPolicy.RetryAction(action, handle)
 	// Test
@@ -269,7 +269,7 @@ func (suite *TestSuite) Test_RetryAction_HandleNil_ShouldReturnError() {
 	// Setup
 
 	var action Action = func() error { suite.countActions += 1; return nil }
-	var handle Handle = nil
+	var handle ShouldRetryOnSpecificError = nil
 	// Act
 	err := suite.retryPolicy.RetryAction(action, handle)
 	// Test
@@ -281,7 +281,7 @@ func (suite *TestSuite) Test_RetryAction_HandledError_ShouldBeExecutedOnce() {
 	// Setup
 	errForTest := &err1ForTests{}
 	var action Action = func() error { suite.countActions += 1; return errForTest }
-	var handle Handle = func(err error) bool {
+	var handle ShouldRetryOnSpecificError = func(err error) bool {
 		_, ok := err.(*err1ForTests)
 		return ok
 	}
@@ -300,7 +300,7 @@ func (suite *TestSuite) Test_RetryAction_UnHandledError_ShouldBeExecutedFewTimes
 		suite.countActions += 1
 		return errForTest
 	}
-	var handle Handle = func(err error) bool {
+	var handle ShouldRetryOnSpecificError = func(err error) bool {
 		_, ok := err.(*err2ForTests)
 		return ok
 	}
@@ -323,7 +323,7 @@ func (suite *TestSuite) Test_RetryAction_HandledErrorSecondTime_ShouldBeExecuted
 		}
 		return errForTest
 	}
-	var handle Handle = func(err error) bool {
+	var handle ShouldRetryOnSpecificError = func(err error) bool {
 		_, ok := err.(*err2ForTests)
 		return ok
 	}
@@ -339,7 +339,7 @@ func (suite *TestSuite) Test_RetryAction_NoError_ShouldBeExecutedOnce() {
 	// Setup
 	var action Action = func() error { suite.countActions += 1; return nil }
 
-	var handle Handle = func(err error) bool {
+	var handle ShouldRetryOnSpecificError = func(err error) bool {
 		_, ok := err.(*err2ForTests)
 		return ok
 	}
@@ -361,7 +361,7 @@ func (suite *TestSuite) Test_RetryActionString_NoErrorSecondTime_ShouldBeExecute
 		}
 		return errForTest
 	}
-	var handle Handle = func(err error) bool {
+	var handle ShouldRetryOnSpecificError = func(err error) bool {
 		_, ok := err.(*err2ForTests)
 		return ok
 	}

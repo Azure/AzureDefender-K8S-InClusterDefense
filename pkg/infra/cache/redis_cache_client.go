@@ -51,25 +51,23 @@ func (client *RedisCacheClient) Get(ctx context.Context, key string) (string, er
 	tracer := client.tracerProvider.GetTracer("Get")
 	tracer.Info("Get key executed", "Key", key)
 
-	// Create action and handle for retry policy
-	var action retrypolicy.ActionString = func() (string, error) {
-		return client.redisClient.Get(ctx, key).Result()
-	}
+	value, err := client.retryPolicy.RetryActionString(
+		/*action ActionString get key using client.redisClient */
+		func() (string, error) { return client.redisClient.Get(ctx, key).Result() },
+		/*handler ShouldRetryOnSpecificError - handle with key is missing error*/
+		func(err error) bool {
+			if err == redis.Nil { // In case that key is missing
+				client.metricSubmitter.SendMetric(1, cachemetrics.NewCacheClientGetMetric(client, operations.MISS))
+				tracer.Info("Missing Key", "Key", key)
+				err = NewMissingKeyCacheError(key)
+				return true
+			}
 
-	var handle retrypolicy.Handle = func(err error) bool {
-		if err == redis.Nil { // In case that key is missing
-			client.metricSubmitter.SendMetric(1, cachemetrics.NewCacheClientGetMetric(client, operations.MISS))
-			tracer.Info("Missing Key", "Key", key)
-			err = NewMissingKeyCacheError(key)
-			return true
-		}
-
-		client.metricSubmitter.SendMetric(1, cachemetrics.NewGetErrEncounteredMetric(err, _redisClientType))
-		tracer.Error(err, "", "key", key)
-		return false
-	}
-
-	value, err := client.retryPolicy.RetryActionString(action, handle)
+			client.metricSubmitter.SendMetric(1, cachemetrics.NewGetErrEncounteredMetric(err, _redisClientType))
+			tracer.Error(err, "", "key", key)
+			return false
+		},
+	)
 	if err != nil {
 		return "", err
 	}
@@ -96,7 +94,9 @@ func (client *RedisCacheClient) Set(ctx context.Context, key string, value strin
 	}
 
 	err := client.retryPolicy.RetryAction(
+		// Action - set the values redis client.
 		func() error { return client.redisClient.Set(ctx, key, value, expiration).Err() },
+		// HandleError - if the err is redis.Nil then it means that the get is not exist.
 		func(err error) bool { return err == redis.Nil },
 	)
 

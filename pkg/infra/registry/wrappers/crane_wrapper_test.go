@@ -41,7 +41,7 @@ func (suite *TestSuite) SetupTest() {
 // TODO once Digest method does not return a static digest, test an image tag which will fail to verify number of attempts
 func (suite *TestSuite) TestCraneWrapper_NumberOfAttempts() {
 	re, err := regexp.Compile("[0-9]+") // error if regexp invalid
-	// Verify regex hasnt failed to compile
+	// Verify regex hasn't failed to compile
 	if err != nil {
 		suite.Fail("failed to compile regex")
 	}

@@ -86,12 +86,11 @@ AzDProxy:
   # Azure Auth values
   azdIdentity:
     envAzureAuthorizerConfiguration:
-      mSIClientId: "a554f933-695f-4ecf-abe4-2a7515e8c1b7" # BlockIdentityDev MI
+      mSIClientId: ""
 
   kubeletIdentity:
     envAzureAuthorizerConfiguration:
-      #      mSIClientId: "f4a700f6-e852-4cfd-8408-2ed6d3843759" # cluster-dev-agentpool MI - TODO  using the same as arg - BUG with AcrPull Perm
-      mSIClientId: "a554f933-695f-4ecf-abe4-2a7515e8c1b7" # BlockIdentityDev MI
+      mSIClientId: ""
 
   deployment:
     isLocalDevelopment: false
@@ -110,8 +109,7 @@ AzDProxy:
   # ARG values
   arg:
     argClientConfiguration:
-      # TODO change it to dynamic subscription that will be updated in the installation script.
-      subscriptions: ["4009f3ee-43c4-4f19-97e4-32b6f2285a68"]
+      subscriptions: []
 
     argBaseClient:
       retryPolicyConfiguration:

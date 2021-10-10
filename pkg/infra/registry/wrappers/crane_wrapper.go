@@ -50,9 +50,13 @@ func (craneWrapper *CraneWrapper) DigestWithRetry(imageReference string, tracerP
 	tracer := tracerProvider.GetTracer("DigestWithRetry")
 
 	digest, err := craneWrapper.retryPolicy.RetryActionString(
+		/*action ActionString*/
 		func() (string, error) { return craneWrapper.Digest(imageReference, opt...) },
-		// TODO deal with cases for which we do not want to retry after method as been implemented
-		func(error) bool { return false },
+
+		/*handle ShouldRetryOnSpecificError*/
+		func(error) bool {
+			return true /*TODO deal with cases for which we do not want to retry after method as been implemented*/
+		},
 	)
 
 	if err != nil {

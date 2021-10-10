@@ -10,10 +10,10 @@ import (
 	"time"
 )
 
-// Handle is function that gets an error and returns true or false if the retry should handle with this error
-// Returns true in case that the retry policy shouldn't retry another try on errors.
-// Returns false in case that retry policy doesn't know how to handle with some error, so it will retry another time (according to the retry attempts and retry count)
-type Handle func(error) bool
+// ShouldRetryOnSpecificError is function that gets an error and returns true or false if the retry should handle with this error
+// Returns true in case that retry policy doesn't know how to handle with some error, so it will retry another time (according to the retry attempts and retry count)
+// Returns false in case that the retry policy shouldn't retry another try on error specific error.
+type ShouldRetryOnSpecificError func(error) bool
 
 // All actions functions should be written in this type:
 type (
@@ -26,9 +26,9 @@ type (
 // IRetryPolicy interface for retrypolicy
 type IRetryPolicy interface {
 	// RetryActionString try to execute action that returns string,error
-	RetryActionString(action ActionString, handle Handle) (value string, err error)
+	RetryActionString(action ActionString, handle ShouldRetryOnSpecificError) (value string, err error)
 	// RetryAction try to execute action that returns only error
-	RetryAction(action Action, handle Handle) (err error)
+	RetryAction(action Action, handle ShouldRetryOnSpecificError) (err error)
 }
 
 // RetryPolicy implements IRetryPolicy interface
@@ -78,7 +78,7 @@ func NewRetryPolicy(instrumentationProvider instrumentation.IInstrumentationProv
 }
 
 // RetryActionString retry to run the action with retryPolicy
-func (r *RetryPolicy) RetryActionString(action ActionString, handle Handle) (value string, err error) {
+func (r *RetryPolicy) RetryActionString(action ActionString, handle ShouldRetryOnSpecificError) (value string, err error) {
 	tracer := r.tracerProvider.GetTracer("RetryActionString")
 	if action == nil || handle == nil {
 		err = errors.Wrap(utils.NilArgumentError, "action and handle can't be nil")
@@ -113,7 +113,7 @@ func (r *RetryPolicy) RetryActionString(action ActionString, handle Handle) (val
 }
 
 // RetryAction retry to run the action with retryPolicy
-func (r *RetryPolicy) RetryAction(action Action, handle Handle) (err error) {
+func (r *RetryPolicy) RetryAction(action Action, handle ShouldRetryOnSpecificError) (err error) {
 	tracer := r.tracerProvider.GetTracer("RetryActionString")
 	if action == nil || handle == nil {
 		err = errors.Wrap(utils.NilArgumentError, "action and handle can't be nil")
