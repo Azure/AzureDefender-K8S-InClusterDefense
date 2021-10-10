@@ -3,11 +3,9 @@ package wrappers
 import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
-	registrymetric "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/metric"
-	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/utils"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/retrypolicy"
 	"github.com/google/go-containerregistry/pkg/crane"
 	"github.com/pkg/errors"
-	"time"
 )
 
 // ICraneWrapper wraps crane operations
@@ -20,14 +18,14 @@ type ICraneWrapper interface {
 
 // CraneWrapper wraps crane operations
 type CraneWrapper struct {
-	// retryPolicyConfiguration is the the manager of the retry policy of the crane wrapper.
-	retryPolicyConfiguration *utils.RetryPolicyConfiguration
+	// retryPolicy is the manager of the retry policy of the crane wrapper.
+	retryPolicy retrypolicy.IRetryPolicy
 }
 
 // NewCraneWrapper Cto'r for CraneWrapper
-func NewCraneWrapper(retryPolicyConfiguration *utils.RetryPolicyConfiguration) *CraneWrapper {
+func NewCraneWrapper(retryPolicy retrypolicy.IRetryPolicy) *CraneWrapper {
 	return &CraneWrapper{
-		retryPolicyConfiguration: retryPolicyConfiguration,
+		retryPolicy: retryPolicy,
 	}
 }
 
@@ -37,32 +35,36 @@ func NewCraneWrapper(retryPolicyConfiguration *utils.RetryPolicyConfiguration) *
 // ACR ref: // https://github.com/Azure/acr-docker-credential-helper/blob/master/src/docker-credential-acr/acr_login.go
 func (*CraneWrapper) Digest(ref string, opt ...crane.Option) (string, error) {
 	//(resolved digest of tomerwdevops.azurecr.io/imagescan:62 - https://ms.portal.azure.com/#@microsoft.onmicrosoft.com/resource/subscriptions/4009f3ee-43c4-4f19-97e4-32b6f2285a68/resourceGroups/tomerwdevops/providers/Microsoft.ContainerRegistry/registries/tomerwdevops/repository)
-	return crane.Digest(ref, opt...)
+	digest, err := crane.Digest(ref, opt...)
+	// Crane is not checking cases that digest is empty //TODO why does it happen?
+	if digest == "" {
+		err = errors.Wrapf(err, "failed to extract digest of image ref <%s>. crane returned empty digest", ref)
+		return "", err
+	}
+
+	return digest, err
 }
 
 // DigestWithRetry re-executing Digest in case of a failure according to retryPolicy
-func (craneWrapper *CraneWrapper) DigestWithRetry(imageReference string, tracerProvider trace.ITracerProvider, metricSubmitter metric.IMetricSubmitter, opt ...crane.Option) (res string, err error) {
-	tracer := tracerProvider.GetTracer("GetDigestWithRetries")
-	retryCount := 1
-	retryDuration, err := craneWrapper.retryPolicyConfiguration.GetBackOffDuration()
-	if err != nil {
-		return res, errors.Wrapf(err, "cannot parse given retry duration <(%v)>", craneWrapper.retryPolicyConfiguration.RetryDuration)
-	}
-	for retryCount < craneWrapper.retryPolicyConfiguration.RetryAttempts+1 {
-		// TODO deal with cases for which we do not want to retry after method as been implemented
-		// Execute Digest and check if an error occurred. We want to retry if err is not nil
-		if res, err = craneWrapper.Digest(imageReference, opt...); err != nil {
-			tracer.Info("Managed to extract digest", "attempts:", retryCount)
-			return res, nil
-		} else {
-			tracer.Error(err, "failed extracting digest from ARC", "attempts:", retryCount)
-			retryCount += 1
+func (craneWrapper *CraneWrapper) DigestWithRetry(imageReference string, tracerProvider trace.ITracerProvider, metricSubmitter metric.IMetricSubmitter, opt ...crane.Option) (string, error) {
+	tracer := tracerProvider.GetTracer("DigestWithRetry")
 
-			// wait (retryCount * craneWrapper.retryDuration) milliseconds between retries
-			time.Sleep(time.Duration(retryCount) * retryDuration)
-		}
+	digest, err := craneWrapper.retryPolicy.RetryActionString(
+		/*action ActionString*/
+		func() (string, error) { return craneWrapper.Digest(imageReference, opt...) },
+
+		/*handle ShouldRetryOnSpecificError*/
+		func(error) bool {
+			return true /*TODO deal with cases for which we do not want to retry after method as been implemented*/
+		},
+	)
+
+	if err != nil {
+		err := errors.Wrapf(err, "failed to extract digest of image %v", imageReference)
+		tracer.Error(err, "")
+		return "", err
 	}
-	// Send metrics
-	metricSubmitter.SendMetric(retryCount, registrymetric.NewCraneWrapperNumOfRetryAttempts())
-	return res, errors.Wrapf(err, "failed after %d retries due to error", retryCount)
+
+	tracer.Info("Managed to extract digest", "Image ref", imageReference, "digest", digest)
+	return digest, nil
 }

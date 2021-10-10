@@ -1,0 +1,25 @@
+# TODO Redis deployments should be updated with stable/distributed and secured version.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{.Values.AzDProxy.prefixResourceDeployment}}-redis-deployment
+  namespace: '{{ .Release.Namespace }}'
+  labels:
+  {{ include "common.labels" . | indent 4 }}
+spec:
+  selector:
+    matchLabels:
+      run: redis
+  replicas: {{.Values.AzDProxy.cache.redisClient.replicas}}
+  template:
+    metadata:
+      labels:
+        run: redis
+    spec:
+      containers:
+        # TODO : Add securityContext section.
+        - name: {{.Values.AzDProxy.prefixResourceDeployment}}-redis
+          image: {{.Values.AzDProxy.cache.redisClient.image}}
+          imagePullPolicy: 'Always'
+          ports:
+            - containerPort: {{.Values.AzDProxy.cache.redisClient.port}}

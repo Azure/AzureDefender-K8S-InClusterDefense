@@ -17,6 +17,9 @@ type IK8SKeychainFactory interface {
 	Create(namespace string, imagePullSecrets []string, serviceAccountName string) (authn.Keychain, error)
 }
 
+// K8SKeychainFactory implements IK8SKeychainFactory interface
+var _ IK8SKeychainFactory = (*K8SKeychainFactory)(nil)
+
 // K8SKeychainFactory Basic implementation of IK8SKeychainFactory interface
 type K8SKeychainFactory struct {
 	// tracerProvider is the tracer provider for the registry client

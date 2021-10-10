@@ -50,7 +50,7 @@ func (generator *ARGQueryGenerator) GenerateImageVulnerabilityScanQuery(queryPar
 		tracer.Error(utils.NilArgumentError, "queryParameters is nil")
 		return "", utils.NilArgumentError
 	}
-	tracer.Info("Generate new query", "queryParameters", queryParameters)
+	tracer.Info("Generate new query", "queryParameters", *queryParameters)
 	// Execute template using parameters
 	builder := new(strings.Builder)
 	err := generator.containerVulnerabilityScanResultsQueryTemplate.Execute(builder, queryParameters)

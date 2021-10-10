@@ -9,6 +9,9 @@ import (
 	"strings"
 )
 
+// WrapperTivanTracer implements trace.ITracer  interface
+var _ trace.ITracer = (*WrapperTivanTracer)(nil)
+
 // WrapperTivanTracer implementation of ITracer interface - holds an Entry object in order to delegate Tivan tracer methods.
 type WrapperTivanTracer struct {
 	// entry is logrus.Entry that Tivan use in their logger so we wrap it.

@@ -8,6 +8,9 @@ import (
 	crzap "sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
+// ZaprTracerFactory implements ITracerFactory interface
+var _ ITracerFactory = (*ZaprTracerFactory)(nil)
+
 // ZaprTracerFactory implementation of ITracerFactory.
 type ZaprTracerFactory struct {
 	// configuration is the configuration of the zaprtracer
@@ -15,7 +18,7 @@ type ZaprTracerFactory struct {
 }
 
 // NewZaprTracerFactory creates new TracerFactory instance.
-func NewZaprTracerFactory(configuration *TracerConfiguration) ITracerFactory {
+func NewZaprTracerFactory(configuration *TracerConfiguration) *ZaprTracerFactory {
 	return &ZaprTracerFactory{
 		configuration: configuration,
 	}

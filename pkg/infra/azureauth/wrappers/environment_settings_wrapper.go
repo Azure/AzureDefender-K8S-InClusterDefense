@@ -13,6 +13,9 @@ type IEnvironmentSettingsWrapper interface {
 	GetEnvironment() *azure.Environment
 }
 
+// EnvironmentSettingsWrapper implements IEnvironmentSettingsWrapper interface
+var _ IEnvironmentSettingsWrapper = (*EnvironmentSettingsWrapper)(nil)
+
 // EnvironmentSettingsWrapper wraps auth.EnvironmentSettings implements wrapper.IEnvironmentSettingsWrapper interface
 type EnvironmentSettingsWrapper struct {
 	settings *auth.EnvironmentSettings

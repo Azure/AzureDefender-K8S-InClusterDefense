@@ -16,6 +16,9 @@ type IManagerFactory interface {
 	CreateManager() (mgr manager.Manager, err error)
 }
 
+// ManagerFactory implements IManagerFactory interface
+var _ IManagerFactory = (*ManagerFactory)(nil)
+
 // ManagerFactory Factory to create manager.Manager from configuration
 type ManagerFactory struct {
 	// Configuration is the manager configuration
@@ -33,7 +36,7 @@ type ManagerConfiguration struct {
 }
 
 // NewManagerFactory Constructor for ManagerFactory
-func NewManagerFactory(configuration *ManagerConfiguration, instrumentationProvider instrumentation.IInstrumentationProvider) (factory IManagerFactory) {
+func NewManagerFactory(configuration *ManagerConfiguration, instrumentationProvider instrumentation.IInstrumentationProvider) (factory *ManagerFactory) {
 	return &ManagerFactory{
 		configuration:           configuration,
 		instrumentationProvider: instrumentationProvider}

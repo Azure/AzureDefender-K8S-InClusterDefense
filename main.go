@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/cmd/webhook"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/azdsecinfo"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/dataproviders/arg"
@@ -8,6 +9,8 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/dataproviders/arg/wrappers"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/azureauth"
 	azureauthwrappers "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/azureauth/wrappers"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/cache"
+	cachewrappers "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/cache/wrappers"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/config"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/tivan"
@@ -15,6 +18,7 @@ import (
 	registryauthazure "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/acrauth"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/crane"
 	registrywrappers "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/wrappers"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/retrypolicy"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/utils"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/tag2digest"
 	"k8s.io/client-go/kubernetes"
@@ -51,8 +55,14 @@ func main() {
 	instrumentationConfiguration := new(instrumentation.InstrumentationProviderConfiguration)
 	azdIdentityEnvAzureAuthorizerConfiguration := new(azureauth.EnvAzureAuthorizerConfiguration)
 	kubeletIdentityEnvAzureAuthorizerConfiguration := new(azureauth.EnvAzureAuthorizerConfiguration)
-	craneWrapperRetryPolicyConfiguration := new(utils.RetryPolicyConfiguration)
-	argBaseClientRetryPolicyConfiguration := new(utils.RetryPolicyConfiguration)
+	argClientConfiguration := new(arg.ARGClientConfiguration)
+	deploymentConfiguration := new(utils.DeploymentConfiguration)
+	craneWrapperRetryPolicyConfiguration := new(retrypolicy.RetryPolicyConfiguration)
+	argBaseClientRetryPolicyConfiguration := new(retrypolicy.RetryPolicyConfiguration)
+	redisCacheClientRetryPolicyConfiguration := new(retrypolicy.RetryPolicyConfiguration)
+
+	argDataProviderCacheConfiguration := new(cachewrappers.RedisCacheClientConfiguration)
+	tokensCacheConfiguration := new(cachewrappers.FreeCacheInMemWrapperCacheConfiguration)
 
 	// Create a map between configuration object and key in main config file
 	keyConfigMap := map[string]interface{}{
@@ -66,16 +76,26 @@ func main() {
 		"kubeletIdentity.envAzureAuthorizerConfiguration":         kubeletIdentityEnvAzureAuthorizerConfiguration,
 		"arg.argBaseClient.retryPolicyConfiguration":              argBaseClientRetryPolicyConfiguration,
 		"acr.craneWrappersConfiguration.retryPolicyConfiguration": craneWrapperRetryPolicyConfiguration,
+		"arg.argClientConfiguration":                              argClientConfiguration,
+		"deployment":                                              deploymentConfiguration,
+		"cache.argDataProviderCacheConfiguration":                 argDataProviderCacheConfiguration,
+		"cache.tokensCacheConfiguration":                          tokensCacheConfiguration,
+		"cache.redisClient.retryPolicyConfiguration":              redisCacheClientRetryPolicyConfiguration,
 	}
 
 	for key, configObject := range keyConfigMap {
 		// Unmarshal the relevant parts of appConfig's data to each of the configuration objects
 		err = config.CreateSubConfiguration(AppConfig, key, configObject)
 		if err != nil {
-			log.Fatal("failed to load specific configuration data", err)
+			errMsg := fmt.Sprintf("Failed to load specifc configuration data. \nkey: <%s>\nobjectType: <%T>", key, configObject)
+			log.Fatal(errMsg /*Once cache PR is merged, change this to GetType()*/)
 		}
 	}
 
+	// Create deployment singleton.
+	if _, err := utils.NewDeployment(deploymentConfiguration); err != nil {
+		log.Fatal("main.NewDeployment", err)
+	}
 	// Create Tivan's instrumentation
 	tivanInstrumentationResult, err := tivan.NewTivanInstrumentationResult(tivanInstrumentationConfiguration)
 	if err != nil {
@@ -91,17 +111,18 @@ func main() {
 		log.Fatal("main.instrumentationProviderFactory.CreateInstrumentationProvider", err)
 	}
 
-	kubeletIdentityAuthorizerFactory := azureauth.NewEnvAzureAuthorizerFactory(azdIdentityEnvAzureAuthorizerConfiguration, new(azureauthwrappers.AzureAuthWrapper))
+	kubeletIdentityAuthorizerFactory := azureauth.NewEnvAzureAuthorizerFactory(kubeletIdentityEnvAzureAuthorizerConfiguration, new(azureauthwrappers.AzureAuthWrapper))
 	kubeletIdentityAuthorizer, err := kubeletIdentityAuthorizerFactory.CreateARMAuthorizer()
 	if err != nil {
 		log.Fatal("main.kubeletIdentityAuthorizerFactory.NewEnvAzureAuthorizerFactory.CreateARMAuthorizer", err)
 	}
 
-	k8sclientconfig, err := k8sclientconfig.GetConfig()
+	// Registry Client
+	k8sClientConfig, err := k8sclientconfig.GetConfig()
 	if err != nil {
 		log.Fatal("main.k8sclientconfig.GetConfig", err)
 	}
-	clientK8s, err := kubernetes.NewForConfig(k8sclientconfig)
+	clientK8s, err := kubernetes.NewForConfig(k8sClientConfig)
 	if err != nil {
 		log.Fatal("main.kubernetes.NewForConfig", err)
 	}
@@ -118,12 +139,26 @@ func main() {
 	k8sKeychainFactory := crane.NewK8SKeychainFactory(instrumentationProvider, clientK8s)
 	acrKeychainFactory := crane.NewACRKeychainFactory(instrumentationProvider, acrTokenProvider)
 
-	craneWrapper := registrywrappers.NewCraneWrapper(craneWrapperRetryPolicyConfiguration)
+	craneWrapperRetryPolicy, err := retrypolicy.NewRetryPolicy(instrumentationProvider, craneWrapperRetryPolicyConfiguration)
+	if err != nil {
+		log.Fatal("main.retrypolicy.NewRetryPolicy craneWrapperRetryPolicy", err)
+	}
+	craneWrapper := registrywrappers.NewCraneWrapper(craneWrapperRetryPolicy)
 	// Registry Client
 	registryClient := crane.NewCraneRegistryClient(instrumentationProvider, craneWrapper, acrKeychainFactory, k8sKeychainFactory)
 	tag2digestResolver := tag2digest.NewTag2DigestResolver(instrumentationProvider, registryClient)
 
 	// ARG
+	//TODO complete it once we merge the rest of the PR's.
+	argDataProviderRedisCacheBaseClient := cachewrappers.NewRedisBaseClientWrapper(argDataProviderCacheConfiguration)
+	redisCacheRetryPolicy, err := retrypolicy.NewRetryPolicy(instrumentationProvider, redisCacheClientRetryPolicyConfiguration)
+	if err != nil {
+		log.Fatal("main.retrypolicy.NewRetryPolicy redisCacheRetryPolicy", err)
+	}
+	_ = cache.NewRedisCacheClient(instrumentationProvider, argDataProviderRedisCacheBaseClient, redisCacheRetryPolicy)
+	tag2digestCache := cachewrappers.NewFreeCacheInMem(tokensCacheConfiguration)
+	_ = cache.NewFreeCacheInMemCacheClient(instrumentationProvider, tag2digestCache)
+
 	azdIdentityAuthorizerFactory := azureauth.NewEnvAzureAuthorizerFactory(azdIdentityEnvAzureAuthorizerConfiguration, new(azureauthwrappers.AzureAuthWrapper))
 	azdIdentityAuthorizer, err := azdIdentityAuthorizerFactory.CreateARMAuthorizer()
 	if err != nil {
@@ -133,7 +168,7 @@ func main() {
 	if err != nil {
 		log.Fatal("main.NewArgBaseClientWrapper", err)
 	}
-	argClient := arg.NewARGClient(instrumentationProvider, argBaseClient)
+	argClient := arg.NewARGClient(instrumentationProvider, argBaseClient, argClientConfiguration)
 	argQueryGenerator, err := argqueries.CreateARGQueryGenerator(instrumentationProvider)
 	if err != nil {
 		log.Fatal("main.CreateARGQueryGenerator", err)

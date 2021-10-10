@@ -1,5 +1,8 @@
 package trace
 
+// TracerProvider implements ITracerProvider interface
+var _ ITracerProvider = (*TracerProvider)(nil)
+
 // TracerProvider implements ITracerProvider interface. it wraps exists ITracer and add to
 //ITracer context in the struct level. e.g. Server contains TracerProvider struct with the "Server" context.
 type TracerProvider struct {
@@ -8,7 +11,7 @@ type TracerProvider struct {
 }
 
 // NewTracerProvider  gets an exists ITracer and context, and it wraps the tracer with the new context
-func NewTracerProvider(tracer ITracer, context string) (provider ITracerProvider) {
+func NewTracerProvider(tracer ITracer, context string) (provider *TracerProvider) {
 	return &TracerProvider{
 		tracer: tracer.WithName(context),
 	}
