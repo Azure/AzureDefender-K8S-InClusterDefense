@@ -5,6 +5,9 @@ import (
 	"strconv"
 )
 
+// HandlerHandleLatencyMetric implements metric.IMetric  interface
+var _ metric.IMetric = (*HandlerHandleLatencyMetric)(nil)
+
 // HandlerHandleLatencyMetric is the latency metric of the handler
 type HandlerHandleLatencyMetric struct {
 	requestKind string

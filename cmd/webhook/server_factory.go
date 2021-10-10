@@ -13,6 +13,9 @@ type IServerFactory interface {
 	CreateServer() (server *Server, err error)
 }
 
+// ServerFactory implements IServerFactory interface
+var _ IServerFactory = (*ServerFactory)(nil)
+
 // ServerFactory Factory to create a Server using configuration and manager.
 type ServerFactory struct {
 	// configuration is the server configuration

@@ -44,7 +44,10 @@ const (
 	_noSelfManagementReason responseReason = "NotPatchedResourceInTheSameNsOfHandler"
 )
 
-// Handler implements the admission.Handle interface that each webhook have to implement.
+// Handler implements admission.Handler interface
+var _ admission.Handler = (*Handler)(nil)
+
+// Handler implements the admission.Handler interface that each webhook have to implement.
 // Handler handles with all admission requests according to the MutatingWebhookConfiguration.
 type Handler struct {
 	// tracerProvider of the handler
@@ -64,7 +67,7 @@ type HandlerConfiguration struct {
 }
 
 // NewHandler Constructor for Handler
-func NewHandler(azdSecInfoProvider azdsecinfo.IAzdSecInfoProvider, configuration *HandlerConfiguration, instrumentationProvider instrumentation.IInstrumentationProvider) admission.Handler {
+func NewHandler(azdSecInfoProvider azdsecinfo.IAzdSecInfoProvider, configuration *HandlerConfiguration, instrumentationProvider instrumentation.IInstrumentationProvider) *Handler {
 
 	return &Handler{
 		tracerProvider:     instrumentationProvider.GetTracerProvider("Handler"),

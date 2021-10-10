@@ -5,6 +5,9 @@ import (
 	tivanInstrumentation "tivan.ms/libs/instrumentation"
 )
 
+// tivanMetric implements tivanInstrumentation.Metric interface
+var _ tivanInstrumentation.Metric = (*tivanMetric)(nil)
+
 // tivanMetric is struct that gets a metric.IMetric and warp it with implementations of tivanInstrumentation.Metric
 type tivanMetric struct {
 	wrappedMetric metric.IMetric

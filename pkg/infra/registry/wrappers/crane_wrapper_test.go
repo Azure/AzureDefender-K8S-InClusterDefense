@@ -1,8 +1,9 @@
 package wrappers
 
 import (
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric/util"
-	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/utils"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/retrypolicy"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"regexp"
@@ -18,7 +19,7 @@ const (
 )
 
 var (
-	retryPolicyConfiguration = &utils.RetryPolicyConfiguration{
+	retryPolicyConfiguration = &retrypolicy.RetryPolicyConfiguration{
 		RetryAttempts: _retryAttempts,
 		RetryDuration: _retryDuration,
 		TimeUnit:      _timeUnit,
@@ -32,14 +33,15 @@ type TestSuite struct {
 
 // This will run before each test in the suit
 func (suite *TestSuite) SetupTest() {
-	suite.craneWrapper = NewCraneWrapper(retryPolicyConfiguration)
+	retryPolicy, _ := retrypolicy.NewRetryPolicy(instrumentation.NewNoOpInstrumentationProvider(), retryPolicyConfiguration)
+	suite.craneWrapper = NewCraneWrapper(retryPolicy)
 }
 
 // Test the amount of actual retries is equal _retryAttempts (by a linear factor)
 // TODO once Digest method does not return a static digest, test an image tag which will fail to verify number of attempts
 func (suite *TestSuite) TestCraneWrapper_NumberOfAttempts() {
 	re, err := regexp.Compile("[0-9]+") // error if regexp invalid
-	// Verify regex hasnt failed to compile
+	// Verify regex hasn't failed to compile
 	if err != nil {
 		suite.Fail("failed to compile regex")
 	}

@@ -5,6 +5,9 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
 )
 
+// NoOpInstrumentationProvider implements IInstrumentationProvider interface
+var _ IInstrumentationProvider = (*NoOpInstrumentationProvider)(nil)
+
 // NoOpInstrumentationProvider is implementation that does nothing of IInstrumentationProvider.
 // NoOp is used for testing/debugging.
 type NoOpInstrumentationProvider struct {
