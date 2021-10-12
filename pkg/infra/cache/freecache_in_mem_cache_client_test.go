@@ -2,7 +2,10 @@ package cache
 
 import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/cache/wrappers"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/cache/wrappers/mocks"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
+	"github.com/pkg/errors"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 	"testing"
 	"time"
@@ -29,6 +32,7 @@ func (suite *TestSuite) TestFreeCacheInMemCacheClient_Get_KeyIsExist_ShouldRetur
 
 func (suite *TestSuite) TestFreeCacheInMemCacheClient_Get_KeyIsNotExist_ShouldReturnErr() {
 	// Setup
+	expectedError := NewMissingKeyCacheError(_key)
 	wrapper := wrappers.NewFreeCacheInMem(_configuration)
 	client := NewFreeCacheInMemCacheClient(instrumentation.NewNoOpInstrumentationProvider(), wrapper)
 
@@ -36,7 +40,7 @@ func (suite *TestSuite) TestFreeCacheInMemCacheClient_Get_KeyIsNotExist_ShouldRe
 	_, err := client.Get(nil, _key)
 
 	// Test
-	suite.NotNil(err)
+	suite.Equal(errors.Cause(err), expectedError)
 }
 
 func (suite *TestSuite) TestFreeCacheInMemCacheClient_Set_NewKey_ShouldReturnNil() {
@@ -84,8 +88,7 @@ func (suite *TestSuite) TestFreeCacheInMemCacheClient_Set_NegativeExpiration_Sho
 	err := client.Set(nil, _key, _value, duration)
 
 	// Test
-	suite.NotNil(err)
-	suite.IsType(&NegativeExpirationCacheError{}, err)
+	suite.Equal( errors.Cause(err) , &NegativeExpirationCacheError{})
 }
 
 func (suite *TestSuite) TestFreeCacheInMemCacheClient_Get_MissingKey_ShouldReturnErr() {
@@ -97,8 +100,7 @@ func (suite *TestSuite) TestFreeCacheInMemCacheClient_Get_MissingKey_ShouldRetur
 	val, err := client.Get(nil, _key)
 
 	// Test
-	suite.NotNil(err)
-	suite.IsType(&MissingKeyCacheError{}, err)
+	suite.Equal(errors.Cause(err), &MissingKeyCacheError{})
 	suite.Equal("", val)
 }
 
@@ -117,6 +119,33 @@ func (suite *TestSuite) TestFreeCacheInMemCacheClient_Get_ExpiredKey_ShouldRetur
 	// Test
 	suite.NotNil(err)
 	suite.Equal("", val)
+}
+
+func (suite *TestSuite) TestFreeCacheInMemCacheClient_Get_Error() {
+	// Setup
+	expectedError := errors.New("GetError")
+	wrapperMock := &mocks.IFreeCacheInMemCacheWrapper{}
+	wrapperMock.On("Get", []byte(_key)).Return(nil, expectedError)
+	client := NewFreeCacheInMemCacheClient(instrumentation.NewNoOpInstrumentationProvider(), wrapperMock)
+
+	val, err := client.Get(nil, _key)
+	// Test
+	suite.Equal("", val)
+	suite.ErrorIs(err, expectedError)
+	wrapperMock.AssertExpectations(suite.T())
+}
+
+func (suite *TestSuite) TestFreeCacheInMemCacheClient_Set_Error() {
+	// Setup
+	expectedError := errors.New("SetError")
+	wrapperMock := &mocks.IFreeCacheInMemCacheWrapper{}
+	wrapperMock.On("Set", []byte(_key), []byte(_value), mock.AnythingOfType("int")).Return(expectedError)
+	client := NewFreeCacheInMemCacheClient(instrumentation.NewNoOpInstrumentationProvider(), wrapperMock)
+
+	err := client.Set(nil, _key, _value, 2)
+	// Test
+	suite.ErrorIs(err, expectedError)
+	wrapperMock.AssertExpectations(suite.T())
 }
 
 // We need this function to kick off the test suite, otherwise
