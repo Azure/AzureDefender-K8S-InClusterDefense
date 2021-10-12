@@ -62,3 +62,22 @@ TBD
   ```go
     make(map[T1]T2, approximatedSize)
     ```
+
+### Deployment
+
+- Containers:
+  - TODO : Add securityContext section.
+  - Never use "latest" tag:
+    ```yaml
+    containers:
+          - name: {{.Values.AzDProxy.prefixResourceDeployment}}-redis
+            image: alpine:3.11
+            # Don't use alpine:latest or alpine (default tag is latest).
+            imagePullPolicy: 'Always'
+            ports:
+              - containerPort: {{.Values.AzDProxy.cache.Client.targetport}}
+      ```
+      - Set image pull policy to always
+    ```yaml
+    imagePullPolicy: 'Always'
+      ```

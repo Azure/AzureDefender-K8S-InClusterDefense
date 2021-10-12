@@ -54,3 +54,22 @@ data:
         retryPolicyConfiguration:
           retryAttempts: {{ .Values.AzDProxy.arg.argBaseClient.retryPolicyConfiguration.retryAttempts }}
           retryDuration: {{ .Values.AzDProxy.arg.argBaseClient.retryPolicyConfiguration.retryDuration }}
+          timeUnit: {{ .Values.AzDProxy.arg.argBaseClient.retryPolicyConfiguration.timeUnit | quote}}
+    # Cache configuration
+    cache:
+      Client:
+        app: {{.Values.AzDProxy.cache.Client.app}}
+        replicas: {{.Values.AzDProxy.cache.Client.replicas}}
+        port: {{.Values.AzDProxy.cache.Client.port}}
+        targetport: {{.Values.AzDProxy.cache.Client.port}}
+        retryPolicyConfiguration:
+          retryAttempts: {{ .Values.AzDProxy.cache.Client.retryPolicyConfiguration.retryAttempts }}
+          retryDuration: {{ .Values.AzDProxy.cache.Client.retryPolicyConfiguration.retryDuration }}
+          timeUnit: {{ .Values.AzDProxy.cache.Client.retryPolicyConfiguration.timeUnit }}
+
+      argDataProviderCacheConfiguration:
+        address: {{.Values.AzDProxy.cache.argDataProviderCacheConfiguration.address}}
+        table: {{.Values.AzDProxy.cache.argDataProviderCacheConfiguration.table}}
+
+      tokensCacheConfiguration:
+        cacheSize: {{.Values.AzDProxy.cache.tokensCacheConfiguration.cacheSize}} # in Bytes

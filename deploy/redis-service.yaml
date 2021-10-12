@@ -1,0 +1,55 @@
+# TODO Redis deployments should be updated with secured version.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redis-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi  # TBD
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: azure-defender-proxy-redis-deployment
+spec:
+  replicas: 1 # TBD
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+        - name: redis
+          image: redis
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 6379
+              name: redis-client
+          volumeMounts:
+            - mountPath: /data
+              name: redis-storage
+              readOnly: false
+      volumes:
+        - name: redis-storage
+          persistentVolumeClaim:
+            claimName: redis-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: azure-defender-proxy-redis-service
+  namespace: default
+  labels:
+    app: redis
+spec:
+  ports:
+    - name: server-port
+      port: 6379
+  selector:
+    app: redis

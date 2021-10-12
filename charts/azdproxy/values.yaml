@@ -111,4 +111,36 @@ AzDProxy:
         # Number of retry attempts
         retryAttempts: 3
         # Sleep duration between retries (in milliseconds):
-        retryDuration: "100ms"
+        retryDuration: 100
+        # Timeunit for the backoff duration
+        timeUnit: "ms"
+
+  # Cache configuration
+  cache:
+    Client:
+      app: "redis"
+      # Image of redis containers
+      image: redis:6
+      # -- amount of replicas of redis
+      replicas: 1
+      # -- the port that redis cache will be listened.
+      port: 6379
+
+      retryPolicyConfiguration:
+        #  -- Number of retry attempts
+        retryAttempts: 3
+        #  -- Sleep duration between retries (in milliseconds):
+        retryDuration: 10
+        #  -- Timeunit for the backoff duration
+        timeUnit: "ms"
+
+    argDataProviderCacheConfiguration:
+      # TODO Change this address to helm function
+      # -- Address that the redis client will listen to. set to redis service + the port of the service.
+      address: "azure-defender-proxy-redis-service:6379"
+      # -- The table (Db) that the argDataProviderCache will save to data.
+      table: 0
+
+    tokensCacheConfiguration:
+      # -- In bytes, where 1024 * 1024 represents a single Megabyte, and 100 * 1024*1024 represents 100 Megabytes.
+      cacheSize: 104857600 # 100 * 1024 * 1024

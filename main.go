@@ -66,6 +66,9 @@ func main() {
 		"kubeletIdentity.envAzureAuthorizerConfiguration":         kubeletIdentityEnvAzureAuthorizerConfiguration,
 		"arg.argBaseClient.retryPolicyConfiguration":              argBaseClientRetryPolicyConfiguration,
 		"acr.craneWrappersConfiguration.retryPolicyConfiguration": craneWrapperRetryPolicyConfiguration,
+		"cache.argDataProviderCacheConfiguration":                 argDataProviderCacheConfiguration,
+		"cache.tokensCacheConfiguration":                          tokensCacheConfiguration,
+		"cache.Client.retryPolicyConfiguration":              craneWrapperRetryPolicyConfiguration,
 	}
 
 	for key, configObject := range keyConfigMap {

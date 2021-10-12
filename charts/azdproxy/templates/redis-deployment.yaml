@@ -1,0 +1,57 @@
+# TODO Redis deployments should be updated with secured version.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{.Values.AzDProxy.prefixResourceDeployment}}-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi  # TBD
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{.Values.AzDProxy.prefixResourceDeployment}}-redis-deployment
+spec:
+  replicas: 1 # TBD
+  selector:
+    matchLabels:
+      app: {{.Values.AzDProxy.cache.Client.app}}
+  template:
+    metadata:
+      labels:
+        {{ include "common.labels" . | indent 4 }}
+        app: {{.Values.AzDProxy.cache.Client.app}}
+    spec:
+      containers:
+        - name: {{.Values.AzDProxy.cache.Client.app}}
+          image: {{.Values.AzDProxy.cache.Client.image}}
+          imagePullPolicy: Always
+          ports:
+            - containerPort: {{.Values.AzDProxy.cache.Client.port}}
+              name: {{.Values.AzDProxy.cache.Client.app}}-client
+          volumeMounts:
+            - mountPath: /data
+              name: {{.Values.AzDProxy.cache.Client.app}}-storage
+              readOnly: false
+      volumes:
+        - name: {{.Values.AzDProxy.cache.Client.app}}-storage
+          persistentVolumeClaim:
+            claimName: {{.Values.AzDProxy.prefixResourceDeployment}}-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{.Values.AzDProxy.prefixResourceDeployment}}-service
+  namespace: '{{ .Release.Namespace }}'
+  labels:
+    {{ include "common.labels" . | indent 4 }}
+    app: {{.Values.AzDProxy.cache.Client.app}}
+spec:
+  ports:
+    - name: server-port
+      port: {{.Values.AzDProxy.cache.Client.port}}
+  selector:
+    app: {{.Values.AzDProxy.cache.Client.app}}
