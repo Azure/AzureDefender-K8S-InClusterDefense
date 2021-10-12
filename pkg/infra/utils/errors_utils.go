@@ -6,4 +6,5 @@ import (
 
 var (
 	NilArgumentError = errors.New("NilArgumentError")
+	ReadFromClosedChannelError = errors.New("ReadFromClosedChannelError")
 )

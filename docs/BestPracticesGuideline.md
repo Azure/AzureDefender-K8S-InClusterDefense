@@ -62,3 +62,16 @@ TBD
   ```go
     make(map[T1]T2, approximatedSize)
     ```
+
+### Channels
+
+- **Always close channel when done**
+- Before reading from channel check that the channel is still open.
+    ```go
+    j, channelOpen := <-channel
+            if !channelOpen {
+                ...
+            } else {
+                ...
+            }
+    ```
