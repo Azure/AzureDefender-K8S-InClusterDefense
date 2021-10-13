@@ -3,8 +3,11 @@ package webhook
 
 import (
 	"context"
+	"fmt"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric/util"
-	"log"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/utils"
+	admissionv1 "k8s.io/api/admission/v1"
+	"net/http"
 	"time"
 
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
@@ -21,21 +24,30 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
-// patchReason enum status reason of patching
-type patchReason string
+// responseReason enum status reason of admission response
+type responseReason string
 
 const (
-	// _patched in case that the handler patched to the webhook.
-	_patched patchReason = "Patched"
-	// _notPatchedInit is the initialized of the patchReason of the handle.
-	_notPatchedInit patchReason = "NotPatchedInit"
-	// _notPatchedDryRun in case that DryRun of Handler is True.
-	_notPatchedDryRun patchReason = "NotPatchedDryRun"
-	// _notPatchedNotSupportedKind in case that the resource kind of the request is not supported king
-	_notPatchedNotSupportedKind patchReason = "NotPatchedNotSupportedKind"
+	// _patchedReason in case that the handler patched to the webhook.
+	_patchedReason responseReason = "Patched"
+	// _notPatchedReason not patched response reason.
+	_notPatchedReason responseReason = "NotPatched"
+	// _notPatchedErrorReason not patched due to error response reason.
+	_notPatchedErrorReason responseReason = "NotPatchedError"
+	// _notPatchedDryRunReason in case that DryRun of Handler is True.
+	_notPatchedHandlerDryRunReason responseReason = "NotPatchedHandlerDryRun"
+	// _noMutationForOperationOrKindReason in case that the resource kind of the request is not supported kind
+	_noMutationForKindReason responseReason = "NotPatchedNotSupportedKind"
+	// _noMutationForOperationOrKindReason in case that the resource kind of the request is not supported kind
+	_noMutationForOperationReason responseReason = "NotPatchedNotSupportedOperation"
+	// _noSelfManagementReason in case of resource in same namespace
+	_noSelfManagementReason responseReason = "NotPatchedResourceInTheSameNsOfHandler"
 )
 
-// Handler implements the admission.Handle interface that each webhook have to implement.
+// Handler implements admission.Handler interface
+var _ admission.Handler = (*Handler)(nil)
+
+// Handler implements the admission.Handler interface that each webhook have to implement.
 // Handler handles with all admission requests according to the MutatingWebhookConfiguration.
 type Handler struct {
 	// tracerProvider of the handler
@@ -55,7 +67,7 @@ type HandlerConfiguration struct {
 }
 
 // NewHandler Constructor for Handler
-func NewHandler(azdSecInfoProvider azdsecinfo.IAzdSecInfoProvider, configuration *HandlerConfiguration, instrumentationProvider instrumentation.IInstrumentationProvider) admission.Handler {
+func NewHandler(azdSecInfoProvider azdsecinfo.IAzdSecInfoProvider, configuration *HandlerConfiguration, instrumentationProvider instrumentation.IInstrumentationProvider) *Handler {
 
 	return &Handler{
 		tracerProvider:     instrumentationProvider.GetTracerProvider("Handler"),
@@ -69,59 +81,84 @@ func NewHandler(azdSecInfoProvider azdsecinfo.IAzdSecInfoProvider, configuration
 func (handler *Handler) Handle(ctx context.Context, req admission.Request) admission.Response {
 	startTime := time.Now().UTC()
 	tracer := handler.tracerProvider.GetTracer("Handle")
-
-	defer handler.metricSubmitter.SendMetric(util.GetDurationMilliseconds(startTime), webhookmetric.NewHandlerHandleLatencyMetric())
-
-	if ctx == nil {
-		tracer.Error(errors.New("ctx received is nil"), "Handler.Handle")
-		// Exit with panic in case that the context is nil
-		log.Fatal("Can't handle requests when the context (ctx) is nil")
-	}
+	response := admission.Response{}
+	reason := _notPatchedReason
+	var err error
+	defer func() {
+		if r := recover(); r != nil {
+			err, ok := r.(error)
+			if !ok {
+				err = errors.New(fmt.Sprint(r))
+			}
+			tracer.Error(err, "Handler handle Panic error")
+			// Re throw panic
+			panic(r)
+		}
+		// Repost response latency
+		handler.metricSubmitter.SendMetric(util.GetDurationMilliseconds(startTime), webhookmetric.NewHandlerHandleLatencyMetric(req.Kind.Kind, response.Allowed, string(reason)))
+	}()
 
 	// Logs
+	tracer.Info("received ctx", "ctx", ctx)
 	tracer.Info("received request", "name", req.Name, "namespace", req.Namespace, "operation", req.Operation, "reqKind", req.Kind, "uid", req.UID)
 
-	patches := []jsonpatch.JsonPatchOperation{}
-	patchReason := _notPatchedInit
+	handler.metricSubmitter.SendMetric(1, webhookmetric.NewHandlerNewRequestMetric(req.Kind.Kind, req.Operation))
 
-	handler.metricSubmitter.SendMetric(1, webhookmetric.NewHandlerNewRequestMetric(req.Kind.Kind))
-	if req.Kind.Kind == admisionrequest.PodKind {
+	// Check if the request should be filtered.
+	shouldBeFiltered, reason := handler.shouldRequestBeFiltered(req)
+	if shouldBeFiltered {
+		response = admission.Allowed(string(reason))
+		return response
+	}
 
-		pod, err := admisionrequest.UnmarshalPod(&req)
-		if err != nil {
-			wrappedError := errors.Wrap(err, "Handle handler failed to admisionrequest.UnmarshalPod req")
-			tracer.Error(wrappedError, "")
-			log.Fatal(wrappedError)
-		}
-
-		vulnerabilitySecAnnotationsPatch, err := handler.getPodContainersVulnerabilityScanInfoAnnotationsOperation(pod)
-		if err != nil {
-			wrappedError := errors.Wrap(err, "Handler.Handle Failed to getPodContainersVulnerabilityScanInfoAnnotationsOperation for Pod")
-			tracer.Error(wrappedError, "")
-			log.Fatal(wrappedError)
-		}
-
-		// Add to response patches
-		patches = append(patches, *vulnerabilitySecAnnotationsPatch)
-
-		// update patch reason
-		patchReason = _patched
-	} else {
-		patchReason = _notPatchedNotSupportedKind
+	response, err = handler.handlePodRequest(&req)
+	if err != nil {
+		err = errors.Wrap(err, "Handler.Handle received error on handlePodRequest")
+		tracer.Error(err, "")
+		reason = _notPatchedErrorReason
+		response = handler.admissionErrorResponse(errors.Wrap(err, string(reason)))
+		return response
 	}
 
 	// In case of dryrun=true:  reset all patch operations
 	if handler.configuration.DryRun {
-		tracer.Info("not mutating resource, because handler is on dryrun mode")
-		patches = []jsonpatch.JsonPatchOperation{}
-		patchReason = _notPatchedDryRun
+		tracer.Info("Handler.handlePodRequest not mutating resource, because handler is on dryrun mode.", "ResponseInCaseOfNotDryRun", response)
+		reason = _notPatchedHandlerDryRunReason
+		// Override response with clean response.
+		response = admission.Allowed(string(reason))
+		return response
 	}
 
-	// Patch all patches operations
-	response := admission.Patched(string(patchReason), patches...)
+	reason = _patchedReason
 	tracer.Info("Responded", "response", response)
-
 	return response
+}
+
+// handlePodRequest gets request that should be handled and returned the response with the relevant patches.
+func (handler *Handler) handlePodRequest(req *admission.Request) (admission.Response, error) {
+	tracer := handler.tracerProvider.GetTracer("handlePodRequest")
+
+	patches := []jsonpatch.JsonPatchOperation{}
+
+	pod, err := admisionrequest.UnmarshalPod(req)
+	if err != nil {
+		err = errors.Wrap(err, "Handler.handlePodRequest failed to admisionrequest.UnmarshalPod req")
+		tracer.Error(err, "")
+		return admission.Response{}, err
+	}
+
+	vulnerabilitySecAnnotationsPatch, err := handler.getPodContainersVulnerabilityScanInfoAnnotationsOperation(pod)
+	if err != nil {
+		err = errors.Wrap(err, "Handler.handlePodRequest Failed to getPodContainersVulnerabilityScanInfoAnnotationsOperation for Pod")
+		tracer.Error(err, "")
+		return admission.Response{}, err
+	}
+
+	// Add to response patches
+	patches = append(patches, *vulnerabilitySecAnnotationsPatch)
+
+	// Patch all patches operations
+	return admission.Patched(string(_patchedReason), patches...), nil
 }
 
 // getPodContainersVulnerabilityScanInfoAnnotationsOperation receives a pod to generate a vuln scan annotation add operation
@@ -142,7 +179,7 @@ func (handler *Handler) getPodContainersVulnerabilityScanInfoAnnotationsOperatio
 	tracer.Info("vulnSecInfoContainers", "vulnSecInfoContainers", vulnSecInfoContainers)
 
 	// Create the annotations add json patch operation
-	vulnerabilitySecAnnotationsPatch, err := annotations.CreateContainersVulnerabilityScanAnnotationPatchAdd(vulnSecInfoContainers)
+	vulnerabilitySecAnnotationsPatch, err := annotations.CreateContainersVulnerabilityScanAnnotationPatchAdd(vulnSecInfoContainers, pod)
 	if err != nil {
 		wrappedError := errors.Wrap(err, "Handler failed to CreateContainersVulnerabilityScanAnnotationPatchAdd")
 		tracer.Error(wrappedError, "Handler.annotations.CreateContainersVulnerabilityScanAnnotationPatchAdd")
@@ -150,4 +187,46 @@ func (handler *Handler) getPodContainersVulnerabilityScanInfoAnnotationsOperatio
 	}
 
 	return vulnerabilitySecAnnotationsPatch, nil
+}
+
+// admissionErrorResponse generates an admission response error in case of handler failing to process request
+func (handler *Handler) admissionErrorResponse(err error) admission.Response {
+	tracer := handler.tracerProvider.GetTracer("admissionErrorResponse")
+	tracer.Error(err, "")
+	response := admission.Errored(int32(http.StatusInternalServerError), err)
+	return response
+}
+
+// shouldRequestBeFiltered checks if the request should be filtered.
+// In case that it should be filtered, it returns true and the admission.Response.
+// In case that it shouldn't be filtered, it returns false and nil
+func (handler *Handler) shouldRequestBeFiltered(req admission.Request) (bool, responseReason) {
+	// TODO add filter on blacklist namespaces.
+	tracer := handler.tracerProvider.GetTracer("shouldRequestBeFiltered")
+	// If it's the same namespace of the mutation webhook
+	if req.Namespace == utils.GetDeploymentInstance().GetNamespace() {
+		tracer.Info("Request filtered out due to it is in the same namespace as the handler.", "ReqUID", req.UID, "Namespace", req.Namespace)
+		return true, _noSelfManagementReason
+	}
+
+	// Filter if the kind is not pod.
+	if req.Kind.Kind != admisionrequest.PodKind {
+		tracer.Info("Request filtered out due to the request is not supported kind.", "ReqUID", req.UID, "ReqKind", req.Kind.Kind)
+		return true, _noMutationForKindReason
+	}
+
+	// Filter if the operation is not Create
+	if !isOperationAllowed(&req.Operation) {
+		tracer.Info("Request filtered out due to the request is not supported operation.", "ReqUID", req.UID, "ReqOperation", req.Operation)
+		return true, _noMutationForOperationReason
+	}
+
+	tracer.Info("Request shouldn't be filtered out.", "ReqUID", req.UID)
+	// Request shouldn't be filtered out.
+	return false, _patchedReason
+}
+
+// isOperationAllowed returns boolean if the operation is allowed.
+func isOperationAllowed(operation *admissionv1.Operation) bool {
+	return *operation == admissionv1.Create || *operation == admissionv1.Update
 }

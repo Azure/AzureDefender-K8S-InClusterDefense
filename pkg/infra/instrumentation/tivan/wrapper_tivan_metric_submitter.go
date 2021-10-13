@@ -5,13 +5,16 @@ import (
 	tivanInstrumentation "tivan.ms/libs/instrumentation"
 )
 
+// WrapperTivanMetricSubmitter implements metric.IMetricSubmitter  interface
+var _ metric.IMetricSubmitter = (*WrapperTivanMetricSubmitter)(nil)
+
 type WrapperTivanMetricSubmitter struct {
 	//tivanMetricSubmitter is wrapper for tivan's metric submitter.
 	tivanMetricSubmitter tivanInstrumentation.MetricSubmitter
 }
 
 // NewWrapperTivanMetricSubmitter  Ctor for WrapperTivanMetricSubmitter
-func NewWrapperTivanMetricSubmitter(tivanMetricSubmitter tivanInstrumentation.MetricSubmitter) metric.IMetricSubmitter {
+func NewWrapperTivanMetricSubmitter(tivanMetricSubmitter tivanInstrumentation.MetricSubmitter) *WrapperTivanMetricSubmitter {
 	return &WrapperTivanMetricSubmitter{tivanMetricSubmitter: tivanMetricSubmitter}
 }
 

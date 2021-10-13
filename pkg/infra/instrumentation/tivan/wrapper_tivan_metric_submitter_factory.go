@@ -5,6 +5,9 @@ import (
 	tivanInstrumentation "tivan.ms/libs/instrumentation"
 )
 
+// WrapperTivanMetricSubmitterFactory implements metric.IMetricSubmitterFactory  interface
+var _ metric.IMetricSubmitterFactory = (*WrapperTivanMetricSubmitterFactory)(nil)
+
 // WrapperTivanMetricSubmitterFactory implement the IMetricSubmitterFactory and creates the default metric submitter.
 // It wraps Tivan's MetricSubmitter
 type WrapperTivanMetricSubmitterFactory struct {
@@ -19,7 +22,7 @@ type MetricSubmitterConfiguration struct {
 }
 
 // NewMetricSubmitterFactory creates WrapperTivanMetricSubmitterFactory that creates metric submitter by wrapping the metric submitter of Tivan
-func NewMetricSubmitterFactory(configuration *MetricSubmitterConfiguration, metricSubmitter tivanInstrumentation.MetricSubmitter) (factory metric.IMetricSubmitterFactory) {
+func NewMetricSubmitterFactory(configuration *MetricSubmitterConfiguration, metricSubmitter tivanInstrumentation.MetricSubmitter) (factory *WrapperTivanMetricSubmitterFactory) {
 	return &WrapperTivanMetricSubmitterFactory{
 		configuration:   configuration,
 		metricSubmitter: metricSubmitter,

@@ -55,6 +55,33 @@ TBD
     }  
     ```
 
+- When you create structure that implements interface, cast the strcut to the interface. write the casting above the
+  interface:
+  ```go
+  package user
+    
+  type IPerson interface{
+  GetId() string
+    }
+  
+  type IUser interface{
+  GetUserName() string
+    }
+    
+  // User implements IUser interface
+  var _ IUser = (*User)(nil)
+  
+  // User implements IPerson interface
+  var _ IPerson = (*User)(nil)
+  type User struct{
+  Id string
+  UserName string
+  }
+  
+  func (user *User) GetId() string {return user.Id}
+  func (user *User) GetUserName() string{return user.UserName}
+    ```
+
 ### Performance
 
 - **Use strconv over fmt** - when converting primitives to/from strings, strconv is faster than fmt.

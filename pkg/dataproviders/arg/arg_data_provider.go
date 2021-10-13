@@ -28,6 +28,9 @@ type IARGDataProvider interface {
 	GetImageVulnerabilityScanResults(registry string, repository string, digest string) (scanStatus contracts.ScanStatus, scanFindings []*contracts.ScanFinding, err error)
 }
 
+// ARGDataProvider implements IARGDataProvider interface
+var _ IARGDataProvider = (*ARGDataProvider)(nil)
+
 // ARGDataProvider is a IARGDataProvider implementation
 type ARGDataProvider struct {
 	//tracerProvider
@@ -151,6 +154,7 @@ func (provider *ARGDataProvider) getImageScanDataFromARGQueryScanResult(scanResu
 	if len(scanResultsQueryResponseObjectList) == 0 {
 		// Unscanned - no results found
 		tracer.Info("Set to Unscanned scan data")
+		//TODO Check that this metric in the correct place (The value always 0, move this metric to another place).
 		provider.metricSubmitter.SendMetric(util.GetDurationMilliseconds(startTime), argmetric.NewArgDataProviderResponseLatencyMetricWithGetImageVulnerabilityScanResultsQuery(contracts.Unscanned))
 		// Return unscanned and return nil array of findings
 		return contracts.Unscanned, nil, nil

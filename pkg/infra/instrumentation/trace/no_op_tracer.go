@@ -2,6 +2,9 @@ package trace
 
 import "github.com/go-logr/logr"
 
+// NoOpInstrumentationProvider implements IInstrumentationProvider interface
+var _ ITracer = (*NoOpTracer)(nil)
+
 // NoOpTracer is implementation that does nothing of ITracer
 // NoOp is used for testing/debugging.
 type NoOpTracer struct{}

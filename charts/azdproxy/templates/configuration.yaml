@@ -38,18 +38,20 @@ data:
           mdmNamespace: {{ .Values.AzDProxy.instrumentation.tivan.tivanInstrumentationConfiguration.mdmNamespace | quote}}
     azdIdentity:
       envAzureAuthorizerConfiguration:
-        isLocalDevelopmentMode: {{.Values.AzDProxy.deployment.isLocalDevelopment}}
         mSIClientId: {{.Values.AzDProxy.azdIdentity.envAzureAuthorizerConfiguration.mSIClientId}}
     kubeletIdentity:
       envAzureAuthorizerConfiguration:
-        isLocalDevelopmentMode: {{.Values.AzDProxy.deployment.isLocalDevelopment}}
         mSIClientId: {{.Values.AzDProxy.kubeletIdentity.envAzureAuthorizerConfiguration.mSIClientId}}
     acr:
       craneWrappersConfiguration:
         retryPolicyConfiguration:
           retryAttempts: {{ .Values.AzDProxy.acr.craneWrappers.retryPolicyConfiguration.retryAttempts }}
           retryDuration: {{ .Values.AzDProxy.acr.craneWrappers.retryPolicyConfiguration.retryDuration }}
+          timeUnit: {{ .Values.AzDProxy.acr.craneWrappers.retryPolicyConfiguration.timeUnit | quote}}
     arg:
+      argClientConfiguration:
+        subscriptions: {{ .Values.AzDProxy.arg.argClientConfiguration.subscriptions }}
+
       argBaseClient:
         retryPolicyConfiguration:
           retryAttempts: {{ .Values.AzDProxy.arg.argBaseClient.retryPolicyConfiguration.retryAttempts }}
@@ -66,10 +68,12 @@ data:
           retryAttempts: {{ .Values.AzDProxy.cache.Client.retryPolicyConfiguration.retryAttempts }}
           retryDuration: {{ .Values.AzDProxy.cache.Client.retryPolicyConfiguration.retryDuration }}
           timeUnit: {{ .Values.AzDProxy.cache.Client.retryPolicyConfiguration.timeUnit }}
-
       argDataProviderCacheConfiguration:
         address: {{.Values.AzDProxy.cache.argDataProviderCacheConfiguration.address}}
         table: {{.Values.AzDProxy.cache.argDataProviderCacheConfiguration.table}}
 
       tokensCacheConfiguration:
         cacheSize: {{.Values.AzDProxy.cache.tokensCacheConfiguration.cacheSize}} # in Bytes
+    deployment:
+      isLocalDevelopment:  {{ .Values.AzDProxy.deployment.isLocalDevelopment }}
+      namespace: {{ .Release.Namespace | quote}}

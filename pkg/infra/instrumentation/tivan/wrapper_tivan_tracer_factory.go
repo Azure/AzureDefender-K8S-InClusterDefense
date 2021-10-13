@@ -6,6 +6,9 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
+// TracerFactory implements trace.ITracerFactory  interface
+var _ trace.ITracerFactory = (*TracerFactory)(nil)
+
 // TracerFactory implementation of ITracerFactory.
 type TracerFactory struct {
 	// configuration is the configuration of the tracer.

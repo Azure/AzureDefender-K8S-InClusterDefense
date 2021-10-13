@@ -1,5 +1,8 @@
 package trace
 
+// NoOpTracerProvider implements ITracerProvider interface
+var _ ITracerProvider = (*NoOpTracerProvider)(nil)
+
 // NoOpTracerProvider is implementation that does nothing of ITracerProvider
 // NoOp is used for testing/debugging.
 type NoOpTracerProvider struct {

@@ -21,6 +21,9 @@ type IAzdSecInfoProvider interface {
 	GetContainersVulnerabilityScanInfo(podSpec *corev1.PodSpec, resourceMetadata *metav1.ObjectMeta, resourceKind *metav1.TypeMeta) ([]*contracts.ContainerVulnerabilityScanInfo, error)
 }
 
+// AzdSecInfoProvider implements IAzdSecInfoProvider interface
+var _ IAzdSecInfoProvider = (*AzdSecInfoProvider)(nil)
+
 // AzdSecInfoProvider represents default implementation of IAzdSecInfoProvider interface
 type AzdSecInfoProvider struct {
 	//tracerProvider is tracer provider of AzdSecInfoProvider
@@ -139,6 +142,7 @@ func (provider *AzdSecInfoProvider) getSingleContainerVulnerabilityScanInfo(cont
 		tracer.Error(err, "")
 
 		// TODO support digest does not exists in registry or unauthorized to not fail...
+		// Add indication in tag2digest resolver on unauthorized to image to set as unscanned.
 		return nil, err
 	}
 

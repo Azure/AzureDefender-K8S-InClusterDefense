@@ -86,11 +86,11 @@ AzDProxy:
   # Azure Auth values
   azdIdentity:
     envAzureAuthorizerConfiguration:
-      mSIClientId: "a554f933-695f-4ecf-abe4-2a7515e8c1b7"
+      mSIClientId: ""
 
   kubeletIdentity:
     envAzureAuthorizerConfiguration:
-      mSIClientId: "4446918a-1c6c-437e-9db1-018acb52efdc"
+      mSIClientId: ""
 
   deployment:
     isLocalDevelopment: false
@@ -102,10 +102,15 @@ AzDProxy:
         # Number of retry attempts
         retryAttempts: 3
         # Sleep duration between retries (in milliseconds):
-        retryDuration: "10ms"
+        retryDuration: 10
+        # Timeunit for the backoff duration
+        timeUnit: "ms"
 
   # ARG values
   arg:
+    argClientConfiguration:
+      subscriptions: []
+
     argBaseClient:
       retryPolicyConfiguration:
         # Number of retry attempts
@@ -118,6 +123,7 @@ AzDProxy:
   # Cache configuration
   cache:
     Client:
+      # Data structure store used for cache
       app: "redis"
       # Image of redis containers
       image: redis:6
