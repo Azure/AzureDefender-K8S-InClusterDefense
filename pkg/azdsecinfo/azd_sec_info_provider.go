@@ -89,6 +89,7 @@ func (provider *AzdSecInfoProvider) updateVulnSecInfoContainers(podSpec *corev1.
 
 	// vulnerabilitySecInfoChannel is a channel for *wrappers.ContainerVulnerabilityScanInfoWrapper
 	vulnerabilitySecInfoChannel := make(chan *wrappers.ContainerVulnerabilityScanInfoWrapper)
+	defer close(vulnerabilitySecInfoChannel)
 	// Get container vulnerability scan information in parallel
 	// Each call send data to channel vulnerabilitySecInfoChannel
 	if podSpec.InitContainers != nil {
@@ -124,7 +125,6 @@ func (provider *AzdSecInfoProvider) updateVulnSecInfoContainers(podSpec *corev1.
 			}
 		}
 	}
-	close(vulnerabilitySecInfoChannel)
 	return err
 }
 

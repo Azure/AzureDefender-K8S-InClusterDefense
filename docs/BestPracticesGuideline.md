@@ -65,10 +65,10 @@ TBD
 
 ### Channels
 
-- **Always close channel when done**
-- Before reading from channel check that the channel is still open.
+- Always close channel when done
+- Before reading from a channel check that the channel is still open (reading from a closed channel return the zero value for the channel's type without blocking )
     ```go
-    j, channelOpen := <-channel
+    data, channelOpen := <-channel
             if !channelOpen {
                 ...
             } else {
