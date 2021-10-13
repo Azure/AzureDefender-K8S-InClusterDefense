@@ -129,7 +129,7 @@ func (provider *AzdSecInfoProvider) updateVulnSecInfoContainers(podSpec *corev1.
 }
 
 //getSingleContainerVulnerabilityScanInfoSyncWrapper wrap getSingleContainerVulnerabilityScanInfo.
-// It adds the ability to stop other goroutines from starting new jobs (getSingleContainerVulnerabilityScanInfo) in case one goroutine fail
+// It sends getSingleContainerVulnerabilityScanInfo results to the channel
 func (provider *AzdSecInfoProvider) getSingleContainerVulnerabilityScanInfoSyncWrapper(container corev1.Container, resourceCtx *tag2digest.ResourceContext,  vulnerabilitySecInfoChannel chan *wrappers.ContainerVulnerabilityScanInfoWrapper){
 		vulnerabilitySecInfoChannel <- wrappers.NewContainerVulnerabilityScanInfoWrapper(provider.getSingleContainerVulnerabilityScanInfo(&container, resourceCtx))
 }
