@@ -16,12 +16,15 @@ type IACRTokenProvider interface {
 	GetACRRefreshToken(registry string) (string, error)
 }
 
+// ACRTokenProvider implements IACRTokenProvider interface
+var _ IACRTokenProvider = (*ACRTokenProvider)(nil)
+
 // ACRTokenProvider azure based implementation of IACRTokenProvider
 type ACRTokenProvider struct {
 	// tracerProvider providing tracers
-	tracerProvider        trace.ITracerProvider
+	tracerProvider trace.ITracerProvider
 	// metricSubmitter submits metrics for class
-	metricSubmitter       metric.IMetricSubmitter
+	metricSubmitter metric.IMetricSubmitter
 	// azureBearerAuthorizer is a bearer based authorizer
 	azureBearerAuthorizer azureauth.IBearerAuthorizer
 	// tokenExchanger is exchanger to exchange the bearer token to a refresh token
@@ -29,12 +32,12 @@ type ACRTokenProvider struct {
 }
 
 // NewACRTokenProvider Ctor
-func NewACRTokenProvider(instrumentationProvider instrumentation.IInstrumentationProvider, tokenExchanger IACRTokenExchanger ,azureBearerAuthorizer azureauth.IBearerAuthorizer) *ACRTokenProvider {
+func NewACRTokenProvider(instrumentationProvider instrumentation.IInstrumentationProvider, tokenExchanger IACRTokenExchanger, azureBearerAuthorizer azureauth.IBearerAuthorizer) *ACRTokenProvider {
 	return &ACRTokenProvider{
 		tracerProvider:        instrumentationProvider.GetTracerProvider("ACRTokenProvider"),
 		metricSubmitter:       instrumentationProvider.GetMetricSubmitter(),
 		azureBearerAuthorizer: azureBearerAuthorizer,
-		tokenExchanger: tokenExchanger,
+		tokenExchanger:        tokenExchanger,
 	}
 }
 

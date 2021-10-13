@@ -47,6 +47,17 @@ type IACRTokenExchanger interface {
 	ExchangeACRAccessToken(registry string, armToken string) (string, error)
 }
 
+// ACRTokenExchanger implements IACRTokenExchanger interface
+var _ IACRTokenExchanger = (*ACRTokenExchanger)(nil)
+
+// ACRTokenExchanger basic implementation for IACRTokenExchanger interface
+type ACRTokenExchanger struct {
+	// tracerProvider is class to provide tracers to functions
+	tracerProvider trace.ITracerProvider
+	// httpClient is the client to initiate http calls with
+	httpClient httpclient.IHttpClient
+}
+
 // tokenResponse represents the response object from exchange token rest api of the registry
 type tokenResponse struct {
 	// AccessToken used to exchange
@@ -57,14 +68,6 @@ type tokenResponse struct {
 	Resource string `json:"resource"`
 	// TokenType is type of token exchanged to - in this case refresh token
 	TokenType string `json:"token_type"`
-}
-
-// ACRTokenExchanger basic implementation for IACRTokenExchanger interface
-type ACRTokenExchanger struct {
-	// tracerProvider is class to provide tracers to functions
-	tracerProvider trace.ITracerProvider
-	// httpClient is the client to initiate http calls with
-	httpClient httpclient.IHttpClient
 }
 
 // NewACRTokenExchanger Ctor

@@ -16,14 +16,22 @@ type IACRKeychainFactory interface {
 	Create(registry string) (authn.Keychain, error)
 }
 
+// ACRKeychainFactory implements IACRKeychainFactory interface
+var _ IACRKeychainFactory = (*ACRKeychainFactory)(nil)
+
 // ACRKeychainFactory basic implementation of
 type ACRKeychainFactory struct {
 	// tracerProvider is the tracer provider for the registry client
 	tracerProvider trace.ITracerProvider
 	// metricSubmitter is the metric submitter for the registry client.
-	metricSubmitter  metric.IMetricSubmitter
+	metricSubmitter metric.IMetricSubmitter
 	// acrTokenProvider provides an ACR token
 	acrTokenProvider acrauth.IACRTokenProvider
+}
+
+// ACRKeyChain represents an ACR based keychain
+type ACRKeyChain struct {
+	Token string `json:"token"`
 }
 
 // NewACRKeychainFactory Ctor
@@ -55,11 +63,6 @@ func (factory *ACRKeychainFactory) Create(registry string) (authn.Keychain, erro
 
 }
 
-
-// ACRKeyChain represents an ACR based keychain
-type ACRKeyChain struct {
-	Token string `json:"token"`
-}
 // Resolve Implements keychain required function, check if registry is ACR or not to decide it to return the auth with token
 // or anonymous (non acr dns suffix -> anonymous, otherwise -> IdenitytToken(refreshtoken based) auth bosed)
 func (b *ACRKeyChain) Resolve(resource authn.Resource) (authn.Authenticator, error) {

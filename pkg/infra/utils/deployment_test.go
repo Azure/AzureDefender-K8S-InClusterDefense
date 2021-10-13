@@ -5,13 +5,6 @@ import (
 	"testing"
 )
 
-// We'll be able to store suite-wide
-// variables and add methods to this
-// test suite struct
-type TestSuite struct {
-	suite.Suite
-}
-
 // This will run before each test in the suite
 func (suite *TestSuite) SetupTest() {
 	// Reset singleton to nil each test! The test will be failed if you delete this

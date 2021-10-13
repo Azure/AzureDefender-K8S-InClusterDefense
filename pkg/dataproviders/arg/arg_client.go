@@ -24,6 +24,9 @@ type IARGClient interface {
 	QueryResources(query string) ([]interface{}, error)
 }
 
+// ARGClient implements IARGClient interface
+var _ IARGClient = (*ARGClient)(nil)
+
 // ARGClient is our implementation for ARG client
 type ARGClient struct {
 	tracerProvider  trace.ITracerProvider

@@ -11,6 +11,9 @@ type IInstrumentationProviderFactory interface {
 	CreateInstrumentationProvider() (IInstrumentationProvider, error)
 }
 
+// InstrumentationProviderFactory implements IInstrumentationProviderFactory interface
+var _ IInstrumentationProviderFactory = (*InstrumentationProviderFactory)(nil)
+
 // InstrumentationProviderFactory a factory for creating a instrumentation entry
 type InstrumentationProviderFactory struct {
 	// configuration is the instrumentation configuration
@@ -29,7 +32,7 @@ type InstrumentationProviderConfiguration struct {
 func NewInstrumentationProviderFactory(
 	configuration *InstrumentationProviderConfiguration,
 	tracerFactory trace.ITracerFactory,
-	metricSubmitterFactory metric.IMetricSubmitterFactory) (factory IInstrumentationProviderFactory) {
+	metricSubmitterFactory metric.IMetricSubmitterFactory) (factory *InstrumentationProviderFactory) {
 	return &InstrumentationProviderFactory{
 		configuration:          configuration,
 		tracerFactory:          tracerFactory,

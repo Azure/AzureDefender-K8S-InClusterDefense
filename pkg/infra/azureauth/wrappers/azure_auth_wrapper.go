@@ -11,6 +11,9 @@ type IAzureAuthWrapper interface {
 	NewAuthorizerFromCLIWithResource(string) (autorest.Authorizer, error)
 }
 
+// AzureAuthWrapper implements IAzureAuthWrapper interface
+var _ IAzureAuthWrapper = (*AzureAuthWrapper)(nil)
+
 // AzureAuthWrapper Wrapper for azure/auth package used actions implements IAzureAuthWrapper interface
 type AzureAuthWrapper struct{}
 

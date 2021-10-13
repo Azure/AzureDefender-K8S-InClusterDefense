@@ -22,6 +22,9 @@ type IAzdSecInfoProvider interface {
 	GetContainersVulnerabilityScanInfo(podSpec *corev1.PodSpec, resourceMetadata *metav1.ObjectMeta, resourceKind *metav1.TypeMeta) ([]*contracts.ContainerVulnerabilityScanInfo, error)
 }
 
+// AzdSecInfoProvider implements IAzdSecInfoProvider interface
+var _ IAzdSecInfoProvider = (*AzdSecInfoProvider)(nil)
+
 // AzdSecInfoProvider represents default implementation of IAzdSecInfoProvider interface
 type AzdSecInfoProvider struct {
 	//tracerProvider is tracer provider of AzdSecInfoProvider

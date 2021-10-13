@@ -21,6 +21,9 @@ type IAzureAuthorizerFactory interface {
 	CreateARMAuthorizer() (autorest.Authorizer, error)
 }
 
+// EnvAzureAuthorizerFactory implements IAzureAuthorizerFactory interface
+var _ IAzureAuthorizerFactory = (*EnvAzureAuthorizerFactory)(nil)
+
 // EnvAzureAuthorizerFactory Factory to create an azure authorizer using managed identity
 // implements azureauth.IAzureAuthorizerFactory
 type EnvAzureAuthorizerFactory struct {

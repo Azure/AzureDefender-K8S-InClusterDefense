@@ -5,6 +5,9 @@ import (
 	admissionv1 "k8s.io/api/admission/v1"
 )
 
+// HandlerNewRequestMetric implements metric.IMetric  interface
+var _ metric.IMetric = (*HandlerNewRequestMetric)(nil)
+
 // HandlerNewRequestMetric is metric for the requests kinds of the handler
 type HandlerNewRequestMetric struct {
 	// requestKing is the kind that the handler was got in the request (e.g. Pod).

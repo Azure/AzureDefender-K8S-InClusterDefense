@@ -5,6 +5,9 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
 )
 
+// InstrumentationProvider implements IInstrumentationProvider interface
+var _ IInstrumentationProvider = (*InstrumentationProvider)(nil)
+
 // InstrumentationProvider struct manage the instrumentation of the server
 type InstrumentationProvider struct {
 	// tracer is the tracer (trace.ITracer)  of the instrumentation
