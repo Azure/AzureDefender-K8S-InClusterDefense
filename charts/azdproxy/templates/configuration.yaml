@@ -46,7 +46,7 @@ data:
           dirPath: {{ .Values.AzDProxy.instrumentation.tivan.tivanInstrumentationConfiguration.dirPath | quote}}
           mdmAccount: {{ .Values.AzDProxy.instrumentation.tivan.tivanInstrumentationConfiguration.mdmAccount | quote}}
           mdmNamespace: {{ .Values.AzDProxy.instrumentation.tivan.tivanInstrumentationConfiguration.mdmNamespace | quote}}
-          platformMdmAccount:{{ .Values.AzDProxy.instrumentation.tivan.tivanInstrumentationConfiguration.platformMdmAccount | quote}}
+          platformMdmAccount: {{ .Values.AzDProxy.instrumentation.tivan.tivanInstrumentationConfiguration.platformMdmAccount | quote}}
           platformMdmNamespace: {{ .Values.AzDProxy.instrumentation.tivan.tivanInstrumentationConfiguration.platformMdmNamespace | quote}}
     azdIdentity:
       envAzureAuthorizerConfiguration:
