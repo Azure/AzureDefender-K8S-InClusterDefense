@@ -3,7 +3,7 @@ package cache
 import (
 	"context"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
-	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/retrypolicy"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/retrypolicy/mocks"
 	"github.com/go-redis/redis/v8"
 	"github.com/go-redis/redismock/v8"
 	"github.com/stretchr/testify/suite"
@@ -14,7 +14,7 @@ import (
 // We'll be able to store suite-wide
 // variables and add methods to this
 // test suite struct
-type TestSuite struct {
+type TestSuiteRedisCache struct {
 	suite.Suite
 }
 
@@ -24,66 +24,71 @@ const (
 )
 
 var (
-	_ctx                      = context.Background()
-	_retryPolicyConfiguration = &retrypolicy.RetryPolicyConfiguration{RetryAttempts: 1, RetryDuration: 10, TimeUnit: "ms"}
-	_retryPolicy, _           = retrypolicy.NewRetryPolicy(instrumentation.NewNoOpInstrumentationProvider(), _retryPolicyConfiguration)
+	_ctx             = context.Background()
+	_retryPolicyMock = &mocks.IRetryPolicy{}
+	_client          *RedisCacheClient
+	_redisClientMock *redis.Client
+	_redisMock       redismock.ClientMock
 )
 
-func (suite *TestSuite) Test_Get_KeyIsExist_ShouldReturnValue() {
+func (suite *TestSuiteRedisCache) SetupTest() {
+	_redisClientMock, _redisMock = redismock.NewClientMock()
+	_retryPolicyMock = &mocks.IRetryPolicy{}
+	_client = NewRedisCacheClient(instrumentation.NewNoOpInstrumentationProvider(), _redisClientMock, _retryPolicyMock)
+}
+
+func (suite *TestSuiteRedisCache) Test_Get_KeyIsExist_ShouldReturnValue() {
 	// Setup
 	expectedValue := _value
 
-	clientMock, mock := redismock.NewClientMock()
-	mock.ExpectGet(_key).SetVal(expectedValue)
-	client := NewRedisCacheClient(instrumentation.NewNoOpInstrumentationProvider(), clientMock, _retryPolicy)
+	_redisMock.ExpectGet(_key).SetVal(expectedValue)
 
 	// Act
-	actual, err := client.Get(_ctx, _key)
+	actual, err := _client.Get(_ctx, _key)
 
 	// Test
 	suite.Nil(err)
 	suite.Equal(expectedValue, actual)
 }
 
-func (suite *TestSuite) Test_Get_KeyIsNotExist_ShouldReturnErr() {
+func (suite *TestSuiteRedisCache) Test_Get_KeyIsNotExist_ShouldReturnErr() {
 	// Setup
-	clientMock, mock := redismock.NewClientMock()
-	mock.ExpectGet(_key).SetErr(redis.Nil)
-	client := NewRedisCacheClient(instrumentation.NewNoOpInstrumentationProvider(), clientMock, _retryPolicy)
+	_redisMock.ExpectGet(_key).SetErr(redis.Nil)
 
 	// Act
-	_, err := client.Get(_ctx, _key)
+	_, err := _client.Get(_ctx, _key)
 
 	// Test
 	suite.NotNil(err)
 }
 
-func (suite *TestSuite) Test_Set_NewKey_ShouldReturnNil() {
+func (suite *TestSuiteRedisCache) Test_Set_NewKey_ShouldReturnNil() {
 	// Setup
 	duration := time.Duration(3)
-	clientMock, mock := redismock.NewClientMock()
-	mock.ExpectSet(_key, _value, duration).RedisNil()
-	client := NewRedisCacheClient(instrumentation.NewNoOpInstrumentationProvider(), clientMock, _retryPolicy)
+	_redisMock.ExpectSet(_key, _value, duration).RedisNil()
 
 	// Act
-	err := client.Set(_ctx, _key, _value, duration)
+	err := _client.Set(_ctx, _key, _value, duration)
 	suite.Nil(err)
 }
 
-func (suite *TestSuite) Test_Set_NegativeExpiration_ShouldReturnErr() {
+func (suite *TestSuiteRedisCache) Test_Set_NegativeExpiration_ShouldReturnErr() {
 	// Setup
 	duration := time.Duration(-3)
-	clientMock, mock := redismock.NewClientMock()
-	mock.ExpectSet(_key, _value, duration).SetVal(_value)
-	client := NewRedisCacheClient(instrumentation.NewNoOpInstrumentationProvider(), clientMock, _retryPolicy)
+	_redisMock.ExpectSet(_key, _value, duration).SetVal(_value)
 
 	// Act
-	err := client.Set(_ctx, _key, _value, duration)
+	err := _client.Set(_ctx, _key, _value, duration)
 	suite.IsType(&NegativeExpirationCacheError{}, err)
+}
+
+func (suite *TestSuiteRedisCache) assertExpectationsMocks() {
+	_retryPolicyMock.AssertExpectations(suite.T())
+
 }
 
 // We need this function to kick off the test suite, otherwise
 // "go test" won't know about our tests
 func TestRedisCacheClient(t *testing.T) {
-	suite.Run(t, new(TestSuite))
+	suite.Run(t, new(TestSuiteRedisCache))
 }

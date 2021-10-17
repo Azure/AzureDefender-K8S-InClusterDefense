@@ -15,7 +15,11 @@ var (
 	_configuration = &wrappers.FreeCacheInMemWrapperCacheConfiguration{CacheSize: 10000000}
 )
 
-func (suite *TestSuite) TestFreeCacheInMemCacheClient_Get_KeyIsExist_ShouldReturnValue() {
+type TestSuiteFreeCache struct {
+	suite.Suite
+}
+
+func (suite *TestSuiteFreeCache) TestFreeCacheInMemCacheClient_Get_KeyIsExist_ShouldReturnValue() {
 	// Setup
 	expectedValue := _value
 	wrapper := wrappers.NewFreeCacheInMem(_configuration)
@@ -30,7 +34,7 @@ func (suite *TestSuite) TestFreeCacheInMemCacheClient_Get_KeyIsExist_ShouldRetur
 	suite.Equal(expectedValue, actual)
 }
 
-func (suite *TestSuite) TestFreeCacheInMemCacheClient_Get_KeyIsNotExist_ShouldReturnErr() {
+func (suite *TestSuiteFreeCache) TestFreeCacheInMemCacheClient_Get_KeyIsNotExist_ShouldReturnErr() {
 	// Setup
 	expectedError := NewMissingKeyCacheError(_key)
 	wrapper := wrappers.NewFreeCacheInMem(_configuration)
@@ -43,7 +47,7 @@ func (suite *TestSuite) TestFreeCacheInMemCacheClient_Get_KeyIsNotExist_ShouldRe
 	suite.Equal(errors.Cause(err), expectedError)
 }
 
-func (suite *TestSuite) TestFreeCacheInMemCacheClient_Set_NewKey_ShouldReturnNil() {
+func (suite *TestSuiteFreeCache) TestFreeCacheInMemCacheClient_Set_NewKey_ShouldReturnNil() {
 	// Setup
 	duration := time.Duration(3)
 	expectedValue := _value
@@ -60,7 +64,7 @@ func (suite *TestSuite) TestFreeCacheInMemCacheClient_Set_NewKey_ShouldReturnNil
 	suite.Equal(expectedValue, string(extractedValue))
 }
 
-func (suite *TestSuite) TestFreeCacheInMemCacheClient_Set_KeyAlreadyExist_ShouldReturnNil() {
+func (suite *TestSuiteFreeCache) TestFreeCacheInMemCacheClient_Set_KeyAlreadyExist_ShouldReturnNil() {
 	// Setup
 	duration := time.Duration(3)
 	expectedValue := _value
@@ -78,7 +82,7 @@ func (suite *TestSuite) TestFreeCacheInMemCacheClient_Set_KeyAlreadyExist_Should
 	suite.Equal(expectedValue, string(extractedValue))
 }
 
-func (suite *TestSuite) TestFreeCacheInMemCacheClient_Set_NegativeExpiration_ShouldReturnErr() {
+func (suite *TestSuiteFreeCache) TestFreeCacheInMemCacheClient_Set_NegativeExpiration_ShouldReturnErr() {
 	// Setup
 	duration := time.Duration(-3)
 	wrapper := wrappers.NewFreeCacheInMem(_configuration)
@@ -91,7 +95,7 @@ func (suite *TestSuite) TestFreeCacheInMemCacheClient_Set_NegativeExpiration_Sho
 	suite.Equal( errors.Cause(err) , &NegativeExpirationCacheError{})
 }
 
-func (suite *TestSuite) TestFreeCacheInMemCacheClient_Get_MissingKey_ShouldReturnErr() {
+func (suite *TestSuiteFreeCache) TestFreeCacheInMemCacheClient_Get_MissingKey_ShouldReturnErr() {
 	// Setup
 	wrapper := wrappers.NewFreeCacheInMem(_configuration)
 	client := NewFreeCacheInMemCacheClient(instrumentation.NewNoOpInstrumentationProvider(), wrapper)
@@ -104,7 +108,7 @@ func (suite *TestSuite) TestFreeCacheInMemCacheClient_Get_MissingKey_ShouldRetur
 	suite.Equal("", val)
 }
 
-func (suite *TestSuite) TestFreeCacheInMemCacheClient_Get_ExpiredKey_ShouldReturnErr() {
+func (suite *TestSuiteFreeCache) TestFreeCacheInMemCacheClient_Get_ExpiredKey_ShouldReturnErr() {
 	// Setup
 	wrapper := wrappers.NewFreeCacheInMem(_configuration)
 	client := NewFreeCacheInMemCacheClient(instrumentation.NewNoOpInstrumentationProvider(), wrapper)
@@ -121,7 +125,7 @@ func (suite *TestSuite) TestFreeCacheInMemCacheClient_Get_ExpiredKey_ShouldRetur
 	suite.Equal("", val)
 }
 
-func (suite *TestSuite) TestFreeCacheInMemCacheClient_Get_Error() {
+func (suite *TestSuiteFreeCache) TestFreeCacheInMemCacheClient_Get_Error() {
 	// Setup
 	expectedError := errors.New("GetError")
 	wrapperMock := &mocks.IFreeCacheInMemCacheWrapper{}
@@ -135,7 +139,7 @@ func (suite *TestSuite) TestFreeCacheInMemCacheClient_Get_Error() {
 	wrapperMock.AssertExpectations(suite.T())
 }
 
-func (suite *TestSuite) TestFreeCacheInMemCacheClient_Set_Error() {
+func (suite *TestSuiteFreeCache) TestFreeCacheInMemCacheClient_Set_Error() {
 	// Setup
 	expectedError := errors.New("SetError")
 	wrapperMock := &mocks.IFreeCacheInMemCacheWrapper{}
@@ -151,5 +155,5 @@ func (suite *TestSuite) TestFreeCacheInMemCacheClient_Set_Error() {
 // We need this function to kick off the test suite, otherwise
 // "go test" won't know about our tests
 func TestFreeCacheInMemCacheClient(t *testing.T) {
-	suite.Run(t, new(TestSuite))
+	suite.Run(t, new(TestSuiteFreeCache))
 }
