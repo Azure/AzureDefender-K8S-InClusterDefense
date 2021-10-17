@@ -75,7 +75,20 @@ AzDProxy:
     tivan:
       # Values for Tivan's instrumentation configuration:
       tivanInstrumentationConfiguration:
-        mdmNamespace: "Tivan.Collector.Pods"
+        componentName: "azure-defender-proxy"
+        azureResourceID: "Unknown"
+        region: "Unknown"
+        clusterDistribution: "Unknown"
+        chartVersion: "Unknown"
+        imageName: "Unknown"
+        imageVersion: "Unknown"
+        releaseTrain: "Unknown"
+        nodeName: "Unknown"
+        dirPath: "/var/log/azuredefender"
+        mdmAccount: "Unknown"
+        mdmNamespace: "Unknown"
+        platformMdmAccount: "Unknown"
+        platformMdmNamespace: "Unknown"
 
     # Trace values
     trace:
