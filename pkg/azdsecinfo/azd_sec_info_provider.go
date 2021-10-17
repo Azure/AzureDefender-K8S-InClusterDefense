@@ -3,7 +3,6 @@ package azdsecinfo
 import (
 	"fmt"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/azdsecinfo/contracts"
-	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/azdsecinfo/wrappers"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/dataproviders/arg"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
@@ -75,7 +74,7 @@ func (provider *AzdSecInfoProvider) GetContainersVulnerabilityScanInfo(podSpec *
 	vulnSecInfoContainers := make([]*contracts.ContainerVulnerabilityScanInfo, 0, len(podSpec.InitContainers) + len(podSpec.Containers))
 
 	// insert container vulnerability scan information for init containers and containers to vulnSecInfoContainers
-	err := provider.updateVulnSecInfoContainers(podSpec, &vulnSecInfoContainers, resourceCtx)
+	vulnSecInfoContainers, err := provider.updateVulnSecInfoContainers(podSpec, vulnSecInfoContainers, resourceCtx)
 	if err != nil {
 		wrappedError := errors.Wrap(err, "Handler failed to updateVulnSecInfoContainers")
 		tracer.Error(wrappedError, "")
@@ -87,12 +86,17 @@ func (provider *AzdSecInfoProvider) GetContainersVulnerabilityScanInfo(podSpec *
 
 // updateVulnSecInfoContainers is updating vulnSecInfoContainers array with the scan results of the given containers.
 // It runs each container scan in parallel and returns only when all the scans are finished and the array is updated
-func (provider *AzdSecInfoProvider) updateVulnSecInfoContainers(podSpec *corev1.PodSpec, vulnSecInfoContainers *[]*contracts.ContainerVulnerabilityScanInfo, resourceCtx *tag2digest.ResourceContext) error {
+func (provider *AzdSecInfoProvider) updateVulnSecInfoContainers(podSpec *corev1.PodSpec, vulnSecInfoContainers []*contracts.ContainerVulnerabilityScanInfo, resourceCtx *tag2digest.ResourceContext)  ([]*contracts.ContainerVulnerabilityScanInfo, error) {
 	tracer := provider.tracerProvider.GetTracer("updateVulnSecInfoContainers")
 
+	if podSpec == nil {
+		err := errors.Wrap(utils.NilArgumentError, "AzdSecInfoProvider.updateVulnSecInfoContainers")
+		tracer.Error(err, "")
+		return nil, err
+	}
+
 	// vulnerabilitySecInfoChannel is a channel for *wrappers.ContainerVulnerabilityScanInfoWrapper
-	vulnerabilitySecInfoChannel := make(chan *wrappers.ContainerVulnerabilityScanInfoWrapper)
-	defer close(vulnerabilitySecInfoChannel)
+	vulnerabilitySecInfoChannel := make(chan *utils.ChannelDataWrapper)
 	// Get container vulnerability scan information in parallel
 	// Each call send data to channel vulnerabilitySecInfoChannel
 	if podSpec.InitContainers != nil {
@@ -106,35 +110,42 @@ func (provider *AzdSecInfoProvider) updateVulnSecInfoContainers(podSpec *corev1.
 		}
 	}
 
-	var vulnerabilitySecInfoWrapper *wrappers.ContainerVulnerabilityScanInfoWrapper = nil
+	vulnerabilitySecInfoWrapper := &utils.ChannelDataWrapper{}
 	isChannelOpen := true
 	err := error(nil)
 	for i := 0; i <  len(podSpec.InitContainers) + len(podSpec.Containers); i++ { // No deadlock as a result of the loop because the number of receivers is identical to the number of senders
 		vulnerabilitySecInfoWrapper, isChannelOpen = <- vulnerabilitySecInfoChannel // extract all data from channel to make sure there is no goroutine leak
 		if !isChannelOpen {
-			err := errors.Wrap(utils.ReadFromClosedChannelError, "failed on getSingleContainerVulnerabilityScanInfoSyncWrapper")
+			err := errors.Wrap(utils.ReadFromClosedChannelError, "failed in AzdSecInfoProvider.updateVulnSecInfoContainers")
 			tracer.Error(err, "")
-			return err
+			return nil, err
 		}
 		// If err != nil it means that an error occurred previously - skip this section and wait for all goroutines to finish
 		if err == nil{
 			if vulnerabilitySecInfoWrapper.Err != nil {
-				wrappedError := errors.Wrap(vulnerabilitySecInfoWrapper.Err, "Handler failed in getSingleContainerVulnerabilityScanInfoSyncWrapper")
+				wrappedError := errors.Wrap(vulnerabilitySecInfoWrapper.Err, "failed in getSingleContainerVulnerabilityScanInfoSyncWrapper")
 				tracer.Error(wrappedError, "")
 				err = wrappedError
 			} else {
 			// Add scan info to slice
-			*vulnSecInfoContainers = append(*vulnSecInfoContainers, vulnerabilitySecInfoWrapper.VulnerabilitySecInfo)
+				vulnerabilitySecInfo, canConvert := vulnerabilitySecInfoWrapper.DataWrapper.(*contracts.ContainerVulnerabilityScanInfo)
+				if !canConvert{
+					wrappedError := errors.Wrap(utils.CantConvertChannelDataWrapper, "failed to convert ChannelDataWrapper.DataWrapper to *contracts.ContainerVulnerabilityScanInfo")
+					tracer.Error(wrappedError, "")
+					err = wrappedError
+				}
+				vulnSecInfoContainers = append(vulnSecInfoContainers, vulnerabilitySecInfo)
 			}
 		}
 	}
-	return err
+	close(vulnerabilitySecInfoChannel)
+	return vulnSecInfoContainers, err
 }
 
 //getSingleContainerVulnerabilityScanInfoSyncWrapper wrap getSingleContainerVulnerabilityScanInfo.
 // It sends getSingleContainerVulnerabilityScanInfo results to the channel
-func (provider *AzdSecInfoProvider) getSingleContainerVulnerabilityScanInfoSyncWrapper(container corev1.Container, resourceCtx *tag2digest.ResourceContext,  vulnerabilitySecInfoChannel chan *wrappers.ContainerVulnerabilityScanInfoWrapper){
-		vulnerabilitySecInfoChannel <- wrappers.NewContainerVulnerabilityScanInfoWrapper(provider.getSingleContainerVulnerabilityScanInfo(&container, resourceCtx))
+func (provider *AzdSecInfoProvider) getSingleContainerVulnerabilityScanInfoSyncWrapper(container corev1.Container, resourceCtx *tag2digest.ResourceContext,  vulnerabilitySecInfoChannel chan *utils.ChannelDataWrapper){
+		vulnerabilitySecInfoChannel <- utils.NewChannelDataWrapper(provider.getSingleContainerVulnerabilityScanInfo(&container, resourceCtx))
 }
 
 // getSingleContainerVulnerabilityScanInfo receives a container and it's belogned deployed resource context, and returns fetched ContainerVulnerabilityScanInfo
