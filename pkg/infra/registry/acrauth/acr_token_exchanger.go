@@ -127,9 +127,13 @@ func (tokenExchanger *ACRTokenExchanger) ExchangeACRAccessToken(registry string,
 	}
 
 	// If error
-	if resp.StatusCode != 200 {
-		responseBytes, _ := ioutil.ReadAll(resp.Body)
-		err = errors.Wrap(fmt.Errorf("ACR token exchange endpoint returned error status: %d. body: %s", resp.StatusCode, string(responseBytes)), "ACRTokenExchanger")
+	if resp.StatusCode != http.StatusOK {
+		if resp.Body != nil {
+			responseBytes, _ := ioutil.ReadAll(resp.Body)
+			err = errors.Wrap(fmt.Errorf("ACR token exchange endpoint returned error status: %d. body: %s", resp.StatusCode, string(responseBytes)), "ACRTokenExchanger")
+		}else{
+			err = errors.Wrap(fmt.Errorf("ACR token exchange endpoint returned error status: %d", resp.StatusCode), "ACRTokenExchanger")
+		}
 		tracer.Error(err, "")
 		return "", err
 	}
