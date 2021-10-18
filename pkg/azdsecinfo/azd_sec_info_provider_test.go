@@ -62,6 +62,7 @@ func (suite *TestSuite) SetupTest() {
 }
 
 func (suite *TestSuite) Test_getContainersVulnerabilityScanInfo_Run_In_Parallel() {
+	suite.Fail("fail")
 	run1 := measureTime(suite.getContainersVulnerabilityScanInfoTest, 2, 2)
 	run2 := measureTime(suite.getContainersVulnerabilityScanInfoTest, 2, 0)
 	suite.True(math.Abs(run1.Seconds()-run2.Seconds()) < 0.3)
