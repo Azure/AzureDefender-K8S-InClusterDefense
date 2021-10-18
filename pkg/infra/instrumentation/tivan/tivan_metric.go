@@ -1,8 +1,8 @@
 package tivan
 
 import (
+	tivanInstrumentation "github.com/Azure/ASC-go-libs/pkg/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
-	tivanInstrumentation "tivan.ms/libs/instrumentation"
 )
 
 // tivanMetric implements tivanInstrumentation.Metric interface
@@ -26,12 +26,12 @@ func (m *tivanMetric) MetricName() string {
 }
 
 // MetricDimension - getter for the metric dimensions
-func (m *tivanMetric) MetricDimension() []tivanInstrumentation.Dimension {
+func (m *tivanMetric) MetricDimension() []*tivanInstrumentation.Dimension {
 	// Convert dimensions
 	dimensions := m.wrappedMetric.MetricDimension()
-	tivanDimensions := make([]tivanInstrumentation.Dimension, 0, len(dimensions))
+	tivanDimensions := make([]*tivanInstrumentation.Dimension, 0, len(dimensions))
 	for _, dimension := range dimensions {
-		tivanDimensions = append(tivanDimensions, tivanInstrumentation.Dimension{Key: dimension.Key, Value: dimension.Value})
+		tivanDimensions = append(tivanDimensions, &tivanInstrumentation.Dimension{Key: dimension.Key, Value: dimension.Value})
 	}
 
 	return tivanDimensions
