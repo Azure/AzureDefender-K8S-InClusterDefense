@@ -1,10 +1,10 @@
-apiVersion: skaffold/v2beta22
+apiVersion: skaffold/v2beta23
 kind: Config
 metadata:
   name: azdproxy
 build:
   artifacts:
-    - # Image for production.
+    # First image: production image
     - image: blockregistrydev.azurecr.io/azdproxy-image
       context: ./
       sync:
@@ -12,30 +12,26 @@ build:
           - '**/*'
       docker:
         dockerfile: build/Dockerfile
-        buildArgs:
-          DEVOPS_TOKEN: <PUT_YOUR_PAT_HERE>
-    # Image for debugging.
-    - image: blockregistrydev.azurecr.io/azdproxy-image-debugging
-      context: ./
-      sync:
-        infer:
-          - '**/*'
-      docker:
-        dockerfile: build/Dockerfile.debug
-        buildArgs:
-          DEVOPS_TOKEN: <PUT_YOUR_PAT_HERE>
 profiles:
+  # Profile name:
   - name: azuredefender
     deploy:
+      kubeContext: cluster-dev
+      # Deploy with helm chart
       helm:
         releases:
           - name: azdproxy
+            # Path to helm chart
             chartPath: charts/azdproxy
-            valuesFiles:
-              - ./charts/azdproxy/values-dev.yaml
+            # Choose the namespace of the deployment
             namespace: kube-system
+            # Overrides the image in the helm chart with the image that was built in the build section.
             artifactOverrides:
               AzDProxy.webhook.image.name: blockregistrydev.azurecr.io/azdproxy-image
             setValues:
-              AzDProxy.azdIdentity.envAzureAuthorizerConfiguration.mSIClientId: a554f933-695f-4ecf-abe4-2a7515e8c1b7
-              AzDProxy.kubeletIdentity.envAzureAuthorizerConfiguration.mSIClientId: f4a700f6-e852-4cfd-8408-2ed6d3843759
+              AzDProxy.arg.argClientConfiguration.subscriptions: "SUBSCRIPTION_ID"
+              AzDProxy.kubeletIdentity.envAzureAuthorizerConfiguration.mSIClientId:  "AGENT_POOL_CLIENT_ID"
+              AzDProxy.azdIdentity.envAzureAuthorizerConfiguration.mSIClientId: "BLOCK_CLIENT_ID"
+            # Path to dev values:
+            valuesFiles:
+              - ./charts/azdproxy/values-dev.yaml

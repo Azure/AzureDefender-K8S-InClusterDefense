@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"github.com/Azure/ASC-go-libs/pkg/config"
+	tivanInstrumentation "github.com/Azure/ASC-go-libs/pkg/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/cmd/webhook"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/azdsecinfo"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/dataproviders/arg"
@@ -11,7 +13,6 @@ import (
 	azureauthwrappers "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/azureauth/wrappers"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/cache"
 	cachewrappers "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/cache/wrappers"
-	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/config"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/tivan"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
@@ -49,7 +50,7 @@ func main() {
 	certRotatorConfiguration := new(webhook.CertRotatorConfiguration)
 	serverConfiguration := new(webhook.ServerConfiguration)
 	handlerConfiguration := new(webhook.HandlerConfiguration)
-	tivanInstrumentationConfiguration := new(tivan.TivanInstrumentationConfiguration)
+	tivanInstrumentationConfiguration := new(tivanInstrumentation.InstrumentationConfiguration)
 	metricSubmitterConfiguration := new(tivan.MetricSubmitterConfiguration)
 	tracerConfiguration := new(trace.TracerConfiguration)
 	instrumentationConfiguration := new(instrumentation.InstrumentationProviderConfiguration)
