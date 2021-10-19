@@ -159,7 +159,7 @@ func (suite *TestSuite) Test_RetryActionString_HandledError_ShouldBeExecutedOnce
 	var action ActionString = func() (string, error) { suite.countActions += 1; return "", errForTest }
 	var handle ShouldRetryOnSpecificError = func(err error) bool {
 		_, ok := err.(*err1ForTests)
-		return ok
+		return !ok
 	}
 
 	// Act
@@ -179,7 +179,7 @@ func (suite *TestSuite) Test_RetryActionString_UnHandledError_ShouldBeExecutedFe
 	}
 	var handle ShouldRetryOnSpecificError = func(err error) bool {
 		_, ok := err.(*err2ForTests)
-		return ok
+		return !ok
 	}
 
 	// Act
@@ -202,8 +202,8 @@ func (suite *TestSuite) Test_RetryActionString_HandledErrorSecondTime_ShouldBeEx
 		return "", errForTest
 	}
 	var handle ShouldRetryOnSpecificError = func(err error) bool {
-		_, ok := err.(*err2ForTests)
-		return ok
+		errType := &err2ForTests{}
+		return !utils.IsErrorIsTypeOf(err, &errType)
 	}
 
 	// Act
@@ -220,7 +220,7 @@ func (suite *TestSuite) Test_RetryActionString_NoError_ShouldBeExecutedOnce() {
 
 	var handle ShouldRetryOnSpecificError = func(err error) bool {
 		_, ok := err.(*err2ForTests)
-		return ok
+		return !ok
 	}
 
 	// Act
@@ -243,7 +243,7 @@ func (suite *TestSuite) Test_RetryAction_NoErrorSecondTime_ShouldBeExecutedTwice
 	}
 	var handle ShouldRetryOnSpecificError = func(err error) bool {
 		_, ok := err.(*err2ForTests)
-		return ok
+		return !ok
 	}
 
 	// Act
@@ -283,7 +283,7 @@ func (suite *TestSuite) Test_RetryAction_HandledError_ShouldBeExecutedOnce() {
 	var action Action = func() error { suite.countActions += 1; return errForTest }
 	var handle ShouldRetryOnSpecificError = func(err error) bool {
 		_, ok := err.(*err1ForTests)
-		return ok
+		return !ok
 	}
 
 	// Act
@@ -302,7 +302,7 @@ func (suite *TestSuite) Test_RetryAction_UnHandledError_ShouldBeExecutedFewTimes
 	}
 	var handle ShouldRetryOnSpecificError = func(err error) bool {
 		_, ok := err.(*err2ForTests)
-		return ok
+		return !ok
 	}
 
 	// Act
@@ -325,7 +325,7 @@ func (suite *TestSuite) Test_RetryAction_HandledErrorSecondTime_ShouldBeExecuted
 	}
 	var handle ShouldRetryOnSpecificError = func(err error) bool {
 		_, ok := err.(*err2ForTests)
-		return ok
+		return !ok
 	}
 
 	// Act
@@ -341,7 +341,7 @@ func (suite *TestSuite) Test_RetryAction_NoError_ShouldBeExecutedOnce() {
 
 	var handle ShouldRetryOnSpecificError = func(err error) bool {
 		_, ok := err.(*err2ForTests)
-		return ok
+		return !ok
 	}
 
 	// Act
@@ -363,7 +363,7 @@ func (suite *TestSuite) Test_RetryActionString_NoErrorSecondTime_ShouldBeExecute
 	}
 	var handle ShouldRetryOnSpecificError = func(err error) bool {
 		_, ok := err.(*err2ForTests)
-		return ok
+		return !ok
 	}
 
 	// Act

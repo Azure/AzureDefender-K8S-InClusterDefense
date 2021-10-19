@@ -34,7 +34,7 @@ type TestSuite struct {
 // This will run before each test in the suit
 func (suite *TestSuite) SetupTest() {
 	retryPolicy, _ := retrypolicy.NewRetryPolicy(instrumentation.NewNoOpInstrumentationProvider(), retryPolicyConfiguration)
-	suite.craneWrapper = NewCraneWrapper(retryPolicy)
+	suite.craneWrapper = NewCraneWrapper(instrumentation.NewNoOpInstrumentationProvider(), retryPolicy)
 }
 
 // Test the amount of actual retries is equal _retryAttempts (by a linear factor)

@@ -6,6 +6,7 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry"
 	registryutils "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/utils"
+	craneerrors "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/wrappers/errors"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/utils"
 	"github.com/pkg/errors"
 )
@@ -64,10 +65,15 @@ func (resolver *Tag2DigestResolver) Resolve(imageReference registry.IImageRefere
 		tracer.Info("ACR suffix so tries ACR  auth", "imageRef", imageReference)
 		digest, err := resolver.registryClient.GetDigestUsingACRAttachAuth(imageReference)
 		if err != nil {
-			// todo only on unauthorized and retry only on transient
+			// Check if the error is craneerrors.ImageIsNotFoundErr type - if true, there is no need to continue to the next authentications.
+			if utils.IsErrorIsTypeOf(err, craneerrors.GetImageIsNotFoundErrType()) {
+				tracer.Error(err, "image is not found.")
+				return "", err
+			}
 			// Failed to get digest using ACR attach auth method - continue and fall back to other methods
 			tracer.Error(err, "Failed on ACR auth -> continue to other types of auth")
 		} else {
+			//TODO Check if digest is not empty
 			return digest, nil
 		}
 	}
@@ -77,10 +83,14 @@ func (resolver *Tag2DigestResolver) Resolve(imageReference registry.IImageRefere
 	// TODO Add fallback on missing pull secret
 	digest, err := resolver.registryClient.GetDigestUsingK8SAuth(imageReference, resourceCtx.namespace, resourceCtx.imagePullSecrets, resourceCtx.serviceAccountName)
 	if err != nil {
-		// todo only on unauthorized and retry only on transient
+		// Check if the error is craneerrors.ImageIsNotFoundErr type - if true, there is no need to continue to the next authentications.
+		if utils.IsErrorIsTypeOf(err, craneerrors.GetImageIsNotFoundErrType()) {
+			return "", err
+		}
 		// Failed to get digest using K8S chain auth method - continue and fall back to other methods
 		tracer.Error(err, "Failed on K8S Chain auth -> continue to other types of auth")
 	} else {
+		//TODO Check if digest is not empty
 		return digest, nil
 	}
 
@@ -89,13 +99,17 @@ func (resolver *Tag2DigestResolver) Resolve(imageReference registry.IImageRefere
 	// Fallback to DefaultAuth
 	digest, err = resolver.registryClient.GetDigestUsingDefaultAuth(imageReference)
 	if err != nil {
+		// Check if the error is craneerrors.ImageIsNotFoundErr type - if true, there is no need to continue to the next authentications.
+		if utils.IsErrorIsTypeOf(err, craneerrors.GetImageIsNotFoundErrType()) {
+			return "", err
+		}
 		err = errors.Wrap(err, "Tag2DigestResolver.Resolve: Failed to get digest on DefaultAuth")
 		tracer.Error(err, "")
 		return "", err
 	}
 
 	if digest == "" {
-		err = errors.Wrap(err, "Tag2DigestResolver.Resolve: Empty digest received by registry client")
+		err = errors.New("Tag2DigestResolver.Resolve: Empty digest received by registry client")
 		tracer.Error(err, "")
 		return "", err
 	}

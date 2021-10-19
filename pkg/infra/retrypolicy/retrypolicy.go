@@ -78,9 +78,9 @@ func NewRetryPolicy(instrumentationProvider instrumentation.IInstrumentationProv
 }
 
 // RetryActionString retry to run the action with retryPolicy
-func (r *RetryPolicy) RetryActionString(action ActionString, handle ShouldRetryOnSpecificError) (value string, err error) {
+func (r *RetryPolicy) RetryActionString(action ActionString, shouldRetry ShouldRetryOnSpecificError) (value string, err error) {
 	tracer := r.tracerProvider.GetTracer("RetryActionString")
-	if action == nil || handle == nil {
+	if action == nil || shouldRetry == nil {
 		err = errors.Wrap(utils.NilArgumentError, "action and handle can't be nil")
 		tracer.Error(err, "")
 		return "", err
@@ -92,7 +92,7 @@ func (r *RetryPolicy) RetryActionString(action ActionString, handle ShouldRetryO
 		// Act
 		value, err = action()
 
-		if err != nil && handle(err) { // Check if handle knows how to handle with error.
+		if err != nil && !shouldRetry(err) { // Check if shouldRetry knows how to handle with error.
 			tracer.Info("failed but encountered with handled err", "err", err)
 			return "", err
 
@@ -113,9 +113,9 @@ func (r *RetryPolicy) RetryActionString(action ActionString, handle ShouldRetryO
 }
 
 // RetryAction retry to run the action with retryPolicy
-func (r *RetryPolicy) RetryAction(action Action, handle ShouldRetryOnSpecificError) (err error) {
+func (r *RetryPolicy) RetryAction(action Action, shouldRetry ShouldRetryOnSpecificError) (err error) {
 	tracer := r.tracerProvider.GetTracer("RetryActionString")
-	if action == nil || handle == nil {
+	if action == nil || shouldRetry == nil {
 		err = errors.Wrap(utils.NilArgumentError, "action and handle can't be nil")
 		tracer.Error(err, "")
 		return err
@@ -127,7 +127,7 @@ func (r *RetryPolicy) RetryAction(action Action, handle ShouldRetryOnSpecificErr
 		// Act
 		err = action()
 
-		if err != nil && handle(err) { // Check if handle knows how to handle with error.
+		if err != nil && !shouldRetry(err) { // Check if handle knows how to handle with error.
 			tracer.Info("failed but encountered with handled err", "err", err)
 			return err
 

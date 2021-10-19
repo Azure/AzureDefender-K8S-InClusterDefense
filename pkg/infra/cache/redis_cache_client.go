@@ -60,12 +60,12 @@ func (client *RedisCacheClient) Get(ctx context.Context, key string) (string, er
 				client.metricSubmitter.SendMetric(1, cachemetrics.NewCacheClientGetMetric(client, operations.MISS))
 				tracer.Info("Missing Key", "Key", key)
 				err = NewMissingKeyCacheError(key)
-				return true
+				return false
 			}
 
 			client.metricSubmitter.SendMetric(1, cachemetrics.NewGetErrEncounteredMetric(err, _redisClientType))
 			tracer.Error(err, "", "key", key)
-			return false
+			return true
 		},
 	)
 	if err != nil {
@@ -97,7 +97,7 @@ func (client *RedisCacheClient) Set(ctx context.Context, key string, value strin
 		// Action - set the values redis client.
 		func() error { return client.redisClient.Set(ctx, key, value, expiration).Err() },
 		// HandleError - if the err is redis.Nil then it means that the get is not exist.
-		func(err error) bool { return err == redis.Nil },
+		func(err error) bool { return err != redis.Nil },
 	)
 
 	if err != nil && err != redis.Nil {

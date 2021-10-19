@@ -67,12 +67,12 @@ func (client *CraneRegistryClient) GetDigestUsingACRAttachAuth(imageReference re
 	}
 
 	// Get digest and passing the keychain
-	digest, err := client.getDigest(imageReference, acrKeyChain)
-	if err != nil {
+	digest, err2 := client.getDigest(imageReference, acrKeyChain)
+	if err2 != nil {
 		// Report error
-		err = errors.Wrap(err, "Failed with client.getDigest:")
-		tracer.Error(err, "")
-		return "", err
+		err2 = errors.Wrap(err, "Failed with client. getDigest:")
+		tracer.Error(err2, "")
+		return "", err2
 	}
 
 	tracer.Info("Image resolved successfully", "imageRef", imageReference, "digest", digest)
@@ -146,29 +146,15 @@ func (client *CraneRegistryClient) getDigest(imageReference registry.IImageRefer
 	receivedKeyChainType := fmt.Sprintf("%T", keychain)
 	tracer.Info("Received image:", "imageReference", imageReference.Original(), "receivedKeyChainType", receivedKeyChainType)
 
-	// TODO add retry policy
 	// Resolve digest using Options:
 	//  - multikeychain of received keychain and the default keychain,
 	// - _userAgent of the client
-	digest, err := client.craneWrapper.DigestWithRetry(imageReference.Original(), client.tracerProvider, client.metricSubmitter, crane.WithAuthFromKeychain(authn.NewMultiKeychain(keychain, authn.DefaultKeychain)), crane.WithUserAgent(_userAgent))
+	digest, err := client.craneWrapper.DigestWithRetry(imageReference.Original(), crane.WithAuthFromKeychain(authn.NewMultiKeychain(keychain, authn.DefaultKeychain)), crane.WithUserAgent(_userAgent))
 
 	if err != nil {
 		// Report error
 		err = errors.Wrapf(err, "CraneRegistryClient.getDigest with receivedKeyChainType %v", receivedKeyChainType)
 		tracer.Error(err, "")
-
-		// TODO: add errors.Is/As - didnt work for me for some reason
-		//transportError, ok := errors.Cause(err).(*transport.Error)
-		//if ok{
-		//	tracer.Info("transportError", "transportError", transportError)
-		//	for _, elemError := range transportError.Errors{
-		//		if(elemError.Code == transport.ManifestUnknownErrorCode || elemError.Code == transport.NameUnknownErrorCode || elemError.Code == transport.NameInvalidErrorCode){
-		//			tracer.Info("elemError.Code", "elemError.Code", elemError.Code)
-		//		}
-		//	}
-		//}
-
-		// TODO return wrapped error type to handle on caller
 		return "", err
 	}
 

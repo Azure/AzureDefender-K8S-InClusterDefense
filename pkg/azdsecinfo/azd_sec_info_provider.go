@@ -1,13 +1,13 @@
 package azdsecinfo
 
 import (
-	"fmt"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/azdsecinfo/contracts"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/dataproviders/arg"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
 	registryutils "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/utils"
+	craneerrors "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/wrappers/errors"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/utils"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/tag2digest"
 	"github.com/pkg/errors"
@@ -71,7 +71,7 @@ func (provider *AzdSecInfoProvider) GetContainersVulnerabilityScanInfo(podSpec *
 	tracer.Info("resourceCtx", "resourceCtx", resourceCtx)
 
 	// Initialize container vuln scan info list
-	vulnSecInfoContainers := make([]*contracts.ContainerVulnerabilityScanInfo, 0, len(podSpec.InitContainers) + len(podSpec.Containers))
+	vulnSecInfoContainers := make([]*contracts.ContainerVulnerabilityScanInfo, 0, len(podSpec.InitContainers)+len(podSpec.Containers))
 
 	// Get container vulnerability scan information for init containers
 	for _, container := range podSpec.InitContainers {
@@ -121,48 +121,50 @@ func (provider *AzdSecInfoProvider) getSingleContainerVulnerabilityScanInfo(cont
 	}
 	tracer.Info("Container image ref extracted", "imageRef", imageRef)
 
-	//Set default values
-	var scanStatus = contracts.Unscanned
-	var scanFindings []*contracts.ScanFinding = nil
-	var digest = ""
-	var additionalData = make(map[string]string)
-
 	// Checks if the image registry is not ACR.
 	if !registryutils.IsRegistryEndpointACR(imageRef.Registry()) {
 		tracer.Info("Image from another registry than ACR received", "Registry", imageRef.Registry())
-		additionalData["unscannedReason"] = fmt.Sprintf("Registry of image \"%v\" is not an ACR", imageRef.Registry())
-		info := buildContainerVulnerabilityScanInfoFromResult(container, digest, scanStatus, scanFindings, additionalData)
-		return info, nil
+		return buildContainerVulnerabilityScanInfoUnScannedWithReason(container, contracts.ImageIsNotInACRRegistryUnscannedReason), nil
 	}
 
 	// Get image digest
-	digest, err = provider.tag2digestResolver.Resolve(imageRef, resourceCtx)
+	digest, err := provider.tag2digestResolver.Resolve(imageRef, resourceCtx)
 	if err != nil {
-		err = errors.Wrap(err, "AzdSecInfoProvider.GetContainersVulnerabilityScanInfo.tag2digestResolver.Resolve")
-		tracer.Error(err, "")
-
-		// TODO support digest does not exists in registry or unauthorized to not fail...
-		// Add indication in tag2digest resolver on unauthorized to image to set as unscanned.
-		return nil, err
+		return provider.handleErrorFromResolve(container, err)
 	}
 
 	// 	Get image scan results for image
-	scanStatus, scanFindings, err = provider.argDataProvider.GetImageVulnerabilityScanResults(imageRef.Registry(), imageRef.Repository(), digest)
+	scanStatus, scanFindings, err := provider.argDataProvider.GetImageVulnerabilityScanResults(imageRef.Registry(), imageRef.Repository(), digest)
 	if err != nil {
 		err = errors.Wrap(err, "AzdSecInfoProvider.getContainerVulnerabilityScanResults")
 		tracer.Error(err, "")
 		return nil, err
 	}
-	tracer.Info("results from ARG data provider", "scanStatus", scanStatus, "scanFindings", scanFindings)
 
+	tracer.Info("results from ARG data provider", "scanStatus", scanStatus, "scanFindings", scanFindings)
 	// Build scan info from provided scan results
-	info := buildContainerVulnerabilityScanInfoFromResult(container, digest, scanStatus, scanFindings, additionalData)
+	info := buildContainerVulnerabilityScanInfoFromResult(container, digest, scanStatus, scanFindings)
 
 	return info, nil
 }
 
+// handleErrorFromResolve gets an error the container that the error encountered and returns the info and error according to the type of the error.
+func (provider *AzdSecInfoProvider) handleErrorFromResolve(container *corev1.Container, err error) (*contracts.ContainerVulnerabilityScanInfo, error) {
+	tracer := provider.tracerProvider.GetTracer("handleErrorFromResolve")
+	// Check if the err is known error:
+	if utils.IsErrorIsTypeOf(err, craneerrors.GetImageIsNotFoundErrType()) { // Checks if the error is Image DoesNot Exist
+		return buildContainerVulnerabilityScanInfoUnScannedWithReason(container, contracts.ImageDoesNotExistUnscannedReason), nil
+	} else if utils.IsErrorIsTypeOf(err, craneerrors.GetUnauthorizedErrType()) { // Checks if the error is unauthorized
+		return buildContainerVulnerabilityScanInfoUnScannedWithReason(container, contracts.UnauthorizedUnscannedReason), nil
+	} else { // Got unexpected error
+		err = errors.Wrap(err, "AzdSecInfoProvider.GetContainersVulnerabilityScanInfo.tag2digestResolver.Resolve")
+		tracer.Error(err, "Unexpected error")
+		return nil, err
+	}
+}
+
 // buildContainerVulnerabilityScanInfoFromResult build the info object from data provided
-func buildContainerVulnerabilityScanInfoFromResult(container *corev1.Container, digest string, scanStatus contracts.ScanStatus, scanFindigs []*contracts.ScanFinding, additionalData map[string]string) *contracts.ContainerVulnerabilityScanInfo {
+func buildContainerVulnerabilityScanInfoFromResult(container *corev1.Container, digest string, scanStatus contracts.ScanStatus, scanFindigs []*contracts.ScanFinding) *contracts.ContainerVulnerabilityScanInfo {
 	info := &contracts.ContainerVulnerabilityScanInfo{
 		Name: container.Name,
 		Image: &contracts.Image{
@@ -171,6 +173,25 @@ func buildContainerVulnerabilityScanInfoFromResult(container *corev1.Container, 
 		},
 		ScanStatus:     scanStatus,
 		ScanFindings:   scanFindigs,
+		AdditionalData: nil,
+	}
+	return info
+}
+
+// buildContainerVulnerabilityScanInfoFromResult build the info object from data provided
+func buildContainerVulnerabilityScanInfoUnScannedWithReason(container *corev1.Container, reason contracts.UnscannedReason) *contracts.ContainerVulnerabilityScanInfo {
+	var additionalData = map[string]string{
+		contracts.UnscannedReasonAnnotationKey: string(reason),
+	}
+
+	info := &contracts.ContainerVulnerabilityScanInfo{
+		Name: container.Name,
+		Image: &contracts.Image{
+			Name:   container.Image,
+			Digest: "",
+		},
+		ScanStatus:     contracts.Unscanned,
+		ScanFindings:   nil,
 		AdditionalData: additionalData,
 	}
 	return info

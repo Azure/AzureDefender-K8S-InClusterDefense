@@ -144,7 +144,7 @@ func main() {
 	if err != nil {
 		log.Fatal("main.retrypolicy.NewRetryPolicy craneWrapperRetryPolicy", err)
 	}
-	craneWrapper := registrywrappers.NewCraneWrapper(craneWrapperRetryPolicy)
+	craneWrapper := registrywrappers.NewCraneWrapper(instrumentationProvider, craneWrapperRetryPolicy)
 	// Registry Client
 	registryClient := crane.NewCraneRegistryClient(instrumentationProvider, craneWrapper, acrKeychainFactory, k8sKeychainFactory)
 	tag2digestResolver := tag2digest.NewTag2DigestResolver(instrumentationProvider, registryClient)
