@@ -92,7 +92,7 @@ func (suite *TestSuiteFreeCache) TestFreeCacheInMemCacheClient_Set_NegativeExpir
 	err := client.Set(nil, _key, _value, duration)
 
 	// Test
-	suite.Equal( errors.Cause(err) , &NegativeExpirationCacheError{})
+	suite.Equal( errors.Cause(err) , NewNegativeExpirationCacheError(duration))
 }
 
 func (suite *TestSuiteFreeCache) TestFreeCacheInMemCacheClient_Get_MissingKey_ShouldReturnErr() {
@@ -104,7 +104,7 @@ func (suite *TestSuiteFreeCache) TestFreeCacheInMemCacheClient_Get_MissingKey_Sh
 	val, err := client.Get(nil, _key)
 
 	// Test
-	suite.Equal(errors.Cause(err), &MissingKeyCacheError{})
+	suite.Equal(err, NewMissingKeyCacheError(_key))
 	suite.Equal("", val)
 }
 

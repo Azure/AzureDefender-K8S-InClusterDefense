@@ -3,7 +3,7 @@ package cache
 import (
 	"context"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
-	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/retrypolicy/mocks"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/retrypolicy"
 	"github.com/go-redis/redis/v8"
 	"github.com/go-redis/redismock/v8"
 	"github.com/stretchr/testify/suite"
@@ -25,16 +25,19 @@ const (
 
 var (
 	_ctx             = context.Background()
-	_retryPolicyMock = &mocks.IRetryPolicy{}
+	_retryPolicy     retrypolicy.IRetryPolicy
 	_client          *RedisCacheClient
 	_redisClientMock *redis.Client
 	_redisMock       redismock.ClientMock
 )
 
 func (suite *TestSuiteRedisCache) SetupTest() {
+	// TODO retry mocking in all places
 	_redisClientMock, _redisMock = redismock.NewClientMock()
-	_retryPolicyMock = &mocks.IRetryPolicy{}
-	_client = NewRedisCacheClient(instrumentation.NewNoOpInstrumentationProvider(), _redisClientMock, _retryPolicyMock)
+	retryPolicyConfiguration := &retrypolicy.RetryPolicyConfiguration{RetryAttempts: 1, RetryDuration: 10, TimeUnit: "ms"}
+	_retryPolicy, err := retrypolicy.NewRetryPolicy(instrumentation.NewNoOpInstrumentationProvider(), retryPolicyConfiguration)
+	suite.Nil(err)
+	_client = NewRedisCacheClient(instrumentation.NewNoOpInstrumentationProvider(), _redisClientMock, _retryPolicy)
 }
 
 func (suite *TestSuiteRedisCache) Test_Get_KeyIsExist_ShouldReturnValue() {
@@ -83,7 +86,7 @@ func (suite *TestSuiteRedisCache) Test_Set_NegativeExpiration_ShouldReturnErr() 
 }
 
 func (suite *TestSuiteRedisCache) assertExpectationsMocks() {
-	_retryPolicyMock.AssertExpectations(suite.T())
+	//_retryPolicyMock.AssertExpectations(suite.T())
 
 }
 
