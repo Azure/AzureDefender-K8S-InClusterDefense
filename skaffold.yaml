@@ -1,11 +1,11 @@
-apiVersion: skaffold/v2beta19
+apiVersion: skaffold/v2beta23
 kind: Config
 metadata:
   name: azdproxy
 build:
   artifacts:
     # First image: production image
-    - image: blockreg.azurecr.io/azdproxy-image
+    - image: blockregistrydev.azurecr.io/azdproxy-image
       context: ./
       sync:
         infer:
@@ -16,24 +16,22 @@ profiles:
   # Profile name:
   - name: azuredefender
     deploy:
-      # Choose the context that you want to deploy to.
-      kubeContext: block
+      kubeContext: cluster-dev
       # Deploy with helm chart
       helm:
         releases:
-          # Helm chart name
           - name: azdproxy
             # Path to helm chart
             chartPath: charts/azdproxy
             # Choose the namespace of the deployment
             namespace: kube-system
-            # Do you want to create new namespace?
-            createNamespace: false
-            # Should it skip on dependency building?
-            skipBuildDependencies: false
             # Overrides the image in the helm chart with the image that was built in the build section.
             artifactOverrides:
-              AzDProxy.webhook.image.name: blockreg.azurecr.io/azdproxy-image
+              AzDProxy.webhook.image.name: blockregistrydev.azurecr.io/azdproxy-image
+            setValues:
+              AzDProxy.arg.argClientConfiguration.subscriptions: "SUBSCRIPTION_ID"
+              AzDProxy.kubeletIdentity.envAzureAuthorizerConfiguration.mSIClientId:  "AGENT_POOL_CLIENT_ID"
+              AzDProxy.azdIdentity.envAzureAuthorizerConfiguration.mSIClientId: "BLOCK_CLIENT_ID"
             # Path to dev values:
             valuesFiles:
               - ./charts/azdproxy/values-dev.yaml

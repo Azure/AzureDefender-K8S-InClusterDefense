@@ -1,8 +1,8 @@
 package tivan
 
 import (
+	tivanInstrumentation "github.com/Azure/ASC-go-libs/pkg/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
-	tivanInstrumentation "tivan.ms/libs/instrumentation"
 )
 
 // WrapperTivanMetricSubmitter implements metric.IMetricSubmitter  interface
