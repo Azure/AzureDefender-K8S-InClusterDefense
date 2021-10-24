@@ -11,12 +11,6 @@ import (
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 )
 
-// Errors
-var (
-	// _nullArgErr is error that is thrown when there is unexpected null argument.
-	_nullArgErr = errors.New("null argument")
-)
-
 // IAzureAuthorizerFactory Factory to create an azure authorizer
 type IAzureAuthorizerFactory interface {
 	// CreateARMAuthorizer Generates a new ARM azure client authorizer
@@ -50,8 +44,8 @@ type MSIAzureAuthorizerConfiguration struct {
 func NewMSIEnvAzureAuthorizerFactory(instrumentationProvider instrumentation.IInstrumentationProvider, configuration *MSIAzureAuthorizerConfiguration, authWrapper wrappers.IAzureAuthWrapper) *MSIAzureAuthorizerFactory {
 	return &MSIAzureAuthorizerFactory{
 		tracerProvider: instrumentationProvider.GetTracerProvider("MSIAzureAuthorizerFactory"),
-		configuration: configuration,
-		authWrapper:   authWrapper,
+		configuration:  configuration,
+		authWrapper:    authWrapper,
 	}
 }
 
@@ -73,10 +67,15 @@ func (factory *MSIAzureAuthorizerFactory) CreateARMAuthorizer() (autorest.Author
 	// Set ARM as the resource to authorize in settings
 	settings.GetValues()[auth.Resource] = resourceManagerEndpoint
 
-	tracer.Info("Settings",  "Resource", resourceManagerEndpoint)
+	tracer.Info("Settings", "Resource", resourceManagerEndpoint)
 
 	// Generate the MSI authorizer by settings provided and factory's configurations
 	authorizer, err := factory.createAuthorizer(settings)
+	if err != nil {
+		err = errors.Wrap(err, "error in createAuthorizer")
+		tracer.Error(err, "")
+		return nil, err
+	}
 	return authorizer, err
 }
 
@@ -89,7 +88,7 @@ func (factory *MSIAzureAuthorizerFactory) createAuthorizer(settings wrappers.IEn
 	tracer := factory.tracerProvider.GetTracer("createAuthorizer")
 
 	if settings == nil {
-		err := errors.Wrap(_nullArgErr, "null argument settings in createAuthorizer")
+		err := errors.Wrap(utils.NilArgumentError, "null argument settings in createAuthorizer")
 		tracer.Error(err, "")
 		return nil, err
 	}
@@ -97,14 +96,13 @@ func (factory *MSIAzureAuthorizerFactory) createAuthorizer(settings wrappers.IEn
 	// Set client id for user managed identity (empty for system manged identity)
 	settings.GetValues()[auth.ClientID] = factory.configuration.MSIClientId
 
-	tracer.Info("Settings",  "ClientID", factory.configuration.MSIClientId)
+	tracer.Info("Settings", "ClientID", factory.configuration.MSIClientId)
 
 	// If Local development
 	if utils.GetDeploymentInstance().IsLocalDevelopment() {
 		// Local development - az cli auth
 		return factory.authWrapper.NewAuthorizerFromCLIWithResource(settings.GetValues()[auth.Resource])
-	} else{
-		// Get MSI authorizer
-		return settings.GetMSIAuthorizer()
 	}
+	// Get MSI authorizer
+	return settings.GetMSIAuthorizer()
 }

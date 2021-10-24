@@ -5,7 +5,6 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/cache/wrappers/mocks"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/pkg/errors"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 	"testing"
 	"time"
@@ -92,7 +91,7 @@ func (suite *TestSuiteFreeCache) TestFreeCacheInMemCacheClient_Set_NegativeExpir
 	err := client.Set(nil, _key, _value, duration)
 
 	// Test
-	suite.Equal( errors.Cause(err) , NewNegativeExpirationCacheError(duration))
+	suite.Equal(errors.Cause(err), NewNegativeExpirationCacheError(duration))
 }
 
 func (suite *TestSuiteFreeCache) TestFreeCacheInMemCacheClient_Get_MissingKey_ShouldReturnErr() {
@@ -143,10 +142,10 @@ func (suite *TestSuiteFreeCache) TestFreeCacheInMemCacheClient_Set_Error() {
 	// Setup
 	expectedError := errors.New("SetError")
 	wrapperMock := &mocks.IFreeCacheInMemCacheWrapper{}
-	wrapperMock.On("Set", []byte(_key), []byte(_value), mock.AnythingOfType("int")).Return(expectedError)
+	wrapperMock.On("Set", []byte(_key), []byte(_value), 60).Return(expectedError)
 	client := NewFreeCacheInMemCacheClient(instrumentation.NewNoOpInstrumentationProvider(), wrapperMock)
 
-	err := client.Set(nil, _key, _value, 2)
+	err := client.Set(nil, _key, _value, time.Minute)
 	// Test
 	suite.ErrorIs(err, expectedError)
 	wrapperMock.AssertExpectations(suite.T())

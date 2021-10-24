@@ -19,7 +19,8 @@ type IBearerAuthorizer interface {
 var _ IBearerAuthorizer = &autorest.BearerAuthorizer{}
 
 type IBearerAuthorizerTokenProvider interface{
-
+	// GetOAuthToken receives context and provides an OAuthToken based on bearer token
+	// The function Checks if the token needs to be refreshed before returning it.
 	GetOAuthToken(ctx context.Context) (string, error)
 }
 
@@ -35,13 +36,23 @@ func NewBearerAuthorizerTokenProvider(bearerAuthorizer IBearerAuthorizer) *Beare
 	return &BearerAuthorizerTokenProvider{bearerAuthorizer: bearerAuthorizer}
 }
 
+// GetOAuthToken receives context and provides an OAuthToken based on bearer token
+// The function Checks if the token needs to be refreshed before returning it.
 func (provider *BearerAuthorizerTokenProvider) GetOAuthToken(ctx context.Context) (string, error) {
+
+	if ctx == nil{
+		return "", utils.NilArgumentError
+	}
+
 	err := provider.refreshBearerAuthorizer(ctx)
 	if err != nil{
-		return "", errors.Wrap(err, "BearerAuthorizerTokenProvider.GetOAuthToken")
+		return "", errors.Wrap(err, "BearerAuthorizerTokenProvider.GetOAuthToken.refreshBearerAuthorizer")
 	}
 
 	token :=  provider.bearerAuthorizer.TokenProvider().OAuthToken()
+	if token == ""{
+		return "", errors.New("BearerAuthorizerTokenProvider.GetOAuthToken.TokenProvider().OAuthToken() returned an empty token")
+	}
 	return token, nil
 }
 
