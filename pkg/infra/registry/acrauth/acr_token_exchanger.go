@@ -6,9 +6,11 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/httpclient"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/retrypolicy"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/utils"
 	"github.com/pkg/errors"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -56,6 +58,8 @@ type ACRTokenExchanger struct {
 	tracerProvider trace.ITracerProvider
 	// httpClient is the client to initiate http calls with
 	httpClient httpclient.IHttpClient
+	// retry policy
+	retryPolicy retrypolicy.IRetryPolicy
 }
 
 // tokenResponse represents the response object from exchange token rest api of the registry
@@ -71,10 +75,11 @@ type tokenResponse struct {
 }
 
 // NewACRTokenExchanger Ctor
-func NewACRTokenExchanger(instrumentationProvider instrumentation.IInstrumentationProvider, httpClient httpclient.IHttpClient) *ACRTokenExchanger {
+func NewACRTokenExchanger(instrumentationProvider instrumentation.IInstrumentationProvider, httpClient httpclient.IHttpClient, retryPolicy retrypolicy.IRetryPolicy) *ACRTokenExchanger {
 	return &ACRTokenExchanger{
 		tracerProvider: instrumentationProvider.GetTracerProvider("ACRTokenProvider"),
 		httpClient:     httpClient,
+		retryPolicy:    retryPolicy,
 	}
 }
 
@@ -119,7 +124,21 @@ func (tokenExchanger *ACRTokenExchanger) ExchangeACRAccessToken(registry string,
 
 	// Invokes call to registry
 	// TODO add retry policy
-	resp, err = tokenExchanger.httpClient.Do(req)
+
+	err = tokenExchanger.retryPolicy.RetryAction(
+		func() error {
+			resp, err = tokenExchanger.httpClient.Do(req)
+			if err == nil {
+				return nil
+			}
+			// Err != nil so set response to nil and return error
+			resp = nil
+			return err
+		},
+		// Retry on all errors except not NoSuchError
+		func(err error) bool { return !IsNoSuchHostErr(err) },
+	)
+
 	if err != nil {
 		err = errors.Wrap(fmt.Errorf("failed to send token exchange request: %w", err), "ACRTokenExchanger")
 		tracer.Error(err, "")
@@ -127,6 +146,7 @@ func (tokenExchanger *ACRTokenExchanger) ExchangeACRAccessToken(registry string,
 	}
 
 	// If error
+	// TODO @tomerwinberger - do you think that we should add this also the retry policy?
 	if resp.StatusCode != 200 {
 		responseBytes, _ := ioutil.ReadAll(resp.Body)
 		err = errors.Wrap(fmt.Errorf("ACR token exchange endpoint returned error status: %d. body: %s", resp.StatusCode, string(responseBytes)), "ACRTokenExchanger")
@@ -167,4 +187,13 @@ func closeResponse(resp *http.Response) {
 		return
 	}
 	resp.Body.Close()
+}
+
+// IsNoSuchHostErr gets an error and returns true if the err is caused by DNSError (using As)
+func IsNoSuchHostErr(err error) bool {
+	var dnsError *net.DNSError
+	if errors.As(err, &dnsError) {
+		return true
+	}
+	return false
 }

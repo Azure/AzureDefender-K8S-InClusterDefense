@@ -81,7 +81,7 @@ func (craneWrapper *CraneWrapper) DigestWithRetry(imageReference string, opt ...
 	)
 
 	if err != nil {
-		err := errors.Wrapf(err, "failed to extract digest of image %v", imageReference)
+		err = errors.Wrapf(err, "failed to extract digest of image %v", imageReference)
 		tracer.Error(err, "")
 		return "", err
 	}

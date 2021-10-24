@@ -12,6 +12,8 @@ AzDProxy:
     image:
       # -- Official image.
       name: "azdproxy-image"
+      # -- image version
+      tag: ""
       # -- Default for Always. in case that you want to use local registry, change to 'Never'.
       pullPolicy: "Always"
     # -- The path that the webhook handler will be listening on.
@@ -76,19 +78,17 @@ AzDProxy:
       # Values for Tivan's instrumentation configuration:
       tivanInstrumentationConfiguration:
         componentName: "azure-defender-proxy"
-        azureResourceID: "Unknown"
-        region: "Unknown"
-        clusterDistribution: "Unknown"
-        chartVersion: "Unknown"
-        imageName: "Unknown"
-        imageVersion: "Unknown"
-        releaseTrain: "Unknown"
-        nodeName: "Unknown"
+        azureResourceID: ""
+        region: ""
+        clusterDistribution: ""
+        chartVersion: ""
+        releaseTrain: ""
+        nodeName: ""
         dirPath: "/var/log/azuredefender"
-        mdmAccount: "Unknown"
-        mdmNamespace: "Unknown"
-        platformMdmAccount: "Unknown"
-        platformMdmNamespace: "Unknown"
+        mdmAccount: ""
+        mdmNamespace: ""
+        platformMdmAccount: ""
+        platformMdmNamespace: ""
 
     # Trace values
     trace:
@@ -110,7 +110,20 @@ AzDProxy:
 
   # ACR policy values
   acr:
+    timeout:
+      timeDuration: 5
+      timeUnit: "s"
+
     craneWrappers:
+      retryPolicyConfiguration:
+        # Number of retry attempts
+        retryAttempts: 3
+        # Sleep duration between retries (in milliseconds):
+        retryDuration: 10
+        # Timeunit for the backoff duration
+        timeUnit: "ms"
+
+    tokenExchanger:
       retryPolicyConfiguration:
         # Number of retry attempts
         retryAttempts: 3
@@ -121,6 +134,10 @@ AzDProxy:
 
   # ARG values
   arg:
+    timeout:
+      timeDuration: 5
+      timeUnit: "s"
+
     argClientConfiguration:
       subscriptions: [ ]
 

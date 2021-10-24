@@ -67,12 +67,12 @@ func (client *CraneRegistryClient) GetDigestUsingACRAttachAuth(imageReference re
 	}
 
 	// Get digest and passing the keychain
-	digest, err2 := client.getDigest(imageReference, acrKeyChain)
-	if err2 != nil {
+	digest, err := client.getDigest(imageReference, acrKeyChain)
+	if err != nil {
 		// Report error
-		err2 = errors.Wrap(err, "Failed with client. getDigest:")
-		tracer.Error(err2, "")
-		return "", err2
+		err = errors.Wrap(err, "Failed with client. getDigest:")
+		tracer.Error(err, "")
+		return "", err
 	}
 
 	tracer.Info("Image resolved successfully", "imageRef", imageReference, "digest", digest)

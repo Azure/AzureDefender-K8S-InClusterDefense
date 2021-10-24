@@ -40,7 +40,7 @@ data:
           clusterDistribution: {{ .Values.AzDProxy.instrumentation.tivan.tivanInstrumentationConfiguration.clusterDistribution | quote}}
           chartVersion: {{ .Values.AzDProxy.instrumentation.tivan.tivanInstrumentationConfiguration.chartVersion | quote}}
           imageName: {{ .Values.AzDProxy.webhook.image.name | quote}}
-          imageVersion: {{ .Values.AzDProxy.webhook.image.name | quote}}
+          imageVersion: {{ .Values.AzDProxy.webhook.image.tag | quote}}
           releaseTrain: {{ .Values.AzDProxy.instrumentation.tivan.tivanInstrumentationConfiguration.releaseTrain | quote}}
           nodeName: {{ .Values.AzDProxy.instrumentation.tivan.tivanInstrumentationConfiguration.nodeName | quote}}
           dirPath: {{ .Values.AzDProxy.instrumentation.tivan.tivanInstrumentationConfiguration.dirPath | quote}}
@@ -60,6 +60,13 @@ data:
           retryAttempts: {{ .Values.AzDProxy.acr.craneWrappers.retryPolicyConfiguration.retryAttempts }}
           retryDuration: {{ .Values.AzDProxy.acr.craneWrappers.retryPolicyConfiguration.retryDuration }}
           timeUnit: {{ .Values.AzDProxy.acr.craneWrappers.retryPolicyConfiguration.timeUnit | quote}}
+
+      tokenExchanger:
+        retryPolicyConfiguration:
+          retryAttempts: {{ .Values.AzDProxy.acr.craneWrappers.retryPolicyConfiguration.retryAttempts }}
+          retryDuration: {{ .Values.AzDProxy.acr.craneWrappers.retryPolicyConfiguration.retryDuration }}
+          timeUnit: {{ .Values.AzDProxy.acr.craneWrappers.retryPolicyConfiguration.timeUnit | quote}}
+
     arg:
       argClientConfiguration:
         subscriptions: {{ .Values.AzDProxy.arg.argClientConfiguration.subscriptions }}
@@ -91,3 +98,12 @@ data:
     deployment:
       isLocalDevelopment:  {{ .Values.AzDProxy.deployment.isLocalDevelopment }}
       namespace: {{ .Release.Namespace | quote}}
+
+    azdSecInfoProvider:
+      argDataProviderTimeoutConfiguration:
+        timeDuration: {{ .Values.AzDProxy.arg.timeout.timeDuration }}
+        timeUnit: {{ .Values.AzDProxy.arg.timeout.timeUnit }}
+
+      tag2DigestTimeoutConfiguration:
+        timeDuration: {{ .Values.AzDProxy.acr.timeout.timeDuration }}
+        timeUnit: {{ .Values.AzDProxy.acr.timeout.timeUnit }}

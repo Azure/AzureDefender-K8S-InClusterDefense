@@ -5,6 +5,7 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/acrauth"
 	registryutils "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/utils"
 	craneerrors "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/wrappers/errors"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/utils"
@@ -53,7 +54,7 @@ func (resolver *Tag2DigestResolver) Resolve(imageReference registry.IImageRefere
 		return "", err
 	}
 
-	// First check if we can extract it from ref it self (digest based ref)
+	// First check if we can extract it from ref itself (digest based ref)
 	digestReference, ok := imageReference.(*registry.Digest)
 	if ok {
 		tracer.Info("ImageReference is digestReference return it is digest", "digestReference", digestReference, "digest", digestReference.Digest())
@@ -62,12 +63,15 @@ func (resolver *Tag2DigestResolver) Resolve(imageReference registry.IImageRefere
 
 	// ACR auth
 	if registryutils.IsRegistryEndpointACR(imageReference.Registry()) {
-		tracer.Info("ACR suffix so tries ACR  auth", "imageRef", imageReference)
+		tracer.Info("ACR suffix so tries ACR auth", "imageRef", imageReference)
+
 		digest, err := resolver.registryClient.GetDigestUsingACRAttachAuth(imageReference)
 		if err != nil {
-			// Check if the error is craneerrors.ImageIsNotFoundErr type - if true, there is no need to continue to the next authentications.
-			if utils.IsErrorIsTypeOf(err, craneerrors.GetImageIsNotFoundErrType()) {
-				tracer.Error(err, "image is not found.")
+			// TODO Add tests that checks that we don't try another auth when we should stop.
+			// 		Should be added once @tomerweinberger finished to merge his PR.
+			if resolver.shouldStopTryResolveDueToKnownErr(err) {
+				err = errors.Wrap(err, "Tag2DigestResolver.Resolve: Failed to get digest on ACRAttachAuth")
+				tracer.Error(err, "")
 				return "", err
 			}
 			// Failed to get digest using ACR attach auth method - continue and fall back to other methods
@@ -77,14 +81,16 @@ func (resolver *Tag2DigestResolver) Resolve(imageReference registry.IImageRefere
 			return digest, nil
 		}
 	}
+
 	tracer.Info("Tries K8S chain auth", "imageRef", imageReference)
 
 	// Fallback to K8S auth
 	// TODO Add fallback on missing pull secret
 	digest, err := resolver.registryClient.GetDigestUsingK8SAuth(imageReference, resourceCtx.namespace, resourceCtx.imagePullSecrets, resourceCtx.serviceAccountName)
 	if err != nil {
-		// Check if the error is craneerrors.ImageIsNotFoundErr type - if true, there is no need to continue to the next authentications.
-		if utils.IsErrorIsTypeOf(err, craneerrors.GetImageIsNotFoundErrType()) {
+		if resolver.shouldStopTryResolveDueToKnownErr(err) {
+			err = errors.Wrap(err, "Tag2DigestResolver.Resolve: Failed to get digest on K8SAuth")
+			tracer.Error(err, "")
 			return "", err
 		}
 		// Failed to get digest using K8S chain auth method - continue and fall back to other methods
@@ -99,13 +105,11 @@ func (resolver *Tag2DigestResolver) Resolve(imageReference registry.IImageRefere
 	// Fallback to DefaultAuth
 	digest, err = resolver.registryClient.GetDigestUsingDefaultAuth(imageReference)
 	if err != nil {
-		// Check if the error is craneerrors.ImageIsNotFoundErr type - if true, there is no need to continue to the next authentications.
-		if utils.IsErrorIsTypeOf(err, craneerrors.GetImageIsNotFoundErrType()) {
+		if resolver.shouldStopTryResolveDueToKnownErr(err) {
+			err = errors.Wrap(err, "Tag2DigestResolver.Resolve: Failed to get digest on DefaultAuth")
+			tracer.Error(err, "")
 			return "", err
 		}
-		err = errors.Wrap(err, "Tag2DigestResolver.Resolve: Failed to get digest on DefaultAuth")
-		tracer.Error(err, "")
-		return "", err
 	}
 
 	if digest == "" {
@@ -130,4 +134,11 @@ func NewResourceContext(namespace string, imagePullSecrets []string, serviceAcco
 		imagePullSecrets:   imagePullSecrets,
 		serviceAccountName: serviceAccountName,
 	}
+}
+
+// shouldStopTryResolveDueToKnownErr is method that gets an error and returns true in case that the error is known
+// error that thr resolve method should stop and don't try more authentications to resolve the digest.
+func (resolver *Tag2DigestResolver) shouldStopTryResolveDueToKnownErr(err error) bool {
+	return utils.IsErrorIsTypeOf(err, craneerrors.GetImageIsNotFoundErrType()) ||
+		acrauth.IsNoSuchHostErr(err)
 }

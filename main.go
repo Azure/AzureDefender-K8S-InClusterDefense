@@ -61,10 +61,13 @@ func main() {
 	craneWrapperRetryPolicyConfiguration := new(retrypolicy.RetryPolicyConfiguration)
 	argBaseClientRetryPolicyConfiguration := new(retrypolicy.RetryPolicyConfiguration)
 	redisCacheClientRetryPolicyConfiguration := new(retrypolicy.RetryPolicyConfiguration)
+	acrTokenExchangerClientRetryPolicyConfiguration := new(retrypolicy.RetryPolicyConfiguration)
 
 	argDataProviderCacheConfiguration := new(cachewrappers.RedisCacheClientConfiguration)
 	tokensCacheConfiguration := new(cachewrappers.FreeCacheInMemWrapperCacheConfiguration)
 
+	tag2DigestTimeoutConfiguration := new(utils.TimeoutConfiguration)
+	argDataProviderTimeoutConfiguration := new(utils.TimeoutConfiguration)
 	// Create a map between configuration object and key in main config file
 	keyConfigMap := map[string]interface{}{
 		"webhook.managerConfiguration":                            managerConfiguration,
@@ -77,11 +80,14 @@ func main() {
 		"kubeletIdentity.envAzureAuthorizerConfiguration":         kubeletIdentityEnvAzureAuthorizerConfiguration,
 		"arg.argBaseClient.retryPolicyConfiguration":              argBaseClientRetryPolicyConfiguration,
 		"acr.craneWrappersConfiguration.retryPolicyConfiguration": craneWrapperRetryPolicyConfiguration,
+		"acr.tokenExchanger.retryPolicyConfiguration":             acrTokenExchangerClientRetryPolicyConfiguration,
 		"arg.argClientConfiguration":                              argClientConfiguration,
 		"deployment":                                              deploymentConfiguration,
 		"cache.argDataProviderCacheConfiguration":                 argDataProviderCacheConfiguration,
 		"cache.tokensCacheConfiguration":                          tokensCacheConfiguration,
 		"cache.redisClient.retryPolicyConfiguration":              redisCacheClientRetryPolicyConfiguration,
+		"azdSecInfoProvider.tag2DigestTimeoutConfiguration":       tag2DigestTimeoutConfiguration,
+		"azdSecInfoProvider.argDataProviderTimeoutConfiguration":  argDataProviderTimeoutConfiguration,
 	}
 
 	for key, configObject := range keyConfigMap {
@@ -134,7 +140,8 @@ func main() {
 
 	}
 
-	acrTokenExchanger := registryauthazure.NewACRTokenExchanger(instrumentationProvider, &http.Client{})
+	acrTokenExchangerRetryPolicy, err := retrypolicy.NewRetryPolicy(instrumentationProvider, acrTokenExchangerClientRetryPolicyConfiguration)
+	acrTokenExchanger := registryauthazure.NewACRTokenExchanger(instrumentationProvider, &http.Client{}, acrTokenExchangerRetryPolicy)
 	acrTokenProvider := registryauthazure.NewACRTokenProvider(instrumentationProvider, acrTokenExchanger, bearerAuthorizer)
 
 	k8sKeychainFactory := crane.NewK8SKeychainFactory(instrumentationProvider, clientK8s)
@@ -178,7 +185,7 @@ func main() {
 	argDataProvider := arg.NewARGDataProvider(instrumentationProvider, argClient, argQueryGenerator)
 
 	// Handler and azdSecinfoProvider
-	azdSecInfoProvider := azdsecinfo.NewAzdSecInfoProvider(instrumentationProvider, argDataProvider, tag2digestResolver)
+	azdSecInfoProvider := azdsecinfo.NewAzdSecInfoProvider(instrumentationProvider, argDataProvider, tag2digestResolver, tag2DigestTimeoutConfiguration, argDataProviderTimeoutConfiguration)
 	handler := webhook.NewHandler(azdSecInfoProvider, handlerConfiguration, instrumentationProvider)
 
 	// Manager and server

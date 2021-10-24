@@ -22,20 +22,20 @@ instrumentation:
       tracerLevel: 0
   tivan:
     tivanInstrumentationConfiguration:
-      componentName: "azure-defender-proxy"
-      azureResourceID: "Unknown"
-      region: "Unknown"
-      clusterDistribution: "Unknown"
-      chartVersion: "Unknown"
-      imageName: "Unknown"
-      imageVersion: "Unknown"
-      releaseTrain: "Unknown"
-      nodeName: "Unknown"
+      componentName: "debug-in-cluster-defense"
+      azureResourceID: ""
+      region: ""
+      clusterDistribution: ""
+      chartVersion: ""
+      imageName: "local-development"
+      imageVersion: "no-version"
+      releaseTrain: ""
+      nodeName: ""
       dirPath: "/var/log/azuredefender"
-      mdmAccount: "Unknown"
-      mdmNamespace: "Unknown"
-      platformMdmAccount: "Unknown"
-      platformMdmNamespace: "Unknown"
+      mdmAccount: ""
+      mdmNamespace: ""
+      platformMdmAccount: ""
+      platformMdmNamespace: ""
 
 azdIdentity:
   envAzureAuthorizerConfiguration:
@@ -51,6 +51,13 @@ acr:
       retryAttempts: 3
       retryDuration: 10
       timeUnit: "ms"
+
+  tokenExchanger:
+    retryPolicyConfiguration:
+      retryAttempts: 3
+      retryDuration: 10
+      timeUnit: "ms"
+
 
 arg:
   argClientConfiguration:
@@ -85,3 +92,12 @@ cache:
 deployment:
   isLocalDevelopment:  true
   namespace: "kube-system"
+
+azdSecInfoProvider:
+  argDataProviderTimeoutConfiguration:
+    timeDuration: 10
+    timeUnit: "s"
+
+  tag2DigestTimeoutConfiguration:
+    timeDuration: 10
+    timeUnit: "s"

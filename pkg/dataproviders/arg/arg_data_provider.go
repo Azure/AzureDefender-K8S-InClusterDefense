@@ -46,7 +46,7 @@ type ARGDataProvider struct {
 // NewARGDataProvider Constructor
 func NewARGDataProvider(instrumentationProvider instrumentation.IInstrumentationProvider, argClient IARGClient, queryGenerator *queries.ARGQueryGenerator) *ARGDataProvider {
 	return &ARGDataProvider{
-		tracerProvider:    instrumentationProvider.GetTracerProvider("NewARGDataProvider"),
+		tracerProvider:    instrumentationProvider.GetTracerProvider("ARGDataProvider"),
 		metricSubmitter:   instrumentationProvider.GetMetricSubmitter(),
 		argQueryGenerator: queryGenerator,
 		argClient:         argClient,

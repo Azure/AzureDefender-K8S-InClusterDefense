@@ -2,13 +2,18 @@ package arg
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/dataproviders/arg/wrappers"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/utils"
 	arg "github.com/Azure/azure-sdk-for-go/services/resourcegraph/mgmt/2021-03-01/resourcegraph"
+	"github.com/Azure/go-autorest/autorest"
+	"github.com/Azure/go-autorest/autorest/adal"
 	"github.com/pkg/errors"
+	"io/ioutil"
 )
 
 // MAX_TOP_RESULTS_IN_PAGE_OF_ARG is the maximum. please see more information in https://docs.microsoft.com/en-us/azure/governance/resource-graph/concepts/work-with-data#paging-results
@@ -71,6 +76,7 @@ func (client *ARGClient) QueryResources(query string) ([]interface{}, error) {
 
 	totalResults, err := client.fetchAllResults(&request)
 	if err != nil {
+		tracer.Error(err, "failed on fetchAllResults ")
 		return nil, err
 	}
 
