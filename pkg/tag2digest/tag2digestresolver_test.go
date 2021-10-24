@@ -30,7 +30,7 @@ func (suite *TestSuiteTag2DigestResolver) SetupTest() {
 	_registryClientMock = new(registrymocks.IRegistryClient)
 	_resolver = NewTag2DigestResolver(instrumentationP, _registryClientMock)
 	_acrImageRefTag, _ = registryutils.GetImageReference("tomerw.azurecr.io/redis:v0")
-	_nonAcrImageRefTag, _ = registryutils.GetImageReference("tomerw.azurecr.io/redis:v0")
+	_nonAcrImageRefTag, _ = registryutils.GetImageReference("tomerw.nonacr.io/redis:v0")
 	_ctx = NewResourceContext(_ctxNamsespace, _ctxPullSecrets, _ctsServiceAccount)
 }
 
