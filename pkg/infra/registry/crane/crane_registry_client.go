@@ -130,7 +130,7 @@ func (client *CraneRegistryClient) GetDigestUsingDefaultAuth(imageReference regi
 	digest, err := client.getDigest(imageReference, authn.DefaultKeychain)
 	if err != nil {
 		// Report error
-		err = errors.Wrap(err, "Failed with client.getDigest:")
+		err = errors.Wrap(err, "Failed with client.getDigest")
 		tracer.Error(err, "")
 		return "", err
 	}

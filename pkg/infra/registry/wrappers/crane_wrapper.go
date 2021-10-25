@@ -4,9 +4,9 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
+	registryerrors "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/errors"
 	craneerrors "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/wrappers/errors"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/retrypolicy"
-	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/utils"
 	"github.com/google/go-containerregistry/pkg/crane"
 	"github.com/pkg/errors"
 )
@@ -52,7 +52,14 @@ func (craneWrapper *CraneWrapper) Digest(ref string, opt ...crane.Option) (strin
 	digest, err := crane.Digest(ref, opt...)
 	if err != nil {
 		tracer.Error(err, "error encountered while trying to get digest with crane.")
-		return "", craneerrors.ConvertErrToKnownErr(ref, err)
+		err, ok := craneerrors.TryParseCraneErrToRegistryKnownErr(ref, err)
+		if !ok {
+			tracer.Error(err, "failed to parse crane error to known error")
+		} else {
+			tracer.Info("Success to parse crane error to known error")
+		}
+		return "", err
+
 	} else if digest == "" {
 		err = _emptyDigestErr
 		tracer.Error(err, "")
@@ -72,11 +79,13 @@ func (craneWrapper *CraneWrapper) DigestWithRetry(imageReference string, opt ...
 
 		/*handle ShouldRetryOnSpecificError*/
 		func(err error) bool {
-			if utils.IsErrorIsTypeOf(err, craneerrors.GetImageIsNotFoundErrType()) ||
-				utils.IsErrorIsTypeOf(err, craneerrors.GetUnauthorizedErrType()) {
+			errCause := errors.Cause(err)
+			switch errCause.(type) {
+			case *registryerrors.ImageIsNotFoundErr, *registryerrors.UnauthorizedErr:
 				return false
+			default:
+				return true
 			}
-			return true
 		},
 	)
 

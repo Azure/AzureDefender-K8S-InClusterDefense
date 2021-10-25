@@ -6,6 +6,7 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/httpclient"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
+	registryerrors "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/errors"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/retrypolicy"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/utils"
 	"github.com/pkg/errors"
@@ -136,11 +137,17 @@ func (tokenExchanger *ACRTokenExchanger) ExchangeACRAccessToken(registry string,
 			return err
 		},
 		// Retry on all errors except not NoSuchError
-		func(err error) bool { return !IsNoSuchHostErr(err) },
+		func(err error) bool { return !tokenExchanger.isNoSuchHostErr(err) },
 	)
 
 	if err != nil {
-		err = errors.Wrap(fmt.Errorf("failed to send token exchange request: %w", err), "ACRTokenExchanger")
+		// If registry is not found, convert to known err.
+		if tokenExchanger.isNoSuchHostErr(err) {
+			// If its this error - convert the error to known error and continue
+			err = registryerrors.NewRegistryIsNotFoundErr(registry, err)
+		}
+
+		err = errors.Wrap(err, "failed to send token exchange request")
 		tracer.Error(err, "")
 		return "", err
 	}
@@ -189,8 +196,10 @@ func closeResponse(resp *http.Response) {
 	resp.Body.Close()
 }
 
-// IsNoSuchHostErr gets an error and returns true if the err is caused by DNSError (using As)
-func IsNoSuchHostErr(err error) bool {
+// isNoSuchHostErr gets an error and returns true if the err is caused by DNSError - it means that the registry is not exist
+// TODO currently we decided to start with this error as unscanned - we should see the metrics and decide if this error
+// 	encountered sometimes when the registry is exists.
+func (tokenExchanger *ACRTokenExchanger) isNoSuchHostErr(err error) bool {
 	var dnsError *net.DNSError
 	if errors.As(err, &dnsError) {
 		return true

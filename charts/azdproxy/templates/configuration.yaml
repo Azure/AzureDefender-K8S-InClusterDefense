@@ -59,13 +59,13 @@ data:
         retryPolicyConfiguration:
           retryAttempts: {{ .Values.AzDProxy.acr.craneWrappers.retryPolicyConfiguration.retryAttempts }}
           retryDuration: {{ .Values.AzDProxy.acr.craneWrappers.retryPolicyConfiguration.retryDuration }}
-          timeUnit: {{ .Values.AzDProxy.acr.craneWrappers.retryPolicyConfiguration.timeUnit | quote}}
+          timeUnit: {{ .Values.AzDProxy.acr.craneWrappers.retryPolicyConfiguration.timeUnit }}
 
       tokenExchanger:
         retryPolicyConfiguration:
           retryAttempts: {{ .Values.AzDProxy.acr.craneWrappers.retryPolicyConfiguration.retryAttempts }}
           retryDuration: {{ .Values.AzDProxy.acr.craneWrappers.retryPolicyConfiguration.retryDuration }}
-          timeUnit: {{ .Values.AzDProxy.acr.craneWrappers.retryPolicyConfiguration.timeUnit | quote}}
+          timeUnit: {{ .Values.AzDProxy.acr.craneWrappers.retryPolicyConfiguration.timeUnit }}
 
     arg:
       argClientConfiguration:
@@ -75,7 +75,7 @@ data:
         retryPolicyConfiguration:
           retryAttempts: {{ .Values.AzDProxy.arg.argBaseClient.retryPolicyConfiguration.retryAttempts }}
           retryDuration: {{ .Values.AzDProxy.arg.argBaseClient.retryPolicyConfiguration.retryDuration }}
-          timeUnit: {{ .Values.AzDProxy.arg.argBaseClient.retryPolicyConfiguration.timeUnit | quote}}
+          timeUnit: {{ .Values.AzDProxy.arg.argBaseClient.retryPolicyConfiguration.timeUnit }}
 
     # Cache configuration
     cache:
@@ -100,10 +100,6 @@ data:
       namespace: {{ .Release.Namespace | quote}}
 
     azdSecInfoProvider:
-      argDataProviderTimeoutConfiguration:
-        timeDuration: {{ .Values.AzDProxy.arg.timeout.timeDuration }}
-        timeUnit: {{ .Values.AzDProxy.arg.timeout.timeUnit }}
-
-      tag2DigestTimeoutConfiguration:
-        timeDuration: {{ .Values.AzDProxy.acr.timeout.timeDuration }}
-        timeUnit: {{ .Values.AzDProxy.acr.timeout.timeUnit }}
+      GetContainersVulnerabilityScanInfoTimeoutDuration:
+        timeDuration: {{ .Values.AzDProxy.azdSecInfoProvider.GetContainersVulnerabilityScanInfo.timeout.timeDuration }}
+        timeUnit: {{ .Values.AzDProxy.azdSecInfoProvider.GetContainersVulnerabilityScanInfo.timeout.timeUnit }}

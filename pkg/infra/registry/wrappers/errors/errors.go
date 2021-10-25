@@ -1,61 +1,9 @@
 package errors
 
 import (
-	"fmt"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/errors"
 	"github.com/google/go-containerregistry/pkg/v1/remote/transport"
 )
-
-// ImageIsNotFoundErr  implements errors.error interface
-var _ error = (*ImageIsNotFoundErr)(nil)
-
-// ImageIsNotFoundErr  implements errors.error interface
-var _ error = (*UnauthorizedErr)(nil)
-
-// ImageIsNotFoundErr is error that returns when crane is not found an image.
-type ImageIsNotFoundErr struct {
-	imageRef string
-	err      error
-}
-
-// GetImageIsNotFoundErrType returns double ptr to ImageIsNotFoundErr
-func GetImageIsNotFoundErrType() **ImageIsNotFoundErr {
-	err := ImageIsNotFoundErr{}
-	ptrToErr := &err
-	twoPtrToErr := &ptrToErr
-	return twoPtrToErr
-}
-
-func newImageIsNotFoundErr(imageRef string, err error) *ImageIsNotFoundErr {
-	return &ImageIsNotFoundErr{imageRef: imageRef, err: err}
-}
-
-func (err ImageIsNotFoundErr) Error() string {
-	msg := fmt.Sprintf("Image is not found when trying to resolve image <%s>.\n error: <%s>", err.imageRef, err.err)
-	return msg
-}
-
-// UnauthorizedErr error that returns due to unauthorized from crane.
-type UnauthorizedErr struct {
-	imageRef string
-	err      error
-}
-
-// GetUnauthorizedErrType returns double ptr to UnauthorizedErr
-func GetUnauthorizedErrType() **UnauthorizedErr {
-	err := UnauthorizedErr{}
-	ptrToErr := &err
-	twoPtrToErr := &ptrToErr
-	return twoPtrToErr
-}
-
-func newUnauthorizedErr(imageRef string, err error) *UnauthorizedErr {
-	return &UnauthorizedErr{imageRef: imageRef, err: err}
-}
-
-func (err UnauthorizedErr) Error() string {
-	msg := fmt.Sprintf("Unauthorized when trying to resolve image <%s>.\n error: <%s>", err.imageRef, err.err)
-	return msg
-}
 
 var (
 	//ImageIsNotFoundErrs is array that contains all error codes of image not found.
@@ -103,19 +51,20 @@ func isErrorInUnauthorizedErrs(err *transport.Error) bool {
 	return false
 }
 
-func ConvertErrToKnownErr(ref string, err error) error {
+// TryParseCraneErrToRegistryKnownErr Gets an err and ref (the reference of the image that crane tried to get the digest) and try to convert it to known err
+func TryParseCraneErrToRegistryKnownErr(ref string, err error) (error, bool) {
 	if err == nil {
-		return nil
+		return nil, false
 	}
 	// Check is the error is known error - if yes, convert it to error that is represented with our struct.
 	transportError, ok := err.(*transport.Error)
 	if ok {
 		if isErrorInUnauthorizedErrs(transportError) {
-			return newUnauthorizedErr(ref, err)
+			return errors.NewUnauthorizedErr(ref, err), true
 		} else if isErrorInImageIsNotFoundErrs(transportError) {
-			return newImageIsNotFoundErr(ref, err)
+			return errors.NewImageIsNotFoundErr(ref, err), true
 		}
 	}
 	// Unknown error
-	return err
+	return err, false
 }

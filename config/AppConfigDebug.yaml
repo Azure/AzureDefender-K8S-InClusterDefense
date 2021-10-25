@@ -94,10 +94,6 @@ deployment:
   namespace: "kube-system"
 
 azdSecInfoProvider:
-  argDataProviderTimeoutConfiguration:
-    timeDuration: 10
-    timeUnit: "s"
-
-  tag2DigestTimeoutConfiguration:
-    timeDuration: 10
-    timeUnit: "s"
+  GetContainersVulnerabilityScanInfoTimeoutDuration:
+    timeDuration: 5000
+    timeUnit: "ms"

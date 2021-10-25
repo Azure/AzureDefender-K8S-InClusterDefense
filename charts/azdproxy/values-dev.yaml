@@ -12,8 +12,6 @@ AzDProxy:
     image:
       # -- Official image.
       name: "azdproxy-image"
-      # -- image version
-      tag: ""
       # -- Default for Always. in case that you want to use local registry, change to 'Never'.
       pullPolicy: "Always"
     # -- The path that the webhook handler will be listening on.
@@ -110,9 +108,6 @@ AzDProxy:
 
   # ACR policy values
   acr:
-    timeout:
-      timeDuration: 5
-      timeUnit: "s"
 
     craneWrappers:
       retryPolicyConfiguration:
@@ -134,9 +129,6 @@ AzDProxy:
 
   # ARG values
   arg:
-    timeout:
-      timeDuration: 5
-      timeUnit: "s"
 
     argClientConfiguration:
       subscriptions: [ ]
@@ -178,3 +170,9 @@ AzDProxy:
     tokensCacheConfiguration:
       # In bytes, where 1024 * 1024 represents a single Megabyte, and 100 * 1024*1024 represents 100 Megabytes.
       cacheSize: 104857600 # 100 * 1024 * 1024
+
+  azdSecInfoProvider:
+    GetContainersVulnerabilityScanInfo:
+      timeout:
+        timeDuration: 2500
+        timeUnit: "ms"

@@ -11,6 +11,7 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/retrypolicy"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/utils"
 	"github.com/go-redis/redis/v8"
+	"github.com/pkg/errors"
 	"time"
 )
 
@@ -56,10 +57,7 @@ func (client *RedisCacheClient) Get(ctx context.Context, key string) (string, er
 		func() (string, error) { return client.redisClient.Get(ctx, key).Result() },
 		/*handler ShouldRetryOnSpecificError - handle with key is missing error*/
 		func(err error) bool {
-			if err == redis.Nil { // In case that key is missing
-				client.metricSubmitter.SendMetric(1, cachemetrics.NewCacheClientGetMetric(client, operations.MISS))
-				tracer.Info("Missing Key", "Key", key)
-				err = NewMissingKeyCacheError(key)
+			if errors.Is(err, redis.Nil) { // In case that key is missing
 				return false
 			}
 
@@ -68,9 +66,20 @@ func (client *RedisCacheClient) Get(ctx context.Context, key string) (string, er
 			return true
 		},
 	)
+	// In case that get failed
 	if err != nil {
+		if errors.Is(err, redis.Nil) {
+			client.metricSubmitter.SendMetric(1, cachemetrics.NewCacheClientGetMetric(client, operations.MISS))
+			tracer.Info("Missing Key", "Key", key)
+			err = NewMissingKeyCacheError(key)
+			return "", err
+		}
+		// Unexpected error
+		err = errors.Wrap(err, "unexpected error while trying to get item from cache")
+		tracer.Error(err, "", "key", key)
 		return "", err
 	}
+
 	// Get succeed.
 	client.metricSubmitter.SendMetric(1, cachemetrics.NewCacheClientGetMetric(client, operations.HIT))
 	tracer.Info("Key found", "Key", key, "value", value)

@@ -5,9 +5,8 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry"
-	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/acrauth"
+	registryerrors "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/errors"
 	registryutils "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/utils"
-	craneerrors "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/wrappers/errors"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/utils"
 	"github.com/pkg/errors"
 )
@@ -74,6 +73,7 @@ func (resolver *Tag2DigestResolver) Resolve(imageReference registry.IImageRefere
 				tracer.Error(err, "")
 				return "", err
 			}
+
 			// Failed to get digest using ACR attach auth method - continue and fall back to other methods
 			tracer.Error(err, "Failed on ACR auth -> continue to other types of auth")
 		} else {
@@ -93,6 +93,7 @@ func (resolver *Tag2DigestResolver) Resolve(imageReference registry.IImageRefere
 			tracer.Error(err, "")
 			return "", err
 		}
+
 		// Failed to get digest using K8S chain auth method - continue and fall back to other methods
 		tracer.Error(err, "Failed on K8S Chain auth -> continue to other types of auth")
 	} else {
@@ -105,13 +106,12 @@ func (resolver *Tag2DigestResolver) Resolve(imageReference registry.IImageRefere
 	// Fallback to DefaultAuth
 	digest, err = resolver.registryClient.GetDigestUsingDefaultAuth(imageReference)
 	if err != nil {
-		if resolver.shouldStopTryResolveDueToKnownErr(err) {
-			err = errors.Wrap(err, "Tag2DigestResolver.Resolve: Failed to get digest on DefaultAuth")
-			tracer.Error(err, "")
-			return "", err
-		}
+		err = errors.Wrap(err, "Tag2DigestResolver.Resolve: Failed to get digest on DefaultAuth")
+		tracer.Error(err, "")
+		return "", err
 	}
 
+	// Check if the digest is empty
 	if digest == "" {
 		err = errors.New("Tag2DigestResolver.Resolve: Empty digest received by registry client")
 		tracer.Error(err, "")
@@ -139,6 +139,12 @@ func NewResourceContext(namespace string, imagePullSecrets []string, serviceAcco
 // shouldStopTryResolveDueToKnownErr is method that gets an error and returns true in case that the error is known
 // error that thr resolve method should stop and don't try more authentications to resolve the digest.
 func (resolver *Tag2DigestResolver) shouldStopTryResolveDueToKnownErr(err error) bool {
-	return utils.IsErrorIsTypeOf(err, craneerrors.GetImageIsNotFoundErrType()) ||
-		acrauth.IsNoSuchHostErr(err)
+	errorCause := errors.Cause(err)
+	switch errorCause.(type) {
+	case *registryerrors.ImageIsNotFoundErr,
+		*registryerrors.RegistryIsNotFoundErr:
+		return true
+	default:
+		return false
+	}
 }
