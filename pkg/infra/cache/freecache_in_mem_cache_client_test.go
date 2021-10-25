@@ -20,7 +20,7 @@ func (suite *TestSuite) TestFreeCacheInMemCacheClient_Get_KeyIsExist_ShouldRetur
 	client := NewFreeCacheInMemCacheClient(instrumentation.NewNoOpInstrumentationProvider(), wrapper)
 
 	// Act
-	actual, err := client.Get(nil, _key)
+	actual, err := client.Get(_key)
 
 	// Test
 	suite.Nil(err)
@@ -33,7 +33,7 @@ func (suite *TestSuite) TestFreeCacheInMemCacheClient_Get_KeyIsNotExist_ShouldRe
 	client := NewFreeCacheInMemCacheClient(instrumentation.NewNoOpInstrumentationProvider(), wrapper)
 
 	// Act
-	_, err := client.Get(nil, _key)
+	_, err := client.Get(_key)
 
 	// Test
 	suite.NotNil(err)
@@ -47,7 +47,7 @@ func (suite *TestSuite) TestFreeCacheInMemCacheClient_Set_NewKey_ShouldReturnNil
 	client := NewFreeCacheInMemCacheClient(instrumentation.NewNoOpInstrumentationProvider(), wrapper)
 
 	// Act
-	err := client.Set(nil, _key, _value, duration)
+	err := client.Set(_key, _value, duration)
 
 	// Test
 	suite.Nil(err)
@@ -65,7 +65,7 @@ func (suite *TestSuite) TestFreeCacheInMemCacheClient_Set_KeyAlreadyExist_Should
 	client := NewFreeCacheInMemCacheClient(instrumentation.NewNoOpInstrumentationProvider(), wrapper)
 
 	// Act
-	err := client.Set(nil, _key, _value, duration)
+	err := client.Set(_key, _value, duration)
 
 	// Test
 	suite.Nil(err)
@@ -81,7 +81,7 @@ func (suite *TestSuite) TestFreeCacheInMemCacheClient_Set_NegativeExpiration_Sho
 	client := NewFreeCacheInMemCacheClient(instrumentation.NewNoOpInstrumentationProvider(), wrapper)
 
 	// Act
-	err := client.Set(nil, _key, _value, duration)
+	err := client.Set( _key, _value, duration)
 
 	// Test
 	suite.NotNil(err)
@@ -94,7 +94,7 @@ func (suite *TestSuite) TestFreeCacheInMemCacheClient_Get_MissingKey_ShouldRetur
 	client := NewFreeCacheInMemCacheClient(instrumentation.NewNoOpInstrumentationProvider(), wrapper)
 
 	// Act
-	val, err := client.Get(nil, _key)
+	val, err := client.Get(_key)
 
 	// Test
 	suite.NotNil(err)
@@ -109,10 +109,10 @@ func (suite *TestSuite) TestFreeCacheInMemCacheClient_Get_ExpiredKey_ShouldRetur
 	duration := 1 * time.Second
 	durationToSleep := 3 * time.Second
 
-	client.Set(nil, _key, _value, duration)
+	client.Set(_key, _value, duration)
 	time.Sleep(durationToSleep)
 	// Act
-	val, err := client.Get(nil, _key)
+	val, err := client.Get(_key)
 
 	// Test
 	suite.NotNil(err)

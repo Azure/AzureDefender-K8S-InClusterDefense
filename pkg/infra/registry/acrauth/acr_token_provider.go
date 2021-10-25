@@ -3,6 +3,7 @@ package acrauth
 import (
 	"context"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/azureauth"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/cache"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
@@ -29,15 +30,18 @@ type ACRTokenProvider struct {
 	azureBearerAuthorizer azureauth.IBearerAuthorizer
 	// tokenExchanger is exchanger to exchange the bearer token to a refresh token
 	tokenExchanger IACRTokenExchanger
+	// tokenCache is cache for mapping acr registry to token
+	tokenCache cache.ICacheClient
 }
 
 // NewACRTokenProvider Ctor
-func NewACRTokenProvider(instrumentationProvider instrumentation.IInstrumentationProvider, tokenExchanger IACRTokenExchanger, azureBearerAuthorizer azureauth.IBearerAuthorizer) *ACRTokenProvider {
+func NewACRTokenProvider(instrumentationProvider instrumentation.IInstrumentationProvider, tokenExchanger IACRTokenExchanger, azureBearerAuthorizer azureauth.IBearerAuthorizer, tokenCache cache.ICacheClient) *ACRTokenProvider {
 	return &ACRTokenProvider{
 		tracerProvider:        instrumentationProvider.GetTracerProvider("ACRTokenProvider"),
 		metricSubmitter:       instrumentationProvider.GetMetricSubmitter(),
 		azureBearerAuthorizer: azureBearerAuthorizer,
 		tokenExchanger:        tokenExchanger,
+		tokenCache:            tokenCache,
 	}
 }
 
@@ -47,6 +51,15 @@ func NewACRTokenProvider(instrumentationProvider instrumentation.IInstrumentatio
 func (tokenProvider *ACRTokenProvider) GetACRRefreshToken(registry string) (string, error) {
 	tracer := tokenProvider.tracerProvider.GetTracer("GetACRRefreshToken")
 	tracer.Info("Received", "registry", registry)
+
+	// First check if we can get digest from cache
+	token, keyDontExistErr := tokenProvider.tokenCache.Get(registry)
+	if keyDontExistErr == nil { // If key exist - return digest
+		tracer.Info("Token exist in cache", "registry", registry)
+		return token, nil
+	}else {
+		tracer.Info("Token don't exist in cache", "registry", registry)
+	}
 
 	// Refresh token if needed
 	err := azureauth.RefreshBearerAuthorizer(tokenProvider.azureBearerAuthorizer, context.Background())
@@ -63,6 +76,14 @@ func (tokenProvider *ACRTokenProvider) GetACRRefreshToken(registry string) (stri
 		err = errors.Wrap(err, "ACRTokenProvider.tokenExchanger.ExchangeACRAccessToken: failed")
 		tracer.Error(err, "")
 		return "", err
+	}
+
+	// Save in cache
+	err = tokenProvider.tokenCache.Set(registry, registryRefreshToken, 0)
+	if err != nil{
+		err = errors.Wrap(err, "GetACRRefreshToken: Failed to set token in cache")
+		tracer.Error(err, "")
+		//return digest, err
 	}
 
 	// TODO add caching + experation

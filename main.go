@@ -134,8 +134,19 @@ func main() {
 
 	}
 
+	// ARG
+	//TODO complete it once we merge the rest of the PR's.
+	argDataProviderRedisCacheBaseClient := cachewrappers.NewRedisBaseClientWrapper(argDataProviderCacheConfiguration)
+	redisCacheRetryPolicy, err := retrypolicy.NewRetryPolicy(instrumentationProvider, redisCacheClientRetryPolicyConfiguration)
+	if err != nil {
+		log.Fatal("main.retrypolicy.NewRetryPolicy redisCacheRetryPolicy", err)
+	}
+	redisCacheClient := cache.NewRedisCacheClient(instrumentationProvider, argDataProviderRedisCacheBaseClient, redisCacheRetryPolicy)
+	tag2digestCache := cachewrappers.NewFreeCacheInMem(tokensCacheConfiguration)
+	freeCacheInMemCacheClient := cache.NewFreeCacheInMemCacheClient(instrumentationProvider, tag2digestCache)
+
 	acrTokenExchanger := registryauthazure.NewACRTokenExchanger(instrumentationProvider, &http.Client{})
-	acrTokenProvider := registryauthazure.NewACRTokenProvider(instrumentationProvider, acrTokenExchanger, bearerAuthorizer)
+	acrTokenProvider := registryauthazure.NewACRTokenProvider(instrumentationProvider, acrTokenExchanger, bearerAuthorizer, freeCacheInMemCacheClient) //TODO add here in meme-cache client
 
 	k8sKeychainFactory := crane.NewK8SKeychainFactory(instrumentationProvider, clientK8s)
 	acrKeychainFactory := crane.NewACRKeychainFactory(instrumentationProvider, acrTokenProvider)
@@ -147,18 +158,7 @@ func main() {
 	craneWrapper := registrywrappers.NewCraneWrapper(craneWrapperRetryPolicy)
 	// Registry Client
 	registryClient := crane.NewCraneRegistryClient(instrumentationProvider, craneWrapper, acrKeychainFactory, k8sKeychainFactory)
-	tag2digestResolver := tag2digest.NewTag2DigestResolver(instrumentationProvider, registryClient)
-
-	// ARG
-	//TODO complete it once we merge the rest of the PR's.
-	argDataProviderRedisCacheBaseClient := cachewrappers.NewRedisBaseClientWrapper(argDataProviderCacheConfiguration)
-	redisCacheRetryPolicy, err := retrypolicy.NewRetryPolicy(instrumentationProvider, redisCacheClientRetryPolicyConfiguration)
-	if err != nil {
-		log.Fatal("main.retrypolicy.NewRetryPolicy redisCacheRetryPolicy", err)
-	}
-	_ = cache.NewRedisCacheClient(instrumentationProvider, argDataProviderRedisCacheBaseClient, redisCacheRetryPolicy)
-	tag2digestCache := cachewrappers.NewFreeCacheInMem(tokensCacheConfiguration)
-	_ = cache.NewFreeCacheInMemCacheClient(instrumentationProvider, tag2digestCache)
+	tag2digestResolver := tag2digest.NewTag2DigestResolver(instrumentationProvider, registryClient, redisCacheClient) //TODO add here in redis-cache client
 
 	azdIdentityAuthorizerFactory := azureauth.NewEnvAzureAuthorizerFactory(azdIdentityEnvAzureAuthorizerConfiguration, new(azureauthwrappers.AzureAuthWrapper))
 	azdIdentityAuthorizer, err := azdIdentityAuthorizerFactory.CreateARMAuthorizer()
@@ -175,7 +175,7 @@ func main() {
 		log.Fatal("main.CreateARGQueryGenerator", err)
 	}
 
-	argDataProvider := arg.NewARGDataProvider(instrumentationProvider, argClient, argQueryGenerator)
+	argDataProvider := arg.NewARGDataProvider(instrumentationProvider, argClient, argQueryGenerator, redisCacheClient) //TODO add here in redis-cache client
 
 	// Handler and azdSecinfoProvider
 	azdSecInfoProvider := azdsecinfo.NewAzdSecInfoProvider(instrumentationProvider, argDataProvider, tag2digestResolver)

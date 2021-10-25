@@ -3,9 +3,7 @@ kind: Pod
 metadata:
   name: healthy-pod
   namespace: default
-  annotations:
-    azuredefender.io/containers.vulnerability.scan.info: "{\"containers\":[{\"name\":\"testContainer\",\"image\":{\"name\":\"tomer.azurecr.io/core/app:4.6\",\"digest\":\"sha256:4a\"},\"scanStatus\":\"healthyScan\",\"scanFindings\":[]}]}"
 spec:
   containers:
     - name: healthy-container
-      image: alpine
+      image: blockregistrydev.azurecr.io/azdproxy-image-debugging:7238f81-dirty

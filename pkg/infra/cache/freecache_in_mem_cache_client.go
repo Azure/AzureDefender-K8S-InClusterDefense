@@ -1,7 +1,6 @@
 package cache
 
 import (
-	"context"
 	cachemetrics "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/cache/metric"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/cache/operations"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/cache/wrappers"
@@ -45,7 +44,7 @@ func NewFreeCacheInMemCacheClient(instrumentationProvider instrumentation.IInstr
 
 // Get a key from FreeInMemCache.
 // Returns MissingKeyCacheError if ket is not exist.
-func (client *FreeCacheInMemCacheClient) Get(ctx context.Context, key string) (string, error) {
+func (client *FreeCacheInMemCacheClient) Get(key string) (string, error) {
 	tracer := client.tracerProvider.GetTracer("Get")
 	tracer.Info("Get key executed", "Key", key)
 
@@ -72,7 +71,7 @@ func (client *FreeCacheInMemCacheClient) Get(ctx context.Context, key string) (s
 }
 
 // Set
-func (client *FreeCacheInMemCacheClient) Set(ctx context.Context, key string, value string, expiration time.Duration) error {
+func (client *FreeCacheInMemCacheClient) Set(key string, value string, expiration time.Duration) error {
 	tracer := client.tracerProvider.GetTracer("Set")
 	tracer.Info("Set new key", "Key", key, "Value", value, "Expiration", expiration)
 
