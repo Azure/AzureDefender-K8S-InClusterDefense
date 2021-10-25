@@ -92,7 +92,6 @@ TBD
 
 ### Channels
 
-- Always close channel when done
 - Before reading from a channel check that the channel is still open (reading from a closed channel return the zero value for the channel's type without blocking )
     ```go
     data, channelOpen := <-channel
@@ -102,6 +101,37 @@ TBD
                 ...
             }
     ```
+  
+- Sending data and error to channel: Because it is possible to send to a channel only one object, and it is very common to return from a function 2 values - data and an error, we created a struct for wrapping data and error into one struct.
+  - Use utils\channel_data_wrapper - a struct that hold 2 members: data and error.
+  - Enable sending and receiving data and error throw channels.
+  - How to use:
+    - Let f be a function that returns data of type *mystruct and error
+      ```go
+      func f() (*mystruct, error)
+      ```
+      - Create channel:
+      ```go
+        myChannel := make(chan *utils.ChannelDataWrapper)
+        ```
+      - Send to channel:
+      ```go
+        myChannel <- utils.NewChannelDataWrapper(f())
+        ```
+      - Read from channel:
+      ```go
+        channelDataWrapper := <- myChannel
+        if channelDataWrapper.Err != nil {
+            ...
+          } else{
+            data, ok = channelDataWrapper.DataWrapper.(*mystruct)
+            if !ok{
+                ...
+            }
+            ...
+          }
+        ```
+      
 ### Deployment
 
 - Containers:

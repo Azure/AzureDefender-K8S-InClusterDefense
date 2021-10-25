@@ -99,26 +99,24 @@ func (provider *AzdSecInfoProvider) getVulnSecInfoContainers(podSpec *corev1.Pod
 	vulnerabilitySecInfoChannel := make(chan *utils.ChannelDataWrapper, len(podSpec.InitContainers) + len(podSpec.Containers))
 	// Get container vulnerability scan information in parallel
 	// Each call send data to channel vulnerabilitySecInfoChannel
-	for _, initContainer := range podSpec.InitContainers {
-		go provider.getSingleContainerVulnerabilityScanInfoSyncWrapper(initContainer, resourceCtx, vulnerabilitySecInfoChannel)
+	for i := range podSpec.InitContainers {
+		go provider.getSingleContainerVulnerabilityScanInfoSyncWrapper(&podSpec.InitContainers[i], resourceCtx, vulnerabilitySecInfoChannel)
 	}
-	for _, container := range podSpec.Containers {
-		go provider.getSingleContainerVulnerabilityScanInfoSyncWrapper(container, resourceCtx, vulnerabilitySecInfoChannel)
+	for i := range podSpec.Containers {
+		go provider.getSingleContainerVulnerabilityScanInfoSyncWrapper(&podSpec.Containers[i], resourceCtx, vulnerabilitySecInfoChannel)
 	}
 
 	var err error
 	for i := 0; i <  len(podSpec.InitContainers) + len(podSpec.Containers); i++ { // No deadlock as a result of the loop because the number of receivers is identical to the number of senders
 		vulnerabilitySecInfoWrapper, isChannelOpen := <- vulnerabilitySecInfoChannel // Extract all data from channel to make sure there is no goroutine leak
 		if !isChannelOpen {
-			err = errors.Wrap(utils.ReadFromClosedChannelError, "failed in AzdSecInfoProvider.getVulnSecInfoContainers")
+			err = errors.Wrap(utils.ReadFromClosedChannelError, "failed in AzdSecInfoProvider.getVulnSecInfoContainers. Channel closed unexpectedly")
 			tracer.Error(err, "")
 			return nil, err
 		}
-		// If an error occurred, update error and wait for all goroutines to finish
+		// If an error occurred during getSingleContainerVulnerabilityScanInfo, update error and wait for all goroutines to finish
 		if vulnerabilitySecInfoWrapper.Err != nil {
-			wrappedError := errors.Wrap(vulnerabilitySecInfoWrapper.Err, "failed in getSingleContainerVulnerabilityScanInfoSyncWrapper. Channel closed unexpectedly")
-			tracer.Error(wrappedError, "")
-			err = wrappedError
+			err = vulnerabilitySecInfoWrapper.Err
 		} else {
 			// Add scan info to slice
 			vulnerabilitySecInfo, canConvert := vulnerabilitySecInfoWrapper.DataWrapper.(*contracts.ContainerVulnerabilityScanInfo)
@@ -132,13 +130,20 @@ func (provider *AzdSecInfoProvider) getVulnSecInfoContainers(podSpec *corev1.Pod
 
 	}
 	close(vulnerabilitySecInfoChannel)
-	return vulnSecInfoContainers, err
+
+	// If an error occurred during one of  'getSingleContainerVulnerabilityScanInfo' goroutines
+	if err != nil {
+		err = errors.Wrap(err, "failed in getSingleContainerVulnerabilityScanInfoSyncWrapper")
+		tracer.Error(err, "")
+		return nil, err
+	}
+	return vulnSecInfoContainers, nil
 }
 
 //getSingleContainerVulnerabilityScanInfoSyncWrapper wrap getSingleContainerVulnerabilityScanInfo.
 // It sends getSingleContainerVulnerabilityScanInfo results to the channel
-func (provider *AzdSecInfoProvider) getSingleContainerVulnerabilityScanInfoSyncWrapper(container corev1.Container, resourceCtx *tag2digest.ResourceContext,  vulnerabilitySecInfoChannel chan *utils.ChannelDataWrapper){
-		vulnerabilitySecInfoChannel <- utils.NewChannelDataWrapper(provider.getSingleContainerVulnerabilityScanInfo(&container, resourceCtx))
+func (provider *AzdSecInfoProvider) getSingleContainerVulnerabilityScanInfoSyncWrapper(container *corev1.Container, resourceCtx *tag2digest.ResourceContext,  vulnerabilitySecInfoChannel chan *utils.ChannelDataWrapper){
+		vulnerabilitySecInfoChannel <- utils.NewChannelDataWrapper(provider.getSingleContainerVulnerabilityScanInfo(container, resourceCtx))
 }
 
 // getSingleContainerVulnerabilityScanInfo receives a container and it's belogned deployed resource context, and returns fetched ContainerVulnerabilityScanInfo
