@@ -54,8 +54,8 @@ func main() {
 	metricSubmitterConfiguration := new(tivan.MetricSubmitterConfiguration)
 	tracerConfiguration := new(trace.TracerConfiguration)
 	instrumentationConfiguration := new(instrumentation.InstrumentationProviderConfiguration)
-	azdIdentityEnvAzureAuthorizerConfiguration := new(azureauth.EnvAzureAuthorizerConfiguration)
-	kubeletIdentityEnvAzureAuthorizerConfiguration := new(azureauth.EnvAzureAuthorizerConfiguration)
+	azdIdentityEnvAzureAuthorizerConfiguration := new(azureauth.MSIAzureAuthorizerConfiguration)
+	kubeletIdentityEnvAzureAuthorizerConfiguration := new(azureauth.MSIAzureAuthorizerConfiguration)
 	argClientConfiguration := new(arg.ARGClientConfiguration)
 	deploymentConfiguration := new(utils.DeploymentConfiguration)
 	craneWrapperRetryPolicyConfiguration := new(retrypolicy.RetryPolicyConfiguration)
@@ -116,10 +116,10 @@ func main() {
 		log.Fatal("main.instrumentationProviderFactory.CreateInstrumentationProvider", err)
 	}
 
-	kubeletIdentityAuthorizerFactory := azureauth.NewEnvAzureAuthorizerFactory(kubeletIdentityEnvAzureAuthorizerConfiguration, new(azureauthwrappers.AzureAuthWrapper))
+	kubeletIdentityAuthorizerFactory := azureauth.NewMSIEnvAzureAuthorizerFactory(instrumentationProvider, kubeletIdentityEnvAzureAuthorizerConfiguration, new(azureauthwrappers.AzureAuthWrapper))
 	kubeletIdentityAuthorizer, err := kubeletIdentityAuthorizerFactory.CreateARMAuthorizer()
 	if err != nil {
-		log.Fatal("main.kubeletIdentityAuthorizerFactory.NewEnvAzureAuthorizerFactory.CreateARMAuthorizer", err)
+		log.Fatal("main.kubeletIdentityAuthorizerFactory.NewMSIEnvAzureAuthorizerFactory.CreateARMAuthorizer", err)
 	}
 
 	// Registry Client
@@ -132,15 +132,16 @@ func main() {
 		log.Fatal("main.kubernetes.NewForConfig", err)
 	}
 
-	bearerAuthorizer, ok := kubeletIdentityAuthorizer.(azureauth.IBearerAuthorizer)
+	azureBearerAuthorizer, ok := kubeletIdentityAuthorizer.(azureauth.IBearerAuthorizer)
 	if !ok {
 		log.Fatal("main.kubeletIdentityAuthorizer.bearerAuthorizer type assertion", err)
 
 	}
 
-	acrTokenExchangerRetryPolicy, err := retrypolicy.NewRetryPolicy(instrumentationProvider, acrTokenExchangerClientRetryPolicyConfiguration)
-	acrTokenExchanger := registryauthazure.NewACRTokenExchanger(instrumentationProvider, &http.Client{}, acrTokenExchangerRetryPolicy)
-	acrTokenProvider := registryauthazure.NewACRTokenProvider(instrumentationProvider, acrTokenExchanger, bearerAuthorizer)
+	azureBearerAuthorizerTokenProvider := azureauth.NewBearerAuthorizerTokenProvider(azureBearerAuthorizer)
+
+	acrTokenExchanger := registryauthazure.NewACRTokenExchanger(instrumentationProvider, &http.Client{})
+	acrTokenProvider := registryauthazure.NewACRTokenProvider(instrumentationProvider, acrTokenExchanger, azureBearerAuthorizerTokenProvider)
 
 	k8sKeychainFactory := crane.NewK8SKeychainFactory(instrumentationProvider, clientK8s)
 	acrKeychainFactory := crane.NewACRKeychainFactory(instrumentationProvider, acrTokenProvider)
@@ -165,10 +166,10 @@ func main() {
 	tag2digestCache := cachewrappers.NewFreeCacheInMem(tokensCacheConfiguration)
 	_ = cache.NewFreeCacheInMemCacheClient(instrumentationProvider, tag2digestCache)
 
-	azdIdentityAuthorizerFactory := azureauth.NewEnvAzureAuthorizerFactory(azdIdentityEnvAzureAuthorizerConfiguration, new(azureauthwrappers.AzureAuthWrapper))
+	azdIdentityAuthorizerFactory := azureauth.NewMSIEnvAzureAuthorizerFactory(instrumentationProvider, azdIdentityEnvAzureAuthorizerConfiguration, new(azureauthwrappers.AzureAuthWrapper))
 	azdIdentityAuthorizer, err := azdIdentityAuthorizerFactory.CreateARMAuthorizer()
 	if err != nil {
-		log.Fatal("main.azdIdentityAuthorizerFactory.NewEnvAzureAuthorizerFactory.CreateARMAuthorizer", err)
+		log.Fatal("main.azdIdentityAuthorizerFactory.NewMSIEnvAzureAuthorizerFactory.CreateARMAuthorizer", err)
 	}
 	argBaseClient, err := wrappers.NewArgBaseClientWrapper(argBaseClientRetryPolicyConfiguration, azdIdentityAuthorizer)
 	if err != nil {

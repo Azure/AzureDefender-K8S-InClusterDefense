@@ -106,10 +106,11 @@ func (client *RedisCacheClient) Set(ctx context.Context, key string, value strin
 		// Action - set the values redis client.
 		func() error { return client.redisClient.Set(ctx, key, value, expiration).Err() },
 		// HandleError - if the err is redis.Nil then it means that the get is not exist.
+		// TODO @liorkesten -- How is this related to set??
 		func(err error) bool { return err != redis.Nil },
 	)
 
-	if err != nil && err != redis.Nil {
+	if err != nil && !errors.Is(err, redis.Nil) {
 		client.metricSubmitter.SendMetric(1, cachemetrics.NewSetErrEncounteredMetric(err, _redisClientType))
 		tracer.Error(err, "Failed to set a key", "Key", key, "Value", value, "Expiration", expiration)
 		return err
