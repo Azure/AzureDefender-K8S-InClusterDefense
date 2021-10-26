@@ -111,8 +111,6 @@ func (tokenExchanger *ACRTokenExchanger) ExchangeACRAccessToken(registry string,
 	defer closeResponse(resp)
 
 	// Invokes call to registry
-	// TODO add retry policy
-
 	err = tokenExchanger.retryPolicy.RetryAction(
 		func() error {
 			resp, err = tokenExchanger.httpClient.Do(req)

@@ -58,14 +58,12 @@ data:
       craneWrappersConfiguration:
         retryPolicyConfiguration:
           retryAttempts: {{ .Values.AzDProxy.acr.craneWrappers.retryPolicyConfiguration.retryAttempts }}
-          retryDuration: {{ .Values.AzDProxy.acr.craneWrappers.retryPolicyConfiguration.retryDuration }}
-          timeUnit: {{ .Values.AzDProxy.acr.craneWrappers.retryPolicyConfiguration.timeUnit }}
+          retryDurationInMS: {{ .Values.AzDProxy.acr.craneWrappers.retryPolicyConfiguration.retryDurationInMS }}
 
       tokenExchanger:
         retryPolicyConfiguration:
           retryAttempts: {{ .Values.AzDProxy.acr.craneWrappers.retryPolicyConfiguration.retryAttempts }}
-          retryDuration: {{ .Values.AzDProxy.acr.craneWrappers.retryPolicyConfiguration.retryDuration }}
-          timeUnit: {{ .Values.AzDProxy.acr.craneWrappers.retryPolicyConfiguration.timeUnit }}
+          retryDurationInMS: {{ .Values.AzDProxy.acr.craneWrappers.retryPolicyConfiguration.retryDurationInMS }}
 
     arg:
       argClientConfiguration:
@@ -74,8 +72,7 @@ data:
       argBaseClient:
         retryPolicyConfiguration:
           retryAttempts: {{ .Values.AzDProxy.arg.argBaseClient.retryPolicyConfiguration.retryAttempts }}
-          retryDuration: {{ .Values.AzDProxy.arg.argBaseClient.retryPolicyConfiguration.retryDuration }}
-          timeUnit: {{ .Values.AzDProxy.arg.argBaseClient.retryPolicyConfiguration.timeUnit }}
+          retryDurationInMS: {{ .Values.AzDProxy.arg.argBaseClient.retryPolicyConfiguration.retryDurationInMS }}
 
     # Cache configuration
     cache:
@@ -86,8 +83,7 @@ data:
         targetport: {{.Values.AzDProxy.cache.redisClient.port}}
         retryPolicyConfiguration:
           retryAttempts: {{ .Values.AzDProxy.cache.redisClient.retryPolicyConfiguration.retryAttempts }}
-          retryDuration: {{ .Values.AzDProxy.cache.redisClient.retryPolicyConfiguration.retryDuration }}
-          timeUnit: {{ .Values.AzDProxy.cache.redisClient.retryPolicyConfiguration.timeUnit }}
+          retryDurationInMS: {{ .Values.AzDProxy.cache.redisClient.retryPolicyConfiguration.retryDurationInMS }}
 
       argDataProviderCacheConfiguration:
         address: {{.Values.AzDProxy.cache.argDataProviderCacheConfiguration.address}}
@@ -101,5 +97,4 @@ data:
 
     azdSecInfoProvider:
       GetContainersVulnerabilityScanInfoTimeoutDuration:
-        timeDuration: {{ .Values.AzDProxy.azdSecInfoProvider.GetContainersVulnerabilityScanInfo.timeout.timeDuration }}
-        timeUnit: {{ .Values.AzDProxy.azdSecInfoProvider.GetContainersVulnerabilityScanInfo.timeout.timeUnit }}
+        timeDurationInMS: {{ .Values.AzDProxy.azdSecInfoProvider.GetContainersVulnerabilityScanInfo.timeout.timeDurationInMS }}

@@ -80,6 +80,7 @@ func (provider *AzdSecInfoProvider) GetContainersVulnerabilityScanInfo(podSpec *
 	}
 
 	// Wrap  getContainersVulnerabilityScanInfo with timeout - return the result from the first thread that is finish
+	// TODO use Maayan's wrapper.
 	chanTimeout := make(chan bool, 1)
 	go func() {
 		containerVulnerabilityScanInfo, err = provider.getContainersVulnerabilityScanInfo(podSpec, resourceMetadata, resourceKind)
@@ -89,8 +90,10 @@ func (provider *AzdSecInfoProvider) GetContainersVulnerabilityScanInfo(podSpec *
 	// Choose the first thread that is finish.
 	select {
 	case _ = <-chanTimeout:
+		close(chanTimeout)
 		return containerVulnerabilityScanInfo, err
 	case <-time.After(provider.getContainersVulnerabilityScanInfoTimeoutDuration):
+		//TODO close channel!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 		//TODO Implement cache that will check if it is the first time that got timeout error or it is the second time (if it is the second time then it should return error and don't add unscanned metadata!!)
 		tracer.Info("GetContainersVulnerabilityScanInfo got timeout - returning unscanned", "timeDurationOfTimeout", provider.getContainersVulnerabilityScanInfoTimeoutDuration)
 		return provider.buildListOfContainerVulnerabilityScanInfoWhenTimeout()

@@ -114,18 +114,14 @@ AzDProxy:
         # Number of retry attempts
         retryAttempts: 3
         # Sleep duration between retries (in milliseconds):
-        retryDuration: 10
-        # Timeunit for the backoff duration
-        timeUnit: "ms"
+        retryDurationInMS: 10
 
     tokenExchanger:
       retryPolicyConfiguration:
         # Number of retry attempts
         retryAttempts: 3
         # Sleep duration between retries (in milliseconds):
-        retryDuration: 10
-        # Timeunit for the backoff duration
-        timeUnit: "ms"
+        retryDurationInMS: 10
 
   # ARG values
   arg:
@@ -138,9 +134,7 @@ AzDProxy:
         # Number of retry attempts
         retryAttempts: 3
         # Sleep duration between retries (in milliseconds):
-        retryDuration: 100
-        # Timeunit for the backoff duration
-        timeUnit: "ms"
+        retryDurationInMS: 100
 
     # Cache configuration
   cache:
@@ -157,9 +151,7 @@ AzDProxy:
         #  -- Number of retry attempts
         retryAttempts: 3
         #  -- Sleep duration between retries (in milliseconds):
-        retryDuration: 10
-        #  -- Timeunit for the backoff duration
-        timeUnit: "ms"
+        retryDurationInMS: 10
 
     argDataProviderCacheConfiguration:
       # -- Address that the redis client will listen to. set to redis service + the port of the service.
@@ -174,5 +166,4 @@ AzDProxy:
   azdSecInfoProvider:
     GetContainersVulnerabilityScanInfo:
       timeout:
-        timeDuration: 2500
-        timeUnit: "ms"
+        timeDurationInMS: 2500

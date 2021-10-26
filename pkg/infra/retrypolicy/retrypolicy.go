@@ -6,8 +6,12 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/utils"
 	"github.com/pkg/errors"
-	"strconv"
 	"time"
+)
+
+var (
+	_defaultRetryAttempts    = 3
+	_defaultTimeDurationInMS = 10
 )
 
 // ShouldRetryOnSpecificError is function that gets an error and returns true or false if the retry should handle with this error
@@ -50,31 +54,24 @@ type RetryPolicy struct {
 type RetryPolicyConfiguration struct {
 	// RetryAttempts  is the number of attempts that the request should be executed.
 	RetryAttempts int
-	// RetryDuration is the time duration between each retry - it is represented as string
-	RetryDuration int
-	// TimeUnit is the unit of time for the backoff duration
-	// Valid time units are "ns", "us" (or "µs"), "ms", "s", "m", "h".
-	TimeUnit string
+	// RetryDuration is the time duration between each retry - in milliseconds
+	RetryDurationInMS int
 }
 
 // NewRetryPolicy Cto'r for retry policy object
-func NewRetryPolicy(instrumentationProvider instrumentation.IInstrumentationProvider, configuration *RetryPolicyConfiguration) (*RetryPolicy, error) {
-	duration, err := GetBackOffDuration(configuration)
-	if err != nil {
-		return nil, err
+func NewRetryPolicy(instrumentationProvider instrumentation.IInstrumentationProvider, configuration *RetryPolicyConfiguration) *RetryPolicy {
+	duration := GetBackOffDuration(configuration)
+	retryAttempts := configuration.RetryAttempts
+	if retryAttempts <= 0 {
+		retryAttempts = _defaultRetryAttempts
 	}
-	if configuration.RetryAttempts <= 0 {
-		return nil, errors.New("RetryAttempts must be integer > 0")
-	}
-
-	retryPolicy := &RetryPolicy{
+	return &RetryPolicy{
 		duration:        duration,
-		retryAttempts:   configuration.RetryAttempts,
+		retryAttempts:   retryAttempts,
 		tracerProvider:  instrumentationProvider.GetTracerProvider("RetryPolicy"),
 		metricSubmitter: instrumentationProvider.GetMetricSubmitter(),
 	}
 
-	return retryPolicy, nil
 }
 
 // RetryActionString retry to run the action with retryPolicy
@@ -149,12 +146,14 @@ func (r *RetryPolicy) RetryAction(action Action, shouldRetry ShouldRetryOnSpecif
 
 // GetBackOffDuration uses the RetryPolicyConfiguration instance's RetryDuration (int) and TimeUnit(string)
 // to a return a time.Duration object of the backoff duration
-func GetBackOffDuration(configuration *RetryPolicyConfiguration) (duration time.Duration, err error) {
-	if configuration == nil {
-		return 0, errors.Wrap(utils.NilArgumentError, "_configuration can't be nil")
-	} else if configuration.RetryDuration <= 0 {
-		return 0, errors.New("RetryDuration must be > 0")
+// In case of invalid argument, use default values for retry policy.
+func GetBackOffDuration(configuration *RetryPolicyConfiguration) time.Duration {
+	// Set duration to default value
+	duration := _defaultTimeDurationInMS
+	// Replace with configuration.RetryDurationInMS in case that it's a valid value.
+	if configuration != nil && configuration.RetryDurationInMS > 0 {
+		duration = configuration.RetryDurationInMS
 	}
 
-	return time.ParseDuration(strconv.Itoa(configuration.RetryDuration) + configuration.TimeUnit)
+	return time.Duration(duration) * time.Millisecond
 }

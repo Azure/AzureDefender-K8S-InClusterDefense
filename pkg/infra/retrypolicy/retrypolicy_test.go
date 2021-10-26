@@ -10,7 +10,9 @@ import (
 )
 
 var (
-	_configuration = RetryPolicyConfiguration{RetryAttempts: 3, RetryDuration: 10, TimeUnit: "ms"}
+	_configuration                 = RetryPolicyConfiguration{RetryAttempts: 4, RetryDurationInMS: 3}
+	_expectedConfigurationDuration = time.Duration(_configuration.RetryDurationInMS) * time.Millisecond
+	_expectedDefaultDuration       = time.Duration(_defaultTimeDurationInMS) * time.Millisecond
 )
 
 type TestSuite struct {
@@ -39,94 +41,62 @@ func (e err2ForTests) Error() string {
 // This will run before each test in the suite
 func (suite *TestSuite) SetupTest() {
 	// Mock
-	suite.retryPolicy, _ = NewRetryPolicy(instrumentation.NewNoOpInstrumentationProvider(), &_configuration)
+	suite.retryPolicy = NewRetryPolicy(instrumentation.NewNoOpInstrumentationProvider(), &_configuration)
 	suite.countActions = 0
 
 }
 
-func (suite *TestSuite) Test_NewRetryPolicy_NilConfiguration_ShouldReturnError() {
-	r, err := NewRetryPolicy(instrumentation.NewNoOpInstrumentationProvider(), nil)
-	suite.Nil(r)
-	suite.NotNil(err)
-	suite.Equal(utils.NilArgumentError, errors.Cause(err))
-}
-
 func (suite *TestSuite) Test_NewRetryPolicy_NotNilConfiguration_ShouldReturnInstance() {
 
-	r, err := NewRetryPolicy(
-		instrumentation.NewNoOpInstrumentationProvider(),
-		&RetryPolicyConfiguration{RetryAttempts: 1, RetryDuration: 1, TimeUnit: "ms"})
-	suite.Nil(err)
-	suite.NotNil(r)
+	r := NewRetryPolicy(instrumentation.NewNoOpInstrumentationProvider(), &_configuration)
+
+	suite.Equal(_configuration.RetryAttempts, r.retryAttempts)
+	suite.Equal(_expectedConfigurationDuration, r.duration)
 }
 
-func (suite *TestSuite) Test_NewRetryPolicy_InvalidConfigurationNegativeRetryAttempts_ShouldReturnError() {
-	r, err := NewRetryPolicy(
-		instrumentation.NewNoOpInstrumentationProvider(),
-		&RetryPolicyConfiguration{RetryAttempts: -1, RetryDuration: 1, TimeUnit: "ms"})
+func (suite *TestSuite) Test_NewRetryPolicy_InvalidConfigurationNegativeRetryAttempts_ShouldUeDefaultValues() {
+	r := NewRetryPolicy(instrumentation.NewNoOpInstrumentationProvider(),
+		&RetryPolicyConfiguration{RetryAttempts: -1, RetryDurationInMS: _configuration.RetryDurationInMS})
 	// Test
-	suite.NotNil(err)
-	suite.Nil(r)
+	suite.Equal(_defaultRetryAttempts, r.retryAttempts)
+	suite.Equal(_expectedConfigurationDuration, r.duration)
 }
 
 func (suite *TestSuite) Test_NewRetryPolicy_InvalidConfigurationNegativeRetryDuration_ShouldReturnError() {
-	r, err := NewRetryPolicy(
+	r := NewRetryPolicy(
 		instrumentation.NewNoOpInstrumentationProvider(),
-		&RetryPolicyConfiguration{RetryAttempts: 1, RetryDuration: -1, TimeUnit: "ms"})
+		&RetryPolicyConfiguration{RetryAttempts: _configuration.RetryAttempts, RetryDurationInMS: -1})
 	// Test
-	suite.NotNil(err)
-	suite.Nil(r)
-}
-
-func (suite *TestSuite) Test_NewRetryPolicy_InvalidConfigurationInvalidTimeUnit_ShouldReturnError() {
-	r, err := NewRetryPolicy(
-		instrumentation.NewNoOpInstrumentationProvider(),
-		&RetryPolicyConfiguration{RetryAttempts: 1, RetryDuration: 1, TimeUnit: "InvalidTimeUnit"})
-	// Test
-	suite.NotNil(err)
-	suite.Nil(r)
+	suite.Equal(_configuration.RetryAttempts, r.retryAttempts)
+	suite.Equal(_expectedDefaultDuration, r.duration)
 }
 
 func (suite *TestSuite) Test_GetBackOffDuration_NilConfiguration_ShouldReturnError() {
-	d, err := GetBackOffDuration(nil)
+	d := GetBackOffDuration(nil)
 	// Test
-	suite.Equal(time.Duration(0), d)
-	suite.NotNil(err)
-	suite.Equal(utils.NilArgumentError, errors.Cause(err))
+	suite.Equal(_expectedDefaultDuration, d)
 }
 
 func (suite *TestSuite) Test_GetBackOffDuration_NotNilConfiguration_ShouldReturnInstance() {
-	d, err := GetBackOffDuration(&RetryPolicyConfiguration{RetryAttempts: 1, RetryDuration: 1, TimeUnit: "ms"})
+	d := GetBackOffDuration(&_configuration)
 
-	suite.Nil(err)
-	suite.NotNil(d)
-	suite.Equal(1*time.Millisecond, d)
+	suite.Equal(_expectedConfigurationDuration, d)
 }
 
 func (suite *TestSuite) Test_GetBackOffDuration_InvalidConfigurationNegativeRetryAttempts_ShouldReturnOk() {
 	// Should be ok because GetBackOffDuration is not using retryAttempts of the configuration
-	d, err := GetBackOffDuration(&RetryPolicyConfiguration{RetryAttempts: -1, RetryDuration: 1, TimeUnit: "ms"})
+	d := GetBackOffDuration(&RetryPolicyConfiguration{RetryAttempts: -1, RetryDurationInMS: _configuration.RetryDurationInMS})
 
 	// Test
-	suite.Nil(err)
-	suite.NotNil(d)
-	suite.Equal(1*time.Millisecond, d)
+	suite.Equal(_expectedConfigurationDuration, d)
+
 }
 
-func (suite *TestSuite) Test_GetBackOffDuration_InvalidConfigurationNegativeRetryDuration_ShouldReturnError() {
-	d, err := GetBackOffDuration(&RetryPolicyConfiguration{RetryAttempts: 1, RetryDuration: -1, TimeUnit: "ms"})
+func (suite *TestSuite) Test_GetBackOffDuration_InvalidConfigurationNegativeRetryDuration_ShouldUseDefault() {
+	d := GetBackOffDuration(&RetryPolicyConfiguration{RetryAttempts: _configuration.RetryAttempts, RetryDurationInMS: -1})
 
 	// Test
-	suite.NotNil(err)
-	suite.Equal(time.Duration(0), d)
-}
-
-func (suite *TestSuite) Test_GetBackOffDuration_InvalidConfigurationInvalidTimeUnit_ShouldReturnError() {
-	d, err := GetBackOffDuration(&RetryPolicyConfiguration{RetryAttempts: 1, RetryDuration: 1, TimeUnit: "InvalidTimeUnit"})
-
-	// Test
-	suite.NotNil(err)
-	suite.Equal(time.Duration(0), d)
+	suite.Equal(_expectedDefaultDuration, d)
 }
 
 func (suite *TestSuite) Test_RetryActionString_ActionNil_ShouldReturnError() {
@@ -187,7 +157,7 @@ func (suite *TestSuite) Test_RetryActionString_UnHandledError_ShouldBeExecutedFe
 	// Test
 	suite.Equal(errForTest, errors.Cause(err))
 	suite.Equal("", actual)
-	suite.Equal(3, suite.countActions)
+	suite.Equal(_configuration.RetryAttempts, suite.countActions)
 }
 
 func (suite *TestSuite) Test_RetryActionString_HandledErrorSecondTime_ShouldBeExecutedTwice() {
@@ -309,7 +279,7 @@ func (suite *TestSuite) Test_RetryAction_UnHandledError_ShouldBeExecutedFewTimes
 	err := suite.retryPolicy.RetryAction(action, handle)
 	// Test
 	suite.Equal(errForTest, errors.Cause(err))
-	suite.Equal(3, suite.countActions)
+	suite.Equal(_configuration.RetryAttempts, suite.countActions)
 }
 
 func (suite *TestSuite) Test_RetryAction_HandledErrorSecondTime_ShouldBeExecutedTwice() {

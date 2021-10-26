@@ -1,64 +1,33 @@
 apiVersion: skaffold/v2beta23
 kind: Config
 metadata:
-  name: azdproxy
+  name: AzureDefnder-In-Cluster-Defense-Dev
 build:
   artifacts:
-    # TODO Tomer - Lets talk on this f2f.
-    # First image: production image
-    #    - image: blockregistrydev.azurecr.io/azdproxy-image
-    #      context: ./
-    #      sync:
-    #        infer:
-    #          - '**/*'
-    #      docker:
-    #        dockerfile: build/Dockerfile
-    # Second image: production image - without vulnerability scanning.
-    - image: blockregistrydev.azurecr.io/azdproxy-image-no-scanning
+    # Dev Image:
+    - image: azuredefendermcrdev.azurecr.io/public/azuredefender/dev/in-cluster-defense
       context: ./
       sync:
         infer:
           - '**/*'
       docker:
-        dockerfile: build/Dockerfile.no_scanning
+        dockerfile: build/Dockerfile
 profiles:
-  # Profile name:
-  - name: azuredefender
+  # Dev Profile
+  - name: AzureDefnder-In-Cluster-Defense-Dev
     deploy:
       kubeContext: cluster-dev
       # Deploy with helm chart
       helm:
         releases:
-          - name: azuredefender
+          - name: AzureDefnder-In-Cluster-Defense-Dev
             # Path to helm chart
             chartPath: charts/azdproxy
             # Choose the namespace of the deployment
             namespace: kube-system
             # Overrides the image in the helm chart with the image that was built in the build section.
             artifactOverrides:
-              AzDProxy.webhook.image.name: blockregistrydev.azurecr.io/azdproxy-image
-            setValues:
-              AzDProxy.arg.argClientConfiguration.subscriptions: ""
-              AzDProxy.kubeletIdentity.envAzureAuthorizerConfiguration.mSIClientId: ""
-              AzDProxy.azdIdentity.envAzureAuthorizerConfiguration.mSIClientId: ""
-            # Path to dev values:
-            valuesFiles:
-              - ./charts/azdproxy/values-dev.yaml
-  # Profile for production that  runs image without vulnerability scanning (Triviy)
-  - name: azuredefender-no-scanning
-    deploy:
-      kubeContext: cluster-dev
-      # Deploy with helm chart
-      helm:
-        releases:
-          - name: azuredefender-no-scanning
-            # Path to helm chart
-            chartPath: charts/azdproxy
-            # Choose the namespace of the deployment
-            namespace: kube-system
-            # Overrides the image in the helm chart with the image that was built in the build section.
-            artifactOverrides:
-              AzDProxy.webhook.image.name: blockregistrydev.azurecr.io/azdproxy-image-no-scanning
+              AzDProxy.webhook.image.name: azuredefendermcrdev.azurecr.io/public/azuredefender/dev/in-cluster-defense
             setValues:
               AzDProxy.arg.argClientConfiguration.subscriptions: ""
               AzDProxy.kubeletIdentity.envAzureAuthorizerConfiguration.mSIClientId: ""

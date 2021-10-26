@@ -29,25 +29,14 @@ COPY main.go main.go
 RUN	CGO_ENABLED=0 go build -o /go/azdproxy .
 
 #### STEP 2 - Build base image ####
-FROM ${BASE_IMAGE} as base
+FROM ${BASE_IMAGE}
 # Copy executable file into the new container
 COPY --from=builder /go/azdproxy ./azdproxy
 
-#### STEP 3 - Run vulnerability scan ####
-FROM base AS scanner
-# Run scan
-COPY --from=aquasec/trivy:latest /usr/local/bin/trivy /usr/local/bin/trivy
-RUN trivy filesystem --exit-code 1 --no-progress --skip-files "/usr/local/bin/trivy" --severity HIGH,CRITICAL /
-RUN exit 1
-
-#### STEP 4 - Image entrypoint ####
-FROM base AS entry
 # Expose port for webhook server
 EXPOSE ${LISTEN_PORT}
-
+# Add label of maintainers:
 MAINTAINER ascdetectiontomer@microsoft.com
-LABEL vendor=Microsoft\ Corp \
-    com.microsoft.product="Azure Defender"
 
 # Run the executable file - azdproxy
 ENTRYPOINT ["./azdproxy"]

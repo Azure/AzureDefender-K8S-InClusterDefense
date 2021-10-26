@@ -5,7 +5,6 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/retrypolicy"
 	argbase "github.com/Azure/azure-sdk-for-go/services/resourcegraph/mgmt/2021-03-01/resourcegraph"
 	"github.com/Azure/go-autorest/autorest"
-	"github.com/pkg/errors"
 )
 
 // arg.BaseClient implements IARGBaseClientWrapper interface
@@ -23,10 +22,7 @@ func NewArgBaseClientWrapper(retryPolicyConfig *retrypolicy.RetryPolicyConfigura
 	argBaseClient := argbase.New()
 	// Assign the retry policy configuration to the client.
 	argBaseClient.RetryAttempts = retryPolicyConfig.RetryAttempts
-	retryDuration, err := retrypolicy.GetBackOffDuration(retryPolicyConfig)
-	if err != nil {
-		return nil, errors.Wrapf(err, "cannot parse given retry duration <(%v)>", retryPolicyConfig.RetryDuration)
-	}
+	retryDuration := retrypolicy.GetBackOffDuration(retryPolicyConfig)
 	argBaseClient.RetryDuration = retryDuration
 
 	// Assign the authorizer to the client.

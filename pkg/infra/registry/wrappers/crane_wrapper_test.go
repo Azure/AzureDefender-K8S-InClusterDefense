@@ -20,9 +20,8 @@ const (
 
 var (
 	retryPolicyConfiguration = &retrypolicy.RetryPolicyConfiguration{
-		RetryAttempts: _retryAttempts,
-		RetryDuration: _retryDuration,
-		TimeUnit:      _timeUnit,
+		RetryAttempts:     _retryAttempts,
+		RetryDurationInMS: _retryDuration,
 	}
 )
 
@@ -33,7 +32,7 @@ type TestSuite struct {
 
 // This will run before each test in the suit
 func (suite *TestSuite) SetupTest() {
-	retryPolicy, _ := retrypolicy.NewRetryPolicy(instrumentation.NewNoOpInstrumentationProvider(), retryPolicyConfiguration)
+	retryPolicy := retrypolicy.NewRetryPolicy(instrumentation.NewNoOpInstrumentationProvider(), retryPolicyConfiguration)
 	suite.craneWrapper = NewCraneWrapper(instrumentation.NewNoOpInstrumentationProvider(), retryPolicy)
 }
 
