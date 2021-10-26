@@ -1,10 +1,13 @@
 package azureauth
 
 import (
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/azureauth/wrappers/mocks"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/utils"
+	"github.com/pkg/errors"
 	"testing"
 
-	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/azureauth/mocks"
+	wrappersmock "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/azureauth/wrappers/mocks"
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
@@ -15,7 +18,7 @@ const (
 	CLIENT_ID string = "fakeClientId"
 )
 
-var _configuration = &EnvAzureAuthorizerConfiguration{
+var _configuration = &MSIAzureAuthorizerConfiguration{
 	MSIClientId: CLIENT_ID,
 }
 
@@ -29,9 +32,9 @@ var _expectedValues = map[string]string{
 // test suite struct
 type TestSuite struct {
 	suite.Suite
-	authWrapperMock  *mocks.IAzureAuthWrapper
-	authSettingsMock *mocks.IEnvironmentSettingsWrapper
-	factory          *EnvAzureAuthorizerFactory
+	authWrapperMock  *wrappersmock.IAzureAuthWrapper
+	authSettingsMock *wrappersmock.IEnvironmentSettingsWrapper
+	factory          *MSIAzureAuthorizerFactory
 	values           map[string]string
 	env              *azure.Environment
 	authorizer       autorest.Authorizer
@@ -45,7 +48,7 @@ func (suite *TestSuite) SetupTest() {
 	suite.env = &azure.PublicCloud
 	suite.authSettingsMock = &mocks.IEnvironmentSettingsWrapper{}
 	suite.authWrapperMock = &mocks.IAzureAuthWrapper{}
-	suite.factory = NewEnvAzureAuthorizerFactory(_configuration, suite.authWrapperMock)
+	suite.factory = NewMSIEnvAzureAuthorizerFactory(instrumentation.NewNoOpInstrumentationProvider(),_configuration, suite.authWrapperMock)
 	suite.authorizer = autorest.NullAuthorizer{}
 }
 
@@ -55,7 +58,7 @@ func (suite *TestSuite) TestAzureAuthorizerFromEnvFactory_CreateArmAuthorizer_No
 	utils.UpdateDeploymentForTests(&utils.DeploymentConfiguration{IsLocalDevelopment: false})
 	suite.authSettingsMock.On("GetEnvironment").Return(suite.env).Once()
 	suite.authSettingsMock.On("GetValues").Return(suite.values).Twice()
-	suite.authSettingsMock.On("GetAuthorizer").Return(suite.authorizer, nil).Once()
+	suite.authSettingsMock.On("GetMSIAuthorizer").Return(suite.authorizer, nil).Once()
 	suite.authWrapperMock.On("GetSettingsFromEnvironment").Return(suite.authSettingsMock, nil).Once()
 	authorizer, err := suite.factory.CreateARMAuthorizer()
 
@@ -78,6 +81,33 @@ func (suite *TestSuite) TestEnvAzureAuthorizerFactory_CreateArmAuthorizer_Develo
 	suite.Nil(err)
 	suite.Equal(suite.authorizer, authorizer)
 	suite.Equal(_expectedValues, suite.values)
+	assertExpectations(suite)
+}
+
+
+func (suite *TestSuite) Test_GetSettingsError() {
+	expectedError := errors.New("SettingsError")
+	utils.UpdateDeploymentForTests(&utils.DeploymentConfiguration{IsLocalDevelopment: false})
+	suite.authWrapperMock.On("GetSettingsFromEnvironment").Return(nil, expectedError).Once()
+
+	authorizer, err := suite.factory.CreateARMAuthorizer()
+
+	suite.True(errors.Is(err, expectedError))
+	suite.Nil(authorizer)
+	assertExpectations(suite)
+}
+
+func (suite *TestSuite) Test_GetAuthorizerError() {
+	expectedError := errors.New("AuthorizerError")
+	utils.UpdateDeploymentForTests(&utils.DeploymentConfiguration{IsLocalDevelopment: false})
+	suite.authSettingsMock.On("GetEnvironment").Return(suite.env).Once()
+	suite.authSettingsMock.On("GetValues").Return(suite.values).Twice()
+	suite.authSettingsMock.On("GetMSIAuthorizer").Return(nil, expectedError).Once()
+	suite.authWrapperMock.On("GetSettingsFromEnvironment").Return(suite.authSettingsMock, nil).Once()
+	authorizer, err := suite.factory.CreateARMAuthorizer()
+
+	suite.True(errors.Is(err, expectedError))
+	suite.Nil(authorizer)
 	assertExpectations(suite)
 }
 

@@ -8,11 +8,11 @@ import (
 	"testing"
 )
 
-type ExtractImageRefContextUtilsTestSuite struct {
+type UtilsTestSuite struct {
 	suite.Suite
 }
 
-func (suite *ExtractImageRefContextUtilsTestSuite) TestExtractRegistryAndRepositoryFromImageReferencePublicImageRef() {
+func (suite *UtilsTestSuite) TestExtractRegistryAndRepositoryFromImageReferencePublicImageRef() {
 	ref, err := GetImageReference("redis")
 	suite.Nil(err)
 	suite.Equal("index.docker.io", ref.Registry())
@@ -24,7 +24,7 @@ func (suite *ExtractImageRefContextUtilsTestSuite) TestExtractRegistryAndReposit
 	suite.Equal("latest", tag.Tag())
 }
 
-func (suite *ExtractImageRefContextUtilsTestSuite) TestExtractRegistryAndRepositoryFromImageReferenceTag() {
+func (suite *UtilsTestSuite) TestExtractRegistryAndRepositoryFromImageReferenceTag() {
 	ref, err := GetImageReference("tomer.azurecr.io/redis:v1")
 	suite.Nil(err)
 	suite.Nil(err)
@@ -37,7 +37,7 @@ func (suite *ExtractImageRefContextUtilsTestSuite) TestExtractRegistryAndReposit
 	suite.Equal("v1", tag.Tag())
 }
 
-func (suite *ExtractImageRefContextUtilsTestSuite) TestExtractImageRefContext_NoIdentifier() {
+func (suite *UtilsTestSuite) TestExtractImageRefContext_NoIdentifier() {
 	ref, err := GetImageReference("tomer.azurecr.io/redis")
 	suite.Nil(err)
 	suite.Equal("tomer.azurecr.io", ref.Registry())
@@ -49,7 +49,7 @@ func (suite *ExtractImageRefContextUtilsTestSuite) TestExtractImageRefContext_No
 	suite.Equal("latest", tag.Tag())
 }
 
-func (suite *ExtractImageRefContextUtilsTestSuite) TestExtractImageRefContext_Digest_Parsed() {
+func (suite *UtilsTestSuite) TestExtractImageRefContext_Digest_Parsed() {
 	imageRef := "tomer.azurecr.io/redis@sha256:4a1c4b21597c1b4415bdbecb28a3296c6b5e23ca4f9feeb599860a1dac6a0108"
 	ref, err := GetImageReference(imageRef)
 	suite.Nil(err)
@@ -62,7 +62,7 @@ func (suite *ExtractImageRefContextUtilsTestSuite) TestExtractImageRefContext_Di
 	suite.Equal("sha256:4a1c4b21597c1b4415bdbecb28a3296c6b5e23ca4f9feeb599860a1dac6a0108", digest.Digest())
 }
 
-func (suite *ExtractImageRefContextUtilsTestSuite) TestExtractImageRefContext_DigestBadFormat_Err() {
+func (suite *UtilsTestSuite) TestExtractImageRefContext_DigestBadFormat_Err() {
 	// The last 4 chars of the digest are deleted:
 	imageRef := "tomer.azurecr.io/redis@sha256:4a1c4b21597c1b4415bdbecb28a3296c6b5e23ca4f9feeb599860a1dac6a"
 	ref, err := GetImageReference(imageRef)
@@ -72,7 +72,7 @@ func (suite *ExtractImageRefContextUtilsTestSuite) TestExtractImageRefContext_Di
 	suite.Nil(ref)
 }
 
-func (suite *ExtractImageRefContextUtilsTestSuite) TestExtractImageRefContext_TagAndDigest_ParsedDigestIgnoreTag() {
+func (suite *UtilsTestSuite) TestExtractImageRefContext_TagAndDigest_ParsedDigestIgnoreTag() {
 	imageRef := "tomer.azurecr.io/redis:v1@sha256:4a1c4b21597c1b4415bdbecb28a3296c6b5e23ca4f9feeb599860a1dac6a0108"
 	ref, err := GetImageReference(imageRef)
 	suite.Nil(err)
@@ -83,6 +83,30 @@ func (suite *ExtractImageRefContextUtilsTestSuite) TestExtractImageRefContext_Ta
 	suite.Equal("sha256:4a1c4b21597c1b4415bdbecb28a3296c6b5e23ca4f9feeb599860a1dac6a0108", digest.Digest())
 }
 
-func TestExtractImageRefContext(t *testing.T) {
-	suite.Run(t, new(ExtractImageRefContextUtilsTestSuite))
+func (suite *UtilsTestSuite) TestIsRegistryEndpointACR_Normal_Success() {
+	registry := "tomerw.azurecr.io"
+	res := IsRegistryEndpointACR(registry)
+	suite.True(res)
+}
+
+func (suite *UtilsTestSuite) TestIsRegistryEndpointACR_Caps_Success() {
+	registry := "tomerw.aZurEcR.iO"
+	res := IsRegistryEndpointACR(registry)
+	suite.True(res)
+}
+
+func (suite *UtilsTestSuite) TestIsRegistryEndpointACR_Not() {
+	registry := "tomerw.aZurEcR"
+	res := IsRegistryEndpointACR(registry)
+	suite.False(res)
+}
+
+func (suite *UtilsTestSuite) TestIsRegistryEndpointACR_GCR_Not() {
+	registry := "tomerw.gcr"
+	res := IsRegistryEndpointACR(registry)
+	suite.False(res)
+}
+
+func TestUtils(t *testing.T) {
+	suite.Run(t, new(UtilsTestSuite))
 }
