@@ -25,18 +25,18 @@ type ACRTokenProvider struct {
 	tracerProvider trace.ITracerProvider
 	// metricSubmitter submits metrics for class
 	metricSubmitter metric.IMetricSubmitter
-	// azureBearerAuthorizer is a bearer based authorizer
-	azureBearerAuthorizer azureauth.IBearerAuthorizer
+	// azureBearerAuthorizerTokenProvider is a bearer based token provider
+	azureBearerAuthorizerTokenProvider azureauth.IBearerAuthorizerTokenProvider
 	// tokenExchanger is exchanger to exchange the bearer token to a refresh token
 	tokenExchanger IACRTokenExchanger
 }
 
 // NewACRTokenProvider Ctor
-func NewACRTokenProvider(instrumentationProvider instrumentation.IInstrumentationProvider, tokenExchanger IACRTokenExchanger, azureBearerAuthorizer azureauth.IBearerAuthorizer) *ACRTokenProvider {
+func NewACRTokenProvider(instrumentationProvider instrumentation.IInstrumentationProvider, tokenExchanger IACRTokenExchanger, azureBearerAuthorizerTokenProvider azureauth.IBearerAuthorizerTokenProvider) *ACRTokenProvider {
 	return &ACRTokenProvider{
 		tracerProvider:        instrumentationProvider.GetTracerProvider("ACRTokenProvider"),
 		metricSubmitter:       instrumentationProvider.GetMetricSubmitter(),
-		azureBearerAuthorizer: azureBearerAuthorizer,
+		azureBearerAuthorizerTokenProvider: azureBearerAuthorizerTokenProvider,
 		tokenExchanger:        tokenExchanger,
 	}
 }
@@ -48,14 +48,13 @@ func (tokenProvider *ACRTokenProvider) GetACRRefreshToken(registry string) (stri
 	tracer := tokenProvider.tracerProvider.GetTracer("GetACRRefreshToken")
 	tracer.Info("Received", "registry", registry)
 
-	// Refresh token if needed
-	err := azureauth.RefreshBearerAuthorizer(tokenProvider.azureBearerAuthorizer, context.Background())
+	// Get azure token
+	armToken, err := tokenProvider.azureBearerAuthorizerTokenProvider.GetOAuthToken(context.Background())
 	if err != nil {
-		err = errors.Wrap(err, "ACRTokenProvider.azureauth.RefreshBearerAuthorizer: failed to refresh")
+		err = errors.Wrap(err, "ACRTokenProvider.azureauth.azureBearerAuthorizerTokenProvider: failed")
 		tracer.Error(err, "")
 		return "", err
 	}
-	armToken := tokenProvider.azureBearerAuthorizer.TokenProvider().OAuthToken()
 
 	// Exchange arm token to ACR refresh token
 	registryRefreshToken, err := tokenProvider.tokenExchanger.ExchangeACRAccessToken(registry, armToken)

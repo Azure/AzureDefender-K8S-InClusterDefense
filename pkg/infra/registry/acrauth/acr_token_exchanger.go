@@ -93,25 +93,12 @@ func (tokenExchanger *ACRTokenExchanger) ExchangeACRAccessToken(registry string,
 	}
 
 	// Build HTTP request
-	exchangeURL := fmt.Sprintf("%s://%s/oauth2/exchange", _scheme, registry)
-	exchangeUrl, err := url.Parse(exchangeURL)
+	req, err := generateExchangeTokenHTTPRequest(registry, armToken)
 	if err != nil {
-		return "", fmt.Errorf("failed to parse token exchange url: %w", err)
+		err = errors.Wrap(fmt.Errorf("failed to generate token exchange request: %w", err), "ACRTokenExchanger")
+		tracer.Error(err, "")
+		return "", err
 	}
-	parameters := url.Values{}
-	parameters.Add(_granTypeParameterName, _accessTokenGrantType)
-	parameters.Add(_serviceParameterName, exchangeUrl.Hostname())
-	parameters.Add(_accessTokenParameter, armToken)
-	// Seems like tenantId is not required - if ever needed it should be added via:	//parameters.Add("tenant", tenantID) - maybe it is needed on cross tenant
-	// Not adding it for now...
-
-	req, err := http.NewRequest(_postHTTPRequestType, exchangeURL, strings.NewReader(parameters.Encode()))
-	if err != nil {
-		return "", fmt.Errorf("failed to construct token exchange reqeust: %w", err)
-	}
-
-	req.Header.Add(_contentTypeHeaderName, _applicationUrlEncodedContentType)
-	req.Header.Add(_contentLengthHeaderName, strconv.Itoa(len(parameters.Encode())))
 
 	// Creates a defer to close request on panic
 	var resp *http.Response
@@ -127,10 +114,54 @@ func (tokenExchanger *ACRTokenExchanger) ExchangeACRAccessToken(registry string,
 	}
 
 	// If error
-	if resp.StatusCode != 200 {
-		responseBytes, _ := ioutil.ReadAll(resp.Body)
-		err = errors.Wrap(fmt.Errorf("ACR token exchange endpoint returned error status: %d. body: %s", resp.StatusCode, string(responseBytes)), "ACRTokenExchanger")
+	if resp.StatusCode != http.StatusOK {
+		if resp.Body != nil {
+			responseBytes, _ := ioutil.ReadAll(resp.Body)
+			err = errors.Wrap(fmt.Errorf("ACR token exchange endpoint returned error status: %d. body: %s", resp.StatusCode, string(responseBytes)), "ACRTokenExchanger")
+		} else {
+			err = errors.Wrap(fmt.Errorf("ACR token exchange endpoint returned error status: %d", resp.StatusCode), "ACRTokenExchanger")
+		}
 		tracer.Error(err, "")
+		return "", err
+	}
+
+	refreshToken, err := extractRefreshTokenFromExchangeTokenHTTPResponse(resp)
+	if err != nil {
+		err = errors.Wrap(fmt.Errorf("failed to extract refresh token from response: %w", err), "ACRTokenExchanger")
+		tracer.Error(err, "")
+		return "", err
+	}
+
+	return refreshToken, nil
+}
+
+func generateExchangeTokenHTTPRequest(registry string, armToken string) (*http.Request, error) {
+	exchangeURL := fmt.Sprintf("%s://%s/oauth2/exchange", _scheme, registry)
+	exchangeUrl, err := url.Parse(exchangeURL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse token exchange url: %w", err)
+	}
+	parameters := url.Values{}
+	parameters.Add(_granTypeParameterName, _accessTokenGrantType)
+	parameters.Add(_serviceParameterName, exchangeUrl.Hostname())
+	parameters.Add(_accessTokenParameter, armToken)
+	// Seems like tenantId is not required - if ever needed it should be added via:	//parameters.Add("tenant", tenantID) - maybe it is needed on cross tenant
+	// Not adding it for now...
+
+	req, err := http.NewRequest(_postHTTPRequestType, exchangeURL, strings.NewReader(parameters.Encode()))
+	if err != nil {
+		return nil, fmt.Errorf("failed to construct token exchange reqeust: %w", err)
+	}
+
+	req.Header.Add(_contentTypeHeaderName, _applicationUrlEncodedContentType)
+	req.Header.Add(_contentLengthHeaderName, strconv.Itoa(len(parameters.Encode())))
+
+	return req, nil
+}
+
+func extractRefreshTokenFromExchangeTokenHTTPResponse(resp *http.Response) (string, error) {
+	if resp.Body == nil {
+		err := errors.Wrap(fmt.Errorf("ACR token exchange endpoint returned empty body status: %d", resp.StatusCode), "ACRTokenExchanger")
 		return "", err
 	}
 
@@ -138,7 +169,6 @@ func (tokenExchanger *ACRTokenExchanger) ExchangeACRAccessToken(registry string,
 	responseBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		err = errors.Wrap(fmt.Errorf("failed to read request body: %w", err), "ACRTokenExchanger")
-		tracer.Error(err, "")
 		return "", err
 	}
 
@@ -147,13 +177,11 @@ func (tokenExchanger *ACRTokenExchanger) ExchangeACRAccessToken(registry string,
 	err = json.Unmarshal(responseBytes, &tokenResp)
 	if err != nil {
 		err = errors.Wrap(fmt.Errorf("failed to read token exchange response: %w. response: %s", err, string(responseBytes)), "ACRTokenExchanger")
-		tracer.Error(err, "")
 		return "", err
 	}
 
 	if tokenResp.RefreshToken == "" {
 		err = errors.Wrap(_refreshTokenEmptyError, "ACRTokenExchanger")
-		tracer.Error(err, "")
 		return "", err
 	}
 

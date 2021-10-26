@@ -14,6 +14,13 @@ const (
 	_imageScanTemplateName = "ImageVulnerabilityScanQuery"
 )
 
+type IARGQueryGenerator interface {
+	// GenerateImageVulnerabilityScanQuery generates a parsed container image scan results query for image using provided parameters
+	GenerateImageVulnerabilityScanQuery(queryParameters *ContainerVulnerabilityScanResultsQueryParameters) (string, error)
+}
+
+var _ IARGQueryGenerator = &ARGQueryGenerator{}
+
 // ARGQueryGenerator QueryGenerator creates ARG queries from pre-defined templates
 type ARGQueryGenerator struct {
 	// containerVulnerabilityScanResultsQueryTemplate  is the go template of the ARG query.
