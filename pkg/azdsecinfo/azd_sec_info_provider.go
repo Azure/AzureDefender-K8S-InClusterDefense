@@ -20,11 +20,6 @@ const (
 	_defaultTimeDurationGetContainersVulnerabilityScanInfo = 2500 * time.Millisecond // 2.5 seconds - can't multiply float in seconds
 )
 
-var (
-	_tag2DigestTimeoutErr      = errors.New("Tag2Digest timeout Error")
-	_argDataProviderTimeoutErr = errors.New("ARGDataProvider timeout Error")
-)
-
 // IAzdSecInfoProvider represents interface for providing azure defender security information
 type IAzdSecInfoProvider interface {
 	// GetContainersVulnerabilityScanInfo receives pod template spec containing containers list, and returns their fetched ContainersVulnerabilityScanInfo
@@ -89,9 +84,17 @@ func (provider *AzdSecInfoProvider) GetContainersVulnerabilityScanInfo(podSpec *
 
 	// Choose the first thread that is finish.
 	select {
+	// No timeout case:
 	case _ = <-chanTimeout:
 		close(chanTimeout)
-		return containerVulnerabilityScanInfo, err
+		if err != nil {
+			err = errors.Wrap(err, "GetContainersVulnerabilityScanInfo finished to fetch resulsts and encountered with error.")
+			tracer.Error(err, "")
+			return nil, err
+		}
+		return containerVulnerabilityScanInfo, nil
+
+	// Timeout case:
 	case <-time.After(provider.getContainersVulnerabilityScanInfoTimeoutDuration):
 		//TODO close channel!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 		//TODO Implement cache that will check if it is the first time that got timeout error or it is the second time (if it is the second time then it should return error and don't add unscanned metadata!!)
@@ -142,6 +145,7 @@ func (provider *AzdSecInfoProvider) getContainersVulnerabilityScanInfo(podSpec *
 		// Add it to slice
 		vulnSecInfoContainers = append(vulnSecInfoContainers, vulnerabilitySecInfo)
 	}
+
 	return vulnSecInfoContainers, nil
 }
 

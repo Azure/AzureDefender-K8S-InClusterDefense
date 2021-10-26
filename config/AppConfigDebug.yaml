@@ -91,4 +91,4 @@ deployment:
 
 azdSecInfoProvider:
   GetContainersVulnerabilityScanInfoTimeoutDuration:
-    timeDurationInMS: 5000
+    timeDurationInMS: 10000
