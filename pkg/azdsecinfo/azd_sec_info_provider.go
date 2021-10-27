@@ -114,11 +114,11 @@ func (provider *AzdSecInfoProvider) getVulnSecInfoContainers(podSpec *corev1.Pod
 			tracer.Error(err, "")
 			return nil, err
 		}
-		// If an error occurred during getSingleContainerVulnerabilityScanInfo, update error and wait for all goroutines to finish
-		if vulnerabilitySecInfoWrapper.Err != nil {
+		if vulnerabilitySecInfoWrapper == nil {
+			err = utils.NilArgumentError
+		} else if vulnerabilitySecInfoWrapper.Err != nil { // If an error occurred during getSingleContainerVulnerabilityScanInfo, update error and wait for all goroutines to finish
 			err = vulnerabilitySecInfoWrapper.Err
-		} else {
-			// Add scan info to slice
+		} else { // No errors - add scan info to slice
 			vulnerabilitySecInfo, canConvert := vulnerabilitySecInfoWrapper.DataWrapper.(*contracts.ContainerVulnerabilityScanInfo)
 			if !canConvert{
 				wrappedError := errors.Wrap(utils.CantConvertChannelDataWrapper, "failed to convert ChannelDataWrapper.DataWrapper to *contracts.ContainerVulnerabilityScanInfo")
@@ -127,7 +127,6 @@ func (provider *AzdSecInfoProvider) getVulnSecInfoContainers(podSpec *corev1.Pod
 			}
 			vulnSecInfoContainers = append(vulnSecInfoContainers, vulnerabilitySecInfo)
 		}
-
 	}
 	close(vulnerabilitySecInfoChannel)
 
