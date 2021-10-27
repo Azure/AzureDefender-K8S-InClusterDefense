@@ -11,6 +11,7 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/retrypolicy"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/utils"
 	"github.com/go-redis/redis/v8"
+	"github.com/pkg/errors"
 	"time"
 )
 
@@ -56,7 +57,7 @@ func (client *RedisCacheClient) Get(ctx context.Context, key string) (string, er
 		func() (string, error) { return client.redisClient.Get(ctx, key).Result() },
 		/*handler ShouldRetryOnSpecificError - handle with key is missing error*/
 		func(err error) bool {
-			if err == redis.Nil { // In case that key is missing
+			if errors.Is(err, redis.Nil) { // In case that key is missing
 				client.metricSubmitter.SendMetric(1, cachemetrics.NewCacheClientGetMetric(client, operations.MISS))
 				tracer.Info("Missing Key", "Key", key)
 				err = NewMissingKeyCacheError(key)
@@ -97,10 +98,11 @@ func (client *RedisCacheClient) Set(ctx context.Context, key string, value strin
 		// Action - set the values redis client.
 		func() error { return client.redisClient.Set(ctx, key, value, expiration).Err() },
 		// HandleError - if the err is redis.Nil then it means that the get is not exist.
-		func(err error) bool { return err == redis.Nil },
+		// TODO @liorkesten -- How is this related to set??
+		func(err error) bool { return errors.Is(err, redis.Nil) },
 	)
 
-	if err != nil && err != redis.Nil {
+	if err != nil && !errors.Is(err, redis.Nil) {
 		client.metricSubmitter.SendMetric(1, cachemetrics.NewSetErrEncounteredMetric(err, _redisClientType))
 		tracer.Error(err, "Failed to set a key", "Key", key, "Value", value, "Expiration", expiration)
 		return err
