@@ -74,41 +74,86 @@ func (provider *AzdSecInfoProvider) GetContainersVulnerabilityScanInfo(podSpec *
 		return nil, err
 	}
 
-	// Wrap  getContainersVulnerabilityScanInfo with timeout - return the result from the first thread that is finish
-	// TODO use Maayan's wrapper.
-	chanTimeout := make(chan bool, 1)
-	go func() {
-		containerVulnerabilityScanInfo, err = provider.getContainersVulnerabilityScanInfo(podSpec, resourceMetadata, resourceKind)
-		chanTimeout <- true // The value that we insert to the channel is not relevant.
-	}()
+	// Try to get containers vulnerabilities in diff thread.
+	chanTimeout := make(chan *utils.ChannelDataWrapper, 1)
+	go provider.getContainersVulnerabilityScanInfoSyncWrapper(podSpec, resourceMetadata, resourceKind, chanTimeout)
 
-	// Choose the first thread that is finish.
+	// Choose the first thread that finish.
 	select {
 	// No timeout case:
-	case _ = <-chanTimeout:
-		close(chanTimeout)
-		if err != nil {
-			err = errors.Wrap(err, "GetContainersVulnerabilityScanInfo finished to fetch resulsts and encountered with error.")
+	case channelData, isChannelOpen := <-chanTimeout:
+		// Check if channel is open
+		if !isChannelOpen {
+			err = errors.Wrap(utils.ReadFromClosedChannelError, "Channel closed unexpectedly")
 			tracer.Error(err, "")
 			return nil, err
 		}
+
+		// Try to extract []*contracts.ContainerVulnerabilityScanInfo from channelData
+		containerVulnerabilityScanInfo, err = provider.extractContainersVulnerabilityScanInfoFromChannelData(channelData)
+		if err != nil {
+			err = errors.Wrap(err, "failed to extract []*contracts.ContainerVulnerabilityScanInfo from channel data")
+			tracer.Error(err, "")
+			return nil, err
+		}
+
+		// Success path:
+		close(chanTimeout)
+		tracer.Info("GetContainersVulnerabilityScanInfo finished extract []*contracts.ContainerVulnerabilityScanInfo.", "podSpec", podSpec, "containerVulnerabilityScanInfo", containerVulnerabilityScanInfo)
 		return containerVulnerabilityScanInfo, nil
 
 	// Timeout case:
 	case <-time.After(provider.getContainersVulnerabilityScanInfoTimeoutDuration):
-		//TODO close channel!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-		//TODO Implement cache that will check if it is the first time that got timeout error or it is the second time (if it is the second time then it should return error and don't add unscanned metadata!!)
+		//TODO Implement cache that will check if it  the first time that got timeout error or it  the second time (if it  the second time then it should return error and don't add unscanned metadata!!)
 		tracer.Info("GetContainersVulnerabilityScanInfo got timeout - returning unscanned", "timeDurationOfTimeout", provider.getContainersVulnerabilityScanInfoTimeoutDuration)
 		return provider.buildListOfContainerVulnerabilityScanInfoWhenTimeout()
 	}
 }
 
+// getContainersVulnerabilityScanInfoSyncWrapper runs getContainersVulnerabilityScanInfo and insert the result into the channel.
+func (provider *AzdSecInfoProvider) getContainersVulnerabilityScanInfoSyncWrapper(podSpec *corev1.PodSpec, resourceMetadata *metav1.ObjectMeta, resourceKind *metav1.TypeMeta, chanTimeout chan *utils.ChannelDataWrapper) {
+	tracer := provider.tracerProvider.GetTracer("getContainersVulnerabilityScanInfoSyncWrapper")
+	containerVulnerabilityScanInfo, err := provider.getContainersVulnerabilityScanInfo(podSpec, resourceMetadata, resourceKind)
+	channelData := utils.NewChannelDataWrapper(containerVulnerabilityScanInfo, err)
+	chanTimeout <- channelData
+	tracer.Info("channelData inserted to chanTimeout sucessfully", "channelData", channelData)
+}
+
+// extractContainersVulnerabilityScanInfoFromChannelData is method that gets *utils.ChannelDataWrapper and tries to extract the data from the channel.
+func (provider *AzdSecInfoProvider) extractContainersVulnerabilityScanInfoFromChannelData(channelDataWrapper *utils.ChannelDataWrapper) ([]*contracts.ContainerVulnerabilityScanInfo, error) {
+	tracer := provider.tracerProvider.GetTracer("extractContainersVulnerabilityScanInfoFromChannelData")
+	if channelDataWrapper == nil {
+		err := errors.Wrap(utils.NilArgumentError, "got nil channel data")
+		tracer.Error(err, "")
+		return nil, err
+		// Check that the error of channel data is nil
+	}
+	// Extract data from channelDataWrapper
+	data, err := channelDataWrapper.GetData()
+	if err != nil {
+		err = errors.Wrap(err, "returned error from channel")
+		tracer.Error(err, "")
+		return nil, err
+	}
+	// Try to cast.
+	containerVulnerabilityScanInfo, canConvert := data.([]*contracts.ContainerVulnerabilityScanInfo)
+	if !canConvert {
+		err = errors.Wrap(utils.CantConvertChannelDataWrapper, "failed to convert ChannelDataWrapper.DataWrapper to []*contracts.ContainerVulnerabilityScanInfo")
+		tracer.Error(err, "")
+		return nil, err
+	}
+	// Successfully extract data from channel
+	tracer.Info("extractContainersVulnerabilityScanInfoFromChannelData finished to extract data", "data", containerVulnerabilityScanInfo)
+	return containerVulnerabilityScanInfo, nil
+}
+
+// getContainersVulnerabilityScanInfo try to get containers vulnerabilities scan info
 func (provider *AzdSecInfoProvider) getContainersVulnerabilityScanInfo(podSpec *corev1.PodSpec, resourceMetadata *metav1.ObjectMeta, resourceKind *metav1.TypeMeta) ([]*contracts.ContainerVulnerabilityScanInfo, error) {
 	tracer := provider.tracerProvider.GetTracer("getContainersVulnerabilityScanInfo")
 
 	// Convert pull secrets from reference object to strings
 	imagePullSecrets := make([]string, 0, len(podSpec.ImagePullSecrets))
-	// element is a LocalObjectReference{Name}
+	// element  a LocalObjectReference{Name}
 	for _, element := range podSpec.ImagePullSecrets {
 		imagePullSecrets = append(imagePullSecrets, element.Name)
 	}
@@ -169,7 +214,7 @@ func (provider *AzdSecInfoProvider) getSingleContainerVulnerabilityScanInfo(cont
 	}
 	tracer.Info("Container image ref extracted", "imageRef", imageRef)
 
-	// Checks if the image registry is not ACR.
+	// Checks if the image registry  not ACR.
 	if !registryutils.IsRegistryEndpointACR(imageRef.Registry()) {
 		tracer.Info("Image from another registry than ACR received", "Registry", imageRef.Registry())
 		return provider.buildContainerVulnerabilityScanInfoUnScannedWithReason(container, contracts.ImageIsNotInACRRegistryUnscannedReason), nil
@@ -218,21 +263,21 @@ func (provider *AzdSecInfoProvider) getSingleContainerVulnerabilityScanInfo(cont
 // If the function doesn't recognize the error, then it returns nil, err
 func (provider *AzdSecInfoProvider) tryParseErrToUnscannedWithReason(err error) (*contracts.UnscannedReason, bool) {
 	tracer := provider.tracerProvider.GetTracer("tryParseErrToUnscannedWithReason")
-	// Check if the err is known error:
+	// Check if the err  known error:
 	// TODO - sort the errors (most frequent should be first error)
 	// TODO add metrics for this method.
-	// Checks if the error is image is not found error
+	// Checks if the error  image  not found error
 	cause := errors.Cause(err)
 	tracer.Info("Extracted the cause of the error", "err", err, "cause", cause)
 	// Try to parse the cause of the error to known error -> if true, resolve to unscanned reason.
 	switch cause.(type) {
-	case *registryerrors.ImageIsNotFoundErr: // Checks if the error is Image DoesNot Exist
+	case *registryerrors.ImageIsNotFoundErr: // Checks if the error  Image DoesNot Exist
 		unscannedReason := contracts.ImageDoesNotExistUnscannedReason
 		return &unscannedReason, true
-	case *registryerrors.UnauthorizedErr: // Checks if the error is unauthorized
+	case *registryerrors.UnauthorizedErr: // Checks if the error  unauthorized
 		unscannedReason := contracts.RegistryUnauthorizedUnscannedReason
 		return &unscannedReason, true
-	case *registryerrors.RegistryIsNotFoundErr: // Checks if the error is NoSuchHost - it means that the registry is not found.
+	case *registryerrors.RegistryIsNotFoundErr: // Checks if the error  NoSuchHost - it means that the registry  not found.
 		unscannedReason := contracts.RegistryDoesNotExistUnscannedReason
 		return &unscannedReason, true
 	default: // Unexpected error

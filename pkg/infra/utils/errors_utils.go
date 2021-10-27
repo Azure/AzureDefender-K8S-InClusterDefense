@@ -5,7 +5,9 @@ import (
 )
 
 var (
-	NilArgumentError = errors.New("NilArgumentError")
+	NilArgumentError              = errors.New("NilArgumentError")
+	ReadFromClosedChannelError    = errors.New("ReadFromClosedChannelError")
+	CantConvertChannelDataWrapper = errors.New("Cant Convert Channel Data Wrapper to the designated type")
 )
 
 // IsErrorIsTypeOf gets an error and type of interface and returns true or false if the error caused by some error of type t.

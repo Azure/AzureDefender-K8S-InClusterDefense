@@ -1,7 +1,7 @@
 apiVersion: skaffold/v2beta23
 kind: Config
 metadata:
-  name: AzureDefnder-In-Cluster-Defense-Dev
+  name: azure-defnder-in-cluster-defense-dev
 build:
   artifacts:
     # Dev Image:
@@ -14,13 +14,13 @@ build:
         dockerfile: build/Dockerfile
 profiles:
   # Dev Profile
-  - name: AzureDefnder-In-Cluster-Defense-Dev
+  - name: azureDefnder-in-cluster-defense-dev
     deploy:
       kubeContext: cluster-dev
       # Deploy with helm chart
       helm:
         releases:
-          - name: AzureDefnder-In-Cluster-Defense-Dev
+          - name: azure-defender-in-cluster-defense-dev
             # Path to helm chart
             chartPath: charts/azdproxy
             # Choose the namespace of the deployment

@@ -166,4 +166,4 @@ AzDProxy:
   azdSecInfoProvider:
     GetContainersVulnerabilityScanInfo:
       timeout:
-        timeDurationInMS: 2500
+        timeDurationInMS: 2850

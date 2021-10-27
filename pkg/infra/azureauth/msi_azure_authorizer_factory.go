@@ -93,6 +93,12 @@ func (factory *MSIAzureAuthorizerFactory) createAuthorizer(settings wrappers.IEn
 		return nil, err
 	}
 
+	if factory.configuration.MSIClientId == "" {
+		err := errors.New("Client id can't be empty")
+		tracer.Error(err, "")
+		return nil, err
+	}
+
 	// Set client id for user managed identity (empty for system manged identity)
 	settings.GetValues()[auth.ClientID] = factory.configuration.MSIClientId
 
