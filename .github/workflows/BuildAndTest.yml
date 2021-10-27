@@ -27,7 +27,7 @@ jobs:
     steps:
       - uses: actions/checkout@master
 
-      - run: docker build . -t azuredefendermcrdev.azurecr.io/public/azuredefender/dev/in-cluster-defense:${{ github.sha }}
+      - run: docker build -t azuredefendermcrdev.azurecr.io/public/azuredefender/dev/in-cluster-defense:${{ github.sha }} -f ../build/Dockerfile .
 
       - uses: Azure/container-scan@v0
         with:
