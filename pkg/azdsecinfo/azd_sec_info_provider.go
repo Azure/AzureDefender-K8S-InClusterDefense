@@ -106,36 +106,33 @@ func (provider *AzdSecInfoProvider) getVulnSecInfoContainers(podSpec *corev1.Pod
 		go provider.getSingleContainerVulnerabilityScanInfoSyncWrapper(&podSpec.Containers[i], resourceCtx, vulnerabilitySecInfoChannel)
 	}
 
-	var err error
 	for i := 0; i <  len(podSpec.InitContainers) + len(podSpec.Containers); i++ { // No deadlock as a result of the loop because the number of receivers is identical to the number of senders
-		vulnerabilitySecInfoWrapper, isChannelOpen := <- vulnerabilitySecInfoChannel // Extract all data from channel to make sure there is no goroutine leak
+		vulnerabilitySecInfoWrapper, isChannelOpen := <- vulnerabilitySecInfoChannel // Because the channel is buffered all goroutines will finish executing (no goroutine leak)
 		if !isChannelOpen {
-			err = errors.Wrap(utils.ReadFromClosedChannelError, "failed in AzdSecInfoProvider.getVulnSecInfoContainers. Channel closed unexpectedly")
+			err := errors.Wrap(utils.ReadFromClosedChannelError, "failed in AzdSecInfoProvider.getVulnSecInfoContainers. Channel closed unexpectedly")
 			tracer.Error(err, "")
 			return nil, err
 		}
 		if vulnerabilitySecInfoWrapper == nil {
-			err = utils.NilArgumentError
+			err := utils.NilArgumentError
+			err = errors.Wrap(err, "failed in getSingleContainerVulnerabilityScanInfoSync")
+			tracer.Error(err, "")
+			return nil, err
 		} else if vulnerabilitySecInfoWrapper.Err != nil { // If an error occurred during getSingleContainerVulnerabilityScanInfo, update error and wait for all goroutines to finish
-			err = vulnerabilitySecInfoWrapper.Err
+			err := errors.Wrap(vulnerabilitySecInfoWrapper.Err, "failed in getSingleContainerVulnerabilityScanInfoSync")
+			tracer.Error(err, "")
+			return nil, err
 		} else { // No errors - add scan info to slice
 			vulnerabilitySecInfo, canConvert := vulnerabilitySecInfoWrapper.DataWrapper.(*contracts.ContainerVulnerabilityScanInfo)
 			if !canConvert{
-				wrappedError := errors.Wrap(utils.CantConvertChannelDataWrapper, "failed to convert ChannelDataWrapper.DataWrapper to *contracts.ContainerVulnerabilityScanInfo")
-				tracer.Error(wrappedError, "")
-				err = wrappedError
+				err := errors.Wrap(utils.CantConvertChannelDataWrapper, "failed to convert ChannelDataWrapper.DataWrapper to *contracts.ContainerVulnerabilityScanInfo")
+				tracer.Error(err, "")
+				return nil, err
 			}
 			vulnSecInfoContainers = append(vulnSecInfoContainers, vulnerabilitySecInfo)
 		}
 	}
 	close(vulnerabilitySecInfoChannel)
-
-	// If an error occurred during one of  'getSingleContainerVulnerabilityScanInfo' goroutines
-	if err != nil {
-		err = errors.Wrap(err, "failed in getSingleContainerVulnerabilityScanInfoSyncWrapper")
-		tracer.Error(err, "")
-		return nil, err
-	}
 	return vulnSecInfoContainers, nil
 }
 
