@@ -75,15 +75,17 @@ func (suite *TestSuite) TestEnvAzureAuthorizerFactory_CreateArmAuthorizer_Develo
 
 	utils.UpdateDeploymentForTests(&utils.DeploymentConfiguration{IsLocalDevelopment: true})
 	suite.authSettingsMock.On("GetEnvironment").Return(suite.env).Once()
-	suite.authSettingsMock.On("GetValues").Return(suite.values).Times(3)
+	suite.authSettingsMock.On("GetValues").Return(suite.values).Times(2)
 	suite.authWrapperMock.On("GetSettingsFromEnvironment").Return(suite.authSettingsMock, nil).Once()
 	suite.authWrapperMock.On("NewAuthorizerFromCLIWithResource", _expectedValues[auth.Resource]).Return(suite.authorizer, nil).Once()
+
+	expectedValues := map[string]string{auth.Resource: azure.PublicCloud.ResourceManagerEndpoint}
 
 	authorizer, err := suite.factory.CreateARMAuthorizer()
 
 	suite.Nil(err)
 	suite.Equal(suite.authorizer, authorizer)
-	suite.Equal(_expectedValues, suite.values)
+	suite.Equal(expectedValues, suite.values)
 	assertExpectations(suite)
 }
 
@@ -101,7 +103,7 @@ func (suite *TestSuite) Test_GetSettingsError() {
 
 func (suite *TestSuite) TestEnvAzureAuthorizerFactory_CreateArmAuthorizer_EmptyClientID_ShouldReturnError() {
 
-	utils.UpdateDeploymentForTests(&utils.DeploymentConfiguration{IsLocalDevelopment: true})
+	utils.UpdateDeploymentForTests(&utils.DeploymentConfiguration{IsLocalDevelopment: false})
 	suite.authSettingsMock.On("GetEnvironment").Return(suite.env).Once()
 	suite.authSettingsMock.On("GetValues").Return(suite.values).Times(3)
 	suite.authWrapperMock.On("GetSettingsFromEnvironment").Return(suite.authSettingsMock, nil).Once()

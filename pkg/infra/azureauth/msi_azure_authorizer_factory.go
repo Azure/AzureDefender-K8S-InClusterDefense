@@ -93,22 +93,23 @@ func (factory *MSIAzureAuthorizerFactory) createAuthorizer(settings wrappers.IEn
 		return nil, err
 	}
 
+	// If Local development
+	if utils.GetDeploymentInstance().IsLocalDevelopment() {
+		// Local development - az cli auth
+		return factory.authWrapper.NewAuthorizerFromCLIWithResource(settings.GetValues()[auth.Resource])
+	}
+
 	if factory.configuration.MSIClientId == "" {
 		err := errors.New("Client id can't be empty")
 		tracer.Error(err, "")
 		return nil, err
 	}
 
+	tracer.Info("Settings", "ClientID", factory.configuration.MSIClientId)
+
 	// Set client id for user managed identity (empty for system manged identity)
 	settings.GetValues()[auth.ClientID] = factory.configuration.MSIClientId
 
-	tracer.Info("Settings", "ClientID", factory.configuration.MSIClientId)
-
-	// If Local development
-	if utils.GetDeploymentInstance().IsLocalDevelopment() {
-		// Local development - az cli auth
-		return factory.authWrapper.NewAuthorizerFromCLIWithResource(settings.GetValues()[auth.Resource])
-	}
 	// Get MSI authorizer
 	return settings.GetMSIAuthorizer()
 }

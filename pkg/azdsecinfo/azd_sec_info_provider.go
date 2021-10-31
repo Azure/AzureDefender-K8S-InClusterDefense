@@ -57,7 +57,7 @@ func NewAzdSecInfoProvider(instrumentationProvider instrumentation.IInstrumentat
 		metricSubmitter:    instrumentationProvider.GetMetricSubmitter(),
 		argDataProvider:    argDataProvider,
 		tag2digestResolver: tag2digestResolver,
-		getContainersVulnerabilityScanInfoTimeoutDuration: utils.ParseTimeoutConfigurationToDurationOrDefault(GetContainersVulnerabilityScanInfoTimeoutDuration, _defaultTimeDurationGetContainersVulnerabilityScanInfo /*Default time.Duration*/),
+		getContainersVulnerabilityScanInfoTimeoutDuration: GetContainersVulnerabilityScanInfoTimeoutDuration.ParseTimeoutConfigurationToDuration(),
 	}
 }
 

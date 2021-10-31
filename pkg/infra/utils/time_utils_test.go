@@ -7,39 +7,21 @@ import (
 )
 
 var (
-	_configuration3Sec = TimeoutConfiguration{TimeDuration: 5, TimeUnit: "s"}
-	_duration3Sec      = 3 * time.Second
+	_configuration3Sec = TimeoutConfiguration{TimeDurationInMS: 5}
 )
 
 type TimeUtilsTestSuite struct {
 	suite.Suite
 }
 
-func (suite *TimeUtilsTestSuite) Test_ParseTimeoutConfigurationToDurationOrDefault_validConfiguration_shouldNotUseDefault() {
+func (suite *TimeUtilsTestSuite) Test_ParseTimeoutConfigurationToDuration_validConfiguration_shouldNotUseDefault() {
 	// Setup
-	expected := 5 * time.Second
+	expected := 5 * time.Millisecond
 	// Act
-	actual := ParseTimeoutConfigurationToDurationOrDefault(&_configuration3Sec, _duration3Sec)
+	actual := _configuration3Sec.ParseTimeoutConfigurationToDuration()
 
 	// Test
 	suite.Exactly(expected, actual)
-}
-
-func (suite *TimeUtilsTestSuite) Test_ParseTimeoutConfigurationToDurationOrDefault_nilConfiguration_shouldUseDefault() {
-	// Act
-	actual := ParseTimeoutConfigurationToDurationOrDefault(nil, _duration3Sec)
-
-	// Test
-	suite.Exactly(_duration3Sec, actual)
-}
-
-func (suite *TimeUtilsTestSuite) Test_ParseTimeoutConfigurationToDurationOrDefault_invalidConfiguration_shouldUseDefault() {
-	invalidConfiguration := TimeoutConfiguration{TimeDuration: 5, TimeUnit: "lior"}
-	// Act
-	actual := ParseTimeoutConfigurationToDurationOrDefault(&invalidConfiguration, _duration3Sec)
-
-	// Test
-	suite.Exactly(_duration3Sec, actual)
 }
 
 // We need this function to kick off the test suite, otherwise
