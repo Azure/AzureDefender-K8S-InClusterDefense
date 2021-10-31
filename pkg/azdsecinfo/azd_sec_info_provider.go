@@ -118,19 +118,23 @@ func (provider *AzdSecInfoProvider) getVulnSecInfoContainers(podSpec *corev1.Pod
 			err = errors.Wrap(err, "failed in getSingleContainerVulnerabilityScanInfoSync")
 			tracer.Error(err, "")
 			return nil, err
-		} else if vulnerabilitySecInfoWrapper.Err != nil { // If an error occurred during getSingleContainerVulnerabilityScanInfo, update error and wait for all goroutines to finish
+		}
+		// Check fo an error during getSingleContainerVulnerabilityScanInfo
+		if vulnerabilitySecInfoWrapper.Err != nil {
 			err := errors.Wrap(vulnerabilitySecInfoWrapper.Err, "failed in getSingleContainerVulnerabilityScanInfoSync")
 			tracer.Error(err, "")
 			return nil, err
-		} else { // No errors - add scan info to slice
-			vulnerabilitySecInfo, canConvert := vulnerabilitySecInfoWrapper.DataWrapper.(*contracts.ContainerVulnerabilityScanInfo)
-			if !canConvert{
-				err := errors.Wrap(utils.CantConvertChannelDataWrapper, "failed to convert ChannelDataWrapper.DataWrapper to *contracts.ContainerVulnerabilityScanInfo")
-				tracer.Error(err, "")
-				return nil, err
-			}
-			vulnSecInfoContainers = append(vulnSecInfoContainers, vulnerabilitySecInfo)
 		}
+		// Convert vulnerabilitySecInfoWrapper.DataWrapper to vulnerabilitySecInfo
+		vulnerabilitySecInfo, canConvert := vulnerabilitySecInfoWrapper.DataWrapper.(*contracts.ContainerVulnerabilityScanInfo)
+		if !canConvert {
+			err := errors.Wrap(utils.CantConvertChannelDataWrapper, "failed to convert ChannelDataWrapper.DataWrapper to *contracts.ContainerVulnerabilityScanInfo")
+			tracer.Error(err, "")
+			return nil, err
+		}
+
+		// No errors - add scan info to slice
+		vulnSecInfoContainers = append(vulnSecInfoContainers, vulnerabilitySecInfo)
 	}
 	close(vulnerabilitySecInfoChannel)
 	return vulnSecInfoContainers, nil
@@ -142,7 +146,7 @@ func (provider *AzdSecInfoProvider) getSingleContainerVulnerabilityScanInfoSyncW
 		vulnerabilitySecInfoChannel <- utils.NewChannelDataWrapper(provider.getSingleContainerVulnerabilityScanInfo(container, resourceCtx))
 }
 
-// getSingleContainerVulnerabilityScanInfo receives a container and it's belogned deployed resource context, and returns fetched ContainerVulnerabilityScanInfo
+// getSingleContainerVulnerabilityScanInfo receives a container, and it's belonged deployed resource context, and returns fetched ContainerVulnerabilityScanInfo
 func (provider *AzdSecInfoProvider) getSingleContainerVulnerabilityScanInfo(container *corev1.Container, resourceCtx *tag2digest.ResourceContext) (*contracts.ContainerVulnerabilityScanInfo, error) {
 	tracer := provider.tracerProvider.GetTracer("getSingleContainerVulnerabilityScanInfo")
 	tracer.Info("Received:", "container image ref", container.Image, "resourceCtx", resourceCtx)
