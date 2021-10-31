@@ -15,7 +15,6 @@ import (
 const (
 	_retryAttempts int = 3
 	_retryDuration     = 10
-	_timeUnit          = "ms"
 )
 
 var (
@@ -44,10 +43,10 @@ func (suite *TestSuite) TestCraneWrapper_NumberOfAttempts() {
 	if err != nil {
 		suite.Fail("failed to compile regex")
 	}
-	// TODO remove skip and update test according to new DigestWithRetry method
+	// TODO remove skip and update test according to new Digest method
 	suite.T().Skip()
-	//_, err = suite.craneWrapper.DigestWithRetry("")
-	// number of attempts is tested only if DigestWithRetry has failed
+	//_, err = suite.craneWrapper.Digest("")
+	// number of attempts is tested only if Digest has failed
 	suite.NotNil(err, "Digest hasn't failed")
 	// Extract number of actual attempts
 	numberOfRetries, err := strconv.Atoi(re.FindString(err.Error()))
@@ -71,9 +70,9 @@ func (suite *TestSuite) TestCraneWrapper_RetriesBackOff() {
 	constDurationTime := util.GetDurationMilliseconds(startTime)
 	startTime = time.Now()
 	// TODO change empty string to a failing image tag
-	// TODO remove skip and update test according to new DigestWithRetry method
+	// TODO remove skip and update test according to new Digest method
 	suite.T().Skip()
-	// suite.craneWrapper.DigestWithRetry("")
+	// suite.craneWrapper.Digest("")
 	// Calculate running time for increasing delay
 	increasingDurationTime := util.GetDurationMilliseconds(startTime)
 	// TODO from > to <

@@ -12,7 +12,6 @@ import (
 var (
 	_configuration                 = RetryPolicyConfiguration{RetryAttempts: 4, RetryDurationInMS: 3}
 	_expectedConfigurationDuration = time.Duration(_configuration.RetryDurationInMS) * time.Millisecond
-	_expectedDefaultDuration       = time.Duration(_defaultTimeDurationInMS) * time.Millisecond
 )
 
 type TestSuite struct {
@@ -54,49 +53,10 @@ func (suite *TestSuite) Test_NewRetryPolicy_NotNilConfiguration_ShouldReturnInst
 	suite.Equal(_expectedConfigurationDuration, r.duration)
 }
 
-func (suite *TestSuite) Test_NewRetryPolicy_InvalidConfigurationNegativeRetryAttempts_ShouldUeDefaultValues() {
-	r := NewRetryPolicy(instrumentation.NewNoOpInstrumentationProvider(),
-		&RetryPolicyConfiguration{RetryAttempts: -1, RetryDurationInMS: _configuration.RetryDurationInMS})
-	// Test
-	suite.Equal(_defaultRetryAttempts, r.retryAttempts)
-	suite.Equal(_expectedConfigurationDuration, r.duration)
-}
-
-func (suite *TestSuite) Test_NewRetryPolicy_InvalidConfigurationNegativeRetryDuration_ShouldReturnError() {
-	r := NewRetryPolicy(
-		instrumentation.NewNoOpInstrumentationProvider(),
-		&RetryPolicyConfiguration{RetryAttempts: _configuration.RetryAttempts, RetryDurationInMS: -1})
-	// Test
-	suite.Equal(_configuration.RetryAttempts, r.retryAttempts)
-	suite.Equal(_expectedDefaultDuration, r.duration)
-}
-
-func (suite *TestSuite) Test_GetBackOffDuration_NilConfiguration_ShouldReturnError() {
-	d := GetBackOffDuration(nil)
-	// Test
-	suite.Equal(_expectedDefaultDuration, d)
-}
-
 func (suite *TestSuite) Test_GetBackOffDuration_NotNilConfiguration_ShouldReturnInstance() {
-	d := GetBackOffDuration(&_configuration)
+	d := _configuration.GetBackOffDuration()
 
 	suite.Equal(_expectedConfigurationDuration, d)
-}
-
-func (suite *TestSuite) Test_GetBackOffDuration_InvalidConfigurationNegativeRetryAttempts_ShouldReturnOk() {
-	// Should be ok because GetBackOffDuration is not using retryAttempts of the configuration
-	d := GetBackOffDuration(&RetryPolicyConfiguration{RetryAttempts: -1, RetryDurationInMS: _configuration.RetryDurationInMS})
-
-	// Test
-	suite.Equal(_expectedConfigurationDuration, d)
-
-}
-
-func (suite *TestSuite) Test_GetBackOffDuration_InvalidConfigurationNegativeRetryDuration_ShouldUseDefault() {
-	d := GetBackOffDuration(&RetryPolicyConfiguration{RetryAttempts: _configuration.RetryAttempts, RetryDurationInMS: -1})
-
-	// Test
-	suite.Equal(_expectedDefaultDuration, d)
 }
 
 func (suite *TestSuite) Test_RetryActionString_ActionNil_ShouldReturnError() {

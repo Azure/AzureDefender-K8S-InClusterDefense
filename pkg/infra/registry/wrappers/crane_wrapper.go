@@ -19,9 +19,10 @@ var (
 type ICraneWrapper interface {
 	// Digest get image digest using image ref using crane Digest call
 	Digest(ref string, opt ...crane.Option) (string, error)
-	// DigestWithRetry calls Digest to get image's digest, with retries
-	DigestWithRetry(ref string, opt ...crane.Option) (res string, err error)
 }
+
+// CraneWrapper implements ICraneWrapper interface
+var _ ICraneWrapper = (*CraneWrapper)(nil)
 
 // CraneWrapper wraps crane operations
 type CraneWrapper struct {
@@ -43,39 +44,12 @@ func NewCraneWrapper(instrumentationProvider instrumentation.IInstrumentationPro
 }
 
 // Digest get image digest using image ref using crane Digest call
-// Todo add auth options to pull secrets and ACR MSI based - currently only supports docker config auth
-// K8s chain pull secrets ref: https://github.com/google/go-containerregistry/blob/main/pkg/authn/k8schain/k8schain.go
-// ACR ref: // https://github.com/Azure/acr-docker-credential-helper/blob/master/src/docker-credential-acr/acr_login.go
-func (craneWrapper *CraneWrapper) Digest(ref string, opt ...crane.Option) (string, error) {
-	//(resolved digest of tomerwdevops.azurecr.io/imagescan:62 - https://ms.portal.azure.com/#@microsoft.onmicrosoft.com/resource/subscriptions/4009f3ee-43c4-4f19-97e4-32b6f2285a68/resourceGroups/tomerwdevops/providers/Microsoft.ContainerRegistry/registries/tomerwdevops/repository)
+func (craneWrapper *CraneWrapper) Digest(imageReference string, opt ...crane.Option) (string, error) {
 	tracer := craneWrapper.tracerProvider.GetTracer("Digest")
-	digest, err := crane.Digest(ref, opt...)
-	if err != nil {
-		tracer.Error(err, "error encountered while trying to get digest with crane.")
-		err, ok := craneerrors.TryParseCraneErrToRegistryKnownErr(ref, err)
-		if !ok {
-			tracer.Error(err, "failed to parse crane error to known error")
-		} else {
-			tracer.Info("Success to parse crane error to known error")
-		}
-		return "", err
-
-	} else if digest == "" {
-		err = _emptyDigestErr
-		tracer.Error(err, "")
-		return "", err
-	}
-	tracer.Info("Crane Resolved digest", "image reference", ref, "options", opt, "digest", digest)
-	return digest, nil
-}
-
-// DigestWithRetry re-executing Digest in case of a failure according to retryPolicy
-func (craneWrapper *CraneWrapper) DigestWithRetry(imageReference string, opt ...crane.Option) (string, error) {
-	tracer := craneWrapper.tracerProvider.GetTracer("DigestWithRetry")
 
 	digest, err := craneWrapper.retryPolicy.RetryActionString(
 		/*action ActionString*/
-		func() (string, error) { return craneWrapper.Digest(imageReference, opt...) },
+		func() (string, error) { return craneWrapper.getDigest(imageReference, opt...) },
 
 		/*handle ShouldRetryOnSpecificError*/
 		func(err error) bool {
@@ -96,5 +70,32 @@ func (craneWrapper *CraneWrapper) DigestWithRetry(imageReference string, opt ...
 	}
 
 	tracer.Info("Managed to extract digest", "Image ref", imageReference, "digest", digest)
+	return digest, nil
+}
+
+// Digest get image digest using image ref using crane Digest call
+// Todo add auth options to pull secrets and ACR MSI based - currently only supports docker config auth
+// K8s chain pull secrets ref: https://github.com/google/go-containerregistry/blob/main/pkg/authn/k8schain/k8schain.go
+// ACR ref: // https://github.com/Azure/acr-docker-credential-helper/blob/master/src/docker-credential-acr/acr_login.go
+func (craneWrapper *CraneWrapper) getDigest(ref string, opt ...crane.Option) (string, error) {
+	//(resolved digest of tomerwdevops.azurecr.io/imagescan:62 - https://ms.portal.azure.com/#@microsoft.onmicrosoft.com/resource/subscriptions/4009f3ee-43c4-4f19-97e4-32b6f2285a68/resourceGroups/tomerwdevops/providers/Microsoft.ContainerRegistry/registries/tomerwdevops/repository)
+	tracer := craneWrapper.tracerProvider.GetTracer("Digest")
+	digest, err := crane.Digest(ref, opt...)
+	if err != nil {
+		tracer.Error(err, "error encountered while trying to get digest with crane.")
+		knownErr, ok := craneerrors.TryParseCraneErrToRegistryKnownErr(ref, err)
+		if !ok {
+			tracer.Error(err, "failed to parse crane error to known error")
+			return "", err
+		}
+		tracer.Info("Success to parse crane error to known error", "knownErr", knownErr)
+		return "", knownErr
+
+	} else if digest == "" {
+		err = _emptyDigestErr
+		tracer.Error(err, "")
+		return "", err
+	}
+	tracer.Info("Crane Resolved digest", "image reference", ref, "options", opt, "digest", digest)
 	return digest, nil
 }

@@ -114,12 +114,12 @@ func (tokenExchanger *ACRTokenExchanger) ExchangeACRAccessToken(registry string,
 	err = tokenExchanger.retryPolicy.RetryAction(
 		func() error {
 			resp, err = tokenExchanger.httpClient.Do(req)
-			if err == nil {
-				return nil
+			if err != nil {
+				// err != nil so set response to nil and return error
+				resp = nil
+				return err
 			}
-			// Err != nil so set response to nil and return error
-			resp = nil
-			return err
+			return nil
 		},
 		// Retry on all errors except not NoSuchError
 		func(err error) bool { return !tokenExchanger.isNoSuchHostErr(err) },
@@ -133,6 +133,10 @@ func (tokenExchanger *ACRTokenExchanger) ExchangeACRAccessToken(registry string,
 		}
 
 		err = errors.Wrap(err, "failed to send token exchange request")
+		tracer.Error(err, "")
+		return "", err
+	} else if resp == nil {
+		err = errors.New("unexpected behavior - response is nil while err is also nil")
 		tracer.Error(err, "")
 		return "", err
 	}

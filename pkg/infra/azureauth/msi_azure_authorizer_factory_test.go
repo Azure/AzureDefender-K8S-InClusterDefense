@@ -43,12 +43,15 @@ type TestSuite struct {
 // This will run before each test in the suite
 func (suite *TestSuite) SetupTest() {
 	utils.UpdateDeploymentForTests(&utils.DeploymentConfiguration{IsLocalDevelopment: false})
+	_configuration = &MSIAzureAuthorizerConfiguration{
+		MSIClientId: CLIENT_ID,
+	}
 
 	suite.values = map[string]string{}
 	suite.env = &azure.PublicCloud
 	suite.authSettingsMock = &mocks.IEnvironmentSettingsWrapper{}
 	suite.authWrapperMock = &mocks.IAzureAuthWrapper{}
-	suite.factory = NewMSIEnvAzureAuthorizerFactory(instrumentation.NewNoOpInstrumentationProvider(),_configuration, suite.authWrapperMock)
+	suite.factory = NewMSIEnvAzureAuthorizerFactory(instrumentation.NewNoOpInstrumentationProvider(), _configuration, suite.authWrapperMock)
 	suite.authorizer = autorest.NullAuthorizer{}
 }
 
@@ -84,7 +87,6 @@ func (suite *TestSuite) TestEnvAzureAuthorizerFactory_CreateArmAuthorizer_Develo
 	assertExpectations(suite)
 }
 
-
 func (suite *TestSuite) Test_GetSettingsError() {
 	expectedError := errors.New("SettingsError")
 	utils.UpdateDeploymentForTests(&utils.DeploymentConfiguration{IsLocalDevelopment: false})
@@ -95,6 +97,23 @@ func (suite *TestSuite) Test_GetSettingsError() {
 	suite.True(errors.Is(err, expectedError))
 	suite.Nil(authorizer)
 	assertExpectations(suite)
+}
+
+func (suite *TestSuite) TestEnvAzureAuthorizerFactory_CreateArmAuthorizer_EmptyClientID_ShouldReturnError() {
+
+	utils.UpdateDeploymentForTests(&utils.DeploymentConfiguration{IsLocalDevelopment: true})
+	suite.authSettingsMock.On("GetEnvironment").Return(suite.env).Once()
+	suite.authSettingsMock.On("GetValues").Return(suite.values).Times(3)
+	suite.authWrapperMock.On("GetSettingsFromEnvironment").Return(suite.authSettingsMock, nil).Once()
+	suite.authWrapperMock.On("NewAuthorizerFromCLIWithResource", _expectedValues[auth.Resource]).Return(suite.authorizer, nil).Once()
+
+	// Reset client id
+	suite.factory.configuration.MSIClientId = ""
+	// Act
+	authorizer, err := suite.factory.CreateARMAuthorizer()
+
+	suite.Nil(authorizer)
+	suite.NotNil(err)
 }
 
 func (suite *TestSuite) Test_GetAuthorizerError() {

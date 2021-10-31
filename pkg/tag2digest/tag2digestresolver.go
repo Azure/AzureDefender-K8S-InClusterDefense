@@ -68,7 +68,7 @@ func (resolver *Tag2DigestResolver) Resolve(imageReference registry.IImageRefere
 		if err != nil {
 			// TODO Add tests that checks that we don't try another auth when we should stop.
 			// 		Should be added once @tomerweinberger finished to merge his PR.
-			if resolver.shouldStopTryResolveDueToKnownErr(err) {
+			if !resolver.shouldContinueOnError(err) {
 				err = errors.Wrap(err, "Tag2DigestResolver.Resolve: Failed to get digest on ACRAttachAuth")
 				tracer.Error(err, "")
 				return "", err
@@ -88,7 +88,7 @@ func (resolver *Tag2DigestResolver) Resolve(imageReference registry.IImageRefere
 	// TODO Add fallback on missing pull secret
 	digest, err := resolver.registryClient.GetDigestUsingK8SAuth(imageReference, resourceCtx.namespace, resourceCtx.imagePullSecrets, resourceCtx.serviceAccountName)
 	if err != nil {
-		if resolver.shouldStopTryResolveDueToKnownErr(err) {
+		if !resolver.shouldContinueOnError(err) {
 			err = errors.Wrap(err, "Tag2DigestResolver.Resolve: Failed to get digest on K8SAuth")
 			tracer.Error(err, "")
 			return "", err
@@ -136,15 +136,15 @@ func NewResourceContext(namespace string, imagePullSecrets []string, serviceAcco
 	}
 }
 
-// shouldStopTryResolveDueToKnownErr is method that gets an error and returns true in case that the error is known
+// shouldContinueOnError is method that gets an error and returns true in case that the error is known
 // error that thr resolve method should stop and don't try more authentications to resolve the digest.
-func (resolver *Tag2DigestResolver) shouldStopTryResolveDueToKnownErr(err error) bool {
+func (resolver *Tag2DigestResolver) shouldContinueOnError(err error) bool {
 	errorCause := errors.Cause(err)
 	switch errorCause.(type) {
 	case *registryerrors.ImageIsNotFoundErr,
 		*registryerrors.RegistryIsNotFoundErr:
-		return true
-	default:
 		return false
+	default:
+		return true
 	}
 }

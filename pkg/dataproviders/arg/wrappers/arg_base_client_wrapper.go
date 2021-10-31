@@ -22,7 +22,7 @@ func NewArgBaseClientWrapper(retryPolicyConfig *retrypolicy.RetryPolicyConfigura
 	argBaseClient := argbase.New()
 	// Assign the retry policy configuration to the client.
 	argBaseClient.RetryAttempts = retryPolicyConfig.RetryAttempts
-	retryDuration := retrypolicy.GetBackOffDuration(retryPolicyConfig)
+	retryDuration := retryPolicyConfig.GetBackOffDuration()
 	argBaseClient.RetryDuration = retryDuration
 
 	// Assign the authorizer to the client.

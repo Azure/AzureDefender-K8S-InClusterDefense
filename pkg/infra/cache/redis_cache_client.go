@@ -57,26 +57,22 @@ func (client *RedisCacheClient) Get(ctx context.Context, key string) (string, er
 		func() (string, error) { return client.redisClient.Get(ctx, key).Result() },
 		/*handler ShouldRetryOnSpecificError - handle with key is missing error*/
 		func(err error) bool {
-			if errors.Is(err, redis.Nil) { // In case that key is missing
-				return false
-			}
-
-			client.metricSubmitter.SendMetric(1, cachemetrics.NewGetErrEncounteredMetric(err, _redisClientType))
-			tracer.Error(err, "", "key", key)
-			return true
+			return !errors.Is(err, redis.Nil)
 		},
 	)
 	// In case that get failed
 	if err != nil {
-		if errors.Is(err, redis.Nil) {
-			client.metricSubmitter.SendMetric(1, cachemetrics.NewCacheClientGetMetric(client, operations.MISS))
-			tracer.Info("Missing Key", "Key", key)
-			err = NewMissingKeyCacheError(key)
+		// Check if it is unexpected error
+		if !errors.Is(err, redis.Nil) {
+			err = errors.Wrap(err, "unexpected error while trying to get item from cache")
+			tracer.Error(err, "", "key", key)
 			return "", err
 		}
-		// Unexpected error
-		err = errors.Wrap(err, "unexpected error while trying to get item from cache")
-		tracer.Error(err, "", "key", key)
+
+		// Known error - missing key.
+		client.metricSubmitter.SendMetric(1, cachemetrics.NewCacheClientGetMetric(client, operations.MISS))
+		tracer.Info("Missing Key", "Key", key)
+		err = NewMissingKeyCacheError(key)
 		return "", err
 	}
 

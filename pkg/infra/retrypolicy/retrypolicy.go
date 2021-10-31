@@ -9,11 +9,6 @@ import (
 	"time"
 )
 
-var (
-	_defaultRetryAttempts    = 3
-	_defaultTimeDurationInMS = 10
-)
-
 // ShouldRetryOnSpecificError is function that gets an error and returns true or false if the retry should handle with this error
 // Returns true in case that retry policy doesn't know how to handle with some error, so it will retry another time (according to the retry attempts and retry count)
 // Returns false in case that the retry policy shouldn't retry another try on error specific error.
@@ -60,14 +55,9 @@ type RetryPolicyConfiguration struct {
 
 // NewRetryPolicy Cto'r for retry policy object
 func NewRetryPolicy(instrumentationProvider instrumentation.IInstrumentationProvider, configuration *RetryPolicyConfiguration) *RetryPolicy {
-	duration := GetBackOffDuration(configuration)
-	retryAttempts := configuration.RetryAttempts
-	if retryAttempts <= 0 {
-		retryAttempts = _defaultRetryAttempts
-	}
 	return &RetryPolicy{
-		duration:        duration,
-		retryAttempts:   retryAttempts,
+		duration:        configuration.GetBackOffDuration(),
+		retryAttempts:   configuration.RetryAttempts,
 		tracerProvider:  instrumentationProvider.GetTracerProvider("RetryPolicy"),
 		metricSubmitter: instrumentationProvider.GetMetricSubmitter(),
 	}
@@ -147,13 +137,6 @@ func (r *RetryPolicy) RetryAction(action Action, shouldRetry ShouldRetryOnSpecif
 // GetBackOffDuration uses the RetryPolicyConfiguration instance's RetryDuration (int) and TimeUnit(string)
 // to a return a time.Duration object of the backoff duration
 // In case of invalid argument, use default values for retry policy.
-func GetBackOffDuration(configuration *RetryPolicyConfiguration) time.Duration {
-	// Set duration to default value
-	duration := _defaultTimeDurationInMS
-	// Replace with configuration.RetryDurationInMS in case that it's a valid value.
-	if configuration != nil && configuration.RetryDurationInMS > 0 {
-		duration = configuration.RetryDurationInMS
-	}
-
-	return time.Duration(duration) * time.Millisecond
+func (configuration *RetryPolicyConfiguration) GetBackOffDuration() time.Duration {
+	return time.Duration(configuration.RetryDurationInMS) * time.Millisecond
 }
