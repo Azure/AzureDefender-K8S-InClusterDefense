@@ -18,6 +18,7 @@ Param (
     [string]$region
 )
 
+# TODO Change region param - currenlty if inserting region with space the script fails.
 # Create node resource group variable - MC_<RESOURCE_GROUP>_<CLUSTER_NAME>_<REGION>
 $node_resource_group = "MC_$resource_group`_$cluster_name`_$region"
 
@@ -28,7 +29,8 @@ write-host "Params that were entered:`r`nresource group : $resource_group `r`ncl
 # az login
 
 write-host "extracting subscription"
-$subscription = "TODO"
+$subscription = az account show -o "json" --query "id"
+write-host "Extracted subscription <$id> successfully"
 #######################################################################################################################
 # Step 2: Install azure addon policy in the cluster if not exists
 
@@ -46,12 +48,12 @@ Before installing the Azure Policy Add-on or enabling any of the service feature
 # Step 3: Create block identity (User managed identity) if not exists.
 write-host "Checking if there is already idenity in $node_resource_group resource group"
 $in_cluster_defense_identity_name = "$cluster_name`-in-cluster-defense"
-$data_of_id = az identity show -n $in_cluster_defense_identity_name -g $node_resource_group | ConvertFrom-Json
+$in_cluster_defense_identity_client_id = az identity show -n $in_cluster_defense_identity_name -g $node_resource_group --query "clientId"
 if ($LASTEXITCODE -eq 3)
 {
     write-host "idenity is not exist... creating new MI with name $in_cluster_defense_identity_name at resource group $resource_group"
     # create new identity
-    $data_of_id = az identity create --name $in_cluster_defense_identity_name -g $node_resource_group | ConvertFrom-Json
+    $in_cluster_defense_identity_client_id = az identity create --name $in_cluster_defense_identity_name -g $node_resource_group --query "clientId"
     write-host "Created new MI successfully"
 }
 else
@@ -59,11 +61,22 @@ else
     write-host "idenity is already exists"
 }
 # Extract client id into variable - it will be passed to helm.
-$in_cluster_defense_identity_client_id = $data_of_id.clientId
 write-host "The client id that will be passed to helm of In Cluster Defense MI is: $in_cluster_defense_identity_client_id"
 #######################################################################################################################
 # Step 4: Create RBAC of subscription reader (RBAC of block identity) if not exists
 write-host "Checking if there is already subscription($subscription) reader RBAC for $in_cluster_defense_identity_client_id"
+
+if (az role assignment list --assigne $in_cluster_defense_identity_client_id --role "Reader" --scope "/subscriptions/$subscription" --query "[] | length(@)" -gt 0)
+{
+    write-host "Client id <$clientId> already has subscription reader RBAC."
+
+}
+else
+{
+    write-host "Client id <$clientId> doesn't have subscription reader permission - creating new RBAC"
+    az role assignment create --role "Reader" --description "Subscription reader perm for ARG" --scope "/subscriptions/$subscription" --assignee $in_cluster_defense_identity_client_id
+    write-host "Subscription reader RBAC was created successfully"
+}
 
 #######################################################################################################################
 # Step 5 ?: install Tivan if not exists (for publisher ?)
