@@ -40,6 +40,20 @@ type RedisCacheClientConfiguration struct {
 	TLSConfig *tls.Config
 }
 
+// CacheTablesMapping contains all the client:table mappings
+type CacheTablesMapping struct {
+	// Address host:port address.
+	Address string
+	// TablesMap is mapping between a client and it's table.
+	Tables map[string]int
+}
+
+// NewRedisCacheClientConfiguration creates new RedisCacheClientConfiguration object
+// TODO - make method's signature more generic
+func NewRedisCacheClientConfiguration(address string, table int) *RedisCacheClientConfiguration {
+	return &RedisCacheClientConfiguration{Address: address, Table: table}
+}
+
 func NewRedisBaseClientWrapper(configuration *RedisCacheClientConfiguration) *redis.Client {
 	redisClient := redis.NewClient(&redis.Options{
 		Addr:            configuration.Address,

@@ -37,7 +37,6 @@ type RedisCacheClient struct {
 
 // NewRedisCacheClient is factory for RedisCacheClient
 func NewRedisCacheClient(instrumentationProvider instrumentation.IInstrumentationProvider, redisBaseClient wrappers.IRedisBaseClientWrapper, retryPolicy retrypolicy.IRetryPolicy) *RedisCacheClient {
-
 	return &RedisCacheClient{
 		tracerProvider:  instrumentationProvider.GetTracerProvider("RedisCacheClient"),
 		metricSubmitter: instrumentationProvider.GetMetricSubmitter(),

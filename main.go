@@ -60,8 +60,7 @@ func main() {
 	craneWrapperRetryPolicyConfiguration := new(retrypolicy.RetryPolicyConfiguration)
 	argBaseClientRetryPolicyConfiguration := new(retrypolicy.RetryPolicyConfiguration)
 	redisCacheClientRetryPolicyConfiguration := new(retrypolicy.RetryPolicyConfiguration)
-
-	argDataProviderCacheConfiguration := new(cachewrappers.RedisCacheClientConfiguration)
+	redisCacheTablesMapping := new(cachewrappers.CacheTablesMapping)
 	tokensCacheConfiguration := new(cachewrappers.FreeCacheInMemWrapperCacheConfiguration)
 
 	// Create a map between configuration object and key in main config file
@@ -78,9 +77,9 @@ func main() {
 		"acr.craneWrappersConfiguration.retryPolicyConfiguration": craneWrapperRetryPolicyConfiguration,
 		"arg.argClientConfiguration":                              argClientConfiguration,
 		"deployment":                                              deploymentConfiguration,
-		"cache.argDataProviderCacheConfiguration":                 argDataProviderCacheConfiguration,
-		"cache.tokensCacheConfiguration":                          tokensCacheConfiguration,
-		"cache.Client.retryPolicyConfiguration":              redisCacheClientRetryPolicyConfiguration,
+		"cache.nonInMem.client.clientConfiguration":			   redisCacheTablesMapping,
+		"cache.inMem.tokensCacheConfiguration":                    tokensCacheConfiguration,
+		"cache.nonInMem.client.retryPolicyConfiguration": 		   redisCacheClientRetryPolicyConfiguration,
 	}
 
 	for key, configObject := range keyConfigMap {
@@ -117,6 +116,14 @@ func main() {
 		log.Fatal("main.kubeletIdentityAuthorizerFactory.NewEnvAzureAuthorizerFactory.CreateARMAuthorizer", err)
 	}
 
+	// Create redis clients configurations
+	argDataProviderCacheConfiguration := cachewrappers.NewRedisCacheClientConfiguration(redisCacheTablesMapping.Address, redisCacheTablesMapping.Tables["argDataProviderCacheTable"])
+	tag2digestCacheConfiguration := cachewrappers.NewRedisCacheClientConfiguration(redisCacheTablesMapping.Address, redisCacheTablesMapping.Tables["tag2digestCacheTable"])
+	redisCacheRetryPolicy, err := retrypolicy.NewRetryPolicy(instrumentationProvider, redisCacheClientRetryPolicyConfiguration)
+	if err != nil {
+		log.Fatal("main.retrypolicy.NewRetryPolicy redisCacheRetryPolicy", err)
+	}
+
 	// Registry Client
 	k8sClientConfig, err := k8sclientconfig.GetConfig()
 	if err != nil {
@@ -132,6 +139,9 @@ func main() {
 		log.Fatal("main.kubeletIdentityAuthorizer.bearerAuthorizer type assertion", err)
 
 	}
+	tag2digestRedisCacheBaseClient := cachewrappers.NewRedisBaseClientWrapper(tag2digestCacheConfiguration)
+	// tag2digestCacheClient
+	_ = cache.NewRedisCacheClient(instrumentationProvider, tag2digestRedisCacheBaseClient, redisCacheRetryPolicy)
 
 	acrTokenExchanger := registryauthazure.NewACRTokenExchanger(instrumentationProvider, &http.Client{})
 	acrTokenProvider := registryauthazure.NewACRTokenProvider(instrumentationProvider, acrTokenExchanger, bearerAuthorizer)
@@ -148,16 +158,14 @@ func main() {
 	registryClient := crane.NewCraneRegistryClient(instrumentationProvider, craneWrapper, acrKeychainFactory, k8sKeychainFactory)
 	tag2digestResolver := tag2digest.NewTag2DigestResolver(instrumentationProvider, registryClient)
 
+	// Tag2digest token's cache
+	tag2digestTokenCache := cachewrappers.NewFreeCacheInMem(tokensCacheConfiguration)
+	_ = cache.NewFreeCacheInMemCacheClient(instrumentationProvider, tag2digestTokenCache)
+
 	// ARG
-	//TODO complete it once we merge the rest of the PR's.
 	argDataProviderRedisCacheBaseClient := cachewrappers.NewRedisBaseClientWrapper(argDataProviderCacheConfiguration)
-	redisCacheRetryPolicy, err := retrypolicy.NewRetryPolicy(instrumentationProvider, redisCacheClientRetryPolicyConfiguration)
-	if err != nil {
-		log.Fatal("main.retrypolicy.NewRetryPolicy redisCacheRetryPolicy", err)
-	}
+	// argCacheClient
 	_ = cache.NewRedisCacheClient(instrumentationProvider, argDataProviderRedisCacheBaseClient, redisCacheRetryPolicy)
-	tag2digestCache := cachewrappers.NewFreeCacheInMem(tokensCacheConfiguration)
-	_ = cache.NewFreeCacheInMemCacheClient(instrumentationProvider, tag2digestCache)
 
 	azdIdentityAuthorizerFactory := azureauth.NewEnvAzureAuthorizerFactory(azdIdentityEnvAzureAuthorizerConfiguration, new(azureauthwrappers.AzureAuthWrapper))
 	azdIdentityAuthorizer, err := azdIdentityAuthorizerFactory.CreateARMAuthorizer()

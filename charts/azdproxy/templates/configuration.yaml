@@ -51,29 +51,30 @@ data:
     arg:
       argClientConfiguration:
         subscriptions: {{ .Values.AzDProxy.arg.argClientConfiguration.subscriptions }}
-
       argBaseClient:
         retryPolicyConfiguration:
           retryAttempts: {{ .Values.AzDProxy.arg.argBaseClient.retryPolicyConfiguration.retryAttempts }}
           retryDuration: {{ .Values.AzDProxy.arg.argBaseClient.retryPolicyConfiguration.retryDuration }}
           timeUnit: {{ .Values.AzDProxy.arg.argBaseClient.retryPolicyConfiguration.timeUnit | quote}}
-    # Cache configuration
     cache:
-      Client:
-        app: {{.Values.AzDProxy.cache.Client.app}}
-        replicas: {{.Values.AzDProxy.cache.Client.replicas}}
-        port: {{.Values.AzDProxy.cache.Client.port}}
-        targetport: {{.Values.AzDProxy.cache.Client.port}}
-        retryPolicyConfiguration:
-          retryAttempts: {{ .Values.AzDProxy.cache.Client.retryPolicyConfiguration.retryAttempts }}
-          retryDuration: {{ .Values.AzDProxy.cache.Client.retryPolicyConfiguration.retryDuration }}
-          timeUnit: {{ .Values.AzDProxy.cache.Client.retryPolicyConfiguration.timeUnit }}
-      argDataProviderCacheConfiguration:
-        address: {{.Values.AzDProxy.cache.argDataProviderCacheConfiguration.address}}
-        table: {{.Values.AzDProxy.cache.argDataProviderCacheConfiguration.table}}
-
-      tokensCacheConfiguration:
-        cacheSize: {{.Values.AzDProxy.cache.tokensCacheConfiguration.cacheSize}} # in Bytes
+      nonInMem:
+        deploymentConfiguration:
+          app: {{.Values.AzDProxy.cache.nonInMem.deploymentConfiguration.app}}
+          image: {{.Values.AzDProxy.cache.nonInMem.deploymentConfiguration.image}}
+          replicas: {{.Values.AzDProxy.cache.nonInMem.deploymentConfiguration.replicas}}
+        client:
+          clientConfiguration:
+            address: {{.Values.AzDProxy.prefixResourceDeployment}} + "-" + {{.Values.AzDProxy.cache.nonInMem.client.clientConfiguration.address}} + ":" + {{.Values.AzDProxy.cache.nonInMem.deploymentConfiguration.port}}
+            tables:
+              argDataProviderCacheTable: {{.Values.AzDProxy.cache.nonInMem.client.clientConfiguration.argDataProviderCacheTable}}
+              tag2digestCacheTable: {{.Values.AzDProxy.cache.nonInMem.client.clientConfiguration.tag2digestCacheTable}}
+          retryPolicyConfiguration:
+            retryAttempts: {{.Values.AzDProxy.cache.nonInMem.client.retryPolicyConfiguration.retryAttempts}}
+            retryDuration: {{.Values.AzDProxy.cache.nonInMem.client.retryPolicyConfiguration.retryDuration}}
+            timeUnit: {{.Values.AzDProxy.cache.nonInMem.client.retryPolicyConfiguration.timeUnit}}
+      inMem:
+        tokensCacheConfiguration:
+          cacheSize: {{.Values.AzDProxy.cache.inMem.tokensCacheConfiguration.cacheSize}}
     deployment:
       isLocalDevelopment:  {{ .Values.AzDProxy.deployment.isLocalDevelopment }}
       namespace: {{ .Release.Namespace | quote}}

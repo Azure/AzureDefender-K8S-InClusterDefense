@@ -109,7 +109,7 @@ AzDProxy:
   # ARG values
   arg:
     argClientConfiguration:
-      subscriptions: []
+      subscriptions: [ ]
 
     argBaseClient:
       retryPolicyConfiguration:
@@ -122,31 +122,35 @@ AzDProxy:
 
   # Cache configuration
   cache:
-    Client:
-      # Data structure store used for cache
-      app: "redis"
-      # Image of redis containers
-      image: redis:6
-      # -- amount of replicas of redis
-      replicas: 1
-      # -- the port that redis cache will be listened.
-      port: 6379
+    nonInMem:
+      deploymentConfiguration:
+        # Data structure store used for cache
+        app: redis
+        #  -- Image of redis containers
+        image: redis:6
+        # -- amount of replicas of redis
+        replicas: 1
+        # -- the port that redis cache will be listened.
+        port: 6379
+      client:
+        clientConfiguration:
+          # -- Address that the client will listen to (=app's service). Will be set to prefixResourceDeployment + address + port.
+          address: "redis-service"
 
-      retryPolicyConfiguration:
-        #  -- Number of retry attempts
-        retryAttempts: 3
-        #  -- Sleep duration between retries (in milliseconds):
-        retryDuration: 10
-        #  -- Timeunit for the backoff duration
-        timeUnit: "ms"
+          # -- The table (Db) that the argDataProviderCache will save to data.
+          argDataProviderCacheTable: 1
+          # -- The table (Db) that the tag2digestCache will save to data.
+          tag2digestCacheTable: 2
+        retryPolicyConfiguration:
+          #  -- Number of retry attempts
+          retryAttempts: 3
+          #  -- Sleep duration between retries (in milliseconds):
+          retryDuration: 10
+          #  -- Timeunit for the backoff duration
+          timeUnit: "ms"
 
-    argDataProviderCacheConfiguration:
-      # TODO Change this address to helm function
-      # -- Address that the redis client will listen to. set to redis service + the port of the service.
-      address: "azure-defender-proxy-redis-service:6379"
-      # -- The table (Db) that the argDataProviderCache will save to data.
-      table: 0
+    inMem:
+      tokensCacheConfiguration:
+        # In bytes, where 1024 * 1024 represents a single Megabyte, and 100 * 1024*1024 represents 100 Megabytes.
+        cacheSize: 104857600 # 100 * 1024 * 1024
 
-    tokensCacheConfiguration:
-      # -- In bytes, where 1024 * 1024 represents a single Megabyte, and 100 * 1024*1024 represents 100 Megabytes.
-      cacheSize: 104857600 # 100 * 1024 * 1024

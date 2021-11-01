@@ -42,36 +42,32 @@ acr:
 
 arg:
   argClientConfiguration:
-    # TODO change it to dynamic subscription that will be updated in the installation script.
-    subscriptions: [ "4009f3ee-43c4-4f19-97e4-32b6f2285a68" ]
-
+    subscriptions: []
   argBaseClient:
-    retryPolicyConfiguration:
-      retryAttempts: 3
-      retryDuration: 100
-      timeUnit: "ms"
-
-# Cache configuration
-cache:
-  Client:
-    app: "redis"
-    replicas: 1
-    port: 6379
-    targetport: 6379
-
     retryPolicyConfiguration:
       retryAttempts: 3
       retryDuration: 10
       timeUnit: "ms"
 
-  argDataProviderCacheConfiguration:
-    address: "azure-defender-proxy-redis-service:6379"
-    table: 0
-
-  tokensCacheConfiguration:
-    # In bytes, where 1024 * 1024 represents a single Megabyte, and 100 * 1024*1024 represents 100 Megabytes.
-    cacheSize: 104857600 # 100 * 1024 * 1024
+cache:
+  nonInMem:
+    deploymentConfiguration:
+      app: redis
+      image: redis:6
+      replicas: 1
+    client:
+      clientConfiguration:
+        address: "azure-defender-proxy-redis-service:6379"
+        tables:
+          argDataProviderCacheTable: 0
+          tag2digestCacheTable: 1
+      retryPolicyConfiguration:
+        retryAttempts: 3
+        retryDuration: 10
+        timeUnit: "ms"
+  inMem:
+    tokensCacheConfiguration:
+      cacheSize: 104857600
 
 deployment:
-  isLocalDevelopment:  true
-  namespace: "kube-system"
+  isLocalDevelopment:  false

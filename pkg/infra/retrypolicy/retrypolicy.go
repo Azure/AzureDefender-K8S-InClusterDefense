@@ -23,7 +23,7 @@ type (
 	Action func() error
 )
 
-// IRetryPolicy interface for retrypolicy
+// IRetryPolicy interface for RetryPolicy
 type IRetryPolicy interface {
 	// RetryActionString try to execute action that returns string,error
 	RetryActionString(action ActionString, handle ShouldRetryOnSpecificError) (value string, err error)
@@ -57,7 +57,7 @@ type RetryPolicyConfiguration struct {
 	TimeUnit string
 }
 
-// NewRetryPolicy Cto'r for retry policy object
+// NewRetryPolicy Constructor for retry policy object
 func NewRetryPolicy(instrumentationProvider instrumentation.IInstrumentationProvider, configuration *RetryPolicyConfiguration) (*RetryPolicy, error) {
 	duration, err := GetBackOffDuration(configuration)
 	if err != nil {
