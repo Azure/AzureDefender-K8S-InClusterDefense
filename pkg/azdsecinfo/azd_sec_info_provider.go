@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	_defaultTimeDurationGetContainersVulnerabilityScanInfo = 2500 * time.Millisecond // 2.5 seconds - can't multiply float in seconds
+	_defaultTimeDurationGetContainersVulnerabilityScanInfo = 2850 * time.Millisecond // 2.85 seconds - can't multiply float in seconds
 )
 
 // IAzdSecInfoProvider represents interface for providing azure defender security information
@@ -52,12 +52,18 @@ func NewAzdSecInfoProvider(instrumentationProvider instrumentation.IInstrumentat
 	argDataProvider arg.IARGDataProvider,
 	tag2digestResolver tag2digest.ITag2DigestResolver,
 	GetContainersVulnerabilityScanInfoTimeoutDuration *utils.TimeoutConfiguration) *AzdSecInfoProvider {
+
+	// In case that GetContainersVulnerabilityScanInfoTimeoutDuration.TimeDurationInMS is empty (zero) - use default value.
+	getContainersVulnerabilityScanInfoTimeoutDuration := _defaultTimeDurationGetContainersVulnerabilityScanInfo
+	if GetContainersVulnerabilityScanInfoTimeoutDuration.TimeDurationInMS >= 0 {
+		getContainersVulnerabilityScanInfoTimeoutDuration = GetContainersVulnerabilityScanInfoTimeoutDuration.ParseTimeoutConfigurationToDuration()
+	}
 	return &AzdSecInfoProvider{
 		tracerProvider:     instrumentationProvider.GetTracerProvider("AzdSecInfoProvider"),
 		metricSubmitter:    instrumentationProvider.GetMetricSubmitter(),
 		argDataProvider:    argDataProvider,
 		tag2digestResolver: tag2digestResolver,
-		getContainersVulnerabilityScanInfoTimeoutDuration: GetContainersVulnerabilityScanInfoTimeoutDuration.ParseTimeoutConfigurationToDuration(),
+		getContainersVulnerabilityScanInfoTimeoutDuration: getContainersVulnerabilityScanInfoTimeoutDuration,
 	}
 }
 
