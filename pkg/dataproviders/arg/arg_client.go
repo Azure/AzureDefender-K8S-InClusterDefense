@@ -71,6 +71,7 @@ func (client *ARGClient) QueryResources(query string) ([]interface{}, error) {
 
 	totalResults, err := client.fetchAllResults(&request)
 	if err != nil {
+		tracer.Error(err, "failed on fetchAllResults ")
 		return nil, err
 	}
 

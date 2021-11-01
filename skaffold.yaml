@@ -1,11 +1,11 @@
 apiVersion: skaffold/v2beta23
 kind: Config
 metadata:
-  name: azdproxy
+  name: azure-defnder-in-cluster-defense-dev
 build:
   artifacts:
-    # First image: production image
-    - image: blockregistrydev.azurecr.io/azdproxy-image
+    # Dev Image:
+    - image: azuredefendermcrdev.azurecr.io/public/azuredefender/dev/in-cluster-defense
       context: ./
       sync:
         infer:
@@ -13,25 +13,25 @@ build:
       docker:
         dockerfile: build/Dockerfile
 profiles:
-  # Profile name:
-  - name: azuredefender
+  # Dev Profile
+  - name: azureDefnder-in-cluster-defense-dev
     deploy:
       kubeContext: cluster-dev
       # Deploy with helm chart
       helm:
         releases:
-          - name: azdproxy
+          - name: azure-defender-in-cluster-defense-dev
             # Path to helm chart
             chartPath: charts/azdproxy
             # Choose the namespace of the deployment
             namespace: kube-system
             # Overrides the image in the helm chart with the image that was built in the build section.
             artifactOverrides:
-              AzDProxy.webhook.image.name: blockregistrydev.azurecr.io/azdproxy-image
+              AzDProxy.webhook.image.name: azuredefendermcrdev.azurecr.io/public/azuredefender/dev/in-cluster-defense
             setValues:
-              AzDProxy.arg.argClientConfiguration.subscriptions: "SUBSCRIPTION_ID"
-              AzDProxy.kubeletIdentity.envAzureAuthorizerConfiguration.mSIClientId:  "AGENT_POOL_CLIENT_ID"
-              AzDProxy.azdIdentity.envAzureAuthorizerConfiguration.mSIClientId: "BLOCK_CLIENT_ID"
+              AzDProxy.arg.argClientConfiguration.subscriptions: ""
+              AzDProxy.kubeletIdentity.envAzureAuthorizerConfiguration.mSIClientId: ""
+              AzDProxy.azdIdentity.envAzureAuthorizerConfiguration.mSIClientId: ""
             # Path to dev values:
             valuesFiles:
               - ./charts/azdproxy/values-dev.yaml

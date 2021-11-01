@@ -76,19 +76,17 @@ AzDProxy:
       # Values for Tivan's instrumentation configuration:
       tivanInstrumentationConfiguration:
         componentName: "azure-defender-proxy"
-        azureResourceID: "Unknown"
-        region: "Unknown"
-        clusterDistribution: "Unknown"
-        chartVersion: "Unknown"
-        imageName: "Unknown"
-        imageVersion: "Unknown"
-        releaseTrain: "Unknown"
-        nodeName: "Unknown"
+        azureResourceID: ""
+        region: ""
+        clusterDistribution: ""
+        chartVersion: ""
+        releaseTrain: ""
+        nodeName: ""
         dirPath: "/var/log/azuredefender"
-        mdmAccount: "Unknown"
-        mdmNamespace: "Unknown"
-        platformMdmAccount: "Unknown"
-        platformMdmNamespace: "Unknown"
+        mdmAccount: ""
+        mdmNamespace: ""
+        platformMdmAccount: ""
+        platformMdmNamespace: ""
 
     # Trace values
     trace:
@@ -110,17 +108,24 @@ AzDProxy:
 
   # ACR policy values
   acr:
+
     craneWrappers:
       retryPolicyConfiguration:
         # Number of retry attempts
         retryAttempts: 3
         # Sleep duration between retries (in milliseconds):
-        retryDuration: 10
-        # Timeunit for the backoff duration
-        timeUnit: "ms"
+        retryDurationInMS: 10
+
+    tokenExchanger:
+      retryPolicyConfiguration:
+        # Number of retry attempts
+        retryAttempts: 3
+        # Sleep duration between retries (in milliseconds):
+        retryDurationInMS: 10
 
   # ARG values
   arg:
+
     argClientConfiguration:
       subscriptions: [ ]
 
@@ -129,9 +134,7 @@ AzDProxy:
         # Number of retry attempts
         retryAttempts: 3
         # Sleep duration between retries (in milliseconds):
-        retryDuration: 100
-        # Timeunit for the backoff duration
-        timeUnit: "ms"
+        retryDurationInMS: 100
 
     # Cache configuration
   cache:
@@ -148,9 +151,7 @@ AzDProxy:
         #  -- Number of retry attempts
         retryAttempts: 3
         #  -- Sleep duration between retries (in milliseconds):
-        retryDuration: 10
-        #  -- Timeunit for the backoff duration
-        timeUnit: "ms"
+        retryDurationInMS: 10
 
     argDataProviderCacheConfiguration:
       # -- Address that the redis client will listen to. set to redis service + the port of the service.
@@ -161,3 +162,8 @@ AzDProxy:
     tokensCacheConfiguration:
       # In bytes, where 1024 * 1024 represents a single Megabyte, and 100 * 1024*1024 represents 100 Megabytes.
       cacheSize: 104857600 # 100 * 1024 * 1024
+
+  azdSecInfoProvider:
+    GetContainersVulnerabilityScanInfo:
+      timeout:
+        timeDurationInMS: 2500
