@@ -8,6 +8,7 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry"
 	registryutils "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/utils"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/utils"
+	tag2digestmetric "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/tag2digest/metric"
 	"github.com/pkg/errors"
 )
 
@@ -59,8 +60,9 @@ func (resolver *Tag2DigestResolver) Resolve(imageReference registry.IImageRefere
 	if err != nil{
 		err = errors.Wrap(err, "Tag2DigestResolver.Resolve: Failed to set digest in cache")
 		tracer.Error(err, "")
-		//return digest, err
+		resolver.metricSubmitter.SendMetric(1, tag2digestmetric.NewTag2DigestRedisCacheFailuresMetric())
 	}
+	tracer.Info("Set digest in cache", "image", imageReference.Original(), "digest", digest)
 
 	return digest, nil
 }
@@ -86,9 +88,8 @@ func (resolver *Tag2DigestResolver) getDigest(imageReference registry.IImageRefe
 	if keyDontExistErr == nil { // If key exist - return digest
 		tracer.Info("Digest exist in cache", "image", imageReference.Original(), "digest", digestFromCache)
 		return digestFromCache, nil
-	}else {
-		tracer.Info("Digest don't exist in cache", "image", imageReference.Original())
 	}
+	tracer.Info("Digest don't exist in cache", "image", imageReference.Original())
 
 	// Second check if we can extract it from ref it self (digest based ref)
 	digestReference, ok := imageReference.(*registry.Digest)

@@ -57,9 +57,9 @@ func (tokenProvider *ACRTokenProvider) GetACRRefreshToken(registry string) (stri
 	if keyDontExistErr == nil { // If key exist - return digest
 		tracer.Info("Token exist in cache", "registry", registry)
 		return token, nil
-	}else {
-		tracer.Info("Token don't exist in cache", "registry", registry)
 	}
+	tracer.Info("Token don't exist in cache", "registry", registry)
+
 
 	// Refresh token if needed
 	err := azureauth.RefreshBearerAuthorizer(tokenProvider.azureBearerAuthorizer, context.Background())
@@ -83,8 +83,8 @@ func (tokenProvider *ACRTokenProvider) GetACRRefreshToken(registry string) (stri
 	if err != nil{
 		err = errors.Wrap(err, "GetACRRefreshToken: Failed to set token in cache")
 		tracer.Error(err, "")
-		//return digest, err
 	}
+	tracer.Info("Set token in cache", "registry", registry)
 
 	// TODO add caching + experation
 	return registryRefreshToken, nil

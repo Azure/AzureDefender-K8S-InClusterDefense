@@ -66,15 +66,18 @@ func (provider *ARGDataProvider) GetImageVulnerabilityScanResults(registry strin
 	tracer := provider.tracerProvider.GetTracer("GetImageVulnerabilityScanResults")
 	tracer.Info("Received", "registry", registry, "repository", repository, "digest", digest)
 
-	scanStatusFromCache, scanFindingsFromCache, keyNotFound, unmarshalErr := provider.getScanFindingsFromCache(digest)
-	if unmarshalErr != nil{ // json.unmarshall failed
-		unmarshalErr = errors.Wrap(unmarshalErr, "ARGDataProvider.GetImageVulnerabilityScanResults failed on unmarshall scan results from cache")
-		tracer.Error(unmarshalErr, "")
-		return "", nil, unmarshalErr
-	}
-	if keyNotFound == nil{ // digest exist in cache
+	scanFindingsString, keyNotFound := provider.redisCache.Get(digest)
+	if keyNotFound == nil { // digest exist in cache
+		tracer.Info("scanFindings exist in cache", "digest", digest)
+		scanStatusFromCache, scanFindingsFromCache , unmarshalErr := provider.parseScanFindingsFromCache(scanFindingsString)
+		if unmarshalErr != nil{ // json.unmarshall failed
+			unmarshalErr = errors.Wrap(unmarshalErr, "ARGDataProvider.GetImageVulnerabilityScanResults failed on unmarshall scan results from cache")
+			tracer.Error(unmarshalErr, "")
+			return "", nil, unmarshalErr
+		}
 		return scanStatusFromCache, scanFindingsFromCache, nil
 	}
+	tracer.Info("scanFindings don't exist in cache", "digest", digest)
 
 	// Generate image scan result ARG query for this specific image
 	query, err := provider.argQueryGenerator.GenerateImageVulnerabilityScanQuery(&queries.ContainerVulnerabilityScanResultsQueryParameters{
@@ -121,7 +124,6 @@ func (provider *ARGDataProvider) GetImageVulnerabilityScanResults(registry strin
 	if err != nil {
 		err = errors.Wrap(err, "ARGDataProvider.GetImageVulnerabilityScanResults failed on getImageScanDataFromARGQueryScanResult")
 		tracer.Error(err, "")
-		return "", nil, err
 	}
 
 	return scanStatus, scanFindings, nil
@@ -143,33 +145,26 @@ func (provider *ARGDataProvider) setScanFindingsInCache(scanFindings []*contract
 	if err != nil{
 		err = errors.Wrap(err, "ARGDataProvider.setScanFindingsInCache failed to set digest in cache")
 		tracer.Error(err, "")
-		//return err
+		provider.metricSubmitter.SendMetric(1, argmetric.NewArgDataProviderRedisCacheFailuresMetric())
 	}
+	tracer.Info("set scanFindings in cache", "digest", digest)
 
-	tracer.Info("set scanFindings in cache")
 	return nil
 }
 
 // getScanFindingsFromCache get the scan results of the given digest from cache
 // return keyNotFound err if key don't exist
-func (provider *ARGDataProvider) getScanFindingsFromCache(digest string) (contracts.ScanStatus, []*contracts.ScanFinding, error, error) {
-	tracer := provider.tracerProvider.GetTracer("getScanFindingsFromCache")
+func (provider *ARGDataProvider) parseScanFindingsFromCache(scanFindingsString string) (contracts.ScanStatus, []*contracts.ScanFinding, error) {
+	tracer := provider.tracerProvider.GetTracer("parseScanFindingsFromCache")
 
-	scanFindingsString, keyNotFound := provider.redisCache.Get(digest)
-	if keyNotFound == nil{ // digest in cache
-		tracer.Info("scanFindings exist in cache")
-		scanFindingsFromCache :=  new(contracts.ScanFindingsWrapper)
-		unmarshalErr := json.Unmarshal([]byte(scanFindingsString), scanFindingsFromCache)
-		if unmarshalErr != nil {
-			unmarshalErr = errors.Wrap(unmarshalErr, "ARGDataProvider.getScanFindingsFromCache failed on json.Unmarshal scanFindingsWrapper")
-			tracer.Error(unmarshalErr, "")
-			return "", nil, nil, unmarshalErr
-		}
-		return scanFindingsFromCache.ScanStatus, scanFindingsFromCache.ScanFindings, nil, nil
-	}else {
-		tracer.Info("scanFindings don't exist in cache")
-		return "", nil, keyNotFound, nil
+	scanFindingsFromCache :=  new(contracts.ScanFindingsWrapper)
+	unmarshalErr := json.Unmarshal([]byte(scanFindingsString), scanFindingsFromCache)
+	if unmarshalErr != nil {
+		unmarshalErr = errors.Wrap(unmarshalErr, "ARGDataProvider.parseScanFindingsFromCache failed on json.Unmarshal scanFindingsWrapper")
+		tracer.Error(unmarshalErr, "")
+		return "", nil, unmarshalErr
 	}
+	return scanFindingsFromCache.ScanStatus, scanFindingsFromCache.ScanFindings, nil
 }
 
 // parseARGImageScanResults parse ARG client returnes results from scan results query to an array of ContainerVulnerabilityScanResultsQueryResponseObject
