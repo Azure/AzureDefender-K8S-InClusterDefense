@@ -32,7 +32,11 @@ RUN	CGO_ENABLED=0 go build -o /go/azdproxy .
 FROM ${BASE_IMAGE}
 # Copy executable file into the new container
 COPY --from=builder /go/azdproxy ./azdproxy
+
 # Expose port for webhook server
 EXPOSE ${LISTEN_PORT}
+# Add label of maintainers:
+MAINTAINER ascdetectiontomer@microsoft.com
+
 # Run the executable file - azdproxy
 ENTRYPOINT ["./azdproxy"]

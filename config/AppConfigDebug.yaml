@@ -22,20 +22,20 @@ instrumentation:
       tracerLevel: 0
   tivan:
     tivanInstrumentationConfiguration:
-      componentName: "azure-defender-proxy"
-      azureResourceID: "Unknown"
-      region: "Unknown"
-      clusterDistribution: "Unknown"
-      chartVersion: "Unknown"
-      imageName: "Unknown"
-      imageVersion: "Unknown"
-      releaseTrain: "Unknown"
-      nodeName: "Unknown"
+      componentName: "debug-in-cluster-defense"
+      azureResourceID: ""
+      region: ""
+      clusterDistribution: ""
+      chartVersion: ""
+      imageName: "local-development"
+      imageVersion: "no-version"
+      releaseTrain: ""
+      nodeName: ""
       dirPath: "/var/log/azuredefender"
-      mdmAccount: "Unknown"
-      mdmNamespace: "Unknown"
-      platformMdmAccount: "Unknown"
-      platformMdmNamespace: "Unknown"
+      mdmAccount: ""
+      mdmNamespace: ""
+      platformMdmAccount: ""
+      platformMdmNamespace: ""
 
 azdIdentity:
   envAzureAuthorizerConfiguration:
@@ -49,8 +49,13 @@ acr:
   craneWrappersConfiguration:
     retryPolicyConfiguration:
       retryAttempts: 3
-      retryDuration: 10
-      timeUnit: "ms"
+      retryDurationInMS: 10
+
+  tokenExchanger:
+    retryPolicyConfiguration:
+      retryAttempts: 3
+      retryDurationInMS: 10
+
 
 arg:
   argClientConfiguration:
@@ -60,8 +65,7 @@ arg:
   argBaseClient:
     retryPolicyConfiguration:
       retryAttempts: 3
-      retryDuration: 100
-      timeUnit: "ms"
+      retryDurationInMS: 100
 
 # Cache configuration
 cache:
@@ -72,8 +76,7 @@ cache:
 
     retryPolicyConfiguration:
       retryAttempts: 3
-      retryDuration: 10
-      timeUnit: "ms"
+      retryDurationInMS: 10
 
   argDataProviderCacheConfiguration:
     address: "azure-defender-proxy-redis-service:6379"
@@ -85,3 +88,7 @@ cache:
 deployment:
   isLocalDevelopment:  true
   namespace: "kube-system"
+
+azdSecInfoProvider:
+  GetContainersVulnerabilityScanInfoTimeoutDuration:
+    timeDurationInMS: 10000

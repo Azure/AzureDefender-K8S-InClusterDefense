@@ -6,9 +6,12 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/httpclient"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
+	registryerrors "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/errors"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/retrypolicy"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/utils"
 	"github.com/pkg/errors"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -56,6 +59,8 @@ type ACRTokenExchanger struct {
 	tracerProvider trace.ITracerProvider
 	// httpClient is the client to initiate http calls with
 	httpClient httpclient.IHttpClient
+	// retry policy
+	retryPolicy retrypolicy.IRetryPolicy
 }
 
 // tokenResponse represents the response object from exchange token rest api of the registry
@@ -71,10 +76,11 @@ type tokenResponse struct {
 }
 
 // NewACRTokenExchanger Ctor
-func NewACRTokenExchanger(instrumentationProvider instrumentation.IInstrumentationProvider, httpClient httpclient.IHttpClient) *ACRTokenExchanger {
+func NewACRTokenExchanger(instrumentationProvider instrumentation.IInstrumentationProvider, httpClient httpclient.IHttpClient, retryPolicy retrypolicy.IRetryPolicy) *ACRTokenExchanger {
 	return &ACRTokenExchanger{
 		tracerProvider: instrumentationProvider.GetTracerProvider("ACRTokenProvider"),
 		httpClient:     httpClient,
+		retryPolicy:    retryPolicy,
 	}
 }
 
@@ -105,10 +111,32 @@ func (tokenExchanger *ACRTokenExchanger) ExchangeACRAccessToken(registry string,
 	defer closeResponse(resp)
 
 	// Invokes call to registry
-	// TODO add retry policy
-	resp, err = tokenExchanger.httpClient.Do(req)
+	err = tokenExchanger.retryPolicy.RetryAction(
+		func() error {
+			resp, err = tokenExchanger.httpClient.Do(req)
+			if err != nil {
+				// err != nil so set response to nil and return error
+				resp = nil
+				return err
+			}
+			return nil
+		},
+		// Retry on all errors except not NoSuchError
+		func(err error) bool { return !tokenExchanger.isNoSuchHostErr(err) },
+	)
+
 	if err != nil {
-		err = errors.Wrap(fmt.Errorf("failed to send token exchange request: %w", err), "ACRTokenExchanger")
+		// If registry is not found, convert to known err.
+		if tokenExchanger.isNoSuchHostErr(err) {
+			// If its this error - convert the error to known error and continue
+			err = registryerrors.NewRegistryIsNotFoundErr(registry, err)
+		}
+
+		err = errors.Wrap(err, "failed to send token exchange request")
+		tracer.Error(err, "")
+		return "", err
+	} else if resp == nil {
+		err = errors.New("unexpected behavior - response is nil while err is also nil")
 		tracer.Error(err, "")
 		return "", err
 	}
@@ -195,4 +223,15 @@ func closeResponse(resp *http.Response) {
 		return
 	}
 	resp.Body.Close()
+}
+
+// isNoSuchHostErr gets an error and returns true if the err is caused by DNSError - it means that the registry is not exist
+// TODO currently we decided to start with this error as unscanned - we should see the metrics and decide if this error
+// 	encountered sometimes when the registry is exists.
+func (tokenExchanger *ACRTokenExchanger) isNoSuchHostErr(err error) bool {
+	var dnsError *net.DNSError
+	if errors.As(err, &dnsError) {
+		return true
+	}
+	return false
 }
