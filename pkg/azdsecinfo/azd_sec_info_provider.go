@@ -55,7 +55,7 @@ func NewAzdSecInfoProvider(instrumentationProvider instrumentation.IInstrumentat
 
 	// In case that GetContainersVulnerabilityScanInfoTimeoutDuration.TimeDurationInMS is empty (zero) - use default value.
 	getContainersVulnerabilityScanInfoTimeoutDuration := _defaultTimeDurationGetContainersVulnerabilityScanInfo
-	if GetContainersVulnerabilityScanInfoTimeoutDuration.TimeDurationInMS >= 0 {
+	if GetContainersVulnerabilityScanInfoTimeoutDuration.TimeDurationInMS > 0 {
 		getContainersVulnerabilityScanInfoTimeoutDuration = GetContainersVulnerabilityScanInfoTimeoutDuration.ParseTimeoutConfigurationToDuration()
 	}
 	return &AzdSecInfoProvider{
