@@ -54,34 +54,38 @@ func main() {
 	metricSubmitterConfiguration := new(tivan.MetricSubmitterConfiguration)
 	tracerConfiguration := new(trace.TracerConfiguration)
 	instrumentationConfiguration := new(instrumentation.InstrumentationProviderConfiguration)
-	azdIdentityEnvAzureAuthorizerConfiguration := new(azureauth.EnvAzureAuthorizerConfiguration)
-	kubeletIdentityEnvAzureAuthorizerConfiguration := new(azureauth.EnvAzureAuthorizerConfiguration)
+	azdIdentityEnvAzureAuthorizerConfiguration := new(azureauth.MSIAzureAuthorizerConfiguration)
+	kubeletIdentityEnvAzureAuthorizerConfiguration := new(azureauth.MSIAzureAuthorizerConfiguration)
 	argClientConfiguration := new(arg.ARGClientConfiguration)
 	deploymentConfiguration := new(utils.DeploymentConfiguration)
 	craneWrapperRetryPolicyConfiguration := new(retrypolicy.RetryPolicyConfiguration)
 	argBaseClientRetryPolicyConfiguration := new(retrypolicy.RetryPolicyConfiguration)
 	redisCacheClientRetryPolicyConfiguration := new(retrypolicy.RetryPolicyConfiguration)
+	acrTokenExchangerClientRetryPolicyConfiguration := new(retrypolicy.RetryPolicyConfiguration)
 
 	argDataProviderCacheConfiguration := new(cachewrappers.RedisCacheClientConfiguration)
 	tokensCacheConfiguration := new(cachewrappers.FreeCacheInMemWrapperCacheConfiguration)
 
+	GetContainersVulnerabilityScanInfoTimeoutDuration := new(utils.TimeoutConfiguration)
 	// Create a map between configuration object and key in main config file
 	keyConfigMap := map[string]interface{}{
-		"webhook.managerConfiguration":                            managerConfiguration,
-		"webhook.certRotatorConfiguration":                        certRotatorConfiguration,
-		"webhook.serverConfiguration":                             serverConfiguration,
-		"webhook.handlerConfiguration":                            handlerConfiguration,
-		"instrumentation.tivan.tivanInstrumentationConfiguration": tivanInstrumentationConfiguration,
-		"instrumentation.trace.tracerConfiguration":               tracerConfiguration,
-		"azdIdentity.envAzureAuthorizerConfiguration":             azdIdentityEnvAzureAuthorizerConfiguration,
-		"kubeletIdentity.envAzureAuthorizerConfiguration":         kubeletIdentityEnvAzureAuthorizerConfiguration,
-		"arg.argBaseClient.retryPolicyConfiguration":              argBaseClientRetryPolicyConfiguration,
-		"acr.craneWrappersConfiguration.retryPolicyConfiguration": craneWrapperRetryPolicyConfiguration,
-		"arg.argClientConfiguration":                              argClientConfiguration,
-		"deployment":                                              deploymentConfiguration,
-		"cache.argDataProviderCacheConfiguration":                 argDataProviderCacheConfiguration,
-		"cache.tokensCacheConfiguration":                          tokensCacheConfiguration,
-		"cache.redisClient.retryPolicyConfiguration":              redisCacheClientRetryPolicyConfiguration,
+		"webhook.managerConfiguration":                                         managerConfiguration,
+		"webhook.certRotatorConfiguration":                                     certRotatorConfiguration,
+		"webhook.serverConfiguration":                                          serverConfiguration,
+		"webhook.handlerConfiguration":                                         handlerConfiguration,
+		"instrumentation.tivan.tivanInstrumentationConfiguration":              tivanInstrumentationConfiguration,
+		"instrumentation.trace.tracerConfiguration":                            tracerConfiguration,
+		"azdIdentity.envAzureAuthorizerConfiguration":                          azdIdentityEnvAzureAuthorizerConfiguration,
+		"kubeletIdentity.envAzureAuthorizerConfiguration":                      kubeletIdentityEnvAzureAuthorizerConfiguration,
+		"arg.argBaseClient.retryPolicyConfiguration":                           argBaseClientRetryPolicyConfiguration,
+		"acr.craneWrappersConfiguration.retryPolicyConfiguration":              craneWrapperRetryPolicyConfiguration,
+		"acr.tokenExchanger.retryPolicyConfiguration":                          acrTokenExchangerClientRetryPolicyConfiguration,
+		"arg.argClientConfiguration":                                           argClientConfiguration,
+		"deployment":                                                           deploymentConfiguration,
+		"cache.argDataProviderCacheConfiguration":                              argDataProviderCacheConfiguration,
+		"cache.tokensCacheConfiguration":                                       tokensCacheConfiguration,
+		"cache.redisClient.retryPolicyConfiguration":                           redisCacheClientRetryPolicyConfiguration,
+		"azdSecInfoProvider.GetContainersVulnerabilityScanInfoTimeoutDuration": GetContainersVulnerabilityScanInfoTimeoutDuration,
 	}
 
 	for key, configObject := range keyConfigMap {
@@ -94,7 +98,7 @@ func main() {
 	}
 
 	// Create deployment singleton.
-	if _, err := utils.NewDeployment(deploymentConfiguration); err != nil {
+	if _, err = utils.NewDeployment(deploymentConfiguration); err != nil {
 		log.Fatal("main.NewDeployment", err)
 	}
 	// Create Tivan's instrumentation
@@ -112,10 +116,10 @@ func main() {
 		log.Fatal("main.instrumentationProviderFactory.CreateInstrumentationProvider", err)
 	}
 
-	kubeletIdentityAuthorizerFactory := azureauth.NewEnvAzureAuthorizerFactory(kubeletIdentityEnvAzureAuthorizerConfiguration, new(azureauthwrappers.AzureAuthWrapper))
+	kubeletIdentityAuthorizerFactory := azureauth.NewMSIEnvAzureAuthorizerFactory(instrumentationProvider, kubeletIdentityEnvAzureAuthorizerConfiguration, new(azureauthwrappers.AzureAuthWrapper))
 	kubeletIdentityAuthorizer, err := kubeletIdentityAuthorizerFactory.CreateARMAuthorizer()
 	if err != nil {
-		log.Fatal("main.kubeletIdentityAuthorizerFactory.NewEnvAzureAuthorizerFactory.CreateARMAuthorizer", err)
+		log.Fatal("main.kubeletIdentityAuthorizerFactory.NewMSIEnvAzureAuthorizerFactory.CreateARMAuthorizer", err)
 	}
 
 	// Registry Client
@@ -128,42 +132,40 @@ func main() {
 		log.Fatal("main.kubernetes.NewForConfig", err)
 	}
 
-	bearerAuthorizer, ok := kubeletIdentityAuthorizer.(azureauth.IBearerAuthorizer)
+	azureBearerAuthorizer, ok := kubeletIdentityAuthorizer.(azureauth.IBearerAuthorizer)
 	if !ok {
 		log.Fatal("main.kubeletIdentityAuthorizer.bearerAuthorizer type assertion", err)
 
 	}
-
-	// ARG
-	//TODO complete it once we merge the rest of the PR's.
+	//Cache clients
 	argDataProviderRedisCacheBaseClient := cachewrappers.NewRedisBaseClientWrapper(argDataProviderCacheConfiguration)
-	redisCacheRetryPolicy, err := retrypolicy.NewRetryPolicy(instrumentationProvider, redisCacheClientRetryPolicyConfiguration)
-	if err != nil {
-		log.Fatal("main.retrypolicy.NewRetryPolicy redisCacheRetryPolicy", err)
-	}
+	redisCacheRetryPolicy := retrypolicy.NewRetryPolicy(instrumentationProvider, redisCacheClientRetryPolicyConfiguration)
 	redisCacheClient := cache.NewRedisCacheClient(instrumentationProvider, argDataProviderRedisCacheBaseClient, redisCacheRetryPolicy)
 	tag2digestCache := cachewrappers.NewFreeCacheInMem(tokensCacheConfiguration)
 	freeCacheInMemCacheClient := cache.NewFreeCacheInMemCacheClient(instrumentationProvider, tag2digestCache)
 
-	acrTokenExchanger := registryauthazure.NewACRTokenExchanger(instrumentationProvider, &http.Client{})
-	acrTokenProvider := registryauthazure.NewACRTokenProvider(instrumentationProvider, acrTokenExchanger, bearerAuthorizer, freeCacheInMemCacheClient) //TODO add here in meme-cache client
+	azureBearerAuthorizerTokenProvider := azureauth.NewBearerAuthorizerTokenProvider(azureBearerAuthorizer)
+
+	acrTokenExchangerClientRetryPolicy := retrypolicy.NewRetryPolicy(instrumentationProvider, acrTokenExchangerClientRetryPolicyConfiguration)
+	acrTokenExchanger := registryauthazure.NewACRTokenExchanger(instrumentationProvider, &http.Client{}, acrTokenExchangerClientRetryPolicy)
+	acrTokenProvider := registryauthazure.NewACRTokenProvider(instrumentationProvider, acrTokenExchanger, azureBearerAuthorizerTokenProvider, freeCacheInMemCacheClient)
 
 	k8sKeychainFactory := crane.NewK8SKeychainFactory(instrumentationProvider, clientK8s)
 	acrKeychainFactory := crane.NewACRKeychainFactory(instrumentationProvider, acrTokenProvider)
 
-	craneWrapperRetryPolicy, err := retrypolicy.NewRetryPolicy(instrumentationProvider, craneWrapperRetryPolicyConfiguration)
-	if err != nil {
-		log.Fatal("main.retrypolicy.NewRetryPolicy craneWrapperRetryPolicy", err)
-	}
-	craneWrapper := registrywrappers.NewCraneWrapper(craneWrapperRetryPolicy)
+	craneWrapperRetryPolicy := retrypolicy.NewRetryPolicy(instrumentationProvider, craneWrapperRetryPolicyConfiguration)
+	craneWrapper := registrywrappers.NewCraneWrapper(instrumentationProvider, craneWrapperRetryPolicy)
 	// Registry Client
 	registryClient := crane.NewCraneRegistryClient(instrumentationProvider, craneWrapper, acrKeychainFactory, k8sKeychainFactory)
-	tag2digestResolver := tag2digest.NewTag2DigestResolver(instrumentationProvider, registryClient, redisCacheClient) //TODO add here in redis-cache client
+	tag2digestResolver := tag2digest.NewTag2DigestResolver(instrumentationProvider, registryClient, redisCacheClient)
 
-	azdIdentityAuthorizerFactory := azureauth.NewEnvAzureAuthorizerFactory(azdIdentityEnvAzureAuthorizerConfiguration, new(azureauthwrappers.AzureAuthWrapper))
+	// ARG
+	//TODO complete it once we merge the rest of the PR's.
+
+	azdIdentityAuthorizerFactory := azureauth.NewMSIEnvAzureAuthorizerFactory(instrumentationProvider, azdIdentityEnvAzureAuthorizerConfiguration, new(azureauthwrappers.AzureAuthWrapper))
 	azdIdentityAuthorizer, err := azdIdentityAuthorizerFactory.CreateARMAuthorizer()
 	if err != nil {
-		log.Fatal("main.azdIdentityAuthorizerFactory.NewEnvAzureAuthorizerFactory.CreateARMAuthorizer", err)
+		log.Fatal("main.azdIdentityAuthorizerFactory.NewMSIEnvAzureAuthorizerFactory.CreateARMAuthorizer", err)
 	}
 	argBaseClient, err := wrappers.NewArgBaseClientWrapper(argBaseClientRetryPolicyConfiguration, azdIdentityAuthorizer)
 	if err != nil {
@@ -178,7 +180,7 @@ func main() {
 	argDataProvider := arg.NewARGDataProvider(instrumentationProvider, argClient, argQueryGenerator, redisCacheClient) //TODO add here in redis-cache client
 
 	// Handler and azdSecinfoProvider
-	azdSecInfoProvider := azdsecinfo.NewAzdSecInfoProvider(instrumentationProvider, argDataProvider, tag2digestResolver)
+	azdSecInfoProvider := azdsecinfo.NewAzdSecInfoProvider(instrumentationProvider, argDataProvider, tag2digestResolver, GetContainersVulnerabilityScanInfoTimeoutDuration)
 	handler := webhook.NewHandler(azdSecInfoProvider, handlerConfiguration, instrumentationProvider)
 
 	// Manager and server

@@ -6,6 +6,7 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry"
+	registryerrors "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/errors"
 	registryutils "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/utils"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/utils"
 	tag2digestmetric "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/tag2digest/metric"
@@ -95,37 +96,47 @@ func (resolver *Tag2DigestResolver) getDigest(imageReference registry.IImageRefe
 	digestReference, ok := imageReference.(*registry.Digest)
 	if ok {
 		tracer.Info("ImageReference is digestReference return it is digest", "digestReference", digestReference, "digest", digestReference.Digest())
-		err := resolver.redisCache.Set(imageReference.Original(), digestReference.Digest(), 0)
-		if err != nil{
-			err = errors.Wrap(err, "Tag2DigestResolver.getDigest: Failed to set digest in cache")
-			tracer.Error(err, "")
-			return digestReference.Digest(), err
-		}
 		return digestReference.Digest(), nil
 	}
 
 	// ACR auth
 	if registryutils.IsRegistryEndpointACR(imageReference.Registry()) {
-		tracer.Info("ACR suffix so tries ACR  auth", "imageRef", imageReference)
+		tracer.Info("ACR suffix so tries ACR auth", "imageRef", imageReference)
+
 		digest, err := resolver.registryClient.GetDigestUsingACRAttachAuth(imageReference)
 		if err != nil {
-			// todo only on unauthorized and retry only on transient
+			// TODO Add tests that checks that we don't try another auth when we should stop.
+			// 		Should be added once @tomerweinberger finished to merge his PR.
+			if !resolver.shouldContinueOnError(err) {
+				err = errors.Wrap(err, "Tag2DigestResolver.Resolve: Failed to get digest on ACRAttachAuth")
+				tracer.Error(err, "")
+				return "", err
+			}
+
 			// Failed to get digest using ACR attach auth method - continue and fall back to other methods
 			tracer.Error(err, "Failed on ACR auth -> continue to other types of auth")
 		} else {
+			//TODO Check if digest is not empty
 			return digest, nil
 		}
 	}
+
 	tracer.Info("Tries K8S chain auth", "imageRef", imageReference)
 
 	// Fallback to K8S auth
 	// TODO Add fallback on missing pull secret
 	digest, err := resolver.registryClient.GetDigestUsingK8SAuth(imageReference, resourceCtx.namespace, resourceCtx.imagePullSecrets, resourceCtx.serviceAccountName)
 	if err != nil {
-		// todo only on unauthorized and retry only on transient
+		if !resolver.shouldContinueOnError(err) {
+			err = errors.Wrap(err, "Tag2DigestResolver.Resolve: Failed to get digest on K8SAuth")
+			tracer.Error(err, "")
+			return "", err
+		}
+
 		// Failed to get digest using K8S chain auth method - continue and fall back to other methods
 		tracer.Error(err, "Failed on K8S Chain auth -> continue to other types of auth")
 	} else {
+		//TODO Check if digest is not empty
 		return digest, nil
 	}
 
@@ -139,8 +150,9 @@ func (resolver *Tag2DigestResolver) getDigest(imageReference registry.IImageRefe
 		return "", err
 	}
 
+	// Check if the digest is empty
 	if digest == "" {
-		err = errors.Wrap(err, "Tag2DigestResolver.getDigest: Empty digest received by registry client")
+		err = errors.New("Tag2DigestResolver.Resolve: Empty digest received by registry client")
 		tracer.Error(err, "")
 		return "", err
 	}
@@ -160,5 +172,18 @@ func NewResourceContext(namespace string, imagePullSecrets []string, serviceAcco
 		namespace:          namespace,
 		imagePullSecrets:   imagePullSecrets,
 		serviceAccountName: serviceAccountName,
+	}
+}
+
+// shouldContinueOnError is method that gets an error and returns true in case that the error is known
+// error that thr resolve method should stop and don't try more authentications to resolve the digest.
+func (resolver *Tag2DigestResolver) shouldContinueOnError(err error) bool {
+	errorCause := errors.Cause(err)
+	switch errorCause.(type) {
+	case *registryerrors.ImageIsNotFoundErr,
+		*registryerrors.RegistryIsNotFoundErr:
+		return false
+	default:
+		return true
 	}
 }

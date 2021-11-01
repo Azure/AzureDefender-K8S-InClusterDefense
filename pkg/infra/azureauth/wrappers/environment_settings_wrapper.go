@@ -8,7 +8,7 @@ import (
 
 // IEnvironmentSettingsWrapper Interfaces for auth wrappers
 type IEnvironmentSettingsWrapper interface {
-	GetAuthorizer() (autorest.Authorizer, error)
+	GetMSIAuthorizer() (autorest.Authorizer, error)
 	GetValues() map[string]string
 	GetEnvironment() *azure.Environment
 }
@@ -28,9 +28,9 @@ func NewEnvironmentSettingsWrapper(settings *auth.EnvironmentSettings) *Environm
 	}
 }
 
-// GetAuthorizer get authorizer from wrapped settings
-func (wrapper *EnvironmentSettingsWrapper) GetAuthorizer() (autorest.Authorizer, error) {
-	authorizer, err := wrapper.settings.GetAuthorizer()
+// GetMSIAuthorizer get authorizer from MSI config from settings of wrapped settings
+func (wrapper *EnvironmentSettingsWrapper) GetMSIAuthorizer() (autorest.Authorizer, error) {
+	authorizer, err := wrapper.settings.GetMSI().Authorizer()
 	if err != nil {
 		return nil, err
 	}

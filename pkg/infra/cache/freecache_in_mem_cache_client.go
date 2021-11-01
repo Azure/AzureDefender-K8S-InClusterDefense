@@ -8,13 +8,12 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/utils"
-	"strings"
+	"github.com/coocood/freecache"
+	"github.com/pkg/errors"
 	"time"
 )
 
 const (
-	// _missingKeyErrorFreeCacheString is that is returned from freecache in case that the key is not found.
-	_missingKeyErrorFreeCacheString = "entry not found"
 	// client type of free cache.
 	_freeCacheClientType clientType = "FreeCacheInMemCacheClient"
 )
@@ -50,7 +49,7 @@ func (client *FreeCacheInMemCacheClient) Get(key string) (string, error) {
 
 	entry, err := client.freeCache.Get([]byte(key))
 	// Check if key is missing
-	if (err != nil && strings.ToLower(err.Error()) == _missingKeyErrorFreeCacheString) || entry == nil {
+	if (err != nil && errors.Is(err, freecache.ErrNotFound)) || (err == nil && entry == nil) {
 		tracer.Info("Missing key", "Key", key)
 		err = NewMissingKeyCacheError(key)
 		client.metricSubmitter.SendMetric(1, cachemetrics.NewCacheClientGetMetric(client, operations.MISS))

@@ -10,7 +10,8 @@ import (
 )
 
 var (
-	_configuration = RetryPolicyConfiguration{RetryAttempts: 3, RetryDuration: 10, TimeUnit: "ms"}
+	_configuration                 = RetryPolicyConfiguration{RetryAttempts: 4, RetryDurationInMS: 3}
+	_expectedConfigurationDuration = time.Duration(_configuration.RetryDurationInMS) * time.Millisecond
 )
 
 type TestSuite struct {
@@ -39,94 +40,23 @@ func (e err2ForTests) Error() string {
 // This will run before each test in the suite
 func (suite *TestSuite) SetupTest() {
 	// Mock
-	suite.retryPolicy, _ = NewRetryPolicy(instrumentation.NewNoOpInstrumentationProvider(), &_configuration)
+	suite.retryPolicy = NewRetryPolicy(instrumentation.NewNoOpInstrumentationProvider(), &_configuration)
 	suite.countActions = 0
 
 }
 
-func (suite *TestSuite) Test_NewRetryPolicy_NilConfiguration_ShouldReturnError() {
-	r, err := NewRetryPolicy(instrumentation.NewNoOpInstrumentationProvider(), nil)
-	suite.Nil(r)
-	suite.NotNil(err)
-	suite.Equal(utils.NilArgumentError, errors.Cause(err))
-}
-
 func (suite *TestSuite) Test_NewRetryPolicy_NotNilConfiguration_ShouldReturnInstance() {
 
-	r, err := NewRetryPolicy(
-		instrumentation.NewNoOpInstrumentationProvider(),
-		&RetryPolicyConfiguration{RetryAttempts: 1, RetryDuration: 1, TimeUnit: "ms"})
-	suite.Nil(err)
-	suite.NotNil(r)
-}
+	r := NewRetryPolicy(instrumentation.NewNoOpInstrumentationProvider(), &_configuration)
 
-func (suite *TestSuite) Test_NewRetryPolicy_InvalidConfigurationNegativeRetryAttempts_ShouldReturnError() {
-	r, err := NewRetryPolicy(
-		instrumentation.NewNoOpInstrumentationProvider(),
-		&RetryPolicyConfiguration{RetryAttempts: -1, RetryDuration: 1, TimeUnit: "ms"})
-	// Test
-	suite.NotNil(err)
-	suite.Nil(r)
-}
-
-func (suite *TestSuite) Test_NewRetryPolicy_InvalidConfigurationNegativeRetryDuration_ShouldReturnError() {
-	r, err := NewRetryPolicy(
-		instrumentation.NewNoOpInstrumentationProvider(),
-		&RetryPolicyConfiguration{RetryAttempts: 1, RetryDuration: -1, TimeUnit: "ms"})
-	// Test
-	suite.NotNil(err)
-	suite.Nil(r)
-}
-
-func (suite *TestSuite) Test_NewRetryPolicy_InvalidConfigurationInvalidTimeUnit_ShouldReturnError() {
-	r, err := NewRetryPolicy(
-		instrumentation.NewNoOpInstrumentationProvider(),
-		&RetryPolicyConfiguration{RetryAttempts: 1, RetryDuration: 1, TimeUnit: "InvalidTimeUnit"})
-	// Test
-	suite.NotNil(err)
-	suite.Nil(r)
-}
-
-func (suite *TestSuite) Test_GetBackOffDuration_NilConfiguration_ShouldReturnError() {
-	d, err := GetBackOffDuration(nil)
-	// Test
-	suite.Equal(time.Duration(0), d)
-	suite.NotNil(err)
-	suite.Equal(utils.NilArgumentError, errors.Cause(err))
+	suite.Equal(_configuration.RetryAttempts, r.retryAttempts)
+	suite.Equal(_expectedConfigurationDuration, r.duration)
 }
 
 func (suite *TestSuite) Test_GetBackOffDuration_NotNilConfiguration_ShouldReturnInstance() {
-	d, err := GetBackOffDuration(&RetryPolicyConfiguration{RetryAttempts: 1, RetryDuration: 1, TimeUnit: "ms"})
+	d := _configuration.GetBackOffDuration()
 
-	suite.Nil(err)
-	suite.NotNil(d)
-	suite.Equal(1*time.Millisecond, d)
-}
-
-func (suite *TestSuite) Test_GetBackOffDuration_InvalidConfigurationNegativeRetryAttempts_ShouldReturnOk() {
-	// Should be ok because GetBackOffDuration is not using retryAttempts of the configuration
-	d, err := GetBackOffDuration(&RetryPolicyConfiguration{RetryAttempts: -1, RetryDuration: 1, TimeUnit: "ms"})
-
-	// Test
-	suite.Nil(err)
-	suite.NotNil(d)
-	suite.Equal(1*time.Millisecond, d)
-}
-
-func (suite *TestSuite) Test_GetBackOffDuration_InvalidConfigurationNegativeRetryDuration_ShouldReturnError() {
-	d, err := GetBackOffDuration(&RetryPolicyConfiguration{RetryAttempts: 1, RetryDuration: -1, TimeUnit: "ms"})
-
-	// Test
-	suite.NotNil(err)
-	suite.Equal(time.Duration(0), d)
-}
-
-func (suite *TestSuite) Test_GetBackOffDuration_InvalidConfigurationInvalidTimeUnit_ShouldReturnError() {
-	d, err := GetBackOffDuration(&RetryPolicyConfiguration{RetryAttempts: 1, RetryDuration: 1, TimeUnit: "InvalidTimeUnit"})
-
-	// Test
-	suite.NotNil(err)
-	suite.Equal(time.Duration(0), d)
+	suite.Equal(_expectedConfigurationDuration, d)
 }
 
 func (suite *TestSuite) Test_RetryActionString_ActionNil_ShouldReturnError() {
@@ -159,7 +89,7 @@ func (suite *TestSuite) Test_RetryActionString_HandledError_ShouldBeExecutedOnce
 	var action ActionString = func() (string, error) { suite.countActions += 1; return "", errForTest }
 	var handle ShouldRetryOnSpecificError = func(err error) bool {
 		_, ok := err.(*err1ForTests)
-		return ok
+		return !ok
 	}
 
 	// Act
@@ -179,7 +109,7 @@ func (suite *TestSuite) Test_RetryActionString_UnHandledError_ShouldBeExecutedFe
 	}
 	var handle ShouldRetryOnSpecificError = func(err error) bool {
 		_, ok := err.(*err2ForTests)
-		return ok
+		return !ok
 	}
 
 	// Act
@@ -187,7 +117,7 @@ func (suite *TestSuite) Test_RetryActionString_UnHandledError_ShouldBeExecutedFe
 	// Test
 	suite.Equal(errForTest, errors.Cause(err))
 	suite.Equal("", actual)
-	suite.Equal(3, suite.countActions)
+	suite.Equal(_configuration.RetryAttempts, suite.countActions)
 }
 
 func (suite *TestSuite) Test_RetryActionString_HandledErrorSecondTime_ShouldBeExecutedTwice() {
@@ -202,8 +132,8 @@ func (suite *TestSuite) Test_RetryActionString_HandledErrorSecondTime_ShouldBeEx
 		return "", errForTest
 	}
 	var handle ShouldRetryOnSpecificError = func(err error) bool {
-		_, ok := err.(*err2ForTests)
-		return ok
+		errType := &err2ForTests{}
+		return !utils.IsErrorIsTypeOf(err, &errType)
 	}
 
 	// Act
@@ -220,7 +150,7 @@ func (suite *TestSuite) Test_RetryActionString_NoError_ShouldBeExecutedOnce() {
 
 	var handle ShouldRetryOnSpecificError = func(err error) bool {
 		_, ok := err.(*err2ForTests)
-		return ok
+		return !ok
 	}
 
 	// Act
@@ -243,7 +173,7 @@ func (suite *TestSuite) Test_RetryAction_NoErrorSecondTime_ShouldBeExecutedTwice
 	}
 	var handle ShouldRetryOnSpecificError = func(err error) bool {
 		_, ok := err.(*err2ForTests)
-		return ok
+		return !ok
 	}
 
 	// Act
@@ -283,7 +213,7 @@ func (suite *TestSuite) Test_RetryAction_HandledError_ShouldBeExecutedOnce() {
 	var action Action = func() error { suite.countActions += 1; return errForTest }
 	var handle ShouldRetryOnSpecificError = func(err error) bool {
 		_, ok := err.(*err1ForTests)
-		return ok
+		return !ok
 	}
 
 	// Act
@@ -302,14 +232,14 @@ func (suite *TestSuite) Test_RetryAction_UnHandledError_ShouldBeExecutedFewTimes
 	}
 	var handle ShouldRetryOnSpecificError = func(err error) bool {
 		_, ok := err.(*err2ForTests)
-		return ok
+		return !ok
 	}
 
 	// Act
 	err := suite.retryPolicy.RetryAction(action, handle)
 	// Test
 	suite.Equal(errForTest, errors.Cause(err))
-	suite.Equal(3, suite.countActions)
+	suite.Equal(_configuration.RetryAttempts, suite.countActions)
 }
 
 func (suite *TestSuite) Test_RetryAction_HandledErrorSecondTime_ShouldBeExecutedTwice() {
@@ -325,7 +255,7 @@ func (suite *TestSuite) Test_RetryAction_HandledErrorSecondTime_ShouldBeExecuted
 	}
 	var handle ShouldRetryOnSpecificError = func(err error) bool {
 		_, ok := err.(*err2ForTests)
-		return ok
+		return !ok
 	}
 
 	// Act
@@ -341,7 +271,7 @@ func (suite *TestSuite) Test_RetryAction_NoError_ShouldBeExecutedOnce() {
 
 	var handle ShouldRetryOnSpecificError = func(err error) bool {
 		_, ok := err.(*err2ForTests)
-		return ok
+		return !ok
 	}
 
 	// Act
@@ -363,7 +293,7 @@ func (suite *TestSuite) Test_RetryActionString_NoErrorSecondTime_ShouldBeExecute
 	}
 	var handle ShouldRetryOnSpecificError = func(err error) bool {
 		_, ok := err.(*err2ForTests)
-		return ok
+		return !ok
 	}
 
 	// Act

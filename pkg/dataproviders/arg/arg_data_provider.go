@@ -39,7 +39,7 @@ type ARGDataProvider struct {
 	//metricSubmitter
 	metricSubmitter metric.IMetricSubmitter
 	// argQueryGenerator is the generator for the are queries.
-	argQueryGenerator *queries.ARGQueryGenerator
+	argQueryGenerator queries.IARGQueryGenerator
 	// argClient is the arg client of the ARGDataProvider
 	argClient IARGClient
 	// redisCache is a cache for mapping digest to scan results
@@ -47,9 +47,9 @@ type ARGDataProvider struct {
 }
 
 // NewARGDataProvider Constructor
-func NewARGDataProvider(instrumentationProvider instrumentation.IInstrumentationProvider, argClient IARGClient, queryGenerator *queries.ARGQueryGenerator, redisCache cache.ICacheClient) *ARGDataProvider {
+func NewARGDataProvider(instrumentationProvider instrumentation.IInstrumentationProvider, argClient IARGClient, queryGenerator queries.IARGQueryGenerator, redisCache cache.ICacheClient) *ARGDataProvider {
 	return &ARGDataProvider{
-		tracerProvider:    instrumentationProvider.GetTracerProvider("NewARGDataProvider"),
+		tracerProvider:    instrumentationProvider.GetTracerProvider("ARGDataProvider"),
 		metricSubmitter:   instrumentationProvider.GetMetricSubmitter(),
 		argQueryGenerator: queryGenerator,
 		argClient:         argClient,
