@@ -1,0 +1,41 @@
+name: ReleasePipeline
+
+on:
+  push: # TODO Change from push to master to when release version is changed.
+    branches: [ master ]
+
+jobs:
+
+  build-test-golang:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.16
+
+      - name: Test
+        run: go test -v ./...
+
+  # Push to dev on merge
+  build-scan-push-image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+
+      - run: docker build -t azuredefendermcrdev.azurecr.io/public/azuredefender/dev/in-cluster-defense:${{ github.sha }} -f ./build/Dockerfile .
+
+      - uses: Azure/container-scan@v0
+        with:
+          image-name: azuredefendermcrdev.azurecr.io/public/azuredefender/dev/in-cluster-defense:${{ github.sha }}
+
+      - uses: Azure/docker-login@v1
+        with:
+          login-server: azuredefendermcrdev.azurecr.io/public/azuredefender/dev/in-cluster-defense:${{ github.sha }}
+          # TODO change to SPN https://docs.microsoft.com/en-us/azure/container-registry/container-registry-auth-service-principal
+          username: ${{ secrets.DEV_REGISTRY_USERNAME }}
+          password: ${{ secrets.DEV_REGISTRY_PASSWORD }}
+
+      - run: docker push azuredefendermcrdev.azurecr.io/public/azuredefender/dev/in-cluster-defense:${{ github.sha }}

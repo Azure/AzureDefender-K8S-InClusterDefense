@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/httpclient/mocks"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/retrypolicy"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/utils"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/mock"
@@ -24,7 +25,7 @@ var _exchanger_httpreq *http.Request
 var _exchanger_httpreq_str string
 
 const _exchanger_armTokenMock = "ARMTokenMock-Exchange"
-const _exchanger_refreshTokenMock = "ACRRefreshTokenMock-Excahne"
+const _exchanger_refreshTokenMock = "ACRRefreshTokenMock-Exchange"
 const _excahnger_registryMock = "tomerw.azurecr.io"
 
 type TestSuiteTokenExchanger struct {
@@ -53,7 +54,10 @@ func (suite *TestSuiteTokenExchanger) SetupSuite() {
 
 func (suite *TestSuiteTokenExchanger) SetupTest() {
 	_httpClientMock = &mocks.IHttpClient{}
-	_exchanger = NewACRTokenExchanger(_instrumentationP, _httpClientMock)
+
+	// TODO Add tests that use retrypolicy mock!
+	retryPolicy := retrypolicy.NewRetryPolicy(_instrumentationP, &retrypolicy.RetryPolicyConfiguration{RetryAttempts: 1, RetryDurationInMS: 3})
+	_exchanger = NewACRTokenExchanger(_instrumentationP, _httpClientMock, retryPolicy)
 }
 
 func (suite *TestSuiteTokenExchanger) Test_ExchangeACRAccessToken_Success() {
@@ -66,7 +70,7 @@ func (suite *TestSuiteTokenExchanger) Test_ExchangeACRAccessToken_Success() {
 	suite.AssertExpectations()
 }
 
-func (suite *TestSuiteTokenExchanger) Test_ExchangeACRAccessToken_ErrorInHttp_ErrorPropogated() {
+func (suite *TestSuiteTokenExchanger) Test_ExchangeACRAccessToken_ErrorInHttp_ErrorPropagated() {
 	expectedErr := errors.New("HttpErrorMock")
 	_httpClientMock.On("Do", mock.MatchedBy(suite.isRequestExpected)).Return(nil, expectedErr).Once()
 	refresh_token, err := _exchanger.ExchangeACRAccessToken(_excahnger_registryMock, _exchanger_armTokenMock)
@@ -76,7 +80,7 @@ func (suite *TestSuiteTokenExchanger) Test_ExchangeACRAccessToken_ErrorInHttp_Er
 	suite.AssertExpectations()
 }
 
-func (suite *TestSuiteTokenExchanger) Test_ExchangeACRAccessToken_ErrorCodeInHttpWithBody_ErrorPropogated() {
+func (suite *TestSuiteTokenExchanger) Test_ExchangeACRAccessToken_ErrorCodeInHttpWithBody_ErrorPropagated() {
 	expectedResponse := suite.generateTokenResponse(http.StatusUnauthorized, "MockError")
 	_httpClientMock.On("Do", mock.MatchedBy(suite.isRequestExpected)).Return(expectedResponse, nil).Once()
 	refresh_token, err := _exchanger.ExchangeACRAccessToken(_excahnger_registryMock, _exchanger_armTokenMock)
@@ -87,7 +91,7 @@ func (suite *TestSuiteTokenExchanger) Test_ExchangeACRAccessToken_ErrorCodeInHtt
 	suite.AssertExpectations()
 }
 
-func (suite *TestSuiteTokenExchanger) Test_ExchangeACRAccessToken_ErrorCodeInHttpWithNilBody_ErrorPropogated() {
+func (suite *TestSuiteTokenExchanger) Test_ExchangeACRAccessToken_ErrorCodeInHttpWithNilBody_ErrorPropagated() {
 	expectedResponse := &http.Response{StatusCode: http.StatusUnauthorized}
 	_httpClientMock.On("Do", mock.MatchedBy(suite.isRequestExpected)).Return(expectedResponse, nil).Once()
 	refresh_token, err := _exchanger.ExchangeACRAccessToken(_excahnger_registryMock, _exchanger_armTokenMock)
@@ -98,7 +102,7 @@ func (suite *TestSuiteTokenExchanger) Test_ExchangeACRAccessToken_ErrorCodeInHtt
 	suite.AssertExpectations()
 }
 
-func (suite *TestSuiteTokenExchanger) Test_ExchangeACRAccessToken_OkCodeNilBody_ErrorPropogated() {
+func (suite *TestSuiteTokenExchanger) Test_ExchangeACRAccessToken_OkCodeNilBody_ErrorPropagated() {
 	expectedResponse := &http.Response{StatusCode: http.StatusOK}
 	_httpClientMock.On("Do", mock.MatchedBy(suite.isRequestExpected)).Return(expectedResponse, nil).Once()
 	refresh_token, err := _exchanger.ExchangeACRAccessToken(_excahnger_registryMock, _exchanger_armTokenMock)
@@ -108,8 +112,7 @@ func (suite *TestSuiteTokenExchanger) Test_ExchangeACRAccessToken_OkCodeNilBody_
 	suite.AssertExpectations()
 }
 
-
-func (suite *TestSuiteTokenExchanger) Test_ExchangeACRAccessToken_OkCodeBadFormatBody_ErrorPropogated() {
+func (suite *TestSuiteTokenExchanger) Test_ExchangeACRAccessToken_OkCodeBadFormatBody_ErrorPropagated() {
 	expectedResponse := suite.generateTokenResponse(http.StatusOK, "MockBadBody!")
 	_httpClientMock.On("Do", mock.MatchedBy(suite.isRequestExpected)).Return(expectedResponse, nil).Once()
 	refresh_token, err := _exchanger.ExchangeACRAccessToken(_excahnger_registryMock, _exchanger_armTokenMock)
@@ -122,7 +125,7 @@ func (suite *TestSuiteTokenExchanger) Test_ExchangeACRAccessToken_OkCodeBadForma
 	suite.AssertExpectations()
 }
 
-func (suite *TestSuiteTokenExchanger) Test_ExchangeACRAccessToken_OkCodeBadEmptyRefreshCode_ErrorPropogated() {
+func (suite *TestSuiteTokenExchanger) Test_ExchangeACRAccessToken_OkCodeBadEmptyRefreshCode_ErrorPropagated() {
 	expectedResponse := suite.generateTokenResponse(http.StatusOK, "{}")
 	_httpClientMock.On("Do", mock.MatchedBy(suite.isRequestExpected)).Return(expectedResponse, nil).Once()
 	refresh_token, err := _exchanger.ExchangeACRAccessToken(_excahnger_registryMock, _exchanger_armTokenMock)
@@ -169,6 +172,9 @@ func (*TestSuiteTokenExchanger) generateTokenResponseBody(refreshToken string) s
 }
 
 func (*TestSuiteTokenExchanger) isRequestExpected(req *http.Request) bool {
+	//TODO this method is not working well... we should change it once we will add tests for the retry policy.
+	// 	http.Request has URL field that it's pointer so this method checks if the ref is eqaul and not the value!
+	// 	probably should use somehow recursive function that checks all the inner fields that are pointer.
 	var buffer = &bytes.Buffer{}
 	err := req.Write(buffer)
 	str := buffer.String()
