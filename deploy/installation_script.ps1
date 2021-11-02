@@ -6,7 +6,6 @@
 
 #######################################################################################################################
 # Step 1: Get arguments: resourcegroup, cluster_name
-# df
 Param (
     [Parameter(Mandatory = $True)]
     [string]$resource_group,
@@ -20,7 +19,6 @@ Param (
 
 write-host "Params that were entered:`r`nresource group : $resource_group `r`ncluster name : $cluster_name,`r`nregion : $region"
 #######################################################################################################################
-
 # Function for printing new section.
 $stepCount = 1
 Function PrinitNewSection($stepTitle)
@@ -28,34 +26,28 @@ Function PrinitNewSection($stepTitle)
     write-host "########################################## Step: $stepCount - $stepTitle ##########################################"
     $stepCount++
 }
-
 #######################################################################################################################
-
-# Create used variables.
-
-# TODO Change region param - currenlty if inserting region with space the script fails.
 # Create node resource group variable - MC_<RESOURCE_GROUP>_<CLUSTER_NAME>_<REGION>
 $node_resource_group = "MC_$resource_group`_$cluster_name`_$region"
-# Create identity name - <cluster_name>-in-cluster-defense
-$in_cluster_defense_identity_name = "$cluster_name`-in-cluster-defense"
-
 
 #######################################################################################################################
-# login with az login.
-# az login
 
 PrinitNewSection("Logging in")
+# login with az login.
+az login
 
-$subscription = az account show -o "json" --query "id"
+$subscription = az account show -o tsv --query "id"
 write-host "Extracted subscription <$subscription> successfully"
+
 #######################################################################################################################
 # Step 2: Install azure addon policy in the cluster if not exists
 PrinitNewSection("Azure addon policy")
 
-
-<# https://docs.microsoft.com/en-us/azure/governance/policy/concepts/policy-for-kubernetes
+<#
+https://docs.microsoft.com/en-us/azure/governance/policy/concepts/policy-for-kubernetes
 Before installing the Azure Policy Add-on or enabling any of the service features, your subscription must enable the Microsoft.PolicyInsights resource providers.
 #>
+
 # Provider register: Register the Azure Policy provider
 az provider register --namespace Microsoft.PolicyInsights
 
@@ -63,56 +55,47 @@ az provider register --namespace Microsoft.PolicyInsights
 az aks enable-addons --addons azure-policy --name $cluster_name --resource-group $resource_group
 
 #######################################################################################################################
-# Step 3: Create block identity (User managed identity) if not exists.
-PrinitNewSection("Azure Defender In Cluster Defense Managed Identity")
+PrinitNewSection("AzureDefenderInClusterDefense Dependencies")
 
-write-host "Checking if there is already idenity in $node_resource_group resource group"
-$in_cluster_defense_identity_client_id = az identity show -n $in_cluster_defense_identity_name -g $node_resource_group --query "clientId"
-if ($LASTEXITCODE -eq 3)
-{
-    write-host "idenity is not exist... creating new MI with name $in_cluster_defense_identity_name at resource group $resource_group"
-    # create new identity
-    $in_cluster_defense_identity_client_id = az identity create --name $in_cluster_defense_identity_name -g $node_resource_group --query "clientId"
-    # Wait until ideneity is created - first sleep seconds and then wait until identity and spn created successfully
-    Start-Sleep -Seconds 5
-    do
-    {
-        $_ = az role assignment list --assigne $in_cluster_defense_identity_client_id
-    } while ($LASTEXITCODE -ne 0)
+# TODO Change the teamplate file to uri.
+az deployment sub create --name "AzureDefenderInClusterDefense-dependencies" --location "$region" --template-file .\deploy\Deployment\ServiceGroupRoot\Templates\AzureDefenderInClusterDefense.Dependecies.Template.json --parameters cluster_name = $cluster_name resource_group = $node_resource_group location = $region
 
-    write-host "Created new MI successfully"
-}
-else
-{
-    write-host "idenity is already exists"
-}
-# Extract client id into variable - it will be passed to helm.
-write-host "The client id that will be passed to helm of In Cluster Defense MI is: $in_cluster_defense_identity_client_id"
 #######################################################################################################################
-# Step 4: Create RBAC of subscription reader (RBAC of block identity) if not exists
-PrinitNewSection("Azure Defender In Cluster Defense Subscription Reader For Managed Identity")
-
-# Checking if the RBAC is already exists
-write-host "Checking if there is already subscription($subscription) reader RBAC for $in_cluster_defense_identity_client_id"
-
-if (az role assignment list --assigne $in_cluster_defense_identity_client_id --role "Reader" --scope "/subscriptions/$subscription" --query "[] | length(@)" -gt 0)
-{
-    write-host "Client id <$in_cluster_defense_identity_client_id> already has subscription reader RBAC."
+PrinitNewSection("azure-defender-k8s-security-profile Dependencies")
+## Enable AKS-AzureDefender Feature flag on your subscription
+$url = "https://management.azure.com/subscriptions/$subscription/providers/Microsoft.Features/providers/Microsoft.ContainerService/features/AKS-AzureDefender/register?api-version=2015-12-01";
+$token = (az account get-access-token --query "accessToken" -o tsv)
+$authorization_header = @{
+    Authorization = "Bearer $token"
 }
-else # In case that the RBAC is not exists - creating new one
-{
-    write-host "Client id <$in_cluster_defense_identity_client_id> doesn't have subscription reader permission - creating new RBAC"
-    az role assignment create --role "Reader" --description "Subscription reader perm for ARG" --scope "/subscriptions/$subscription" --assignee $in_cluster_defense_identity_client_id
+Invoke-WebRequest -Method POST -Uri $url -Headers $authorization_header
 
-    write-host "Subscription reader RBAC was created successfully"
-}
+# Deploy arm template - containts the dependencies of azure-defender-k8s-security-profile
+# TODO Change the teamplate file to uri.
+az deployment sub create --name "azure-defender-k8s-security-profile" --location "$region" --template-file .\deploy\Deployment\ServiceGroupRoot\Templates\Tivan.Dependencies.Template.json --parameters subscriptionId = $subscription clusterName = $cluster_name clusterResourceGroup = $resource_group resourceLocation = $region
 
 #######################################################################################################################
 PrinitNewSection("Installing Helm Chart")
 
-<# Step 6: Get all helm values for installing helm chart -
+<#
+Step 6: Get all helm values for installing helm chart -
+    - subscription id
     - agentpool identity
-    - subscription Identity
-    - block identity
+    - AzureDefenderInClusterDefense client id of MI
+Step 6: Install / upgrade helm chart with helm values
  #>
-# Step 6: Install / upgrade helm chart with helm values
+
+$kubelet_client_id = az identity show -n "$cluster_name-agentpool" -g $node_resource_group --query "clientId"
+$in_cluster_defense_identity_client_id = az identity show -n "AzureDefenderInClusterDefense-$cluster_name" -g $node_resource_group --query "clientId"
+
+write-host "kubelet_client_id: <$kubelet_client_id>"
+write-host "in_cluster_defense_identity_client_id: <$in_cluster_defense_identity_client_id>"
+
+# Switch to current context
+kubectl config use-context $cluster_name
+
+# Install helm chart
+$HELM_EXPERIMENTAL_OCI = 1
+
+# Install helm chart from mcr repo on kube-system namespace and pass subscription and client id's params.
+helm install azuredefender azuredefendermcrprod.azurecr.io/public/azuredefender/stable/in-cluster-defense-helm -n kube-system --set AzDProxy.kubeletIdentity.envAzureAuthorizerConfiguration.mSIClientId = $kubelet_client_id --set AzDProxy.azdIdentity.envAzureAuthorizerConfiguration.mSIClientId = $in_cluster_defense_identity_client_id --set "AzDProxy.arg.argClientConfiguration.subscriptions={$subscription}"
