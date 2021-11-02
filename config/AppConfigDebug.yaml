@@ -22,8 +22,20 @@ instrumentation:
       tracerLevel: 0
   tivan:
     tivanInstrumentationConfiguration:
-      componentName: "azdproxy"
-      mdmNamespace: "Tivan.Collector.Pods"
+      componentName: "debug-in-cluster-defense"
+      azureResourceID: ""
+      region: ""
+      clusterDistribution: ""
+      chartVersion: ""
+      imageName: "local-development"
+      imageVersion: "no-version"
+      releaseTrain: ""
+      nodeName: ""
+      dirPath: "/var/log/azuredefender"
+      mdmAccount: ""
+      mdmNamespace: ""
+      platformMdmAccount: ""
+      platformMdmNamespace: ""
 
 azdIdentity:
   envAzureAuthorizerConfiguration:
@@ -37,8 +49,13 @@ acr:
   craneWrappersConfiguration:
     retryPolicyConfiguration:
       retryAttempts: 3
-      retryDuration: 10
-      timeUnit: "ms"
+      retryDurationInMS: 10
+
+  tokenExchanger:
+    retryPolicyConfiguration:
+      retryAttempts: 3
+      retryDurationInMS: 10
+
 
 arg:
   argClientConfiguration:
@@ -49,6 +66,7 @@ arg:
       retryDuration: 10
       timeUnit: "ms"
 
+# Cache configuration
 cache:
   nonInMem:
     deploymentConfiguration:
@@ -70,4 +88,9 @@ cache:
       cacheSize: 104857600
 
 deployment:
-  isLocalDevelopment:  false
+  isLocalDevelopment:  true
+  namespace: "kube-system"
+
+azdSecInfoProvider:
+  GetContainersVulnerabilityScanInfoTimeoutDuration:
+    timeDurationInMS: 10000

@@ -6,7 +6,6 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/utils"
 	"github.com/pkg/errors"
-	"strconv"
 	"time"
 )
 
@@ -50,11 +49,8 @@ type RetryPolicy struct {
 type RetryPolicyConfiguration struct {
 	// RetryAttempts  is the number of attempts that the request should be executed.
 	RetryAttempts int
-	// RetryDuration is the time duration between each retry - it is represented as string
-	RetryDuration int
-	// TimeUnit is the unit of time for the backoff duration
-	// Valid time units are "ns", "us" (or "µs"), "ms", "s", "m", "h".
-	TimeUnit string
+	// RetryDuration is the time duration between each retry - in milliseconds
+	RetryDurationInMS int
 }
 
 // NewRetryPolicy Constructor for retry policy object
@@ -74,13 +70,12 @@ func NewRetryPolicy(instrumentationProvider instrumentation.IInstrumentationProv
 		metricSubmitter: instrumentationProvider.GetMetricSubmitter(),
 	}
 
-	return retryPolicy, nil
 }
 
 // RetryActionString retry to run the action with retryPolicy
-func (r *RetryPolicy) RetryActionString(action ActionString, handle ShouldRetryOnSpecificError) (value string, err error) {
+func (r *RetryPolicy) RetryActionString(action ActionString, shouldRetry ShouldRetryOnSpecificError) (value string, err error) {
 	tracer := r.tracerProvider.GetTracer("RetryActionString")
-	if action == nil || handle == nil {
+	if action == nil || shouldRetry == nil {
 		err = errors.Wrap(utils.NilArgumentError, "action and handle can't be nil")
 		tracer.Error(err, "")
 		return "", err
@@ -92,7 +87,7 @@ func (r *RetryPolicy) RetryActionString(action ActionString, handle ShouldRetryO
 		// Act
 		value, err = action()
 
-		if err != nil && handle(err) { // Check if handle knows how to handle with error.
+		if err != nil && !shouldRetry(err) { // Check if shouldRetry knows how to handle with error.
 			tracer.Info("failed but encountered with handled err", "err", err)
 			return "", err
 
@@ -113,9 +108,9 @@ func (r *RetryPolicy) RetryActionString(action ActionString, handle ShouldRetryO
 }
 
 // RetryAction retry to run the action with retryPolicy
-func (r *RetryPolicy) RetryAction(action Action, handle ShouldRetryOnSpecificError) (err error) {
+func (r *RetryPolicy) RetryAction(action Action, shouldRetry ShouldRetryOnSpecificError) (err error) {
 	tracer := r.tracerProvider.GetTracer("RetryActionString")
-	if action == nil || handle == nil {
+	if action == nil || shouldRetry == nil {
 		err = errors.Wrap(utils.NilArgumentError, "action and handle can't be nil")
 		tracer.Error(err, "")
 		return err
@@ -127,7 +122,7 @@ func (r *RetryPolicy) RetryAction(action Action, handle ShouldRetryOnSpecificErr
 		// Act
 		err = action()
 
-		if err != nil && handle(err) { // Check if handle knows how to handle with error.
+		if err != nil && !shouldRetry(err) { // Check if handle knows how to handle with error.
 			tracer.Info("failed but encountered with handled err", "err", err)
 			return err
 
@@ -149,12 +144,7 @@ func (r *RetryPolicy) RetryAction(action Action, handle ShouldRetryOnSpecificErr
 
 // GetBackOffDuration uses the RetryPolicyConfiguration instance's RetryDuration (int) and TimeUnit(string)
 // to a return a time.Duration object of the backoff duration
-func GetBackOffDuration(configuration *RetryPolicyConfiguration) (duration time.Duration, err error) {
-	if configuration == nil {
-		return 0, errors.Wrap(utils.NilArgumentError, "_configuration can't be nil")
-	} else if configuration.RetryDuration <= 0 {
-		return 0, errors.New("RetryDuration must be > 0")
-	}
-
-	return time.ParseDuration(strconv.Itoa(configuration.RetryDuration) + configuration.TimeUnit)
+// In case of invalid argument, use default values for retry policy.
+func (configuration *RetryPolicyConfiguration) GetBackOffDuration() time.Duration {
+	return time.Duration(configuration.RetryDurationInMS) * time.Millisecond
 }

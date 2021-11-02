@@ -35,7 +35,19 @@ data:
       tivan:
         tivanInstrumentationConfiguration:
           componentName: {{ .Chart.Name | quote}}
+          azureResourceID: {{ .Values.AzDProxy.instrumentation.tivan.tivanInstrumentationConfiguration.azureResourceID | quote}}
+          region: {{ .Values.AzDProxy.instrumentation.tivan.tivanInstrumentationConfiguration.region | quote}}
+          clusterDistribution: {{ .Values.AzDProxy.instrumentation.tivan.tivanInstrumentationConfiguration.clusterDistribution | quote}}
+          chartVersion: {{ .Values.AzDProxy.instrumentation.tivan.tivanInstrumentationConfiguration.chartVersion | quote}}
+          imageName: {{ .Values.AzDProxy.webhook.image.name | quote}}
+          imageVersion: {{ .Values.AzDProxy.webhook.image.tag | quote}}
+          releaseTrain: {{ .Values.AzDProxy.instrumentation.tivan.tivanInstrumentationConfiguration.releaseTrain | quote}}
+          nodeName: {{ .Values.AzDProxy.instrumentation.tivan.tivanInstrumentationConfiguration.nodeName | quote}}
+          dirPath: {{ .Values.AzDProxy.instrumentation.tivan.tivanInstrumentationConfiguration.dirPath | quote}}
+          mdmAccount: {{ .Values.AzDProxy.instrumentation.tivan.tivanInstrumentationConfiguration.mdmAccount | quote}}
           mdmNamespace: {{ .Values.AzDProxy.instrumentation.tivan.tivanInstrumentationConfiguration.mdmNamespace | quote}}
+          platformMdmAccount: {{ .Values.AzDProxy.instrumentation.tivan.tivanInstrumentationConfiguration.platformMdmAccount | quote}}
+          platformMdmNamespace: {{ .Values.AzDProxy.instrumentation.tivan.tivanInstrumentationConfiguration.platformMdmNamespace | quote}}
     azdIdentity:
       envAzureAuthorizerConfiguration:
         mSIClientId: {{.Values.AzDProxy.azdIdentity.envAzureAuthorizerConfiguration.mSIClientId}}
@@ -46,8 +58,13 @@ data:
       craneWrappersConfiguration:
         retryPolicyConfiguration:
           retryAttempts: {{ .Values.AzDProxy.acr.craneWrappers.retryPolicyConfiguration.retryAttempts }}
-          retryDuration: {{ .Values.AzDProxy.acr.craneWrappers.retryPolicyConfiguration.retryDuration }}
-          timeUnit: {{ .Values.AzDProxy.acr.craneWrappers.retryPolicyConfiguration.timeUnit | quote}}
+          retryDurationInMS: {{ .Values.AzDProxy.acr.craneWrappers.retryPolicyConfiguration.retryDurationInMS }}
+
+      tokenExchanger:
+        retryPolicyConfiguration:
+          retryAttempts: {{ .Values.AzDProxy.acr.craneWrappers.retryPolicyConfiguration.retryAttempts }}
+          retryDurationInMS: {{ .Values.AzDProxy.acr.craneWrappers.retryPolicyConfiguration.retryDurationInMS }}
+
     arg:
       argClientConfiguration:
         subscriptions: {{ .Values.AzDProxy.arg.argClientConfiguration.subscriptions }}
@@ -56,6 +73,7 @@ data:
           retryAttempts: {{ .Values.AzDProxy.arg.argBaseClient.retryPolicyConfiguration.retryAttempts }}
           retryDuration: {{ .Values.AzDProxy.arg.argBaseClient.retryPolicyConfiguration.retryDuration }}
           timeUnit: {{ .Values.AzDProxy.arg.argBaseClient.retryPolicyConfiguration.timeUnit | quote}}
+    
     cache:
       nonInMem:
         deploymentConfiguration:
@@ -75,6 +93,12 @@ data:
       inMem:
         tokensCacheConfiguration:
           cacheSize: {{.Values.AzDProxy.cache.inMem.tokensCacheConfiguration.cacheSize}}
+    
     deployment:
       isLocalDevelopment:  {{ .Values.AzDProxy.deployment.isLocalDevelopment }}
       namespace: {{ .Release.Namespace | quote}}
+
+
+    azdSecInfoProvider:
+      GetContainersVulnerabilityScanInfoTimeoutDuration:
+        timeDuration: {{ .Values.AzDProxy.azdSecInfoProvider.GetContainersVulnerabilityScanInfo.timeout.timeDurationInMS }}
