@@ -17,6 +17,14 @@ import (
 	"time"
 )
 
+const (
+	_TimeDurationGetContainersVulnerabilityScanInfo = 0
+	_waitTwoSeconds                                 = 2
+	_timeWaitForSecondContainer                     = 2
+	_waitZeroSeconds                 = 0
+	_maxAllowedDifferenceBetweenRuns = 0.3
+)
+
 var (
 
 	_imageRegistry = "playground.azurecr.io"
@@ -37,16 +45,16 @@ var (
 		},
 	}
 
-	imageRedTest1 = registry.NewTag(_imageOriginalTest1, _imageRegistry, _imageRepo, _imageTagTest1)
-	resourceCtxTest1 = tag2digest.NewResourceContext("default", []string{}, "")
-	digestTest1 = "sha256:9f9ed5fe24766b31bcb64aabba73e96cc5b7c2da578f9cd2fca20846cf5d7557"
+	_imageRedTest1    = registry.NewTag(_imageOriginalTest1, _imageRegistry, _imageRepo, _imageTagTest1)
+	_resourceCtxTest1 = tag2digest.NewResourceContext("default", []string{}, "")
+	_digestTest1      = "sha256:9f9ed5fe24766b31bcb64aabba73e96cc5b7c2da578f9cd2fca20846cf5d7557"
 
-	imageRedTest2 = registry.NewTag(_imageOriginalTest2, _imageRegistry, _imageRepo, _imageTagTest2)
-	resourceCtxTest2 = tag2digest.NewResourceContext("default", []string{}, "")
-	digestTest2 = "sha256:86a80e680602c613519a5af190219346230a3b02d98606727b9c8d47d8dc88ed"
+	_imageRedTest2    = registry.NewTag(_imageOriginalTest2, _imageRegistry, _imageRepo, _imageTagTest2)
+	_resourceCtxTest2 = tag2digest.NewResourceContext("default", []string{}, "")
+	_digestTest2      = "sha256:86a80e680602c613519a5af190219346230a3b02d98606727b9c8d47d8dc88ed"
 )
 
-type TestSuite struct {
+type AzdSecInfoProviderTestSuite struct {
 	suite.Suite
 	tag2DigestResolverMock *tag2DigestResolverMocks.ITag2DigestResolver
 	argDataProviderMock *argDataProviderMocks.IARGDataProvider
@@ -54,80 +62,91 @@ type TestSuite struct {
 }
 
 // This will run before each test in the suite
-func (suite *TestSuite) SetupTest() {
-	// Update deployment - is needed for set default namespace as empty.
-	utils.UpdateDeploymentForTests(&utils.DeploymentConfiguration{Namespace: "kube-system"})
+func (suite *AzdSecInfoProviderTestSuite) SetupTest() {
 	// Mock
 	suite.tag2DigestResolverMock = &tag2DigestResolverMocks.ITag2DigestResolver{}
 	suite.argDataProviderMock = &argDataProviderMocks.IARGDataProvider{}
-	suite.azdSecInfoProvider = NewAzdSecInfoProvider(instrumentation.NewNoOpInstrumentationProvider(), suite.argDataProviderMock, suite.tag2DigestResolverMock, &utils.TimeoutConfiguration{TimeDurationInMS: 0})
+	suite.azdSecInfoProvider = NewAzdSecInfoProvider(instrumentation.NewNoOpInstrumentationProvider(), suite.argDataProviderMock, suite.tag2DigestResolverMock, &utils.TimeoutConfiguration{TimeDurationInMS: _TimeDurationGetContainersVulnerabilityScanInfo})
 }
 
-func (suite *TestSuite) Test_getContainersVulnerabilityScanInfo_Run_In_Parallel_InitContainersNil() {
-	suite.goroutineTest(suite.getContainersVulnerabilityScanInfoTest_InitContainersNil)
-}
-
-func (suite *TestSuite) Test_getContainersVulnerabilityScanInfo_Run_In_Parallel_ContainersNil() {
-	suite.goroutineTest(suite.getContainersVulnerabilityScanInfoTest_ContainersNil)
-}
-
-func (suite *TestSuite) Test_getContainersVulnerabilityScanInfo_Run_In_Parallel_OneContainerOneInitContainer() {
-	suite.goroutineTest(suite.getContainersVulnerabilityScanInfoTest_OneContainerOneInitContainer)
-}
-
-func (suite *TestSuite) Test_getContainersVulnerabilityScanInfo_Run_In_Parallel_AllContainersNil() {
+func (suite *AzdSecInfoProviderTestSuite) Test_GetContainersVulnerabilityScanInfo_Run_In_Parallel_AllContainersNil() {
 	pod := createPodForTests(nil, nil)
 	// Act
-	res, _ := suite.azdSecInfoProvider.GetContainersVulnerabilityScanInfo(&pod.Spec, &pod.ObjectMeta, &pod.TypeMeta)
+	res, err := suite.azdSecInfoProvider.GetContainersVulnerabilityScanInfo(&pod.Spec, &pod.ObjectMeta, &pod.TypeMeta)
+	suite.NotNil(res)
+	suite.Nil(err)
 	suite.Len(res, 0)
 }
 
+func (suite *AzdSecInfoProviderTestSuite) Test_GetContainersVulnerabilityScanInfo_Run_In_Parallel_InitContainersNil() {
+	suite.goroutineTest(suite.getContainersVulnerabilityScanInfoTest_InitContainersNil)
+}
+
+func (suite *AzdSecInfoProviderTestSuite) Test_GetContainersVulnerabilityScanInfo_Run_In_Parallel_ContainersNil() {
+	suite.goroutineTest(suite.getContainersVulnerabilityScanInfoTest_ContainersNil)
+}
+
+func (suite *AzdSecInfoProviderTestSuite) Test_GetContainersVulnerabilityScanInfo_Run_In_Parallel_OneContainerOneInitContainer() {
+	suite.goroutineTest(suite.getContainersVulnerabilityScanInfoTest_OneContainerOneInitContainer)
+}
+
 func TestUpdateVulnSecInfoContainers(t *testing.T) {
-	suite.Run(t, new(TestSuite))
+	suite.Run(t, new(AzdSecInfoProviderTestSuite))
 }
 
-
-func (suite *TestSuite) goroutineTest(f func(time.Duration, time.Duration)) {
-	run1 := measureTime(f, 2, 2)
-	run2 := measureTime(f, 2, 0)
-	suite.True(math.Abs(run1.Seconds() - run2.Seconds()) < 0.3)
+// goroutineTest running funcToRun twice.
+// First - run with waiting time of _waitTwoSeconds seconds for each container.
+// Second - run with waiting time of _waitTwoSeconds seconds for first container and _waitZeroSeconds for the second container.
+// Afterwards, checks if the duration difference between the two runs is less than _maxAllowedDifferenceBetweenRuns which is significantly less than _waitTwoSeconds seconds.
+// This way we confirm that the scan for each container is done in parallel. If the scans are not running in parallel the duration of the first run will be the sum of _waitTwoSeconds + _waitTwoSeconds seconds instead of _waitTwoSeconds.
+func (suite *AzdSecInfoProviderTestSuite) goroutineTest(funcToRun func(time.Duration, time.Duration)) {
+	// First run duration
+	run1 := measureTime(funcToRun, _waitTwoSeconds, _timeWaitForSecondContainer)
+	// Second run duration
+	run2 := measureTime(funcToRun, _waitTwoSeconds, _waitZeroSeconds)
+	// Assert scans run in parallel
+	suite.True(math.Abs(run1.Seconds() - run2.Seconds()) < _maxAllowedDifferenceBetweenRuns)
 }
 
-func (suite *TestSuite) getContainersVulnerabilityScanInfoTest_InitContainersNil(waitFirstContainer time.Duration, waitSecondContainer time.Duration) {
+func (suite *AzdSecInfoProviderTestSuite) getContainersVulnerabilityScanInfoTest_InitContainersNil(waitFirstContainer time.Duration, waitSecondContainer time.Duration) {
 	containers := []corev1.Container{_containers[0], _containers[1]}
 	pod := createPodForTests(containers, nil)
 	suite.getContainersVulnerabilityScanInfoTest(pod, waitFirstContainer, waitSecondContainer)
 }
 
-func (suite *TestSuite) getContainersVulnerabilityScanInfoTest_ContainersNil(waitFirstContainer time.Duration, waitSecondContainer time.Duration) {
+func (suite *AzdSecInfoProviderTestSuite) getContainersVulnerabilityScanInfoTest_ContainersNil(waitFirstContainer time.Duration, waitSecondContainer time.Duration) {
 	containers := []corev1.Container{_containers[0], _containers[1]}
 	pod := createPodForTests(nil, containers)
 	suite.getContainersVulnerabilityScanInfoTest(pod, waitFirstContainer, waitSecondContainer)
 }
 
-func (suite *TestSuite) getContainersVulnerabilityScanInfoTest_OneContainerOneInitContainer(waitFirstContainer time.Duration, waitSecondContainer time.Duration) {
+func (suite *AzdSecInfoProviderTestSuite) getContainersVulnerabilityScanInfoTest_OneContainerOneInitContainer(waitFirstContainer time.Duration, waitSecondContainer time.Duration) {
 	containers := []corev1.Container{_containers[0]}
 	initContainers := []corev1.Container{_containers[1]}
 	pod := createPodForTests(containers, initContainers)
 	suite.getContainersVulnerabilityScanInfoTest(pod, waitFirstContainer, waitSecondContainer)
 }
 
-func (suite *TestSuite)getContainersVulnerabilityScanInfoTest(pod *corev1.Pod, waitFirstContainer time.Duration, waitSecondContainer time.Duration){
+func (suite *AzdSecInfoProviderTestSuite)getContainersVulnerabilityScanInfoTest(pod *corev1.Pod, waitFirstContainer time.Duration, waitSecondContainer time.Duration){
 
-	suite.tag2DigestResolverMock.On("Resolve", imageRedTest1, resourceCtxTest1).Return(digestTest1, nil).Once().Run(func(args mock.Arguments) {
+	suite.tag2DigestResolverMock.On("Resolve", _imageRedTest1, _resourceCtxTest1).Return(_digestTest1, nil).Once().Run(func(args mock.Arguments) {
 		time.Sleep(waitFirstContainer * time.Second)
 	})
-	suite.argDataProviderMock.On("GetImageVulnerabilityScanResults", imageRedTest1.Registry(), imageRedTest1.Repository(), digestTest1).Once().Return(contracts.Unscanned, nil, nil)
-	suite.tag2DigestResolverMock.On("Resolve", imageRedTest2, resourceCtxTest2).Return(digestTest2, nil).Once().Run(func(args mock.Arguments) {
+	suite.argDataProviderMock.On("GetImageVulnerabilityScanResults", _imageRedTest1.Registry(), _imageRedTest1.Repository(), _digestTest1).Once().Return(contracts.Unscanned, nil, nil)
+	suite.tag2DigestResolverMock.On("Resolve", _imageRedTest2, _resourceCtxTest2).Return(_digestTest2, nil).Once().Run(func(args mock.Arguments) {
 		time.Sleep(waitSecondContainer * time.Second)
 	})
-	suite.argDataProviderMock.On("GetImageVulnerabilityScanResults", imageRedTest2.Registry(), imageRedTest2.Repository(), digestTest2).Once().Return(contracts.Unscanned, nil, nil)
+	suite.argDataProviderMock.On("GetImageVulnerabilityScanResults", _imageRedTest2.Registry(), _imageRedTest2.Repository(), _digestTest2).Once().Return(contracts.Unscanned, nil, nil)
 	// Act
 	res, _ := suite.azdSecInfoProvider.GetContainersVulnerabilityScanInfo(&pod.Spec, &pod.ObjectMeta, &pod.TypeMeta)
 	// Test
 	suite.Equal(res[0].ScanStatus, contracts.Unscanned)
 	suite.Equal(res[1].ScanStatus, contracts.Unscanned)
 
+	suite.AssertExpectation()
+}
+
+func (suite *AzdSecInfoProviderTestSuite) AssertExpectation() {
 	suite.argDataProviderMock.AssertExpectations(suite.T())
 	suite.tag2DigestResolverMock.AssertExpectations(suite.T())
 }
@@ -152,3 +171,4 @@ func createPodForTests(containers []corev1.Container, initContainers []corev1.Co
 		},
 	}
 }
+//TODO tests for azd_sec_info_provider GetContainersVulnerabilityScanInfo results (mock on tag2digest and argdataprovide)
