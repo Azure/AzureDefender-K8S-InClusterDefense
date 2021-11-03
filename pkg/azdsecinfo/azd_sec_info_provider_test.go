@@ -20,7 +20,6 @@ import (
 const (
 	_TimeDurationGetContainersVulnerabilityScanInfo = 0
 	_waitTwoSeconds                                 = 2
-	_timeWaitForSecondContainer                     = 2
 	_waitZeroSeconds                 = 0
 	_maxAllowedDifferenceBetweenRuns = 0.3
 )
@@ -101,7 +100,7 @@ func TestUpdateVulnSecInfoContainers(t *testing.T) {
 // This way we confirm that the scan for each container is done in parallel. If the scans are not running in parallel the duration of the first run will be the sum of _waitTwoSeconds + _waitTwoSeconds seconds instead of _waitTwoSeconds.
 func (suite *AzdSecInfoProviderTestSuite) goroutineTest(funcToRun func(time.Duration, time.Duration)) {
 	// First run duration
-	run1 := measureTime(funcToRun, _waitTwoSeconds, _timeWaitForSecondContainer)
+	run1 := measureTime(funcToRun, _waitTwoSeconds, _waitTwoSeconds)
 	// Second run duration
 	run2 := measureTime(funcToRun, _waitTwoSeconds, _waitZeroSeconds)
 	// Assert scans run in parallel
