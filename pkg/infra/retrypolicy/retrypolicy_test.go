@@ -42,21 +42,21 @@ func (suite *TestSuite) SetupTest() {
 	// Mock
 	err := *new(error)
 	suite.retryPolicy, err = NewRetryPolicy(instrumentation.NewNoOpInstrumentationProvider(), &_configuration)
-	suite.Error(err)
+	suite.Nil(err)
 	suite.countActions = 0
 }
 
 func (suite *TestSuite) Test_NewRetryPolicy_NotNilConfiguration_ShouldReturnInstance() {
 
 	r, err := NewRetryPolicy(instrumentation.NewNoOpInstrumentationProvider(), &_configuration)
-	suite.Error(err)
+	suite.Nil(err)
 	suite.Equal(_configuration.RetryAttempts, r.retryAttempts)
 	suite.Equal(_expectedConfigurationDuration, r.duration)
 }
 
 func (suite *TestSuite) Test_GetBackOffDuration_NotNilConfiguration_ShouldReturnInstance() {
 	d, err := _configuration.GetBackOffDuration()
-	suite.Error(err)
+	suite.Nil(err)
 	suite.Equal(_expectedConfigurationDuration, d)
 }
 

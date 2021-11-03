@@ -32,7 +32,7 @@ type TestSuite struct {
 // This will run before each test in the suit
 func (suite *TestSuite) SetupTest() {
 	retryPolicy, err := retrypolicy.NewRetryPolicy(instrumentation.NewNoOpInstrumentationProvider(), retryPolicyConfiguration)
-	suite.Error(err)
+	suite.Nil(err)
 	suite.craneWrapper = NewCraneWrapper(instrumentation.NewNoOpInstrumentationProvider(), retryPolicy)
 }
 

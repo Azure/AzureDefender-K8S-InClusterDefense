@@ -57,7 +57,7 @@ func (suite *TestSuiteTokenExchanger) SetupTest() {
 
 	// TODO Add tests that use retrypolicy mock!
 	retryPolicy, err := retrypolicy.NewRetryPolicy(_instrumentationP, &retrypolicy.RetryPolicyConfiguration{RetryAttempts: 1, RetryDuration: "3ms"})
-	suite.Error(err)
+	suite.Nil(err)
 	_exchanger = NewACRTokenExchanger(_instrumentationP, _httpClientMock, retryPolicy)
 }
 

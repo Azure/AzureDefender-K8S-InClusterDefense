@@ -25,7 +25,6 @@ const (
 
 var (
 	_ctx             = context.Background()
-	_retryPolicy     retrypolicy.IRetryPolicy
 	_client          *RedisCacheClient
 	_redisClientMock *redis.Client
 	_redisMock       redismock.ClientMock
@@ -36,7 +35,7 @@ func (suite *TestSuiteRedisCache) SetupTest() {
 	_redisClientMock, _redisMock = redismock.NewClientMock()
 	retryPolicyConfiguration := &retrypolicy.RetryPolicyConfiguration{RetryAttempts: 1, RetryDuration: "10ms"}
 	_retryPolicy, err := retrypolicy.NewRetryPolicy(instrumentation.NewNoOpInstrumentationProvider(), retryPolicyConfiguration)
-	suite.Error(err)
+	suite.Nil(err)
 	_client = NewRedisCacheClient(instrumentation.NewNoOpInstrumentationProvider(), _redisClientMock, _retryPolicy)
 }
 
