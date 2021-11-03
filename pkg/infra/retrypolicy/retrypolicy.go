@@ -50,26 +50,21 @@ type RetryPolicyConfiguration struct {
 	// RetryAttempts  is the number of attempts that the request should be executed.
 	RetryAttempts int
 	// RetryDuration is the time duration between each retry - in milliseconds
-	RetryDurationInMS int
+	RetryDuration string
 }
 
 // NewRetryPolicy Constructor for retry policy object
 func NewRetryPolicy(instrumentationProvider instrumentation.IInstrumentationProvider, configuration *RetryPolicyConfiguration) (*RetryPolicy, error) {
-	duration, err := GetBackOffDuration(configuration)
+	parsedTimeDuration, err := configuration.GetBackOffDuration()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "Given retry duration string is not a valid time duration")
 	}
-	if configuration.RetryAttempts <= 0 {
-		return nil, errors.New("RetryAttempts must be integer > 0")
-	}
-
-	retryPolicy := &RetryPolicy{
-		duration:        duration,
-		retryAttempts:   configuration.RetryAttempts,
-		tracerProvider:  instrumentationProvider.GetTracerProvider("RetryPolicy"),
-		metricSubmitter: instrumentationProvider.GetMetricSubmitter(),
-	}
-
+	return &RetryPolicy{
+			duration:        parsedTimeDuration,
+			retryAttempts:   configuration.RetryAttempts,
+			tracerProvider:  instrumentationProvider.GetTracerProvider("RetryPolicy"),
+			metricSubmitter: instrumentationProvider.GetMetricSubmitter(),
+		}, nil
 }
 
 // RetryActionString retry to run the action with retryPolicy
@@ -98,8 +93,9 @@ func (r *RetryPolicy) RetryActionString(action ActionString, shouldRetry ShouldR
 
 		// in case that err != nil and handle(err) is false, should try another execution.
 		retryCount += 1
-		tracer.Info("waiting for another retry", "sleepTime", time.Duration(retryCount)*r.duration)
-		time.Sleep(time.Duration(retryCount) * r.duration)
+		sleepTimeDuration := time.Duration(retryCount) * r.duration
+		tracer.Info("waiting for another retry", "sleepTime", sleepTimeDuration)
+		time.Sleep(sleepTimeDuration)
 
 	}
 	err = errors.Wrapf(err, "failed after %d tries", retryCount)
@@ -133,8 +129,9 @@ func (r *RetryPolicy) RetryAction(action Action, shouldRetry ShouldRetryOnSpecif
 
 		// in case that err != nil and handle(err) is false, should try another execution.
 		retryCount += 1
-		tracer.Info("waiting for another retry", "sleepTime", time.Duration(retryCount)*r.duration)
-		time.Sleep(time.Duration(retryCount) * r.duration)
+		sleepTimeDuration := time.Duration(retryCount) * r.duration
+		tracer.Info("waiting for another retry", "sleepTime", sleepTimeDuration)
+		time.Sleep(sleepTimeDuration)
 
 	}
 	err = errors.Wrapf(err, "failed after %d tries", retryCount)
@@ -142,9 +139,8 @@ func (r *RetryPolicy) RetryAction(action Action, shouldRetry ShouldRetryOnSpecif
 	return err
 }
 
-// GetBackOffDuration uses the RetryPolicyConfiguration instance's RetryDuration (int) and TimeUnit(string)
+// GetBackOffDuration uses the RetryPolicyConfiguration instance's RetryDuration (string)
 // to a return a time.Duration object of the backoff duration
-// In case of invalid argument, use default values for retry policy.
-func (configuration *RetryPolicyConfiguration) GetBackOffDuration() time.Duration {
-	return time.Duration(configuration.RetryDurationInMS) * time.Millisecond
+func (configuration *RetryPolicyConfiguration) GetBackOffDuration() (time.Duration, error) {
+	return time.ParseDuration(configuration.RetryDuration)
 }

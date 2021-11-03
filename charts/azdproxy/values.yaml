@@ -106,35 +106,10 @@ AzDProxy:
   deployment:
     isLocalDevelopment: false
 
-  # ACR policy values
-  acr:
-
-    craneWrappers:
-      retryPolicyConfiguration:
-        # Number of retry attempts
-        retryAttempts: 3
-        # Sleep duration between retries (in milliseconds):
-        retryDurationInMS: 10
-
-    tokenExchanger:
-      retryPolicyConfiguration:
-        # Number of retry attempts
-        retryAttempts: 3
-        # Sleep duration between retries (in milliseconds):
-        retryDurationInMS: 10
-
   # ARG values
   arg:
-
     argClientConfiguration:
       subscriptions: [ ]
-
-    argBaseClient:
-      retryPolicyConfiguration:
-        # Number of retry attempts
-        retryAttempts: 3
-        # Sleep duration between retries (in milliseconds):
-        retryDurationInMS: 100
 
   # Cache configuration
   cache:
@@ -157,13 +132,6 @@ AzDProxy:
           argDataProviderCacheTable: 1
           # -- The table (Db) that the tag2digestCache will save to data.
           tag2digestCacheTable: 2
-        retryPolicyConfiguration:
-          #  -- Number of retry attempts
-          retryAttempts: 3
-          #  -- Sleep duration between retries (in milliseconds):
-          retryDuration: 10
-          #  -- Timeunit for the backoff duration
-          timeUnit: "ms"
 
     inMem:
       tokensCacheConfiguration:
@@ -173,4 +141,13 @@ AzDProxy:
   azdSecInfoProvider:
     GetContainersVulnerabilityScanInfo:
       timeout:
-        timeDurationInMS: 2850
+        timeDuration: 2850
+
+  retryPolicyConfiguration:
+    #  -- Number of retry attempts
+    retryAttempts: 3
+    #  -- Sleep duration between retries (in milliseconds):
+    retryDuration: 10
+    #  -- Timeunit for the backoff duration
+    timeUnit: "ms"
+

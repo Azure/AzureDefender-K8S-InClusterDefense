@@ -82,9 +82,8 @@ func main() {
 		"arg.argClientConfiguration":                                           argClientConfiguration,
 		"deployment":                                                           deploymentConfiguration,
 		"cache.nonInMem.client.clientConfiguration":			  				redisCacheTablesMapping,
-		"cache.inMem.tokensCacheConfiguration":                    				tokensCacheConfiguration,
 		"cache.nonInMem.client.retryPolicyConfiguration": 		   				redisCacheClientRetryPolicyConfiguration,
-		"cache.tokensCacheConfiguration":                                       tokensCacheConfiguration,
+		"cache.inMem.tokensCacheConfiguration":                    				tokensCacheConfiguration,
 		"azdSecInfoProvider.GetContainersVulnerabilityScanInfoTimeoutDuration": GetContainersVulnerabilityScanInfoTimeoutDuration,
 	}
 
@@ -127,7 +126,7 @@ func main() {
 	tag2digestCacheConfiguration := cachewrappers.NewRedisCacheClientConfiguration(redisCacheTablesMapping.Address, redisCacheTablesMapping.Tables["tag2digestCacheTable"])
 	redisCacheRetryPolicy, err := retrypolicy.NewRetryPolicy(instrumentationProvider, redisCacheClientRetryPolicyConfiguration)
 	if err != nil {
-		log.Fatal("main.retrypolicy.NewRetryPolicy redisCacheRetryPolicy", err)
+		log.Fatal("main.retrypolicy.NewRetryPolicy", err)
 	}
 
 	// Registry Client
@@ -151,14 +150,20 @@ func main() {
 
 	azureBearerAuthorizerTokenProvider := azureauth.NewBearerAuthorizerTokenProvider(azureBearerAuthorizer)
 
-	acrTokenExchangerClientRetryPolicy := retrypolicy.NewRetryPolicy(instrumentationProvider, acrTokenExchangerClientRetryPolicyConfiguration)
+	acrTokenExchangerClientRetryPolicy, err := retrypolicy.NewRetryPolicy(instrumentationProvider, acrTokenExchangerClientRetryPolicyConfiguration)
+	if err != nil {
+		log.Fatal("main.retrypolicy.NewRetryPolicy", err)
+	}
 	acrTokenExchanger := registryauthazure.NewACRTokenExchanger(instrumentationProvider, &http.Client{}, acrTokenExchangerClientRetryPolicy)
 	acrTokenProvider := registryauthazure.NewACRTokenProvider(instrumentationProvider, acrTokenExchanger, azureBearerAuthorizerTokenProvider)
 
 	k8sKeychainFactory := crane.NewK8SKeychainFactory(instrumentationProvider, clientK8s)
 	acrKeychainFactory := crane.NewACRKeychainFactory(instrumentationProvider, acrTokenProvider)
 
-	craneWrapperRetryPolicy := retrypolicy.NewRetryPolicy(instrumentationProvider, craneWrapperRetryPolicyConfiguration)
+	craneWrapperRetryPolicy, err := retrypolicy.NewRetryPolicy(instrumentationProvider, craneWrapperRetryPolicyConfiguration)
+	if err != nil {
+		log.Fatal("main.retrypolicy.NewRetryPolicy", err)
+	}
 	craneWrapper := registrywrappers.NewCraneWrapper(instrumentationProvider, craneWrapperRetryPolicy)
 	// Registry Client
 	registryClient := crane.NewCraneRegistryClient(instrumentationProvider, craneWrapper, acrKeychainFactory, k8sKeychainFactory)
@@ -171,7 +176,6 @@ func main() {
 	// ARG
 	argDataProviderRedisCacheBaseClient := cachewrappers.NewRedisBaseClientWrapper(argDataProviderCacheConfiguration)
 	// argCacheClient
-	redisCacheRetryPolicy := retrypolicy.NewRetryPolicy(instrumentationProvider, redisCacheClientRetryPolicyConfiguration)
 	_ = cache.NewRedisCacheClient(instrumentationProvider, argDataProviderRedisCacheBaseClient, redisCacheRetryPolicy)
 
 	azdIdentityAuthorizerFactory := azureauth.NewMSIEnvAzureAuthorizerFactory(instrumentationProvider, azdIdentityEnvAzureAuthorizerConfiguration, new(azureauthwrappers.AzureAuthWrapper))

@@ -34,8 +34,9 @@ var (
 func (suite *TestSuiteRedisCache) SetupTest() {
 	// TODO retry mocking in all places
 	_redisClientMock, _redisMock = redismock.NewClientMock()
-	retryPolicyConfiguration := &retrypolicy.RetryPolicyConfiguration{RetryAttempts: 1, RetryDurationInMS: 10}
-	_retryPolicy = retrypolicy.NewRetryPolicy(instrumentation.NewNoOpInstrumentationProvider(), retryPolicyConfiguration)
+	retryPolicyConfiguration := &retrypolicy.RetryPolicyConfiguration{RetryAttempts: 1, RetryDuration: "10ms"}
+	_retryPolicy, err := retrypolicy.NewRetryPolicy(instrumentation.NewNoOpInstrumentationProvider(), retryPolicyConfiguration)
+	suite.Error(err)
 	_client = NewRedisCacheClient(instrumentation.NewNoOpInstrumentationProvider(), _redisClientMock, _retryPolicy)
 }
 

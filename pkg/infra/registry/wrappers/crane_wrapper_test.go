@@ -14,13 +14,13 @@ import (
 
 const (
 	_retryAttempts int = 3
-	_retryDuration     = 10
+	_retryDuration string = "10ms"
 )
 
 var (
 	retryPolicyConfiguration = &retrypolicy.RetryPolicyConfiguration{
 		RetryAttempts:     _retryAttempts,
-		RetryDurationInMS: _retryDuration,
+		RetryDuration: _retryDuration,
 	}
 )
 
@@ -31,7 +31,8 @@ type TestSuite struct {
 
 // This will run before each test in the suit
 func (suite *TestSuite) SetupTest() {
-	retryPolicy := retrypolicy.NewRetryPolicy(instrumentation.NewNoOpInstrumentationProvider(), retryPolicyConfiguration)
+	retryPolicy, err := retrypolicy.NewRetryPolicy(instrumentation.NewNoOpInstrumentationProvider(), retryPolicyConfiguration)
+	suite.Error(err)
 	suite.craneWrapper = NewCraneWrapper(instrumentation.NewNoOpInstrumentationProvider(), retryPolicy)
 }
 
@@ -64,7 +65,8 @@ func (suite *TestSuite) TestCraneWrapper_RetriesBackOff() {
 	for i := 0; i < _retryAttempts; i++ {
 		// TODO change empty string to a failing image tag
 		suite.craneWrapper.Digest("")
-		time.Sleep(_retryDuration)
+		sleepDuration, _ := time.ParseDuration(_retryDuration)
+		time.Sleep(sleepDuration)
 	}
 	// Calculate running time for static delay
 	constDurationTime := util.GetDurationMilliseconds(startTime)

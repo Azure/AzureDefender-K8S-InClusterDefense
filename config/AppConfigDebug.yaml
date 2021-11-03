@@ -49,13 +49,12 @@ acr:
   craneWrappersConfiguration:
     retryPolicyConfiguration:
       retryAttempts: 3
-      retryDurationInMS: 10
+      retryDuration: "10ms"
 
   tokenExchanger:
     retryPolicyConfiguration:
       retryAttempts: 3
-      retryDurationInMS: 10
-
+      retryDuration: "10ms"
 
 arg:
   argClientConfiguration:
@@ -63,8 +62,7 @@ arg:
   argBaseClient:
     retryPolicyConfiguration:
       retryAttempts: 3
-      retryDuration: 10
-      timeUnit: "ms"
+      retryDuration: "10ms"
 
 # Cache configuration
 cache:
@@ -81,8 +79,7 @@ cache:
           tag2digestCacheTable: 1
       retryPolicyConfiguration:
         retryAttempts: 3
-        retryDuration: 10
-        timeUnit: "ms"
+        retryDuration: "10ms"
   inMem:
     tokensCacheConfiguration:
       cacheSize: 104857600
@@ -93,4 +90,4 @@ deployment:
 
 azdSecInfoProvider:
   GetContainersVulnerabilityScanInfoTimeoutDuration:
-    timeDurationInMS: 10000
+    timeDuration: "10000ms"

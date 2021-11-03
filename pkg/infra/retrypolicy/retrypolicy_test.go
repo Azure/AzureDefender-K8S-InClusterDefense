@@ -10,8 +10,8 @@ import (
 )
 
 var (
-	_configuration                 = RetryPolicyConfiguration{RetryAttempts: 4, RetryDurationInMS: 3}
-	_expectedConfigurationDuration = time.Duration(_configuration.RetryDurationInMS) * time.Millisecond
+	_configuration                 = RetryPolicyConfiguration{RetryAttempts: 4, RetryDuration: "3ms"}
+	_expectedConfigurationDuration, _ = time.ParseDuration(_configuration.RetryDuration)
 )
 
 type TestSuite struct {
@@ -40,22 +40,23 @@ func (e err2ForTests) Error() string {
 // This will run before each test in the suite
 func (suite *TestSuite) SetupTest() {
 	// Mock
-	suite.retryPolicy = NewRetryPolicy(instrumentation.NewNoOpInstrumentationProvider(), &_configuration)
+	err := *new(error)
+	suite.retryPolicy, err = NewRetryPolicy(instrumentation.NewNoOpInstrumentationProvider(), &_configuration)
+	suite.Error(err)
 	suite.countActions = 0
-
 }
 
 func (suite *TestSuite) Test_NewRetryPolicy_NotNilConfiguration_ShouldReturnInstance() {
 
-	r := NewRetryPolicy(instrumentation.NewNoOpInstrumentationProvider(), &_configuration)
-
+	r, err := NewRetryPolicy(instrumentation.NewNoOpInstrumentationProvider(), &_configuration)
+	suite.Error(err)
 	suite.Equal(_configuration.RetryAttempts, r.retryAttempts)
 	suite.Equal(_expectedConfigurationDuration, r.duration)
 }
 
 func (suite *TestSuite) Test_GetBackOffDuration_NotNilConfiguration_ShouldReturnInstance() {
-	d := _configuration.GetBackOffDuration()
-
+	d, err := _configuration.GetBackOffDuration()
+	suite.Error(err)
 	suite.Equal(_expectedConfigurationDuration, d)
 }
 

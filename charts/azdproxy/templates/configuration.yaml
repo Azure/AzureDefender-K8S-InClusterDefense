@@ -57,23 +57,22 @@ data:
     acr:
       craneWrappersConfiguration:
         retryPolicyConfiguration:
-          retryAttempts: {{ .Values.AzDProxy.acr.craneWrappers.retryPolicyConfiguration.retryAttempts }}
-          retryDurationInMS: {{ .Values.AzDProxy.acr.craneWrappers.retryPolicyConfiguration.retryDurationInMS }}
+          retryAttempts: {{ .Values.AzDProxy.retryPolicyConfiguration.retryAttempts }}
+          retryDuration: {{ .Values.AzDProxy.retryPolicyConfiguration.retryDuration }} + {{ .Values.AzDProxy.retryPolicyConfiguration.timeUnit }}
 
       tokenExchanger:
         retryPolicyConfiguration:
-          retryAttempts: {{ .Values.AzDProxy.acr.craneWrappers.retryPolicyConfiguration.retryAttempts }}
-          retryDurationInMS: {{ .Values.AzDProxy.acr.craneWrappers.retryPolicyConfiguration.retryDurationInMS }}
+          retryAttempts: {{ .Values.AzDProxy.retryPolicyConfiguration.retryAttempts }}
+          retryDuration: {{ .Values.AzDProxy.retryPolicyConfiguration.retryDuration }} + {{ .Values.AzDProxy.retryPolicyConfiguration.timeUnit }}
 
     arg:
       argClientConfiguration:
         subscriptions: {{ .Values.AzDProxy.arg.argClientConfiguration.subscriptions }}
       argBaseClient:
         retryPolicyConfiguration:
-          retryAttempts: {{ .Values.AzDProxy.arg.argBaseClient.retryPolicyConfiguration.retryAttempts }}
-          retryDuration: {{ .Values.AzDProxy.arg.argBaseClient.retryPolicyConfiguration.retryDuration }}
-          timeUnit: {{ .Values.AzDProxy.arg.argBaseClient.retryPolicyConfiguration.timeUnit | quote}}
-    
+          retryAttempts: {{ .Values.AzDProxy.retryPolicyConfiguration.retryAttempts }}
+          retryDuration: {{ .Values.AzDProxy.retryPolicyConfiguration.retryDuration }} + {{ .Values.AzDProxy.retryPolicyConfiguration.timeUnit }}
+
     cache:
       nonInMem:
         deploymentConfiguration:
@@ -87,9 +86,8 @@ data:
               argDataProviderCacheTable: {{.Values.AzDProxy.cache.nonInMem.client.clientConfiguration.argDataProviderCacheTable}}
               tag2digestCacheTable: {{.Values.AzDProxy.cache.nonInMem.client.clientConfiguration.tag2digestCacheTable}}
           retryPolicyConfiguration:
-            retryAttempts: {{.Values.AzDProxy.cache.nonInMem.client.retryPolicyConfiguration.retryAttempts}}
-            retryDuration: {{.Values.AzDProxy.cache.nonInMem.client.retryPolicyConfiguration.retryDuration}}
-            timeUnit: {{.Values.AzDProxy.cache.nonInMem.client.retryPolicyConfiguration.timeUnit}}
+            retryAttempts: {{.Values.AzDProxy.retryPolicyConfiguration.retryAttempts}}
+            retryDuration: {{ .Values.AzDProxy.retryPolicyConfiguration.retryDuration }} + {{ .Values.AzDProxy.retryPolicyConfiguration.timeUnit }}
       inMem:
         tokensCacheConfiguration:
           cacheSize: {{.Values.AzDProxy.cache.inMem.tokensCacheConfiguration.cacheSize}}
@@ -101,4 +99,4 @@ data:
 
     azdSecInfoProvider:
       GetContainersVulnerabilityScanInfoTimeoutDuration:
-        timeDuration: {{ .Values.AzDProxy.azdSecInfoProvider.GetContainersVulnerabilityScanInfo.timeout.timeDurationInMS }}
+        timeDuration: {{ .Values.AzDProxy.azdSecInfoProvider.GetContainersVulnerabilityScanInfo.timeout.timeDuration }} + {{ .Values.AzDProxy.retryPolicyConfiguration.timeUnit }}
