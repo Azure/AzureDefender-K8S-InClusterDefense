@@ -73,13 +73,17 @@ cache:
       replicas: 1
     client:
       clientConfiguration:
-        address: "azure-defender-proxy-redis-service:6379"
+        address: "localhost:6379"
         tables:
-          argDataProviderCacheTable: 0
-          tag2digestCacheTable: 1
+          serverConnectionTestTable: 0
+          argDataProviderCacheTable: 1
+          tag2digestCacheTable: 2
       retryPolicyConfiguration:
         retryAttempts: 3
         retryDuration: "10ms"
+      serverConnectionTestRetryPolicyConfiguration:
+        retryAttempts: 3
+        retryDuration: "20s"
   inMem:
     tokensCacheConfiguration:
       cacheSize: 104857600

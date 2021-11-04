@@ -127,12 +127,19 @@ AzDProxy:
         clientConfiguration:
           # -- Address that the client will listen to (=app's service). Will be set to prefixResourceDeployment + address + port.
           address: "redis-service"
-
+          # -- The table (Db) that uses for testing te connection between the client and the server.
+          serverConnectionTestTable: 0
           # -- The table (Db) that the argDataProviderCache will save to data.
           argDataProviderCacheTable: 1
           # -- The table (Db) that the tag2digestCache will save to data.
           tag2digestCacheTable: 2
-
+        serverConnectionTestRetryPolicyConfiguration:
+          #  -- Number of retry attempts
+          retryAttempts: 3
+          #  -- Sleep duration between retries (in milliseconds):
+          retryDuration: 20
+          #  -- Timeunit for the backoff duration
+          timeUnit: "s"
     inMem:
       tokensCacheConfiguration:
         # In bytes, where 1024 * 1024 represents a single Megabyte, and 100 * 1024*1024 represents 100 Megabytes.

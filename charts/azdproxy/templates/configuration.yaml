@@ -58,12 +58,12 @@ data:
       craneWrappersConfiguration:
         retryPolicyConfiguration:
           retryAttempts: {{ .Values.AzDProxy.retryPolicyConfiguration.retryAttempts }}
-          retryDuration: {{ .Values.AzDProxy.retryPolicyConfiguration.retryDuration }} + {{ .Values.AzDProxy.retryPolicyConfiguration.timeUnit }}
+          retryDuration: {{ .Values.AzDProxy.retryPolicyConfiguration.retryDuration}}{{.Values.AzDProxy.retryPolicyConfiguration.timeUnit }}
 
       tokenExchanger:
         retryPolicyConfiguration:
           retryAttempts: {{ .Values.AzDProxy.retryPolicyConfiguration.retryAttempts }}
-          retryDuration: {{ .Values.AzDProxy.retryPolicyConfiguration.retryDuration }} + {{ .Values.AzDProxy.retryPolicyConfiguration.timeUnit }}
+          retryDuration: {{ .Values.AzDProxy.retryPolicyConfiguration.retryDuration }}{{ .Values.AzDProxy.retryPolicyConfiguration.timeUnit }}
 
     arg:
       argClientConfiguration:
@@ -71,7 +71,7 @@ data:
       argBaseClient:
         retryPolicyConfiguration:
           retryAttempts: {{ .Values.AzDProxy.retryPolicyConfiguration.retryAttempts }}
-          retryDuration: {{ .Values.AzDProxy.retryPolicyConfiguration.retryDuration }} + {{ .Values.AzDProxy.retryPolicyConfiguration.timeUnit }}
+          retryDuration: {{ .Values.AzDProxy.retryPolicyConfiguration.retryDuration }}{{ .Values.AzDProxy.retryPolicyConfiguration.timeUnit }}
 
     cache:
       nonInMem:
@@ -81,13 +81,17 @@ data:
           replicas: {{.Values.AzDProxy.cache.nonInMem.deploymentConfiguration.replicas}}
         client:
           clientConfiguration:
-            address: {{.Values.AzDProxy.prefixResourceDeployment}} + "-" + {{.Values.AzDProxy.cache.nonInMem.client.clientConfiguration.address}} + ":" + {{.Values.AzDProxy.cache.nonInMem.deploymentConfiguration.port}}
+            address: "{{.Values.AzDProxy.prefixResourceDeployment}}-{{.Values.AzDProxy.cache.nonInMem.client.clientConfiguration.address}}:{{.Values.AzDProxy.cache.nonInMem.deploymentConfiguration.port}}"
             tables:
+              serverConnectionTestTable: {{.Values.AzDProxy.cache.nonInMem.client.clientConfiguration.serverConnectionTestTable}}
               argDataProviderCacheTable: {{.Values.AzDProxy.cache.nonInMem.client.clientConfiguration.argDataProviderCacheTable}}
               tag2digestCacheTable: {{.Values.AzDProxy.cache.nonInMem.client.clientConfiguration.tag2digestCacheTable}}
           retryPolicyConfiguration:
             retryAttempts: {{.Values.AzDProxy.retryPolicyConfiguration.retryAttempts}}
-            retryDuration: {{ .Values.AzDProxy.retryPolicyConfiguration.retryDuration }} + {{ .Values.AzDProxy.retryPolicyConfiguration.timeUnit }}
+            retryDuration: "{{ .Values.AzDProxy.retryPolicyConfiguration.retryDuration }}{{ .Values.AzDProxy.retryPolicyConfiguration.timeUnit }}"
+          serverConnectionTestRetryPolicyConfiguration:
+            retryAttempts: {{ .Values.AzDProxy.cache.nonInMem.client.serverConnectionTestRetryPolicyConfiguration.retryAttempts }}
+            retryDuration: "{{ .Values.AzDProxy.cache.nonInMem.client.serverConnectionTestRetryPolicyConfiguration.retryDuration }}{{ .Values.AzDProxy.cache.nonInMem.client.serverConnectionTestRetryPolicyConfiguration.timeUnit }}"
       inMem:
         tokensCacheConfiguration:
           cacheSize: {{.Values.AzDProxy.cache.inMem.tokensCacheConfiguration.cacheSize}}
@@ -96,7 +100,6 @@ data:
       isLocalDevelopment:  {{ .Values.AzDProxy.deployment.isLocalDevelopment }}
       namespace: {{ .Release.Namespace | quote}}
 
-
     azdSecInfoProvider:
       GetContainersVulnerabilityScanInfoTimeoutDuration:
-        timeDuration: {{ .Values.AzDProxy.azdSecInfoProvider.GetContainersVulnerabilityScanInfo.timeout.timeDuration }} + {{ .Values.AzDProxy.retryPolicyConfiguration.timeUnit }}
+        timeDuration: "{{ .Values.AzDProxy.azdSecInfoProvider.GetContainersVulnerabilityScanInfo.timeout.timeDuration }}{{ .Values.AzDProxy.retryPolicyConfiguration.timeUnit }}"

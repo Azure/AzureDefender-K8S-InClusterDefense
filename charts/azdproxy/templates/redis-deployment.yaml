@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  # namespace: '{{ .Release.Namespace }}'
+  namespace: '{{ .Release.Namespace }}'
   name: {{.Values.AzDProxy.prefixResourceDeployment}}-pvc
 spec:
   accessModes:
@@ -35,8 +35,8 @@ spec:
       containers:
         - name: {{.Values.AzDProxy.cache.nonInMem.deploymentConfiguration.app}}
           image: {{.Values.AzDProxy.cache.nonInMem.deploymentConfiguration.image}}
-          #          ports:
-          #            - containerPort: {{.Values.AzDProxy.cache.nonInMem.deploymentConfiguration.port}}
+          ports:
+          - containerPort: {{.Values.AzDProxy.cache.nonInMem.deploymentConfiguration.port}}
           volumeMounts:
             - mountPath: /data/redis
               name: {{.Values.AzDProxy.cache.nonInMem.deploymentConfiguration.app}}-storage

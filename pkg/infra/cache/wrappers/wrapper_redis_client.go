@@ -19,6 +19,10 @@ type IRedisBaseClientWrapper interface {
 
 	// Get Redis `GET key` command. It returns redis.Nil error when key does not exist.
 	Get(ctx context.Context, key string) *redis.StringCmd
+
+	// Ping Redis Ping command. it is used to test if a connection is still alive, or to measure latency.
+	// returns redis.Nil error if successfully received a pong from the server.
+	Ping(ctx context.Context) *redis.StatusCmd
 }
 
 // RedisCacheClientConfiguration redis cache client configuration
@@ -44,7 +48,8 @@ type RedisCacheClientConfiguration struct {
 type CacheTablesMapping struct {
 	// Address host:port address.
 	Address string
-	// TablesMap is mapping between a client and it's table.
+	// Tables is mapping between a client and it's table.
+	// Notice that the key should be searched in lower-case
 	Tables map[string]int
 }
 

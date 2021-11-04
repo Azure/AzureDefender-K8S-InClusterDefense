@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"github.com/Azure/ASC-go-libs/pkg/config"
 	tivanInstrumentation "github.com/Azure/ASC-go-libs/pkg/instrumentation"
@@ -60,9 +61,10 @@ func main() {
 	deploymentConfiguration := new(utils.DeploymentConfiguration)
 	craneWrapperRetryPolicyConfiguration := new(retrypolicy.RetryPolicyConfiguration)
 	argBaseClientRetryPolicyConfiguration := new(retrypolicy.RetryPolicyConfiguration)
-	redisCacheClientRetryPolicyConfiguration := new(retrypolicy.RetryPolicyConfiguration)
-	redisCacheTablesMapping := new(cachewrappers.CacheTablesMapping)
 	acrTokenExchangerClientRetryPolicyConfiguration := new(retrypolicy.RetryPolicyConfiguration)
+	redisCacheClientRetryPolicyConfiguration := new(retrypolicy.RetryPolicyConfiguration)
+	serverConnectionTestRetryPolicyConfiguration := new(retrypolicy.RetryPolicyConfiguration)
+	redisCacheTablesMapping := new(cachewrappers.CacheTablesMapping)
 	tokensCacheConfiguration := new(cachewrappers.FreeCacheInMemWrapperCacheConfiguration)
 	GetContainersVulnerabilityScanInfoTimeoutDuration := new(utils.TimeoutConfiguration)
 
@@ -82,6 +84,7 @@ func main() {
 		"arg.argClientConfiguration":                                           argClientConfiguration,
 		"deployment":                                                           deploymentConfiguration,
 		"cache.nonInMem.client.clientConfiguration":			  				redisCacheTablesMapping,
+		"cache.nonInMem.client.serverConnectionTestRetryPolicyConfiguration":   serverConnectionTestRetryPolicyConfiguration,
 		"cache.nonInMem.client.retryPolicyConfiguration": 		   				redisCacheClientRetryPolicyConfiguration,
 		"cache.inMem.tokensCacheConfiguration":                    				tokensCacheConfiguration,
 		"azdSecInfoProvider.GetContainersVulnerabilityScanInfoTimeoutDuration": GetContainersVulnerabilityScanInfoTimeoutDuration,
@@ -121,14 +124,6 @@ func main() {
 		log.Fatal("main.kubeletIdentityAuthorizerFactory.NewMSIEnvAzureAuthorizerFactory.CreateARMAuthorizer", err)
 	}
 
-	// Create redis clients configurations
-	argDataProviderCacheConfiguration := cachewrappers.NewRedisCacheClientConfiguration(redisCacheTablesMapping.Address, redisCacheTablesMapping.Tables["argDataProviderCacheTable"])
-	tag2digestCacheConfiguration := cachewrappers.NewRedisCacheClientConfiguration(redisCacheTablesMapping.Address, redisCacheTablesMapping.Tables["tag2digestCacheTable"])
-	redisCacheRetryPolicy, err := retrypolicy.NewRetryPolicy(instrumentationProvider, redisCacheClientRetryPolicyConfiguration)
-	if err != nil {
-		log.Fatal("main.retrypolicy.NewRetryPolicy", err)
-	}
-
 	// Registry Client
 	k8sClientConfig, err := k8sclientconfig.GetConfig()
 	if err != nil {
@@ -144,12 +139,8 @@ func main() {
 		log.Fatal("main.kubeletIdentityAuthorizer.bearerAuthorizer type assertion", err)
 
 	}
-	tag2digestRedisCacheBaseClient := cachewrappers.NewRedisBaseClientWrapper(tag2digestCacheConfiguration)
-	// tag2digestCacheClient
-	_ = cache.NewRedisCacheClient(instrumentationProvider, tag2digestRedisCacheBaseClient, redisCacheRetryPolicy)
 
 	azureBearerAuthorizerTokenProvider := azureauth.NewBearerAuthorizerTokenProvider(azureBearerAuthorizer)
-
 	acrTokenExchangerClientRetryPolicy, err := retrypolicy.NewRetryPolicy(instrumentationProvider, acrTokenExchangerClientRetryPolicyConfiguration)
 	if err != nil {
 		log.Fatal("main.retrypolicy.NewRetryPolicy", err)
@@ -174,10 +165,6 @@ func main() {
 	_ = cache.NewFreeCacheInMemCacheClient(instrumentationProvider, tag2digestTokenCache)
 
 	// ARG
-	argDataProviderRedisCacheBaseClient := cachewrappers.NewRedisBaseClientWrapper(argDataProviderCacheConfiguration)
-	// argCacheClient
-	_ = cache.NewRedisCacheClient(instrumentationProvider, argDataProviderRedisCacheBaseClient, redisCacheRetryPolicy)
-
 	azdIdentityAuthorizerFactory := azureauth.NewMSIEnvAzureAuthorizerFactory(instrumentationProvider, azdIdentityEnvAzureAuthorizerConfiguration, new(azureauthwrappers.AzureAuthWrapper))
 	azdIdentityAuthorizer, err := azdIdentityAuthorizerFactory.CreateARMAuthorizer()
 	if err != nil {
@@ -209,6 +196,33 @@ func main() {
 	if err != nil {
 		log.Fatal("main.serverFactory.CreateServer", err)
 	}
+
+	// Create new redis client to test connection to redis server
+	redisCacheConnectionTestRetryPolicy, err := retrypolicy.NewRetryPolicy(instrumentationProvider, serverConnectionTestRetryPolicyConfiguration)
+	if err != nil {
+		log.Fatal("main.serverConnectionTestRetryPolicyConfiguration.GetBackOffDuration", err)
+	}
+	redisServerConnectionTestClientConfiguration := cachewrappers.NewRedisCacheClientConfiguration(redisCacheTablesMapping.Address, redisCacheTablesMapping.Tables["serverconnectiontesttable"])
+	redisServerConnectionTestBaseClient := cachewrappers.NewRedisBaseClientWrapper(redisServerConnectionTestClientConfiguration)
+	redisServerConnectionTestClient := cache.NewRedisCacheClient(instrumentationProvider, redisServerConnectionTestBaseClient, redisCacheConnectionTestRetryPolicy)
+	if !deploymentConfiguration.IsLocalDevelopment {
+		_, _ = redisServerConnectionTestClient.Ping(context.Background())
+	}
+
+	// Create redis cache's retry policy
+	redisCacheRetryPolicy, err := retrypolicy.NewRetryPolicy(instrumentationProvider, redisCacheClientRetryPolicyConfiguration)
+	if err != nil {
+		log.Fatal("main.retrypolicy.NewRetryPolicy", err)
+	}
+	// Create arg cache client
+	argDataProviderCacheConfiguration := cachewrappers.NewRedisCacheClientConfiguration(redisCacheTablesMapping.Address, redisCacheTablesMapping.Tables["argdataprovidercachetable"])
+	argDataProviderRedisCacheBaseClient := cachewrappers.NewRedisBaseClientWrapper(argDataProviderCacheConfiguration)
+	_ = cache.NewRedisCacheClient(instrumentationProvider, argDataProviderRedisCacheBaseClient, redisCacheRetryPolicy)
+	// Create tag2digest cache client
+	tag2digestCacheConfiguration := cachewrappers.NewRedisCacheClientConfiguration(redisCacheTablesMapping.Address, redisCacheTablesMapping.Tables["tag2digestcachetable"])
+	tag2digestRedisCacheBaseClient := cachewrappers.NewRedisBaseClientWrapper(tag2digestCacheConfiguration)
+	_ = cache.NewRedisCacheClient(instrumentationProvider, tag2digestRedisCacheBaseClient, redisCacheRetryPolicy)
+
 	// Run server
 	if err = server.Run(); err != nil {
 		log.Fatal("main.server.Run", err)

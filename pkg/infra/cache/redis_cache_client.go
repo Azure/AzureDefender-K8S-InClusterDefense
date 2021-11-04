@@ -115,3 +115,27 @@ func (client *RedisCacheClient) Set(ctx context.Context, key string, value strin
 	tracer.Info("Key was added successfully", "Key", key, "value", value)
 	return nil
 }
+
+func (client *RedisCacheClient) Ping(ctx context.Context) (string, error) {
+	tracer := client.tracerProvider.GetTracer("Ping")
+	tracer.Info("Ping executed")
+
+	value, err := client.retryPolicy.RetryActionString(
+		/*action ActionString ping using client.redisClient */
+		func() (string, error) { return client.redisClient.Ping(ctx).Result() },
+		/*handler ShouldRetryOnSpecificError - handle when received an error from ping result*/
+		func(err error) bool {
+			return !errors.Is(err, redis.Nil)
+		},
+	)
+	// Check if there was an error
+	if err != nil || value != "PONG" {
+		tracer.Error(err, "Pinging redis server has failed")
+		return "", err
+	}
+
+	// Ping succeed.
+	tracer.Info("Received pong from server")
+	return value, nil
+}
+
