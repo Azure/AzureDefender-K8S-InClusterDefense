@@ -154,18 +154,19 @@ func (provider *ARGDataProvider) setScanFindingsInCache(scanFindings []*contract
 		tracer.Error(err, "")
 		return err
 	}
+
 	scanFindingsString := string(scanFindingsBuffer)
+	expirationTime := provider.cacheExpirationTimeScannedResults
 	if scanStatus == contracts.Unscanned{
-		err = provider.cacheClient.Set(digest, scanFindingsString, provider.cacheExpirationTimeUnscannedResults)
-	}else {
-		err = provider.cacheClient.Set(digest, scanFindingsString, provider.cacheExpirationTimeScannedResults)
+		expirationTime =  provider.cacheExpirationTimeUnscannedResults
 	}
+	err = provider.cacheClient.Set(digest, scanFindingsString, expirationTime)
 	if err != nil{
 		err = errors.Wrap(err, "ARGDataProvider.setScanFindingsInCache failed to set digest in cache")
 		tracer.Error(err, "")
 	}
-	tracer.Info("set scanFindings in cache", "digest", digest)
 
+	tracer.Info("set scanFindings in cache", "digest", digest)
 	return nil
 }
 
