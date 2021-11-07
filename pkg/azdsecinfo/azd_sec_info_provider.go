@@ -66,7 +66,8 @@ func NewAzdSecInfoProvider(instrumentationProvider instrumentation.IInstrumentat
 	argDataProvider arg.IARGDataProvider,
 	tag2digestResolver tag2digest.ITag2DigestResolver,
 	GetContainersVulnerabilityScanInfoTimeoutDuration *utils.TimeoutConfiguration,
-	azdSecInfoProviderConfiguration *AzdSecInfoProviderConfiguration) *AzdSecInfoProvider {
+	azdSecInfoProviderConfiguration *AzdSecInfoProviderConfiguration,
+	cacheClient cache.ICacheClient) *AzdSecInfoProvider {
 
 	// In case that GetContainersVulnerabilityScanInfoTimeoutDuration.TimeDurationInMS is empty (zero) - use default value.
 	getContainersVulnerabilityScanInfoTimeoutDuration := _defaultTimeDurationGetContainersVulnerabilityScanInfo
@@ -80,6 +81,7 @@ func NewAzdSecInfoProvider(instrumentationProvider instrumentation.IInstrumentat
 		tag2digestResolver: tag2digestResolver,
 		getContainersVulnerabilityScanInfoTimeoutDuration: getContainersVulnerabilityScanInfoTimeoutDuration,
 		configuration: azdSecInfoProviderConfiguration,
+		cacheClient:   cacheClient,
 	}
 }
 

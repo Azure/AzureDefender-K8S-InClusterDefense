@@ -188,7 +188,7 @@ func main() {
 	argDataProvider := arg.NewARGDataProvider(instrumentationProvider, argClient, argQueryGenerator, redisCacheClient, argDataProviderConfiguration)
 
 	// Handler and azdSecinfoProvider
-	azdSecInfoProvider := azdsecinfo.NewAzdSecInfoProvider(instrumentationProvider, argDataProvider, tag2digestResolver, getContainersVulnerabilityScanInfoTimeoutDuration, azdSecInfoProviderConfiguration)
+	azdSecInfoProvider := azdsecinfo.NewAzdSecInfoProvider(instrumentationProvider, argDataProvider, tag2digestResolver, getContainersVulnerabilityScanInfoTimeoutDuration, azdSecInfoProviderConfiguration, redisCacheClient)
 	handler := webhook.NewHandler(azdSecInfoProvider, handlerConfiguration, instrumentationProvider)
 
 	// Manager and server
