@@ -42,18 +42,32 @@ type ARGDataProvider struct {
 	argQueryGenerator queries.IARGQueryGenerator
 	// argClient is the arg client of the ARGDataProvider
 	argClient IARGClient
-	// redisCache is a cache for mapping digest to scan results
-	redisCache cache.ICacheClient
+	// cacheClient is a cache for mapping digest to scan results
+	cacheClient cache.ICacheClient
+	// cacheExpirationTimeUnscannedResults is the expiration time **in seconds** for unscanned results in the cache client
+	cacheExpirationTimeUnscannedResults time.Duration
+	// cacheExpirationTimeScannedResults is the expiration time **in minutes** for scan results in the cache client
+	cacheExpirationTimeScannedResults time.Duration
+}
+
+// ARGDataProviderConfiguration is configuration data for ARGDataProvider
+type ARGDataProviderConfiguration struct {
+	// cacheExpirationTimeUnscannedResults is the expiration time **in seconds** for unscanned results in the cache client
+	cacheExpirationTimeUnscannedResults time.Duration
+	// cacheExpirationTimeScannedResults is the expiration time **in minutes** for scan results in the cache client
+	cacheExpirationTimeScannedResults time.Duration
 }
 
 // NewARGDataProvider Constructor
-func NewARGDataProvider(instrumentationProvider instrumentation.IInstrumentationProvider, argClient IARGClient, queryGenerator queries.IARGQueryGenerator, redisCache cache.ICacheClient) *ARGDataProvider {
+func NewARGDataProvider(instrumentationProvider instrumentation.IInstrumentationProvider, argClient IARGClient, queryGenerator queries.IARGQueryGenerator, cacheClient cache.ICacheClient, configuration *ARGDataProviderConfiguration) *ARGDataProvider {
 	return &ARGDataProvider{
 		tracerProvider:    instrumentationProvider.GetTracerProvider("ARGDataProvider"),
 		metricSubmitter:   instrumentationProvider.GetMetricSubmitter(),
 		argQueryGenerator: queryGenerator,
 		argClient:         argClient,
-		redisCache:        redisCache,
+		cacheClient:       cacheClient,
+		cacheExpirationTimeUnscannedResults: configuration.cacheExpirationTimeUnscannedResults * time.Second,
+		cacheExpirationTimeScannedResults: configuration.cacheExpirationTimeScannedResults * time.Minute,
 	}
 }
 
@@ -66,7 +80,7 @@ func (provider *ARGDataProvider) GetImageVulnerabilityScanResults(registry strin
 	tracer := provider.tracerProvider.GetTracer("GetImageVulnerabilityScanResults")
 	tracer.Info("Received", "registry", registry, "repository", repository, "digest", digest)
 
-	scanFindingsString, keyNotFound := provider.redisCache.Get(digest)
+	scanFindingsString, keyNotFound := provider.cacheClient.Get(digest)
 	if keyNotFound == nil { // digest exist in cache
 		tracer.Info("scanFindings exist in cache", "digest", digest)
 		scanStatusFromCache, scanFindingsFromCache , unmarshalErr := provider.parseScanFindingsFromCache(scanFindingsString)
@@ -141,11 +155,14 @@ func (provider *ARGDataProvider) setScanFindingsInCache(scanFindings []*contract
 		return err
 	}
 	scanFindingsString := string(scanFindingsBuffer)
-	err = provider.redisCache.Set(digest, scanFindingsString, 0)
+	if scanStatus == contracts.Unscanned{
+		err = provider.cacheClient.Set(digest, scanFindingsString, provider.cacheExpirationTimeUnscannedResults)
+	}else {
+		err = provider.cacheClient.Set(digest, scanFindingsString, provider.cacheExpirationTimeScannedResults)
+	}
 	if err != nil{
 		err = errors.Wrap(err, "ARGDataProvider.setScanFindingsInCache failed to set digest in cache")
 		tracer.Error(err, "")
-		provider.metricSubmitter.SendMetric(1, argmetric.NewArgDataProviderRedisCacheFailuresMetric())
 	}
 	tracer.Info("set scanFindings in cache", "digest", digest)
 

@@ -9,8 +9,8 @@ import (
 	registryerrors "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/errors"
 	registryutils "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/utils"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/utils"
-	tag2digestmetric "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/tag2digest/metric"
 	"github.com/pkg/errors"
+	"time"
 )
 
 // ITag2DigestResolver responsible to resolve resource's image to it's digest
@@ -30,17 +30,26 @@ type Tag2DigestResolver struct {
 	metricSubmitter metric.IMetricSubmitter
 	// registryClient is the client of the registry which is used to resolve image's digest
 	registryClient registry.IRegistryClient
-	// redisCache is a cache for mapping image full name to its digest
-	redisCache cache.ICacheClient
+	// cacheClient is a cache for mapping image full name to its digest
+	cacheClient cache.ICacheClient
+	// cacheExpirationTime is the expiration time **in seconds** for digests in the cache client
+	cacheExpirationTime time.Duration
+}
+
+// Tag2DigestResolverConfiguration is configuration data for Tag2DigestResolver
+type Tag2DigestResolverConfiguration struct {
+	// cacheExpirationTime is the expiration time **in seconds** for digests in the cache client
+	cacheExpirationTime time.Duration
 }
 
 // NewTag2DigestResolver Ctor
-func NewTag2DigestResolver(instrumentationProvider instrumentation.IInstrumentationProvider, registryClient registry.IRegistryClient, redisCache cache.ICacheClient) *Tag2DigestResolver {
+func NewTag2DigestResolver(instrumentationProvider instrumentation.IInstrumentationProvider, registryClient registry.IRegistryClient, cacheClient cache.ICacheClient, configuration *Tag2DigestResolverConfiguration) *Tag2DigestResolver {
 	return &Tag2DigestResolver{
 		tracerProvider:  instrumentationProvider.GetTracerProvider("Tag2DigestResolver"),
 		metricSubmitter: instrumentationProvider.GetMetricSubmitter(),
 		registryClient:  registryClient,
-		redisCache:      redisCache,
+		cacheClient:     cacheClient,
+		cacheExpirationTime: configuration.cacheExpirationTime * time.Second,
 	}
 }
 
@@ -57,11 +66,10 @@ func (resolver *Tag2DigestResolver) Resolve(imageReference registry.IImageRefere
 	}
 
 	// Save in cache
-	err = resolver.redisCache.Set(imageReference.Original(), digest, 0)
+	err = resolver.cacheClient.Set(imageReference.Original(), digest, resolver.cacheExpirationTime)
 	if err != nil{
 		err = errors.Wrap(err, "Tag2DigestResolver.Resolve: Failed to set digest in cache")
 		tracer.Error(err, "")
-		resolver.metricSubmitter.SendMetric(1, tag2digestmetric.NewTag2DigestRedisCacheFailuresMetric())
 	}
 	tracer.Info("Set digest in cache", "image", imageReference.Original(), "digest", digest)
 
@@ -85,7 +93,7 @@ func (resolver *Tag2DigestResolver) getDigest(imageReference registry.IImageRefe
 	}
 
 	// First check if we can get digest from cache
-	digestFromCache, keyDontExistErr := resolver.redisCache.Get(imageReference.Original())
+	digestFromCache, keyDontExistErr := resolver.cacheClient.Get(imageReference.Original())
 	if keyDontExistErr == nil { // If key exist - return digest
 		tracer.Info("Digest exist in cache", "image", imageReference.Original(), "digest", digestFromCache)
 		return digestFromCache, nil

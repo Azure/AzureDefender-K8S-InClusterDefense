@@ -16,6 +16,7 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/tivan"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/acrauth"
 	registryauthazure "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/acrauth"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/crane"
 	registrywrappers "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/wrappers"
@@ -62,7 +63,9 @@ func main() {
 	argBaseClientRetryPolicyConfiguration := new(retrypolicy.RetryPolicyConfiguration)
 	redisCacheClientRetryPolicyConfiguration := new(retrypolicy.RetryPolicyConfiguration)
 	acrTokenExchangerClientRetryPolicyConfiguration := new(retrypolicy.RetryPolicyConfiguration)
-
+	argDataProviderConfiguration := new(arg.ARGDataProviderConfiguration)
+	tag2DigestResolverConfiguration := new(tag2digest.Tag2DigestResolverConfiguration)
+	acrTokenProviderConfiguration := new(acrauth.ACRTokenProviderConfiguration)
 	argDataProviderCacheConfiguration := new(cachewrappers.RedisCacheClientConfiguration)
 	tokensCacheConfiguration := new(cachewrappers.FreeCacheInMemWrapperCacheConfiguration)
 
@@ -80,7 +83,10 @@ func main() {
 		"arg.argBaseClient.retryPolicyConfiguration":                           argBaseClientRetryPolicyConfiguration,
 		"acr.craneWrappersConfiguration.retryPolicyConfiguration":              craneWrapperRetryPolicyConfiguration,
 		"acr.tokenExchanger.retryPolicyConfiguration":                          acrTokenExchangerClientRetryPolicyConfiguration,
+		"acr.acrTokenProviderConfiguration":									acrTokenProviderConfiguration,
 		"arg.argClientConfiguration":                                           argClientConfiguration,
+		"arg.argDataProviderConfiguration":										argDataProviderConfiguration,
+		"tag2digest.tag2DigestResolverConfiguration":							tag2DigestResolverConfiguration,
 		"deployment":                                                           deploymentConfiguration,
 		"cache.argDataProviderCacheConfiguration":                              argDataProviderCacheConfiguration,
 		"cache.tokensCacheConfiguration":                                       tokensCacheConfiguration,
@@ -138,17 +144,17 @@ func main() {
 
 	}
 	//Cache clients
-	argDataProviderRedisCacheBaseClient := cachewrappers.NewRedisBaseClientWrapper(argDataProviderCacheConfiguration)
+	redisCacheBaseClient := cachewrappers.NewRedisBaseClientWrapper(argDataProviderCacheConfiguration)
 	redisCacheRetryPolicy := retrypolicy.NewRetryPolicy(instrumentationProvider, redisCacheClientRetryPolicyConfiguration)
-	redisCacheClient := cache.NewRedisCacheClient(instrumentationProvider, argDataProviderRedisCacheBaseClient, redisCacheRetryPolicy)
-	tag2digestCache := cachewrappers.NewFreeCacheInMem(tokensCacheConfiguration)
-	freeCacheInMemCacheClient := cache.NewFreeCacheInMemCacheClient(instrumentationProvider, tag2digestCache)
+	redisCacheClient := cache.NewRedisCacheClient(instrumentationProvider, redisCacheBaseClient, redisCacheRetryPolicy)
+	freeCacheInMemCache := cachewrappers.NewFreeCacheInMem(tokensCacheConfiguration)
+	freeCacheInMemCacheClient := cache.NewFreeCacheInMemCacheClient(instrumentationProvider, freeCacheInMemCache)
 
 	azureBearerAuthorizerTokenProvider := azureauth.NewBearerAuthorizerTokenProvider(azureBearerAuthorizer)
 
 	acrTokenExchangerClientRetryPolicy := retrypolicy.NewRetryPolicy(instrumentationProvider, acrTokenExchangerClientRetryPolicyConfiguration)
 	acrTokenExchanger := registryauthazure.NewACRTokenExchanger(instrumentationProvider, &http.Client{}, acrTokenExchangerClientRetryPolicy)
-	acrTokenProvider := registryauthazure.NewACRTokenProvider(instrumentationProvider, acrTokenExchanger, azureBearerAuthorizerTokenProvider, freeCacheInMemCacheClient)
+	acrTokenProvider := registryauthazure.NewACRTokenProvider(instrumentationProvider, acrTokenExchanger, azureBearerAuthorizerTokenProvider, freeCacheInMemCacheClient, acrTokenProviderConfiguration)
 
 	k8sKeychainFactory := crane.NewK8SKeychainFactory(instrumentationProvider, clientK8s)
 	acrKeychainFactory := crane.NewACRKeychainFactory(instrumentationProvider, acrTokenProvider)
@@ -157,7 +163,7 @@ func main() {
 	craneWrapper := registrywrappers.NewCraneWrapper(instrumentationProvider, craneWrapperRetryPolicy)
 	// Registry Client
 	registryClient := crane.NewCraneRegistryClient(instrumentationProvider, craneWrapper, acrKeychainFactory, k8sKeychainFactory)
-	tag2digestResolver := tag2digest.NewTag2DigestResolver(instrumentationProvider, registryClient, redisCacheClient)
+	tag2digestResolver := tag2digest.NewTag2DigestResolver(instrumentationProvider, registryClient, redisCacheClient, tag2DigestResolverConfiguration)
 
 	// ARG
 	//TODO complete it once we merge the rest of the PR's.
@@ -177,7 +183,7 @@ func main() {
 		log.Fatal("main.CreateARGQueryGenerator", err)
 	}
 
-	argDataProvider := arg.NewARGDataProvider(instrumentationProvider, argClient, argQueryGenerator, redisCacheClient) //TODO add here in redis-cache client
+	argDataProvider := arg.NewARGDataProvider(instrumentationProvider, argClient, argQueryGenerator, redisCacheClient, argDataProviderConfiguration)
 
 	// Handler and azdSecinfoProvider
 	azdSecInfoProvider := azdsecinfo.NewAzdSecInfoProvider(instrumentationProvider, argDataProvider, tag2digestResolver, GetContainersVulnerabilityScanInfoTimeoutDuration)

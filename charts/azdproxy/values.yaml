@@ -123,6 +123,10 @@ AzDProxy:
         # Sleep duration between retries (in milliseconds):
         retryDurationInMS: 10
 
+    acrTokenProviderConfiguration:
+      # Expiration time in seconds of acr token in cache  (acr token is valid for 3 hours since the last command az acr login)
+      cacheExpirationTime: 600 # 10 minutes
+
   # ARG values
   arg:
 
@@ -135,6 +139,18 @@ AzDProxy:
         retryAttempts: 3
         # Sleep duration between retries (in milliseconds):
         retryDurationInMS: 100
+
+    argDataProviderConfiguration:
+      # Expiration time in seconds of scan results in status unscanned in cache (redeploy will take at least a minute)
+      cacheExpirationTimeUnscannedResults: 60 # 1 minute
+      # Expiration time in minutes of scan results in status scanned in cache (need to sync with image-scan periodic scans - every month)
+      cacheExpirationTimeScannedResults: 1440 #24 hours
+
+  # Tag2Digest configuration
+  tag2digest:
+    tag2DigestResolverConfiguration:
+      # Expiration time in seconds of digest in cache
+      cacheExpirationTime: 60 # 1 minute
 
   # Cache configuration
   cache:
