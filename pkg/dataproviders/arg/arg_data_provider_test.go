@@ -57,8 +57,8 @@ func (suite *ARGDataProviderTestSuite) SetupTest() {
 	suite.cacheMock = cachemock.NewICacheInMemBasedMock()
 	suite.provider = NewARGDataProvider(instrumentation.NewNoOpInstrumentationProvider(), suite.argClientMock, suite.queryGeneratorMock, suite.cacheMock,
 		&ARGDataProviderConfiguration{
-			cacheExpirationTimeScannedResults: _expirationTimeScanned,
-			cacheExpirationTimeUnscannedResults: _expirationTimeUnscanned,
+			CacheExpirationTimeScannedResults:   _expirationTimeScanned,
+			CacheExpirationTimeUnscannedResults: _expirationTimeUnscanned,
 		})
 }
 

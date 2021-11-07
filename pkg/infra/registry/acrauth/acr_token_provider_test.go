@@ -40,7 +40,7 @@ func (suite *TestSuiteTokenProvider) SetupTest() {
 	_provider_cacheClientInMemBasedMock = cachemock.NewICacheInMemBasedMock()
 	_providerNoCacheFunctionality = NewACRTokenProvider(instrumentationProvider, _provider_exchangerMock, _provider_azureTokenProviderMock, _provider_cacheClientMock, new(ACRTokenProviderConfiguration))
 	_providerWithCacheFunctionality = NewACRTokenProvider(instrumentationProvider, _provider_exchangerMock, _provider_azureTokenProviderMock, _provider_cacheClientInMemBasedMock, &ACRTokenProviderConfiguration{
-		cacheExpirationTime: _expirationTime,
+		CacheExpirationTime: _expirationTime,
 	})
 }
 

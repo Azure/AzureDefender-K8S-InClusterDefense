@@ -40,8 +40,8 @@ type ACRTokenProvider struct {
 
 // ACRTokenProviderConfiguration is configuration data for ACRTokenProvider
 type ACRTokenProviderConfiguration struct {
-	// cacheExpirationTime is the expiration time **in seconds** for tokens in the cache client
-	cacheExpirationTime time.Duration
+	// CacheExpirationTime is the expiration time **in seconds** for tokens in the cache client
+	CacheExpirationTime time.Duration
 }
 
 // NewACRTokenProvider Ctor
@@ -52,7 +52,7 @@ func NewACRTokenProvider(instrumentationProvider instrumentation.IInstrumentatio
 		azureBearerAuthorizerTokenProvider: azureBearerAuthorizerTokenProvider,
 		tokenExchanger:                     tokenExchanger,
 		cacheClient:                        cacheClient,
-		cacheExpirationTime: configuration.cacheExpirationTime * time.Second,
+		cacheExpirationTime: configuration.CacheExpirationTime * time.Second,
 	}
 }
 

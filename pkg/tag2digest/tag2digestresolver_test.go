@@ -41,7 +41,7 @@ func (suite *TestSuiteTag2DigestResolver) SetupTest() {
 	_cacheClientInMemBasedMock = cachemock.NewICacheInMemBasedMock()
 	_resolverNoCacheFunctionality = NewTag2DigestResolver(instrumentationP, _registryClientMock, _cacheClientMock, new(Tag2DigestResolverConfiguration))
 	_resolverWithCacheFunctionality = NewTag2DigestResolver(instrumentationP, _registryClientMock, _cacheClientInMemBasedMock, &Tag2DigestResolverConfiguration{
-			cacheExpirationTime: _expirationTime,
+			CacheExpirationTime: _expirationTime,
 		})
 	_acrImageRefTag, _ = registryutils.GetImageReference("tomerw.azurecr.io/redis:v0")
 	_nonAcrImageRefTag, _ = registryutils.GetImageReference("tomerw.nonacr.io/redis:v0")

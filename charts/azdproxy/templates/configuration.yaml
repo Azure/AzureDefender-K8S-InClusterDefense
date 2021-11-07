@@ -78,8 +78,8 @@ data:
           retryDurationInMS: {{ .Values.AzDProxy.arg.argBaseClient.retryPolicyConfiguration.retryDurationInMS }}
 
       argDataProviderConfiguration:
-        cacheExpirationTimeUnscannedResults: {{ .Values.AzDProxy.arg.argDataProviderConfiguration.cacheExpirationTimeScannedResults }}
-        cacheExpirationTimeScannedResults: {{ .Values.AzDProxy.arg.argDataProviderConfiguration.cacheExpirationTimeUnscannedResults }}
+        cacheExpirationTimeUnscannedResults: {{ .Values.AzDProxy.arg.argDataProviderConfiguration.cacheExpirationTimeUnscannedResults }}
+        cacheExpirationTimeScannedResults: {{ .Values.AzDProxy.arg.argDataProviderConfiguration.cacheExpirationTimeScannedResults }}
 
     tag2digest:
       tag2DigestResolverConfiguration:

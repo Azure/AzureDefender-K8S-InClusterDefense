@@ -39,7 +39,7 @@ type Tag2DigestResolver struct {
 // Tag2DigestResolverConfiguration is configuration data for Tag2DigestResolver
 type Tag2DigestResolverConfiguration struct {
 	// cacheExpirationTime is the expiration time **in seconds** for digests in the cache client
-	cacheExpirationTime time.Duration
+	CacheExpirationTime time.Duration
 }
 
 // NewTag2DigestResolver Ctor
@@ -49,7 +49,7 @@ func NewTag2DigestResolver(instrumentationProvider instrumentation.IInstrumentat
 		metricSubmitter: instrumentationProvider.GetMetricSubmitter(),
 		registryClient:  registryClient,
 		cacheClient:     cacheClient,
-		cacheExpirationTime: configuration.cacheExpirationTime * time.Second,
+		cacheExpirationTime: configuration.CacheExpirationTime * time.Second,
 	}
 }
 

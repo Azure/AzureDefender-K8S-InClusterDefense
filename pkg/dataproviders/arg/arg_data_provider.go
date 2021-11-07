@@ -52,10 +52,10 @@ type ARGDataProvider struct {
 
 // ARGDataProviderConfiguration is configuration data for ARGDataProvider
 type ARGDataProviderConfiguration struct {
-	// cacheExpirationTimeUnscannedResults is the expiration time **in seconds** for unscanned results in the cache client
-	cacheExpirationTimeUnscannedResults time.Duration
-	// cacheExpirationTimeScannedResults is the expiration time **in minutes** for scan results in the cache client
-	cacheExpirationTimeScannedResults time.Duration
+	// CacheExpirationTimeUnscannedResults is the expiration time **in seconds** for unscanned results in the cache client
+	CacheExpirationTimeUnscannedResults time.Duration
+	// CacheExpirationTimeScannedResults is the expiration time **in minutes** for scan results in the cache client
+	CacheExpirationTimeScannedResults time.Duration
 }
 
 // NewARGDataProvider Constructor
@@ -66,8 +66,8 @@ func NewARGDataProvider(instrumentationProvider instrumentation.IInstrumentation
 		argQueryGenerator: queryGenerator,
 		argClient:         argClient,
 		cacheClient:       cacheClient,
-		cacheExpirationTimeUnscannedResults: configuration.cacheExpirationTimeUnscannedResults * time.Second,
-		cacheExpirationTimeScannedResults: configuration.cacheExpirationTimeScannedResults * time.Minute,
+		cacheExpirationTimeUnscannedResults: configuration.CacheExpirationTimeUnscannedResults * time.Second,
+		cacheExpirationTimeScannedResults: configuration.CacheExpirationTimeScannedResults * time.Minute,
 	}
 }
 
