@@ -46,7 +46,7 @@ $kubelet_client_id = az aks show --resource-group $resource_group --name $cluste
 
 PrinitNewSection("Logging in")
 # login with az login.
-az login
+#az login
 
 $subscription = az account show -o tsv --query "id"
 write-host "Extracted subscription <$subscription> successfully"
@@ -78,7 +78,7 @@ else
 PrinitNewSection("AzureDefenderInClusterDefense Dependencies")
 
 # TODO Change the teamplate file to uri.
-$deployment_name = "AzureDefenderInClusterDefense-dependencies-$cluster_name-$resource_group-$region"
+$deployment_name = "mdfc-incluster-$cluster_name-$region"
 az deployment sub create --name  $deployment_name  --location $region `
                                                     --template-file .\deploy\azure-templates\AzureDefenderInClusterDefense.Dependecies.Template.json `
                                                     --parameters `
@@ -86,7 +86,10 @@ az deployment sub create --name  $deployment_name  --location $region `
                                                         location = $region `
                                                         managedIdentityName = $in_cluster_defense_identity_name
 
-#######################################################################################################################
+# Assign the managed identity to vmss of the cluster
+# az vmss identity assign --resource-group $node_resource_group --name $cluster_name --identity $in_cluster_defense_identity_name
+
+# #####################################################################################################################
 PrinitNewSection("azure-defender-k8s-security-profile Dependencies")
 
 if ($should_enable_aks_security_profile)
@@ -101,7 +104,7 @@ if ($should_enable_aks_security_profile)
 
     # Deploy arm template - containts the dependencies of azure-defender-k8s-security-profile
     # TODO Change the teamplate file to uri.
-    $deployment_name = "azure-defender-k8s-security-profile-$cluster_name-$resource_group-$region"
+    $deployment_name = "mdfc-profile-$cluster_name-$region"
     az deployment sub create --name $deployment_name    --location "$region" `
                                                         --template-file .\deploy\azure-templates\Tivan.Dependencies.Template.json `
                                                         --parameters `
