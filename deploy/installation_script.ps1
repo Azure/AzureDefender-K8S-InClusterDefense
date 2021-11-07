@@ -57,8 +57,8 @@ if ($LASTEXITCODE -eq 3)
     write-error "Failed to get the kubelet client id of the cluster"
     exit $LASTEXITCODE
 }
-# VMSS names list
-$vmss_list = az vmss list --resource-group $node_resource_group --query '[].name' -o tsv
+# VMSS names list - we should explicity convert to array beacause if one vmss is returened, then it is returned as string.
+$vmss_list = [array](az vmss list --resource-group $node_resource_group --query '[].name' -o tsv)
 if ($LASTEXITCODE -eq 3 -or $vmss_list.Length -eq 0)
 {
     write-error "Failed to get the list of VMSS in the node resource group"
@@ -87,7 +87,7 @@ if ($should_install_azure_addon_policy -eq $false)
     write-host "Skipping installation of Azure Addon Policy - should_install_azure_addon_policy param is false"
 }
 # If azure addon policy is already installed on cluster, skip this step.
-elseif (az aks show --resource-group $resource_group --name $cluster_name --query addonProfiles.azurepolicy.enabled -eq false)
+elseif ((az aks show --resource-group $resource_group --name $cluster_name --query addonProfiles.azurepolicy.enabled) -eq $true)
 {
     write-host "Skipping installation of Azure Addon Policy - already installed on cluster"
 }
@@ -127,11 +127,12 @@ if ($LASTEXITCODE -eq 3)
 }
 # #####################################################################################################################
 PrinitNewSection("azure-defender-k8s-security-profile Dependencies")
+
 if ($should_enable_aks_security_profile -eq $false)
 {
     write-host "Skipping on enabling azure-defender-k8s-security-profile - should_install_enable_aks_security_profile param is false"
 }
-elseif (az aks show --resource-group $resource_group --name $cluster_name --query securityProfile.azureDefender.enabled -eq true)
+elseif ((az aks show --resource-group $resource_group --name $cluster_name --query securityProfile.azureDefender.enabled) -eq $true)
 {
     write-host "Skipping on enabling of azure-defender-k8s-security-profile - already enabled on cluster"
 }
@@ -210,8 +211,12 @@ kubectl config use-context $cluster_name
 $HELM_EXPERIMENTAL_OCI = 1
 
 # Install helm chart from mcr repo on kube-system namespace and pass subscription and client id's params.
-helm install azuredefender azuredefendermcrprod.azurecr.io/public/azuredefender/stable/in-cluster-defense-helm:$helm_chart_version `
+
+# TODO Change to remote repo once helm chart is published to public repo.
+#helm upgrade --install microsoft-in-cluster-defense azuredefendermcrprod.azurecr.io/public/azuredefender/stable/in-cluster-defense-helm:$helm_chart_version `
+helm upgrade in-cluster-defense charts/azdproxy --install`
             -n kube-system `
                 --set AzDProxy.kubeletIdentity.envAzureAuthorizerConfiguration.mSIClientId = $kubelet_client_id `
                 --set AzDProxy.azdIdentity.envAzureAuthorizerConfiguration.mSIClientId = $in_cluster_defense_identity_client_id `
-                --set "AzDProxy.arg.argClientConfiguration.subscriptions={$subscription}"
+                --set "AzDProxy.arg.argClientConfiguration.subscriptions={$subscription}" `
+                --set AzDProxy.webhook.image.name = blockregistrydev.azurecr.io/azdproxy-image                 # TODO Delete above line once helm chart is published to public repo.
