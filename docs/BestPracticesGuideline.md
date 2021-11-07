@@ -121,15 +121,20 @@ TBD
       - Read from channel:
       ```go
         channelDataWrapper := <- myChannel
-        if channelDataWrapper.Err != nil {
-            ...
-          } else{
-            data, ok = channelDataWrapper.DataWrapper.(*mystruct)
-            if !ok{
-                ...
-            }
-            ...
-          }
+        if channelDataWrapper == nil {
+            ... // handle error
+        } 
+      
+        dataWrapper, err := vulnerabilitySecInfoWrapper.GetData()
+        if err != nil {
+          ... // handle error
+        }
+        
+        data, err = dataWrapper.(*mystruct)
+        if err != nil {
+        	... // handle error
+        }
+        ... // your code 
         ```
       
 ### Deployment
