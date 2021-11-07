@@ -183,3 +183,6 @@ AzDProxy:
     GetContainersVulnerabilityScanInfo:
       timeout:
         timeDurationInMS: 2500
+
+    azdSecInfoProviderConfiguration:
+      CacheExpirationTimeTimeout: "1m"

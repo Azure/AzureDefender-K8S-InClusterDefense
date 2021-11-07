@@ -3,6 +3,7 @@ package azdsecinfo
 import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/azdsecinfo/contracts"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/dataproviders/arg"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/cache"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
@@ -13,6 +14,8 @@ import (
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sort"
+	"strings"
 	"time"
 )
 
@@ -45,13 +48,25 @@ type AzdSecInfoProvider struct {
 	//if the duration will exceed, the program will return result of the first container that unscanned reason .
 	//the results still will be saved in the cache.
 	getContainersVulnerabilityScanInfoTimeoutDuration time.Duration
+
+	// cacheClient is a cache for mapping digest to scan results
+	cacheClient cache.ICacheClient
+	// configuration of AzdSecInfoProviderConfiguration.
+	configuration *AzdSecInfoProviderConfiguration
+}
+
+// AzdSecInfoProviderConfiguration is configuration data for AzdSecInfoProvider
+type AzdSecInfoProviderConfiguration struct {
+	// CacheExpirationTimeTimeout is the expiration time for timout.
+	CacheExpirationTimeTimeout time.Duration
 }
 
 // NewAzdSecInfoProvider - AzdSecInfoProvider Ctor
 func NewAzdSecInfoProvider(instrumentationProvider instrumentation.IInstrumentationProvider,
 	argDataProvider arg.IARGDataProvider,
 	tag2digestResolver tag2digest.ITag2DigestResolver,
-	GetContainersVulnerabilityScanInfoTimeoutDuration *utils.TimeoutConfiguration) *AzdSecInfoProvider {
+	GetContainersVulnerabilityScanInfoTimeoutDuration *utils.TimeoutConfiguration,
+	azdSecInfoProviderConfiguration *AzdSecInfoProviderConfiguration) *AzdSecInfoProvider {
 
 	// In case that GetContainersVulnerabilityScanInfoTimeoutDuration.TimeDurationInMS is empty (zero) - use default value.
 	getContainersVulnerabilityScanInfoTimeoutDuration := _defaultTimeDurationGetContainersVulnerabilityScanInfo
@@ -64,6 +79,7 @@ func NewAzdSecInfoProvider(instrumentationProvider instrumentation.IInstrumentat
 		argDataProvider:    argDataProvider,
 		tag2digestResolver: tag2digestResolver,
 		getContainersVulnerabilityScanInfoTimeoutDuration: getContainersVulnerabilityScanInfoTimeoutDuration,
+		configuration: azdSecInfoProviderConfiguration,
 	}
 }
 
@@ -111,8 +127,8 @@ func (provider *AzdSecInfoProvider) GetContainersVulnerabilityScanInfo(podSpec *
 	// Timeout case:
 	case <-time.After(provider.getContainersVulnerabilityScanInfoTimeoutDuration):
 		//TODO Implement cache that will check if it  the first time that got timeout error or it  the second time (if it  the second time then it should return error and don't add unscanned metadata!!)
-		tracer.Info("GetContainersVulnerabilityScanInfo got timeout - returning unscanned", "timeDurationOfTimeout", provider.getContainersVulnerabilityScanInfoTimeoutDuration)
-		return provider.buildListOfContainerVulnerabilityScanInfoWhenTimeout()
+
+		return provider.timeoutEncounteredGetContainersVulnerabilityScanInfo(podSpec)
 	}
 }
 
@@ -343,4 +359,49 @@ func (provider *AzdSecInfoProvider) buildListOfContainerVulnerabilityScanInfoWhe
 
 	containerVulnerabilityScanInfoList := []*contracts.ContainerVulnerabilityScanInfo{info}
 	return containerVulnerabilityScanInfoList, nil
+}
+
+// timeoutEncounteredGetContainersVulnerabilityScanInfo is called when timeout is encountered in GetContainersVulnerabilityScanInfo function
+// It checks if it is the first time that the request got an error (request is defined as the images of the request).
+// If it is the first time, it adds the images to the cache and returns unscanned with metadata.
+// If it is not the first time (images already are in cache) or there is an error in the communication with the cache, it returns error.
+// TODO Add tests for this behavior.
+func (provider *AzdSecInfoProvider) timeoutEncounteredGetContainersVulnerabilityScanInfo(podSpec *corev1.PodSpec) ([]*contracts.ContainerVulnerabilityScanInfo, error) {
+	tracer := provider.tracerProvider.GetTracer("timeoutEncounteredGetContainersVulnerabilityScanInfo")
+	images := utils.ExtractImagesFromPodSpec(podSpec)
+	// Sort the array - it is important for the cache to be sorted.
+	sort.Strings(images)
+	concatenatedImages := strings.Join(images, ",")
+
+	// Check if the concatenatedImages is already in cache
+	_, err := provider.cacheClient.Get(concatenatedImages)
+
+	// In case that the concatenatedImages is already in cache.
+	if err == nil {
+		// TODO Add metric for number of timeouts.
+		err = errors.Wrap(err, "Second time that timeout was encountered.")
+		tracer.Error(err, "")
+		return nil, err
+	}
+
+	// Check if the error is due to missing key.
+	_, isFirstTimeOfTimeout := err.(*cache.MissingKeyCacheError)
+	if !isFirstTimeOfTimeout {
+		// TODO Add metric new error encountered
+		err = errors.Wrap(err, "error encountered while trying to get result of timeout from cache.")
+		tracer.Error(err, "")
+		return nil, err
+	}
+
+	// In case that we got missing key error, it means that the concatenatedImages is not in cache - first time of timeout.
+	// Add to cache and return unscanned and timeout.
+	if err := provider.cacheClient.Set(concatenatedImages, "1", provider.configuration.CacheExpirationTimeTimeout); err != nil {
+		// TODO Add metric new error encountered
+		err = errors.Wrap(err, "error encountered while trying to set new timeout in cache.")
+		tracer.Error(err, "")
+		return nil, err
+	}
+
+	tracer.Info("GetContainersVulnerabilityScanInfo got timeout - returning unscanned", "timeDurationOfTimeout", provider.getContainersVulnerabilityScanInfoTimeoutDuration)
+	return provider.buildListOfContainerVulnerabilityScanInfoWhenTimeout()
 }

@@ -109,3 +109,6 @@ data:
     azdSecInfoProvider:
       GetContainersVulnerabilityScanInfoTimeoutDuration:
         timeDurationInMS: {{ .Values.AzDProxy.azdSecInfoProvider.GetContainersVulnerabilityScanInfo.timeout.timeDurationInMS }}
+
+      azdSecInfoProviderConfiguration:
+        CacheExpirationTimeTimeout: {{ .Values.AzDProxy.azdSecInfoProvider.azdSecInfoProviderConfiguration.CacheExpirationTimeTimeout }}
