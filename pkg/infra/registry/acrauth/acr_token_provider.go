@@ -96,6 +96,5 @@ func (tokenProvider *ACRTokenProvider) GetACRRefreshToken(registry string) (stri
 	}
 	tracer.Info("Set token in cache", "registry", registry)
 
-	// TODO add caching + experation
 	return registryRefreshToken, nil
 }
