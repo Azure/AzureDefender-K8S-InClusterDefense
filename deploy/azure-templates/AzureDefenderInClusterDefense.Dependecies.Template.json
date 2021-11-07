@@ -2,9 +2,6 @@
   "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
   "contentVersion": "1.0.0.0",
   "parameters": {
-    "cluster_name": {
-      "type": "string"
-    },
     "resource_group": {
       "type": "string"
     },
@@ -14,13 +11,14 @@
     "guidValue": {
       "type": "string",
       "defaultValue": "[newGuid()]"
+    },
+    "managedIdentityName": {
+      "type": "string"
     }
   },
   "variables": {
     "identityDeploymentName": "deployment-assets-except-role-assignment",
-    "managedIdentityName": "[concat('AzureDefenderInClusterDefense-', parameters('cluster_name'))]",
-    "managedIdentityId": "[concat('/subscriptions/', subscription().subscriptionId, '/resourceGroups/', parameters('resource_group'), '/providers/Microsoft.ManagedIdentity/userAssignedIdentities/', variables('managedIdentityName'))]",
-    "bootstrapRoleAssignmentId": "[guid(subscription().id, variables('readerRoleDefinitionId'), variables('managedIdentityId'), parameters('cluster_name'), parameters('guidValue'))]",
+    "bootstrapRoleAssignmentId": "[guid(subscription().id, variables('readerRoleDefinitionId'), parameters('managedIdentityName'), parameters('guidValue'))]",
     "readerRoleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'acdd72a7-3385-48ef-bd42-f606fba81ae7')]"
   },
   "resources": [
@@ -39,7 +37,7 @@
             "value": "[parameters('location')]"
           },
           "managedIdentityName": {
-            "value": "[variables('managedIdentityName')]"
+            "value": "[parameters('managedIdentityName')]"
           }
         },
         "template": {
