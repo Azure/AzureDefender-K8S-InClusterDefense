@@ -19,7 +19,7 @@ func NewChannelDataWrapper(data interface{}, err error) *ChannelDataWrapper {
 	}
 }
 
-// GetData gets the adta from the ChannelDataWrapper.
+// GetData gets the data from the ChannelDataWrapper.
 // returns error (that is not nil) in case that wrapper got non-nil err in the constructor or in case that the data is nil
 func (wrapper *ChannelDataWrapper) GetData() (interface{}, error) {
 	if wrapper.err != nil {
