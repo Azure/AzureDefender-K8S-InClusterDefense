@@ -72,30 +72,32 @@ func main() {
 	acrTokenProviderConfiguration := new(acrauth.ACRTokenProviderConfiguration)
 	argDataProviderCacheConfiguration := new(cachewrappers.RedisCacheClientConfiguration)
 	tokensCacheConfiguration := new(cachewrappers.FreeCacheInMemWrapperCacheConfiguration)
+	azdSecInfoProviderConfiguration := new(azdsecinfo.AzdSecInfoProviderConfiguration)
+	getContainersVulnerabilityScanInfoTimeoutDuration := new(utils.TimeoutConfiguration)
 
-	GetContainersVulnerabilityScanInfoTimeoutDuration := new(utils.TimeoutConfiguration)
 	// Create a map between configuration object and key in main config file
 	keyConfigMap := map[string]interface{}{
-		"webhook.managerConfiguration":                                         managerConfiguration,
-		"webhook.certRotatorConfiguration":                                     certRotatorConfiguration,
-		"webhook.serverConfiguration":                                          serverConfiguration,
-		"webhook.handlerConfiguration":                                         handlerConfiguration,
-		"instrumentation.tivan.tivanInstrumentationConfiguration":              tivanInstrumentationConfiguration,
-		"instrumentation.trace.tracerConfiguration":                            tracerConfiguration,
-		"azdIdentity.envAzureAuthorizerConfiguration":                          azdIdentityEnvAzureAuthorizerConfiguration,
-		"kubeletIdentity.envAzureAuthorizerConfiguration":                      kubeletIdentityEnvAzureAuthorizerConfiguration,
-		"arg.argBaseClient.retryPolicyConfiguration":                           argBaseClientRetryPolicyConfiguration,
-		"acr.craneWrappersConfiguration.retryPolicyConfiguration":              craneWrapperRetryPolicyConfiguration,
-		"acr.tokenExchanger.retryPolicyConfiguration":                          acrTokenExchangerClientRetryPolicyConfiguration,
-		"acr.acrTokenProviderConfiguration":									acrTokenProviderConfiguration,
-		"arg.argClientConfiguration":                                           argClientConfiguration,
-		"arg.argDataProviderConfiguration":										argDataProviderConfiguration,
-		"tag2digest.tag2DigestResolverConfiguration":							tag2DigestResolverConfiguration,
-		"deployment":                                                           deploymentConfiguration,
+		"webhook.managerConfiguration":                            managerConfiguration,
+		"webhook.certRotatorConfiguration":                        certRotatorConfiguration,
+		"webhook.serverConfiguration":                             serverConfiguration,
+		"webhook.handlerConfiguration":                            handlerConfiguration,
+		"instrumentation.tivan.tivanInstrumentationConfiguration": tivanInstrumentationConfiguration,
+		"instrumentation.trace.tracerConfiguration":               tracerConfiguration,
+		"azdIdentity.envAzureAuthorizerConfiguration":             azdIdentityEnvAzureAuthorizerConfiguration,
+		"kubeletIdentity.envAzureAuthorizerConfiguration":         kubeletIdentityEnvAzureAuthorizerConfiguration,
+		"arg.argBaseClient.retryPolicyConfiguration":              argBaseClientRetryPolicyConfiguration,
+		"acr.craneWrappersConfiguration.retryPolicyConfiguration": craneWrapperRetryPolicyConfiguration,
+		"acr.tokenExchanger.retryPolicyConfiguration":             acrTokenExchangerClientRetryPolicyConfiguration,
+		"acr.acrTokenProviderConfiguration":                       acrTokenProviderConfiguration,
+		"arg.argClientConfiguration":                              argClientConfiguration,
+		"arg.argDataProviderConfiguration":                        argDataProviderConfiguration,
+		"tag2digest.tag2DigestResolverConfiguration":              tag2DigestResolverConfiguration,
+		"deployment": deploymentConfiguration,
 		"cache.argDataProviderCacheConfiguration":                              argDataProviderCacheConfiguration,
 		"cache.tokensCacheConfiguration":                                       tokensCacheConfiguration,
 		"cache.redisClient.retryPolicyConfiguration":                           redisCacheClientRetryPolicyConfiguration,
-		"azdSecInfoProvider.GetContainersVulnerabilityScanInfoTimeoutDuration": GetContainersVulnerabilityScanInfoTimeoutDuration,
+		"azdSecInfoProvider.getContainersVulnerabilityScanInfoTimeoutDuration": getContainersVulnerabilityScanInfoTimeoutDuration,
+		"azdSecInfoProvider.azdSecInfoProviderConfiguration":                   azdSecInfoProviderConfiguration,
 	}
 
 	for key, configObject := range keyConfigMap {
@@ -190,7 +192,7 @@ func main() {
 	argDataProvider := arg.NewARGDataProvider(instrumentationProvider, argClient, argQueryGenerator, redisCacheClient, argDataProviderConfiguration)
 
 	// Handler and azdSecinfoProvider
-	azdSecInfoProvider := azdsecinfo.NewAzdSecInfoProvider(instrumentationProvider, argDataProvider, tag2digestResolver, GetContainersVulnerabilityScanInfoTimeoutDuration)
+	azdSecInfoProvider := azdsecinfo.NewAzdSecInfoProvider(instrumentationProvider, argDataProvider, tag2digestResolver, getContainersVulnerabilityScanInfoTimeoutDuration, azdSecInfoProviderConfiguration, redisCacheClient)
 	handler := webhook.NewHandler(azdSecInfoProvider, handlerConfiguration, instrumentationProvider)
 
 	// Manager and server

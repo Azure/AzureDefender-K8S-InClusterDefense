@@ -96,9 +96,12 @@ cache:
     # In bytes, where 1024 * 1024 represents a single Megabyte, and 100 * 1024*1024 represents 100 Megabytes.
     cacheSize: 104857600 # 100 * 1024 * 1024
 deployment:
-  isLocalDevelopment:  true
+  isLocalDevelopment: true
   namespace: "kube-system"
 
 azdSecInfoProvider:
   GetContainersVulnerabilityScanInfoTimeoutDuration:
     timeDurationInMS: 10000
+
+  azdSecInfoProviderConfiguration:
+    CacheExpirationTimeTimeout: "1m"
