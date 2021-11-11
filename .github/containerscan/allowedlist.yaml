@@ -1,4 +1,4 @@
 general:
   vulnerabilities:
-    # Ignore this vulnerability until https://github.com/google/go-containerregistry will be updated to new version (above 0.6.0)
+    # TODO - Remove ignore to this vulnerability when https://github.com/google/go-containerregistry is updated to a new version (above 0.6.0)
     - CVE-2021-41092
