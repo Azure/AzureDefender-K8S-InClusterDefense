@@ -34,19 +34,19 @@ type RedisCacheClient struct {
 	metricSubmitter metric.IMetricSubmitter
 	//retryPolicy retry policy for communication with redis cluster.
 	retryPolicy retrypolicy.IRetryPolicy
-	// ctx is the cache ctx
-	ctx context.Context
+	// cacheContext is the cache cacheContext
+	cacheContext context.Context
 }
 
 // NewRedisCacheClient is factory for RedisCacheClient
-func NewRedisCacheClient(instrumentationProvider instrumentation.IInstrumentationProvider, redisBaseClient wrappers.IRedisBaseClientWrapper, retryPolicy retrypolicy.IRetryPolicy) *RedisCacheClient {
+func NewRedisCacheClient(instrumentationProvider instrumentation.IInstrumentationProvider, redisBaseClient wrappers.IRedisBaseClientWrapper, retryPolicy retrypolicy.IRetryPolicy, cacheContext context.Context) *RedisCacheClient {
 
 	return &RedisCacheClient{
 		tracerProvider:  instrumentationProvider.GetTracerProvider("RedisCacheClient"),
 		metricSubmitter: instrumentationProvider.GetMetricSubmitter(),
 		redisClient:     redisBaseClient,
 		retryPolicy:     retryPolicy,
-		ctx: 			 context.Background(),
+		cacheContext:    cacheContext,
 	}
 }
 
@@ -56,7 +56,7 @@ func (client *RedisCacheClient) Get(key string) (string, error) {
 	tracer.Info("Get key executed", "Key", key)
 	value, err := client.retryPolicy.RetryActionString(
 		/*action ActionString get key using client.redisClient */
-		func() (string, error) { return client.redisClient.Get(client.ctx, key).Result() },
+		func() (string, error) { return client.redisClient.Get(client.cacheContext, key).Result() },
 		/*handler ShouldRetryOnSpecificError - handle with key is missing error*/
 		func(err error) bool {
 			return !errors.Is(err, redis.Nil)
@@ -102,7 +102,7 @@ func (client *RedisCacheClient) Set(key string, value string, expiration time.Du
 
 	err := client.retryPolicy.RetryAction(
 		// Action - set the values redis client.
-		func() error { return client.redisClient.Set(client.ctx, key, value, expiration).Err() },
+		func() error { return client.redisClient.Set(client.cacheContext, key, value, expiration).Err() },
 		// HandleError - if the err is redis.Nil then it means that the get is not exist.
 		// TODO @liorkesten -- How is this related to set??
 		func(err error) bool { return err != redis.Nil },

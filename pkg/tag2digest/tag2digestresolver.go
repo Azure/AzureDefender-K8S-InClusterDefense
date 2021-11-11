@@ -32,8 +32,8 @@ type Tag2DigestResolver struct {
 	registryClient registry.IRegistryClient
 	// cacheClient is a cache for mapping image full name to its digest
 	cacheClient cache.ICacheClient
-	// cacheExpirationTime is the expiration time **in seconds** for digests in the cache client
-	cacheExpirationTime time.Duration
+	// tag2DigestResolverConfiguration is configuration data for Tag2DigestResolver
+	tag2DigestResolverConfiguration *Tag2DigestResolverConfiguration
 }
 
 // Tag2DigestResolverConfiguration is configuration data for Tag2DigestResolver
@@ -49,7 +49,7 @@ func NewTag2DigestResolver(instrumentationProvider instrumentation.IInstrumentat
 		metricSubmitter: instrumentationProvider.GetMetricSubmitter(),
 		registryClient:  registryClient,
 		cacheClient:     cacheClient,
-		cacheExpirationTime: configuration.CacheExpirationTime * time.Second,
+		tag2DigestResolverConfiguration: configuration,
 	}
 }
 
@@ -66,7 +66,7 @@ func (resolver *Tag2DigestResolver) Resolve(imageReference registry.IImageRefere
 	}
 
 	// Save in cache
-	err = resolver.cacheClient.Set(imageReference.Original(), digest, resolver.cacheExpirationTime)
+	err = resolver.cacheClient.Set(imageReference.Original(), digest, resolver.tag2DigestResolverConfiguration.CacheExpirationTime)
 	if err != nil{
 		err = errors.Wrap(err, "Tag2DigestResolver.Resolve: Failed to set digest in cache")
 		tracer.Error(err, "")
@@ -93,8 +93,9 @@ func (resolver *Tag2DigestResolver) getDigest(imageReference registry.IImageRefe
 	}
 
 	// First check if we can get digest from cache
-	digestFromCache, keyDontExistErr := resolver.cacheClient.Get(imageReference.Original())
-	if keyDontExistErr == nil { // If key exist - return digest
+	// Error as a result of key doesn't exist and error from the cache are treated the same (skip cache)
+	digestFromCache, err := resolver.cacheClient.Get(imageReference.Original())
+	if err == nil { // If key exist - return digest
 		tracer.Info("Digest exist in cache", "image", imageReference.Original(), "digest", digestFromCache)
 		return digestFromCache, nil
 	}
@@ -116,7 +117,7 @@ func (resolver *Tag2DigestResolver) getDigest(imageReference registry.IImageRefe
 			// TODO Add tests that checks that we don't try another auth when we should stop.
 			// 		Should be added once @tomerweinberger finished to merge his PR.
 			if !resolver.shouldContinueOnError(err) {
-				err = errors.Wrap(err, "Tag2DigestResolver.Resolve: Failed to get digest on ACRAttachAuth")
+				err = errors.Wrap(err, "Failed to get digest on ACRAttachAuth")
 				tracer.Error(err, "")
 				return "", err
 			}
@@ -136,7 +137,7 @@ func (resolver *Tag2DigestResolver) getDigest(imageReference registry.IImageRefe
 	digest, err := resolver.registryClient.GetDigestUsingK8SAuth(imageReference, resourceCtx.namespace, resourceCtx.imagePullSecrets, resourceCtx.serviceAccountName)
 	if err != nil {
 		if !resolver.shouldContinueOnError(err) {
-			err = errors.Wrap(err, "Tag2DigestResolver.Resolve: Failed to get digest on K8SAuth")
+			err = errors.Wrap(err, "Failed to get digest on K8SAuth")
 			tracer.Error(err, "")
 			return "", err
 		}
@@ -153,14 +154,14 @@ func (resolver *Tag2DigestResolver) getDigest(imageReference registry.IImageRefe
 	// Fallback to DefaultAuth
 	digest, err = resolver.registryClient.GetDigestUsingDefaultAuth(imageReference)
 	if err != nil {
-		err = errors.Wrap(err, "Tag2DigestResolver.getDigest: Failed to get digest on DefaultAuth")
+		err = errors.Wrap(err, "Failed to get digest on DefaultAuth")
 		tracer.Error(err, "")
 		return "", err
 	}
 
 	// Check if the digest is empty
 	if digest == "" {
-		err = errors.New("Tag2DigestResolver.Resolve: Empty digest received by registry client")
+		err = errors.New("Empty digest received by registry client")
 		tracer.Error(err, "")
 		return "", err
 	}

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"github.com/Azure/ASC-go-libs/pkg/config"
 	tivanInstrumentation "github.com/Azure/ASC-go-libs/pkg/instrumentation"
@@ -28,6 +29,9 @@ import (
 	"net/http"
 	"os"
 	k8sclientconfig "sigs.k8s.io/controller-runtime/pkg/client/config"
+)
+var (
+	_cacheContext = context.Background()
 )
 
 const (
@@ -146,7 +150,7 @@ func main() {
 	//Cache clients
 	redisCacheBaseClient := cachewrappers.NewRedisBaseClientWrapper(argDataProviderCacheConfiguration)
 	redisCacheRetryPolicy := retrypolicy.NewRetryPolicy(instrumentationProvider, redisCacheClientRetryPolicyConfiguration)
-	redisCacheClient := cache.NewRedisCacheClient(instrumentationProvider, redisCacheBaseClient, redisCacheRetryPolicy)
+	redisCacheClient := cache.NewRedisCacheClient(instrumentationProvider, redisCacheBaseClient, redisCacheRetryPolicy, _cacheContext)
 	freeCacheInMemCache := cachewrappers.NewFreeCacheInMem(tokensCacheConfiguration)
 	freeCacheInMemCacheClient := cache.NewFreeCacheInMemCacheClient(instrumentationProvider, freeCacheInMemCache)
 

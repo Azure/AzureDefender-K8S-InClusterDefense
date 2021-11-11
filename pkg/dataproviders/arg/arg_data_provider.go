@@ -44,10 +44,8 @@ type ARGDataProvider struct {
 	argClient IARGClient
 	// cacheClient is a cache for mapping digest to scan results
 	cacheClient cache.ICacheClient
-	// cacheExpirationTimeUnscannedResults is the expiration time **in seconds** for unscanned results in the cache client
-	cacheExpirationTimeUnscannedResults time.Duration
-	// cacheExpirationTimeScannedResults is the expiration time **in minutes** for scan results in the cache client
-	cacheExpirationTimeScannedResults time.Duration
+	// argDataProviderConfiguration is configuration data for ARGDataProvider
+	argDataProviderConfiguration *ARGDataProviderConfiguration
 }
 
 // ARGDataProviderConfiguration is configuration data for ARGDataProvider
@@ -58,6 +56,15 @@ type ARGDataProviderConfiguration struct {
 	CacheExpirationTimeScannedResults time.Duration
 }
 
+// ScanFindingsInCache represents findings of image vulnerability scan with its scan status
+type ScanFindingsInCache struct {
+	//ScanStatus vulnerability scan status for image
+	ScanStatus contracts.ScanStatus `json:"scanStatus"`
+
+	// ScanFindings vulnerability scan findings for image
+	ScanFindings []*contracts.ScanFinding `json:"scanFindings"`
+}
+
 // NewARGDataProvider Constructor
 func NewARGDataProvider(instrumentationProvider instrumentation.IInstrumentationProvider, argClient IARGClient, queryGenerator queries.IARGQueryGenerator, cacheClient cache.ICacheClient, configuration *ARGDataProviderConfiguration) *ARGDataProvider {
 	return &ARGDataProvider{
@@ -66,8 +73,7 @@ func NewARGDataProvider(instrumentationProvider instrumentation.IInstrumentation
 		argQueryGenerator: queryGenerator,
 		argClient:         argClient,
 		cacheClient:       cacheClient,
-		cacheExpirationTimeUnscannedResults: configuration.CacheExpirationTimeUnscannedResults * time.Second,
-		cacheExpirationTimeScannedResults: configuration.CacheExpirationTimeScannedResults * time.Minute,
+		argDataProviderConfiguration: configuration,
 	}
 }
 
@@ -147,7 +153,7 @@ func (provider *ARGDataProvider) GetImageVulnerabilityScanResults(registry strin
 func (provider *ARGDataProvider) setScanFindingsInCache(scanFindings []*contracts.ScanFinding, scanStatus contracts.ScanStatus, digest string) error {
 	tracer := provider.tracerProvider.GetTracer("setScanFindingsInCache")
 
-	scanFindingsWrapper := &contracts.ScanFindingsWrapper{ScanStatus: scanStatus, ScanFindings: scanFindings}
+	scanFindingsWrapper := &ScanFindingsInCache{ScanStatus: scanStatus, ScanFindings: scanFindings}
 	scanFindingsBuffer, err := json.Marshal(scanFindingsWrapper)
 	if err != nil {
 		err = errors.Wrap(err, "ARGDataProvider.setScanFindingsInCache failed on json.Marshal scanFindingsWrapper")
@@ -156,9 +162,9 @@ func (provider *ARGDataProvider) setScanFindingsInCache(scanFindings []*contract
 	}
 
 	scanFindingsString := string(scanFindingsBuffer)
-	expirationTime := provider.cacheExpirationTimeScannedResults
+	expirationTime := provider.argDataProviderConfiguration.CacheExpirationTimeScannedResults
 	if scanStatus == contracts.Unscanned{
-		expirationTime =  provider.cacheExpirationTimeUnscannedResults
+		expirationTime =  provider.argDataProviderConfiguration.CacheExpirationTimeUnscannedResults
 	}
 	err = provider.cacheClient.Set(digest, scanFindingsString, expirationTime)
 	if err != nil{
@@ -175,7 +181,7 @@ func (provider *ARGDataProvider) setScanFindingsInCache(scanFindings []*contract
 func (provider *ARGDataProvider) parseScanFindingsFromCache(scanFindingsString string) (contracts.ScanStatus, []*contracts.ScanFinding, error) {
 	tracer := provider.tracerProvider.GetTracer("parseScanFindingsFromCache")
 
-	scanFindingsFromCache :=  new(contracts.ScanFindingsWrapper)
+	scanFindingsFromCache :=  new(ScanFindingsInCache)
 	unmarshalErr := json.Unmarshal([]byte(scanFindingsString), scanFindingsFromCache)
 	if unmarshalErr != nil {
 		unmarshalErr = errors.Wrap(unmarshalErr, "ARGDataProvider.parseScanFindingsFromCache failed on json.Unmarshal scanFindingsWrapper")

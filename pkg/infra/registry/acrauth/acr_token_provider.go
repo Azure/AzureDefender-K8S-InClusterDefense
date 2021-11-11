@@ -33,8 +33,8 @@ type ACRTokenProvider struct {
 	tokenExchanger IACRTokenExchanger
 	// tokenCache is cache for mapping acr registry to token
 	cacheClient cache.ICacheClient
-	// cacheExpirationTime is the expiration time **in seconds** for tokens in the cache client
-	cacheExpirationTime time.Duration
+	// acrTokenProviderConfiguration is configuration data for ACRTokenProvider
+	acrTokenProviderConfiguration *ACRTokenProviderConfiguration
 
 }
 
@@ -52,7 +52,7 @@ func NewACRTokenProvider(instrumentationProvider instrumentation.IInstrumentatio
 		azureBearerAuthorizerTokenProvider: azureBearerAuthorizerTokenProvider,
 		tokenExchanger:                     tokenExchanger,
 		cacheClient:                        cacheClient,
-		cacheExpirationTime: configuration.CacheExpirationTime * time.Second,
+		acrTokenProviderConfiguration: configuration,
 	}
 }
 
@@ -89,7 +89,7 @@ func (tokenProvider *ACRTokenProvider) GetACRRefreshToken(registry string) (stri
 	}
 
 	// Save in cache
-	err = tokenProvider.cacheClient.Set(registry, registryRefreshToken, tokenProvider.cacheExpirationTime)
+	err = tokenProvider.cacheClient.Set(registry, registryRefreshToken, tokenProvider.acrTokenProviderConfiguration.CacheExpirationTime)
 	if err != nil{
 		err = errors.Wrap(err, "GetACRRefreshToken: Failed to set token in cache")
 		tracer.Error(err, "")
