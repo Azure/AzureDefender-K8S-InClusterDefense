@@ -71,13 +71,13 @@ arg:
       retryDurationInMS: 100
 
   argDataProviderConfiguration:
-    cacheExpirationTimeUnscannedResults: 1m
+    cacheExpirationTimeUnscannedResults: 4m
     cacheExpirationTimeScannedResults: 24h
     cacheExpirationTimeForErrors: 1m
 
 tag2digest:
   tag2DigestResolverConfiguration:
-    cacheExpirationTimeForResults: 1m
+    cacheExpirationTimeForResults: 2m
     cacheExpirationTimeForErrors: 1m
 
 # Cache configuration

@@ -143,9 +143,9 @@ AzDProxy:
         retryDurationInMS: 100
 
     argDataProviderConfiguration:
-      # Expiration time in seconds of scan results in status unscanned in cache (redeploy will take at least a minute)
-      cacheExpirationTimeUnscannedResults: 1m # 1 minute
-      # Expiration time in minutes of scan results in status scanned in cache (need to sync with image-scan periodic scans - every month)
+      # Expiration time in seconds of scan results in status unscanned in cache (redeploy will take at least a minute and scanning an image takes 4 minutes on average)
+      cacheExpirationTimeUnscannedResults: 4m # 1 minute
+      # Expiration time in minutes of scan results in status scanned in cache (need to sync with image-scan periodic scans - every 10 days)
       cacheExpirationTimeScannedResults: 24h # 24 hours
       # cacheExpirationTime is the expiration time in the cache client for errors occurred during GetImageVulnerabilityScanResults
       cacheExpirationTimeForErrors: 1m  # 1 minute
@@ -153,8 +153,8 @@ AzDProxy:
   # Tag2Digest configuration
   tag2digest:
     tag2DigestResolverConfiguration:
-      # Expiration time in seconds of digest in cache
-      cacheExpirationTimeForResults: 1m # 1 minute
+      # Expiration time of digest in cache - changing image digest require editing source code, building image and pushing image. Longer than 2 minutes
+      cacheExpirationTimeForResults: 2m # 2 minute
       # Expiration time in the cache client for errors occurred during get digest
       cacheExpirationTimeForErrors: 1m # 1 minute
 
@@ -191,4 +191,5 @@ AzDProxy:
         timeDurationInMS: 2850
 
     azdSecInfoProviderConfiguration:
-      CacheExpirationTimeTimeout: "1m"
+      # Expiration time of timeout status in cache - 1 hour in order to avoid multiple timeouts
+      CacheExpirationTimeTimeout: "1h"
