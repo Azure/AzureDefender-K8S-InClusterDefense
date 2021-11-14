@@ -18,8 +18,8 @@ import (
 
 const (
 	_argScanHealthyStatus = "Healthy"
-	_gotResultsFromCache = true
-	_dontGotResultsFromCache = false
+	_gotResultsFromCache      = true
+	_didntGotResultsFromCache = false
 )
 
 // IARGDataProvider is a provider for any ARG data
@@ -45,9 +45,11 @@ type ARGDataProvider struct {
 	argQueryGenerator queries.IARGQueryGenerator
 	// argClient is the arg client of the ARGDataProvider
 	argClient IARGClient
+	// argDataProviderCacheClient is the cache ARGDataProvider uses and its time expiration
 	argDataProviderCacheClient *ARGDataProviderCacheClient
 }
 
+// ARGDataProviderCacheClient is a cache client for ARGDataProvider that contains the needed cache client configurations
 type ARGDataProviderCacheClient struct {
 	// cacheClient is a cache for mapping digest to scan results
 	cacheClient cache.ICacheClient
@@ -102,7 +104,7 @@ func (provider *ARGDataProvider) GetImageVulnerabilityScanResults(registry strin
 	// If a known error was saved in cache - return it
 	gotResultsFromCache, scanStatus, scanFindings, err := provider.getResultsFromCache(digest)
 	if gotResultsFromCache{
-		if err != nil{
+		if err != nil{ // a known error was saved in cache
 			err = errors.Wrap(err, "Get error from cache as value")
 			tracer.Error(err, "")
 			return "", nil, err
@@ -131,6 +133,10 @@ func (provider *ARGDataProvider) GetImageVulnerabilityScanResults(registry strin
 	return scanStatus, scanFindings, nil
 }
 
+// getResultsFromCache try to get ImageVulnerabilityScanResults from cache.
+// The cache mapping digest to scan results or to known errors.
+// If the digest exist in cache - return the value (scan results or error) and a flag _gotResultsFromCache
+// If the digest dont exist in cache or any other unknown error occurred - return "", nil, nil and _didntGotResultsFromCache
 func (provider *ARGDataProvider) getResultsFromCache(digest string) (bool, contracts.ScanStatus, []*contracts.ScanFinding, error){
 	tracer := provider.tracerProvider.GetTracer("getResultsFromCache")
 
@@ -139,7 +145,7 @@ func (provider *ARGDataProvider) getResultsFromCache(digest string) (bool, contr
 	// Nothing found in cache for digest as key
 	if err != nil{ // Error as a result of key doesn't exist or other error from the cache functionality are treated the same (skip cache)
 		tracer.Info("scanFindings don't exist in cache", "digest", digest)
-		return _dontGotResultsFromCache, "", nil, nil
+		return _didntGotResultsFromCache, "", nil, nil
 	}
 
 	// digest exist in cache (as key) -> scanFindingsString exist in cache -> scanFindingsString is scan results or an error occurred during GetImageVulnerabilityScanResults
@@ -155,7 +161,7 @@ func (provider *ARGDataProvider) getResultsFromCache(digest string) (bool, contr
 	if unmarshalErr != nil{ // json.unmarshall failed - trace the error and continue without cache
 		unmarshalErr = errors.Wrap(unmarshalErr, "Failed on unmarshall scan results from cache")
 		tracer.Error(unmarshalErr, "")
-		return _dontGotResultsFromCache, "", nil, nil
+		return _didntGotResultsFromCache, "", nil, nil
 	}
 
 	// results successfully extracted from cache - return the results
@@ -163,6 +169,7 @@ func (provider *ARGDataProvider) getResultsFromCache(digest string) (bool, contr
 	return _gotResultsFromCache, scanStatusFromCache, scanFindingsFromCache, nil
 }
 
+// getResultsFromArg gets scan results from arg
 func (provider *ARGDataProvider) getResultsFromArg(registry string, repository string, digest string) (contracts.ScanStatus, []*contracts.ScanFinding, error) {
 	tracer := provider.tracerProvider.GetTracer("getResultsFromArg")
 
@@ -208,6 +215,7 @@ func (provider *ARGDataProvider) getResultsFromArg(registry string, repository s
 	return scanStatus, scanFindings, nil
 }
 
+// setErrorInCache map digest to a known error. If the given error is a known error, set it in cache.
 func (provider *ARGDataProvider) setErrorInCache(digest string, err error){
 	tracer := provider.tracerProvider.GetTracer("setErrorInCache")
 	errorAsString, isErrParsedToUnscannedReason := registryerrors.TryParseErrToUnscannedWithReason(err)

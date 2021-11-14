@@ -8,13 +8,16 @@ import (
 	"time"
 )
 
+// ACRTokenProviderFactory Factory to create ACRTokenProvider
 type ACRTokenProviderFactory struct {
 }
 
+// NewACRTokenProviderFactory is a Constructor for ACRTokenProviderFactory
 func NewACRTokenProviderFactory () *ACRTokenProviderFactory{
 	return &ACRTokenProviderFactory{}
 }
 
+// CreateACRTokenProvider creates a new instance of ACRTokenProvider
 func (factory *ACRTokenProviderFactory) CreateACRTokenProvider(instrumentationProvider instrumentation.IInstrumentationProvider, tokenExchanger IACRTokenExchanger, azureBearerAuthorizerTokenProvider azureauth.IBearerAuthorizerTokenProvider, cacheClient cache.ICacheClient, acrTokenProviderConfiguration *ACRTokenProviderConfiguration) (*ACRTokenProvider, error){
 	armTokenCacheExpirationTime, err := time.ParseDuration(acrTokenProviderConfiguration.ArmTokenCacheExpirationTime)
 	if err != nil{

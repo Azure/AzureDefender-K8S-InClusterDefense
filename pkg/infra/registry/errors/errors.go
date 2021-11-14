@@ -89,6 +89,7 @@ func TryParseErrToUnscannedWithReason(err error) (*contracts.UnscannedReason, bo
 	}
 }
 
+// TryParseStringToUnscannedWithReasonErr gets a string and try to convert it to a known error from contracts.
 func TryParseStringToUnscannedWithReasonErr(errAsString string) (error, bool){
 	switch errAsString {
 	case string(contracts.ImageDoesNotExistUnscannedReason):

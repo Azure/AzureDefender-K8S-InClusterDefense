@@ -8,13 +8,16 @@ import (
 	"time"
 )
 
+// ARGDataProviderFactory Factory to create ARGDataProvider
 type ARGDataProviderFactory struct {
 }
 
+// NewARGDataProviderFactory is a Constructor for ARGDataProviderFactory
 func NewARGDataProviderFactory () *ARGDataProviderFactory{
 	return &ARGDataProviderFactory{}
 }
 
+// CreateARGDataProvider creates a new instance of ARGDataProvider
 func (factory *ARGDataProviderFactory) CreateARGDataProvider(instrumentationProvider instrumentation.IInstrumentationProvider, argClient IARGClient, queryGenerator queries.IARGQueryGenerator, cacheClient cache.ICacheClient, configuration *ARGDataProviderConfiguration) (*ARGDataProvider, error){
 	cacheExpirationTimeScannedResults, err := time.ParseDuration(configuration.CacheExpirationTimeScannedResults)
 	if err != nil{

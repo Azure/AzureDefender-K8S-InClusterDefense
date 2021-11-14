@@ -23,8 +23,10 @@ type ITag2DigestResolver interface {
 var _ ITag2DigestResolver = (*Tag2DigestResolver)(nil)
 
 const (
+	// _gotResultsFromCache is a flag representing that the results are from cache
 	_gotResultsFromCache = true
-	_dontGotResultsFromCache = false
+	// _didntGetResultsFromCache is a flag representing that the results aren't from cache
+	_didntGetResultsFromCache = false
 )
 
 // Tag2DigestResolver represents basic implementation of ITag2DigestResolver interface
@@ -47,6 +49,7 @@ type Tag2DigestResolverConfiguration struct {
 	CacheExpirationTimeForErrors string
 }
 
+// Tag2DigestResolverCacheClient is a cache client for Tag2DigestResolver that contains the needed cache client configurations
 type Tag2DigestResolverCacheClient struct {
 	// cacheClient is a cache for mapping image full name to its digest
 	cacheClient cache.ICacheClient
@@ -66,7 +69,7 @@ func NewTag2DigestResolver(instrumentationProvider instrumentation.IInstrumentat
 	}
 }
 
-// Resolve receives an image refernce and the resource deployed context and returns image digest
+// Resolve receives an image reference and the resource deployed context and returns image digest
 // Saves digest in cache. The format is key - image original name, value - digest
 func (resolver *Tag2DigestResolver) Resolve(imageReference registry.IImageReference, resourceCtx *ResourceContext) (string, error) {
 	tracer := resolver.tracerProvider.GetTracer("Resolve")
@@ -111,6 +114,10 @@ func (resolver *Tag2DigestResolver) Resolve(imageReference registry.IImageRefere
 	return digest, nil
 }
 
+// getDigestFromCache try to get digest from cache
+// The cache mapping image to digest or to known errors.
+// If the image exist in cache - return the value (digest or error) and a flag _gotResultsFromCache
+// If the image don't exist in cache or any other unknown error occurred - return "", nil and _didntGetResultsFromCache
 func (resolver *Tag2DigestResolver) getDigestFromCache(imageReference registry.IImageReference) (bool, string, error) {
 	tracer := resolver.tracerProvider.GetTracer("getDigestFromCache")
 	// First check if we can get digest from cache
@@ -119,7 +126,7 @@ func (resolver *Tag2DigestResolver) getDigestFromCache(imageReference registry.I
 	// If key dont exist in cache
 	if err != nil {
 		tracer.Info("Digest don't exist in cache", "image", imageReference.Original())
-		return _dontGotResultsFromCache, "", nil
+		return _didntGetResultsFromCache, "", nil
 	}
 	// If key exist
 	err, isKnownError := registryerrors.TryParseStringToUnscannedWithReasonErr(digestFromCache)
@@ -135,8 +142,7 @@ func (resolver *Tag2DigestResolver) getDigestFromCache(imageReference registry.I
 }
 
 // getDigest receives an image refernce and the resource deployed context and returns image digest
-// It first check if it's able to get digest from cache
-// Then tries to see if it's a digest based image reference - if so, extract its digest
+// It tries to see if it's a digest based image reference - if so, extract its digest
 // Then if it ACR based registry - tries to get digest using registry client's ACR attach auth method
 // If above fails or not applicable - tries to get digest using registry client's k8s auth method.
 func (resolver *Tag2DigestResolver) getDigest(imageReference registry.IImageReference, resourceCtx *ResourceContext) (string, error){
@@ -239,6 +245,7 @@ func (resolver *Tag2DigestResolver) shouldContinueOnError(err error) bool {
 	}
 }
 
+// setErrorInCache map image to a known error. If the given error is a known error, set it in cache.
 func (resolver *Tag2DigestResolver) setErrorInCache(imageReference registry.IImageReference, err error){
 	tracer := resolver.tracerProvider.GetTracer("setErrorInCache")
 	errorAsString, isErrParsedToUnscannedReason := registryerrors.TryParseErrToUnscannedWithReason(err)

@@ -175,7 +175,7 @@ func main() {
 	tag2digestResolverFactory := tag2digest.NewTag2DigestResolverFactory()
 	tag2digestResolver, err := tag2digestResolverFactory.CreateTag2DigestResolver(instrumentationProvider, registryClient, redisCacheClient, tag2DigestResolverConfiguration)
 	if err != nil {
-		log.Fatal("main.tag2digestResolverFactory.CreateTag2DigestResolver", err)
+		log.Fatal("main.tag2digestResolverFactory.CreateAzdSecInfoProvider", err)
 	}
 
 	// ARG
@@ -203,7 +203,7 @@ func main() {
 
 	// Handler and azdSecinfoProvider
 	azdSecInfoProviderFactory := azdsecinfo.NewAzdSecInfoProviderFactory()
-	azdSecInfoProvider, err := azdSecInfoProviderFactory.CreateTag2DigestResolver(instrumentationProvider, argDataProvider, tag2digestResolver, getContainersVulnerabilityScanInfoTimeoutDuration, azdSecInfoProviderConfiguration, redisCacheClient)
+	azdSecInfoProvider, err := azdSecInfoProviderFactory.CreateAzdSecInfoProvider(instrumentationProvider, argDataProvider, tag2digestResolver, getContainersVulnerabilityScanInfoTimeoutDuration, azdSecInfoProviderConfiguration, redisCacheClient)
 	if err != nil {
 		log.Fatal("main.azdSecInfoProviderFactory.azdSecInfoProviderFactory", err)
 	}

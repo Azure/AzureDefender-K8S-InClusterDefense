@@ -71,7 +71,7 @@ func (suite *AzdSecInfoProviderTestSuite) SetupTest() {
 	cacheClientMock := new(cachemock.ICacheClient)
 	cacheClientMock.On("Get", mock.Anything).Return("", new(cache.MissingKeyCacheError))
 	cacheClientMock.On("Set", mock.Anything, mock.Anything, mock.Anything).Return(nil)
-	suite.azdSecInfoProvider, _ = azdSecInfoProviderFactory.CreateTag2DigestResolver(instrumentation.NewNoOpInstrumentationProvider(), suite.argDataProviderMock, suite.tag2DigestResolverMock, &utils.TimeoutConfiguration{TimeDurationInMS: _TimeDurationGetContainersVulnerabilityScanInfo}, &AzdSecInfoProviderConfiguration{CacheExpirationTimeTimeout: _cacheExpirationTimeTimeout}, cacheClientMock)
+	suite.azdSecInfoProvider, _ = azdSecInfoProviderFactory.CreateAzdSecInfoProvider(instrumentation.NewNoOpInstrumentationProvider(), suite.argDataProviderMock, suite.tag2DigestResolverMock, &utils.TimeoutConfiguration{TimeDurationInMS: _TimeDurationGetContainersVulnerabilityScanInfo}, &AzdSecInfoProviderConfiguration{CacheExpirationTimeTimeout: _cacheExpirationTimeTimeout}, cacheClientMock)
 }
 
 func (suite *AzdSecInfoProviderTestSuite) Test_GetContainersVulnerabilityScanInfo_Run_In_Parallel_AllContainersNil() {

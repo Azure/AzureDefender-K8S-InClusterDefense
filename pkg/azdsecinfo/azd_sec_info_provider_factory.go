@@ -10,14 +10,17 @@ import (
 	"time"
 )
 
+// AzdSecInfoProviderFactory Factory to create AzdSecInfoProvider
 type AzdSecInfoProviderFactory struct {
 }
 
+// NewAzdSecInfoProviderFactory is a Constructor for AzdSecInfoProviderFactory
 func NewAzdSecInfoProviderFactory () *AzdSecInfoProviderFactory{
 	return &AzdSecInfoProviderFactory{}
 }
 
-func (factory *AzdSecInfoProviderFactory) CreateTag2DigestResolver(instrumentationProvider instrumentation.IInstrumentationProvider,
+// CreateAzdSecInfoProvider creates a new instance of AzdSecInfoProvider
+func (factory *AzdSecInfoProviderFactory) CreateAzdSecInfoProvider(instrumentationProvider instrumentation.IInstrumentationProvider,
 	argDataProvider arg.IARGDataProvider,
 	tag2digestResolver tag2digest.ITag2DigestResolver,
 	GetContainersVulnerabilityScanInfoTimeoutDuration *utils.TimeoutConfiguration, azdSecInfoProviderConfiguration *AzdSecInfoProviderConfiguration, cacheClient cache.ICacheClient) (*AzdSecInfoProvider, error){

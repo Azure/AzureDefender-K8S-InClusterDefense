@@ -12,7 +12,9 @@ import (
 )
 
 const(
+	// _armTokenCacheKeyPrefix is the prefix for ARMToken cache keys
 	_armTokenCacheKeyPrefix = "armToken"
+	// _registryRefreshTokenCacheKeyPrefix is the prefix for RegistryRefreshToken cache keys
 	_registryRefreshTokenCacheKeyPrefix = "registryRefreshToken"
 )
 
@@ -36,6 +38,7 @@ type ACRTokenProvider struct {
 	azureBearerAuthorizerTokenProvider azureauth.IBearerAuthorizerTokenProvider
 	// tokenExchanger is exchanger to exchange the bearer token to a refresh token
 	tokenExchanger IACRTokenExchanger
+	// acrTokenProviderCacheClient is the cache ACRTokenProvider uses and its time expiration
 	acrTokenProviderCacheClient *ACRTokenProviderCacheClient
 }
 
@@ -47,6 +50,7 @@ type ACRTokenProviderConfiguration struct {
 	RegistryRefreshTokenCacheExpirationTime string
 }
 
+// ACRTokenProviderCacheClient is a cache client for ACRTokenProvider that contains the needed cache client configurations
 type ACRTokenProviderCacheClient struct {
 	// cacheClient is cache for mapping acr registry to token
 	cacheClient cache.ICacheClient
@@ -111,6 +115,7 @@ func (tokenProvider *ACRTokenProvider) GetACRRefreshToken(registry string) (stri
 	return registryRefreshToken, nil
 }
 
+// getARMToken gets ARM token by first trying to get the token from the cache. If fails, gets from azure.
 func (tokenProvider *ACRTokenProvider) getARMToken(registry string) (string, error) {
 	tracer := tokenProvider.tracerProvider.GetTracer("getARMToken")
 
@@ -143,10 +148,12 @@ func (tokenProvider *ACRTokenProvider) getARMToken(registry string) (string, err
 	return armToken, nil
 }
 
+// getARMTokenCacheKey returns the ARMToken cache key of a given registry
 func (tokenProvider *ACRTokenProvider) getARMTokenCacheKey(registry string) string {
 	return _armTokenCacheKeyPrefix + registry
 }
 
+// getARMTokenCacheKey returns the RegistryRefreshToken cache key of a given registry
 func (tokenProvider *ACRTokenProvider) getRegistryRefreshTokenCacheKey (registry string) string {
 	return _registryRefreshTokenCacheKeyPrefix + registry
 }
