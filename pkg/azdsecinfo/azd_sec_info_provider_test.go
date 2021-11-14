@@ -3,6 +3,7 @@ package azdsecinfo
 import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/azdsecinfo/contracts"
 	argDataProviderMocks "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/dataproviders/arg/mocks"
+	cachemock "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/cache/mocks"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/utils"
@@ -65,7 +66,7 @@ func (suite *AzdSecInfoProviderTestSuite) SetupTest() {
 	// Mock
 	suite.tag2DigestResolverMock = &tag2DigestResolverMocks.ITag2DigestResolver{}
 	suite.argDataProviderMock = &argDataProviderMocks.IARGDataProvider{}
-	suite.azdSecInfoProvider = NewAzdSecInfoProvider(instrumentation.NewNoOpInstrumentationProvider(), suite.argDataProviderMock, suite.tag2DigestResolverMock, &utils.TimeoutConfiguration{TimeDurationInMS: _TimeDurationGetContainersVulnerabilityScanInfo})
+	suite.azdSecInfoProvider = NewAzdSecInfoProvider(instrumentation.NewNoOpInstrumentationProvider(), suite.argDataProviderMock, suite.tag2DigestResolverMock, &utils.TimeoutConfiguration{TimeDurationInMS: _TimeDurationGetContainersVulnerabilityScanInfo}, new(AzdSecInfoProviderConfiguration), new(cachemock.ICacheClient))
 }
 
 func (suite *AzdSecInfoProviderTestSuite) Test_GetContainersVulnerabilityScanInfo_Run_In_Parallel_AllContainersNil() {

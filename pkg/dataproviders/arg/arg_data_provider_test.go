@@ -17,8 +17,8 @@ const (
 	_repositoryMock = "sqlo"
 	_digestMock = "xckjhcdjdjhdh"
 
-	_expirationTimeScanned = time.Duration(1) // for scanned results - 1 minutes
-	_expirationTimeUnscanned = time.Duration(1) // for unscanned results - 1 seconds
+	_expirationTimeScanned = "1m" // for scanned results - 1 minutes
+	_expirationTimeUnscanned = "1s" // for unscanned results - 1 seconds
 	_registry = "imagescane2eacrdev.azurecr.io"
 	_repository = "pushunhealthyimage/vulnerables/cve-2014-6271"
 	_digest = "sha256:bdac8529e22931c1d99bf4907e12df3c2df0214070635a0b076fb11e66409883"
@@ -27,6 +27,8 @@ const (
 )
 
 var (
+	_expirationTimeScannedParsed, _ = time.ParseDuration(_expirationTimeScanned)
+
 	_results = []interface{}{
 		map[string]string{
 			"id": "123456",
@@ -55,7 +57,8 @@ func (suite *ARGDataProviderTestSuite) SetupTest() {
 	suite.argClientMock = new(mocks.IARGClient)
 	suite.queryGeneratorMock = new(queriesmock.IARGQueryGenerator)
 	suite.cacheMock = cachemock.NewICacheInMemBasedMock()
-	suite.provider = NewARGDataProvider(instrumentation.NewNoOpInstrumentationProvider(), suite.argClientMock, suite.queryGeneratorMock, suite.cacheMock,
+	argDataProviderFactory := NewARGDataProviderFactory()
+	suite.provider, _ = argDataProviderFactory.CreateARGDataProvider(instrumentation.NewNoOpInstrumentationProvider(), suite.argClientMock, suite.queryGeneratorMock, suite.cacheMock,
 		&ARGDataProviderConfiguration{
 			CacheExpirationTimeScannedResults:   _expirationTimeScanned,
 			CacheExpirationTimeUnscannedResults: _expirationTimeUnscanned,
@@ -77,7 +80,7 @@ func (suite *ARGDataProviderTestSuite) Test_GetImageVulnerabilityScanResults_NoK
 }
 
 func (suite *ARGDataProviderTestSuite) Test_GetImageVulnerabilityScanResults_KeyInCache(){
-	_ = suite.cacheMock.Set(_digest, _setToCacheTest1, _expirationTimeScanned)
+	_ = suite.cacheMock.Set(_digest, _setToCacheTest1, _expirationTimeScannedParsed)
 	scanStatus, scanFindings, err := suite.provider.GetImageVulnerabilityScanResults(_registry, _repository, _digest)
 	suite.Nil(err)
 	suite.Equal(scanStatus, contracts.UnhealthyScan)

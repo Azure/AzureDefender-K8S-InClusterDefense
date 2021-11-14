@@ -66,7 +66,8 @@ data:
           retryDurationInMS: {{ .Values.AzDProxy.acr.craneWrappers.retryPolicyConfiguration.retryDurationInMS }}
 
       acrTokenProviderConfiguration:
-        cacheExpirationTime: {{ .Values.AzDProxy.acr.acrTokenProviderConfiguration.cacheExpirationTime }}
+        armTokenCacheExpirationTime: {{ .Values.AzDProxy.acr.acrTokenProviderConfiguration.armTokenCacheExpirationTime }}
+        registryRefreshTokenCacheExpirationTime: {{ .Values.AzDProxy.acr.acrTokenProviderConfiguration.registryRefreshTokenCacheExpirationTime }}
 
     arg:
       argClientConfiguration:
@@ -83,7 +84,8 @@ data:
 
     tag2digest:
       tag2DigestResolverConfiguration:
-        cacheExpirationTime: {{ .Values.AzDProxy.tag2digest.tag2DigestResolverConfiguration.cacheExpirationTime }}
+        cacheExpirationTimeForResults: {{ .Values.AzDProxy.tag2digest.tag2DigestResolverConfiguration.cacheExpirationTimeForResults }}
+        cacheExpirationTimeForErrors: {{ .Values.AzDProxy.tag2digest.tag2DigestResolverConfiguration.cacheExpirationTimeForErrors }}
 
     # Cache configuration
     cache:

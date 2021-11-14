@@ -57,7 +57,8 @@ acr:
       retryDurationInMS: 10
 
   acrTokenProviderConfiguration:
-    cacheExpirationTime: 600
+    armTokenCacheExpirationTime: 10m # 10 minutes
+    registryRefreshTokenCacheExpirationTime: 10m # 10 minutes
 
 arg:
   argClientConfiguration:
@@ -70,12 +71,13 @@ arg:
       retryDurationInMS: 100
 
   argDataProviderConfiguration:
-    cacheExpirationTimeUnscannedResults: 60
-    cacheExpirationTimeScannedResults: 1440
+    cacheExpirationTimeUnscannedResults: 1m
+    cacheExpirationTimeScannedResults: 24h
 
 tag2digest:
   tag2DigestResolverConfiguration:
-    cacheExpirationTime: 60
+    cacheExpirationTimeForResults: 1m
+    cacheExpirationTimeForErrors: 1m
 
 # Cache configuration
 cache:

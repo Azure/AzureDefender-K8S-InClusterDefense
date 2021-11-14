@@ -124,8 +124,10 @@ AzDProxy:
         retryDurationInMS: 10
 
     acrTokenProviderConfiguration:
-      # Expiration time in seconds of acr token in cache  (acr token is valid for 3 hours since the last command az acr login)
-      cacheExpirationTime: 600 # 10 minutes
+      # Expiration time in seconds of armToken in cache  (acr token is valid for 3 hours since the last command az acr login)
+      armTokenCacheExpirationTime: 10m # 10 minutes
+      # Expiration time in seconds of registryRefreshToken in cache
+      registryRefreshTokenCacheExpirationTime: 10m # 10 minutes
 
   # ARG values
   arg:
@@ -150,7 +152,9 @@ AzDProxy:
   tag2digest:
     tag2DigestResolverConfiguration:
       # Expiration time in seconds of digest in cache
-      cacheExpirationTime: 60 # 1 minute
+      cacheExpirationTimeForResults: 1m # 1 minute
+      # Expiration time in the cache client for errors occurred during get digest
+      cacheExpirationTimeForErrors: 1m # 1 minute
 
     # Cache configuration
   cache:

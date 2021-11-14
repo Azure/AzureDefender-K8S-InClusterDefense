@@ -1,6 +1,7 @@
 package cache
 
 import (
+	"context"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/retrypolicy"
 	"github.com/go-redis/redis/v8"
@@ -23,6 +24,7 @@ const (
 )
 
 var (
+	_cacheContext = context.Background()
 	_retryPolicy     retrypolicy.IRetryPolicy
 	_client          *RedisCacheClient
 	_redisClientMock *redis.Client
@@ -34,7 +36,7 @@ func (suite *TestSuiteRedisCache) SetupTest() {
 	_redisClientMock, _redisMock = redismock.NewClientMock()
 	retryPolicyConfiguration := &retrypolicy.RetryPolicyConfiguration{RetryAttempts: 1, RetryDurationInMS: 10}
 	_retryPolicy = retrypolicy.NewRetryPolicy(instrumentation.NewNoOpInstrumentationProvider(), retryPolicyConfiguration)
-	_client = NewRedisCacheClient(instrumentation.NewNoOpInstrumentationProvider(), _redisClientMock, _retryPolicy)
+	_client = NewRedisCacheClient(instrumentation.NewNoOpInstrumentationProvider(), _redisClientMock, _retryPolicy, _cacheContext)
 }
 
 func (suite *TestSuiteRedisCache) Test_Get_KeyIsExist_ShouldReturnValue() {

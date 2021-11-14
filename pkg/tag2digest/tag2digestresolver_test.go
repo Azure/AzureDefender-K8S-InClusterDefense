@@ -28,7 +28,8 @@ var _acrImageRefTag registry.IImageReference
 var _nonAcrImageRefTag registry.IImageReference
 var _ctx *ResourceContext
 var _ctxPullSecrets = []string{"tomer-pull-secret"}
-var _expirationTime = time.Duration(1)
+var _expirationTime= "1s"
+var _expirationTimeParsed, _ = time.ParseDuration(_expirationTime)
 
 const _ctxNamsespace = "tomer-ns"
 const _ctsServiceAccount = "tomer-sa"
@@ -39,10 +40,10 @@ func (suite *TestSuiteTag2DigestResolver) SetupTest() {
 	_registryClientMock = new(registrymocks.IRegistryClient)
 	_cacheClientMock = new(cachemock.ICacheClient)
 	_cacheClientInMemBasedMock = cachemock.NewICacheInMemBasedMock()
-	_resolverNoCacheFunctionality = NewTag2DigestResolver(instrumentationP, _registryClientMock, _cacheClientMock, new(Tag2DigestResolverConfiguration))
-	_resolverWithCacheFunctionality = NewTag2DigestResolver(instrumentationP, _registryClientMock, _cacheClientInMemBasedMock, &Tag2DigestResolverConfiguration{
-			CacheExpirationTime: _expirationTime,
-		})
+	_resolverFactory := NewTag2DigestResolverFactory()
+	_tag2DigestResolverConfiguration := &Tag2DigestResolverConfiguration{ CacheExpirationTimeForResults: _expirationTime, CacheExpirationTimeForErrors: _expirationTime}
+	_resolverNoCacheFunctionality, _ = _resolverFactory.CreateTag2DigestResolver(instrumentationP, _registryClientMock, _cacheClientMock, _tag2DigestResolverConfiguration)
+	_resolverWithCacheFunctionality, _ = _resolverFactory.CreateTag2DigestResolver(instrumentationP, _registryClientMock, _cacheClientInMemBasedMock, _tag2DigestResolverConfiguration)
 	_acrImageRefTag, _ = registryutils.GetImageReference("tomerw.azurecr.io/redis:v0")
 	_nonAcrImageRefTag, _ = registryutils.GetImageReference("tomerw.nonacr.io/redis:v0")
 	_ctx = NewResourceContext(_ctxNamsespace, _ctxPullSecrets, _ctsServiceAccount)
@@ -168,7 +169,7 @@ func (suite *TestSuiteTag2DigestResolver) Test_Resolve_ACRReference_ACRAuthSucce
 }
 
 func (suite *TestSuiteTag2DigestResolver) Test_Resolve_ACRReference_ACRAuthSuccess_KeyInCache() {
-	_ = _cacheClientInMemBasedMock.Set(_acrImageRefTag.Original(), _expectedDigest, _expirationTime)
+	_ = _cacheClientInMemBasedMock.Set(_acrImageRefTag.Original(), _expectedDigest, _expirationTimeParsed)
 	digest, err := _cacheClientInMemBasedMock.Get(_acrImageRefTag.Original())
 	suite.Nil(err)
 	digest, err = _resolverWithCacheFunctionality.Resolve(_acrImageRefTag, _ctx)

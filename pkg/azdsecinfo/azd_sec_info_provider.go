@@ -128,8 +128,6 @@ func (provider *AzdSecInfoProvider) GetContainersVulnerabilityScanInfo(podSpec *
 
 	// Timeout case:
 	case <-time.After(provider.getContainersVulnerabilityScanInfoTimeoutDuration):
-		//TODO Implement cache that will check if it  the first time that got timeout error or it  the second time (if it  the second time then it should return error and don't add unscanned metadata!!)
-
 		return provider.timeoutEncounteredGetContainersVulnerabilityScanInfo(podSpec)
 	}
 }
@@ -292,7 +290,7 @@ func (provider *AzdSecInfoProvider) getSingleContainerVulnerabilityScanInfo(cont
 	digest, err := provider.tag2digestResolver.Resolve(imageRef, resourceCtx)
 	if err != nil {
 		// TODO wait until @maayaan merge his PR and then add tests for this method. ( Maayan already created IAZdSecInfoProvider mock)
-		unscannedReason, isErrParsedToUnscannedReason := provider.tryParseErrToUnscannedWithReason(err)
+		unscannedReason, isErrParsedToUnscannedReason := registryerrors.TryParseErrToUnscannedWithReason(err)
 		if !isErrParsedToUnscannedReason {
 			err = errors.Wrap(err, "Unexpected error while trying to resolve digest")
 			tracer.Error(err, "")
@@ -307,7 +305,7 @@ func (provider *AzdSecInfoProvider) getSingleContainerVulnerabilityScanInfo(cont
 	scanStatus, scanFindings, err := provider.argDataProvider.GetImageVulnerabilityScanResults(imageRef.Registry(), imageRef.Repository(), digest)
 	if err != nil {
 		// TODO wait until @maayaan merge his PR and then add tests for this method. ( Maayan already created IAZdSecInfoProvider mock)
-		unscannedReason, isErrParsedToUnscannedReason := provider.tryParseErrToUnscannedWithReason(err)
+		unscannedReason, isErrParsedToUnscannedReason := registryerrors.TryParseErrToUnscannedWithReason(err)
 		if !isErrParsedToUnscannedReason {
 			err = errors.Wrap(err, "Unexpected error while trying to get results from ARGDataProvider")
 			tracer.Error(err, "")
@@ -323,35 +321,6 @@ func (provider *AzdSecInfoProvider) getSingleContainerVulnerabilityScanInfo(cont
 	info := provider.buildContainerVulnerabilityScanInfoFromResult(container, digest, scanStatus, scanFindings)
 
 	return info, nil
-}
-
-// tryParseErrToUnscannedWithReason gets an error the container that the error encountered and returns the info and error according to the type of the error.
-// If the error is expected error (e.g. image is not exists while trying to resolve the digest, unauthorized to arg) then
-// this function create new contracts.ContainerVulnerabilityScanInfo that that status is unscanned and add in the additional metadata field
-// the reason for unscanned - for example contracts.ImageDoesNotExistUnscannedReason.
-// If the function doesn't recognize the error, then it returns nil, err
-func (provider *AzdSecInfoProvider) tryParseErrToUnscannedWithReason(err error) (*contracts.UnscannedReason, bool) {
-	tracer := provider.tracerProvider.GetTracer("tryParseErrToUnscannedWithReason")
-	// Check if the err  known error:
-	// TODO - sort the errors (most frequent should be first error)
-	// TODO add metrics for this method.
-	// Checks if the error  image  not found error
-	cause := errors.Cause(err)
-	tracer.Info("Extracted the cause of the error", "err", err, "cause", cause)
-	// Try to parse the cause of the error to known error -> if true, resolve to unscanned reason.
-	switch cause.(type) {
-	case *registryerrors.ImageIsNotFoundErr: // Checks if the error  Image DoesNot Exist
-		unscannedReason := contracts.ImageDoesNotExistUnscannedReason
-		return &unscannedReason, true
-	case *registryerrors.UnauthorizedErr: // Checks if the error  unauthorized
-		unscannedReason := contracts.RegistryUnauthorizedUnscannedReason
-		return &unscannedReason, true
-	case *registryerrors.RegistryIsNotFoundErr: // Checks if the error  NoSuchHost - it means that the registry  not found.
-		unscannedReason := contracts.RegistryDoesNotExistUnscannedReason
-		return &unscannedReason, true
-	default: // Unexpected error
-		return nil, false
-	}
 }
 
 // buildContainerVulnerabilityScanInfoFromResult build the info object from data provided
