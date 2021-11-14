@@ -73,6 +73,7 @@ arg:
   argDataProviderConfiguration:
     cacheExpirationTimeUnscannedResults: 1m
     cacheExpirationTimeScannedResults: 24h
+    cacheExpirationTimeForErrors: 1m
 
 tag2digest:
   tag2DigestResolverConfiguration:

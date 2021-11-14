@@ -49,15 +49,20 @@ type AzdSecInfoProvider struct {
 	//the results still will be saved in the cache.
 	getContainersVulnerabilityScanInfoTimeoutDuration time.Duration
 
-	// cacheClient is a cache for mapping digest to scan results
-	cacheClient cache.ICacheClient
-	// configuration of AzdSecInfoProviderConfiguration.
-	configuration *AzdSecInfoProviderConfiguration
+	// azdSecInfoProviderCacheClient is the cache AzdSecInfoProvider uses and its time expiration
+	azdSecInfoProviderCacheClient *AzdSecInfoProviderCacheClient
 }
 
 // AzdSecInfoProviderConfiguration is configuration data for AzdSecInfoProvider
 type AzdSecInfoProviderConfiguration struct {
 	// CacheExpirationTimeTimeout is the expiration time for timout.
+	CacheExpirationTimeTimeout string
+}
+
+type AzdSecInfoProviderCacheClient struct {
+	// cacheClient is a cache for mapping digest to scan results
+	cacheClient cache.ICacheClient
+	// CacheExpirationTimeTimeout is the expiration time for timout
 	CacheExpirationTimeTimeout time.Duration
 }
 
@@ -66,8 +71,7 @@ func NewAzdSecInfoProvider(instrumentationProvider instrumentation.IInstrumentat
 	argDataProvider arg.IARGDataProvider,
 	tag2digestResolver tag2digest.ITag2DigestResolver,
 	GetContainersVulnerabilityScanInfoTimeoutDuration *utils.TimeoutConfiguration,
-	azdSecInfoProviderConfiguration *AzdSecInfoProviderConfiguration,
-	cacheClient cache.ICacheClient) *AzdSecInfoProvider {
+	azdSecInfoProviderCacheClient *AzdSecInfoProviderCacheClient) *AzdSecInfoProvider {
 
 	// In case that GetContainersVulnerabilityScanInfoTimeoutDuration.TimeDurationInMS is empty (zero) - use default value.
 	getContainersVulnerabilityScanInfoTimeoutDuration := _defaultTimeDurationGetContainersVulnerabilityScanInfo
@@ -80,8 +84,7 @@ func NewAzdSecInfoProvider(instrumentationProvider instrumentation.IInstrumentat
 		argDataProvider:    argDataProvider,
 		tag2digestResolver: tag2digestResolver,
 		getContainersVulnerabilityScanInfoTimeoutDuration: getContainersVulnerabilityScanInfoTimeoutDuration,
-		configuration: azdSecInfoProviderConfiguration,
-		cacheClient:   cacheClient,
+		azdSecInfoProviderCacheClient:   azdSecInfoProviderCacheClient,
 	}
 }
 
@@ -122,6 +125,8 @@ func (provider *AzdSecInfoProvider) GetContainersVulnerabilityScanInfo(podSpec *
 		}
 
 		// Success path:
+		// Update cache to no timeout encountered for this pod
+		provider.updateCacheAfterGettingResults(podSpec)
 		close(chanTimeout)
 		tracer.Info("GetContainersVulnerabilityScanInfo finished extract []*contracts.ContainerVulnerabilityScanInfo.", "podSpec", podSpec, "containerVulnerabilityScanInfo", containerVulnerabilityScanInfo)
 		return containerVulnerabilityScanInfo, nil
@@ -384,34 +389,37 @@ func (provider *AzdSecInfoProvider) buildListOfContainerVulnerabilityScanInfoWhe
 // TODO Add tests for this behavior.
 func (provider *AzdSecInfoProvider) timeoutEncounteredGetContainersVulnerabilityScanInfo(podSpec *corev1.PodSpec) ([]*contracts.ContainerVulnerabilityScanInfo, error) {
 	tracer := provider.tracerProvider.GetTracer("timeoutEncounteredGetContainersVulnerabilityScanInfo")
-	images := utils.ExtractImagesFromPodSpec(podSpec)
-	// Sort the array - it is important for the cache to be sorted.
-	sort.Strings(images)
-	concatenatedImages := strings.Join(images, ",")
+
+	// Get key for cache
+	concatenatedImages := provider.getConcatenatedImages(podSpec)
 
 	// Check if the concatenatedImages is already in cache
-	_, err := provider.cacheClient.Get(concatenatedImages)
-
+	timeoutEncountered, err := provider.azdSecInfoProviderCacheClient.cacheClient.Get(concatenatedImages)
 	// In case that the concatenatedImages is already in cache.
 	if err == nil {
 		// TODO Add metric for number of timeouts.
-		err = errors.Wrap(err, "Second time that timeout was encountered.")
-		tracer.Error(err, "")
-		return nil, err
+		// if timeoutEncountered == false it means that it is the first time we had timeout - ignore
+		// if timeoutEncountered == "true" it means that we encountered timeout - should return an error
+		if timeoutEncountered == "true"{
+			err = errors.Wrap(err, "Second time that timeout was encountered.")
+			tracer.Error(err, "")
+			return nil, err
+		}
 	}
-
-	// Check if the error is due to missing key.
-	_, isFirstTimeOfTimeout := err.(*cache.MissingKeyCacheError)
-	if !isFirstTimeOfTimeout {
-		// TODO Add metric new error encountered
-		err = errors.Wrap(err, "error encountered while trying to get result of timeout from cache.")
-		tracer.Error(err, "")
-		return nil, err
+	if err != nil {
+		// Check if the error is due to missing key.
+		_, isFirstTimeOfTimeout := err.(*cache.MissingKeyCacheError)
+		if !isFirstTimeOfTimeout {
+			// TODO Add metric new error encountered
+			err = errors.Wrap(err, "error encountered while trying to get result of timeout from cache.")
+			tracer.Error(err, "")
+			return nil, err
+		}
 	}
 
 	// In case that we got missing key error, it means that the concatenatedImages is not in cache - first time of timeout.
 	// Add to cache and return unscanned and timeout.
-	if err := provider.cacheClient.Set(concatenatedImages, "1", provider.configuration.CacheExpirationTimeTimeout); err != nil {
+	if err := provider.azdSecInfoProviderCacheClient.cacheClient.Set(concatenatedImages, "true", provider.azdSecInfoProviderCacheClient.CacheExpirationTimeTimeout); err != nil {
 		// TODO Add metric new error encountered
 		err = errors.Wrap(err, "error encountered while trying to set new timeout in cache.")
 		tracer.Error(err, "")
@@ -420,4 +428,34 @@ func (provider *AzdSecInfoProvider) timeoutEncounteredGetContainersVulnerability
 
 	tracer.Info("GetContainersVulnerabilityScanInfo got timeout - returning unscanned", "timeDurationOfTimeout", provider.getContainersVulnerabilityScanInfoTimeoutDuration)
 	return provider.buildListOfContainerVulnerabilityScanInfoWhenTimeout()
+}
+
+func (provider *AzdSecInfoProvider) updateCacheAfterGettingResults(podSpec *corev1.PodSpec){
+	tracer := provider.tracerProvider.GetTracer("updateCacheAfterGettingResults")
+
+	// Get key for cache
+	concatenatedImages := provider.getConcatenatedImages(podSpec)
+	// Check if the concatenatedImages is already in cache
+	timeoutEncountered, err := provider.azdSecInfoProviderCacheClient.cacheClient.Get(concatenatedImages)
+	// In case that the concatenatedImages is already in cache.
+	if err == nil {
+		tracer.Info("value exist in cache", "concatenatedImages", concatenatedImages, "timeoutEncountered", timeoutEncountered)
+		// in case timeoutEncountered is true - change value to false because we succeeded to get results before timeout
+		if timeoutEncountered == "true" {
+			if err := provider.azdSecInfoProviderCacheClient.cacheClient.Set(concatenatedImages, "false", provider.azdSecInfoProviderCacheClient.CacheExpirationTimeTimeout); err != nil {
+				// TODO Add metric new error encountered
+				err = errors.Wrap(err, "error encountered while trying to set new timeout in cache.")
+				tracer.Error(err, "")
+			}
+			tracer.Info("updated cache to no timeout encountered", "concatenatedImages", concatenatedImages)
+		}
+	}
+}
+
+func (provider *AzdSecInfoProvider) getConcatenatedImages(podSpec *corev1.PodSpec) string{
+	images := utils.ExtractImagesFromPodSpec(podSpec)
+	// Sort the array - it is important for the cache to be sorted.
+	sort.Strings(images)
+	concatenatedImages := strings.Join(images, ",")
+	return concatenatedImages
 }

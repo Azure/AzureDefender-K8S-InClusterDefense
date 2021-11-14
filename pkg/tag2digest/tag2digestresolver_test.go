@@ -5,6 +5,7 @@ import (
 	cachemock "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/cache/mocks"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry"
+	registryerrors "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/errors"
 	registrymocks "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/mocks"
 	registryutils "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/utils"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/utils"
@@ -210,6 +211,39 @@ func (suite *TestSuiteTag2DigestResolver) Test_Resolve_ACRReference_ACRAuthSucce
 	digest, err = _resolverWithCacheFunctionality.Resolve(_acrImageRefTag, _ctx)
 	suite.Nil(err)
 	suite.Equal(_expectedDigest, digest)
+	_registryClientMock.AssertExpectations(suite.T())
+}
+
+func (suite *TestSuiteTag2DigestResolver) Test_Resolve_ACRReference_ACRAuthSuccess_NoKeyInCache_SetKey_GetKeySecondTryBeforeExpirationTime_ErrorAsValue() {
+	_expectedError := new(registryerrors.ImageIsNotFoundErr)
+	_registryClientMock.On("GetDigestUsingACRAttachAuth", _acrImageRefTag).Return("", _expectedError).Once()
+	_, err := _cacheClientInMemBasedMock.Get(_acrImageRefTag.Original())
+	suite.NotNil(err)
+	_, err = _resolverWithCacheFunctionality.Resolve(_acrImageRefTag, _ctx)
+	suite.NotNil(err)
+	suite.IsType(_expectedError, errors.Cause(err))
+	_, err = _cacheClientInMemBasedMock.Get(_acrImageRefTag.Original())
+	suite.Nil(err)
+	_, err = _resolverWithCacheFunctionality.Resolve(_acrImageRefTag, _ctx)
+	suite.NotNil(err)
+	suite.IsType(_expectedError, errors.Cause(err))
+	_registryClientMock.AssertExpectations(suite.T())
+}
+
+func (suite *TestSuiteTag2DigestResolver) Test_Resolve_ACRReference_ACRAuthSuccess_NoKeyInCache_SetKey_GetKeySecondTryAfterExpirationTime_ErrorAsValue() {
+	_expectedError := new(registryerrors.ImageIsNotFoundErr)
+	_registryClientMock.On("GetDigestUsingACRAttachAuth", _acrImageRefTag).Return("", _expectedError).Twice()
+	_, err := _cacheClientInMemBasedMock.Get(_acrImageRefTag.Original())
+	suite.NotNil(err)
+	_, err = _resolverWithCacheFunctionality.Resolve(_acrImageRefTag, _ctx)
+	suite.NotNil(err)
+	suite.IsType(_expectedError, errors.Cause(err))
+	_, err = _cacheClientInMemBasedMock.Get(_acrImageRefTag.Original())
+	suite.Nil(err)
+	time.Sleep(time.Second)
+	_, err = _resolverWithCacheFunctionality.Resolve(_acrImageRefTag, _ctx)
+	suite.NotNil(err)
+	suite.IsType(_expectedError, errors.Cause(err))
 	_registryClientMock.AssertExpectations(suite.T())
 }
 

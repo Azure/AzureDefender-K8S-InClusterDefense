@@ -22,6 +22,11 @@ type ITag2DigestResolver interface {
 // Tag2DigestResolver implements ITag2DigestResolver interface
 var _ ITag2DigestResolver = (*Tag2DigestResolver)(nil)
 
+const (
+	_gotResultsFromCache = true
+	_dontGotResultsFromCache = false
+)
+
 // Tag2DigestResolver represents basic implementation of ITag2DigestResolver interface
 type Tag2DigestResolver struct {
 	//tracerProvider is tracer provider of AzdSecInfoProvider
@@ -67,8 +72,27 @@ func (resolver *Tag2DigestResolver) Resolve(imageReference registry.IImageRefere
 	tracer := resolver.tracerProvider.GetTracer("Resolve")
 	tracer.Info("Received:", "imageReference", imageReference, "resourceCtx", resourceCtx)
 
+	// Argument validation
+	if imageReference == nil || resourceCtx == nil {
+		err := errors.Wrap(utils.NilArgumentError, "Tag2DigestResolver.Resolve")
+		tracer.Error(err, "")
+		return "", err
+	}
+
+	// Try to get digest from cache
+	gotResultsFromCache, digest, err := resolver.getDigestFromCache(imageReference)
+	if gotResultsFromCache{
+		if err != nil{
+			err = errors.Wrap(err, "Get error from cache as value")
+			tracer.Error(err, "")
+			return "", err
+		}
+		tracer.Info("got digest from cache")
+		return digest, nil
+	}
+
 	// Get digest
-	digest, err := resolver.getDigest(imageReference, resourceCtx)
+	digest, err = resolver.getDigest(imageReference, resourceCtx)
 	if err != nil {
 		resolver.setErrorInCache(imageReference, err)
 		err = errors.Wrap(err, "Failed to get digest")
@@ -87,6 +111,29 @@ func (resolver *Tag2DigestResolver) Resolve(imageReference registry.IImageRefere
 	return digest, nil
 }
 
+func (resolver *Tag2DigestResolver) getDigestFromCache(imageReference registry.IImageReference) (bool, string, error) {
+	tracer := resolver.tracerProvider.GetTracer("getDigestFromCache")
+	// First check if we can get digest from cache
+	// Error as a result of key doesn't exist and error from the cache are treated the same (skip cache)
+	digestFromCache, err := resolver.tag2DigestResolverCacheClient.cacheClient.Get(imageReference.Original())
+	// If key dont exist in cache
+	if err != nil {
+		tracer.Info("Digest don't exist in cache", "image", imageReference.Original())
+		return _dontGotResultsFromCache, "", nil
+	}
+	// If key exist
+	err, isKnownError := registryerrors.TryParseStringToUnscannedWithReasonErr(digestFromCache)
+	// A known error was found in cache as value
+	if isKnownError{
+		err = errors.Wrap(err, "got an error value instead of digest from cache")
+		tracer.Error(err, "")
+		return _gotResultsFromCache, "", err
+	}
+	// A valid digest found in cache
+	tracer.Info("Digest exist in cache", "image", imageReference.Original(), "digest", digestFromCache)
+	return _gotResultsFromCache, digestFromCache, nil
+}
+
 // getDigest receives an image refernce and the resource deployed context and returns image digest
 // It first check if it's able to get digest from cache
 // Then tries to see if it's a digest based image reference - if so, extract its digest
@@ -96,29 +143,7 @@ func (resolver *Tag2DigestResolver) getDigest(imageReference registry.IImageRefe
 	tracer := resolver.tracerProvider.GetTracer("getDigest")
 	tracer.Info("Received:", "imageReference", imageReference, "resourceCtx", resourceCtx)
 
-	// Argument validation
-	if imageReference == nil || resourceCtx == nil {
-		err := errors.Wrap(utils.NilArgumentError, "Tag2DigestResolver.getDigest")
-		tracer.Error(err, "")
-		return "", err
-	}
-
-	// First check if we can get digest from cache
-	// Error as a result of key doesn't exist and error from the cache are treated the same (skip cache)
-	digestFromCache, err := resolver.tag2DigestResolverCacheClient.cacheClient.Get(imageReference.Original())
-	if err == nil { // If key exist - return digest
-		err, isKnownError := registryerrors.TryParseStringToUnscannedWithReasonErr(digestFromCache)
-		if isKnownError{ // error found in cache
-			err = errors.Wrap(err, "got an error from cache")
-			tracer.Error(err, "")
-		}
-		// A valid digest found in cache
-		tracer.Info("Digest exist in cache", "image", imageReference.Original(), "digest", digestFromCache)
-		return digestFromCache, nil
-	}
-	tracer.Info("Digest don't exist in cache", "image", imageReference.Original())
-
-	// Second check if we can extract it from ref it self (digest based ref)
+	// First check if we can extract it from ref it self (digest based ref)
 	digestReference, ok := imageReference.(*registry.Digest)
 	if ok {
 		tracer.Info("ImageReference is digestReference return it is digest", "digestReference", digestReference, "digest", digestReference.Digest())

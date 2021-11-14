@@ -202,7 +202,11 @@ func main() {
 	}
 
 	// Handler and azdSecinfoProvider
-	azdSecInfoProvider := azdsecinfo.NewAzdSecInfoProvider(instrumentationProvider, argDataProvider, tag2digestResolver, getContainersVulnerabilityScanInfoTimeoutDuration, azdSecInfoProviderConfiguration, redisCacheClient)
+	azdSecInfoProviderFactory := azdsecinfo.NewAzdSecInfoProviderFactory()
+	azdSecInfoProvider, err := azdSecInfoProviderFactory.CreateTag2DigestResolver(instrumentationProvider, argDataProvider, tag2digestResolver, getContainersVulnerabilityScanInfoTimeoutDuration, azdSecInfoProviderConfiguration, redisCacheClient)
+	if err != nil {
+		log.Fatal("main.azdSecInfoProviderFactory.azdSecInfoProviderFactory", err)
+	}
 	handler := webhook.NewHandler(azdSecInfoProvider, handlerConfiguration, instrumentationProvider)
 
 	// Manager and server

@@ -81,6 +81,7 @@ data:
       argDataProviderConfiguration:
         cacheExpirationTimeUnscannedResults: {{ .Values.AzDProxy.arg.argDataProviderConfiguration.cacheExpirationTimeUnscannedResults }}
         cacheExpirationTimeScannedResults: {{ .Values.AzDProxy.arg.argDataProviderConfiguration.cacheExpirationTimeScannedResults }}
+        cacheExpirationTimeForErrors: {{ .Values.AzDProxy.arg.argDataProviderConfiguration.cacheExpirationTimeForErrors }}
 
     tag2digest:
       tag2DigestResolverConfiguration:

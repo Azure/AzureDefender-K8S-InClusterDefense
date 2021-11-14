@@ -7,6 +7,8 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/cache"
 	cachemock "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/cache/mocks"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
+	registryerrors "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/errors"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 	"testing"
@@ -19,6 +21,7 @@ const (
 
 	_expirationTimeScanned = "1m" // for scanned results - 1 minutes
 	_expirationTimeUnscanned = "1s" // for unscanned results - 1 seconds
+	_expirationTimeErrors = "1s" // for errors - 1 seconds
 	_registry = "imagescane2eacrdev.azurecr.io"
 	_repository = "pushunhealthyimage/vulnerables/cve-2014-6271"
 	_digest = "sha256:bdac8529e22931c1d99bf4907e12df3c2df0214070635a0b076fb11e66409883"
@@ -62,6 +65,7 @@ func (suite *ARGDataProviderTestSuite) SetupTest() {
 		&ARGDataProviderConfiguration{
 			CacheExpirationTimeScannedResults:   _expirationTimeScanned,
 			CacheExpirationTimeUnscannedResults: _expirationTimeUnscanned,
+			CacheExpirationTimeForErrors: _expirationTimeErrors,
 		})
 }
 
@@ -139,6 +143,40 @@ func (suite *ARGDataProviderTestSuite) Test_GetImageVulnerabilityScanResults_NoK
 	suite.Equal(scanStatus, contracts.Unscanned)
 	suite.AssertExpectation()
 }
+
+func (suite *ARGDataProviderTestSuite) Test_GetImageVulnerabilityScanResults_NoKeyInCache_SetKey_GetKeySecondTryBeforeExpirationTime_ErrorAsValue() {
+	_expectedError := new(registryerrors.ImageIsNotFoundErr)
+	suite.queryGeneratorMock.On("GenerateImageVulnerabilityScanQuery", mock.Anything).Once().Return("", _expectedError) // Note we expect it to be called only once
+	_, err := suite.cacheMock.Get(_digest)
+	suite.NotNil(err)
+	_, _, err = suite.provider.GetImageVulnerabilityScanResults(_registry, _repository, _digest)
+	suite.NotNil(err)
+	suite.IsType(_expectedError, errors.Cause(err))
+	_, err = suite.cacheMock.Get(_digest)
+	suite.Nil(err)
+	_, _, err = suite.provider.GetImageVulnerabilityScanResults(_registry, _repository, _digest)
+	suite.NotNil(err)
+	suite.IsType(_expectedError, errors.Cause(err))
+	suite.AssertExpectation()
+}
+
+func (suite *ARGDataProviderTestSuite) Test_GetImageVulnerabilityScanResults_NoKeyInCache_SetKey_GetKeySecondTryAfterExpirationTime_ErrorAsValue() {
+	_expectedError := new(registryerrors.ImageIsNotFoundErr)
+	suite.queryGeneratorMock.On("GenerateImageVulnerabilityScanQuery", mock.Anything).Twice().Return("", _expectedError) // Note we expect it to be called only once
+	_, err := suite.cacheMock.Get(_digest)
+	suite.NotNil(err)
+	_, _, err = suite.provider.GetImageVulnerabilityScanResults(_registry, _repository, _digest)
+	suite.NotNil(err)
+	suite.IsType(_expectedError, errors.Cause(err))
+	_, err = suite.cacheMock.Get(_digest)
+	suite.Nil(err)
+	time.Sleep(time.Second)
+	_, _, err = suite.provider.GetImageVulnerabilityScanResults(_registry, _repository, _digest)
+	suite.NotNil(err)
+	suite.IsType(_expectedError, errors.Cause(err))
+	suite.AssertExpectation()
+}
+
 
 
 func (suite *ARGDataProviderTestSuite) Test_GetImageVulnerabilityScanResults() {

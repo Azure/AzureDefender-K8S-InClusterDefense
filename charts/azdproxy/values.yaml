@@ -146,7 +146,9 @@ AzDProxy:
       # Expiration time in seconds of scan results in status unscanned in cache (redeploy will take at least a minute)
       cacheExpirationTimeUnscannedResults: 1m # 1 minute
       # Expiration time in minutes of scan results in status scanned in cache (need to sync with image-scan periodic scans - every month)
-      cacheExpirationTimeScannedResults: 24h #24 hours
+      cacheExpirationTimeScannedResults: 24h # 24 hours
+      # cacheExpirationTime is the expiration time in the cache client for errors occurred during GetImageVulnerabilityScanResults
+      cacheExpirationTimeForErrors: 1m  # 1 minute
 
   # Tag2Digest configuration
   tag2digest:

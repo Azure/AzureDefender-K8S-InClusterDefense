@@ -24,10 +24,15 @@ func (factory *ARGDataProviderFactory) CreateARGDataProvider(instrumentationProv
 	if err != nil{
 		return nil, errors.Wrapf(err, "Given CreateARGDataProvider.CacheExpirationTimeUnscannedResults string is not a valid time duration")
 	}
+	cacheExpirationTimeForErrors, err := time.ParseDuration(configuration.CacheExpirationTimeForErrors)
+	if err != nil{
+		return nil, errors.Wrapf(err, "Given CreateARGDataProvider.cacheExpirationTimeForErrors string is not a valid time duration")
+	}
 	argDataProviderCacheClient := &ARGDataProviderCacheClient{
 		cacheClient: cacheClient,
 		CacheExpirationTimeScannedResults: cacheExpirationTimeScannedResults,
 		CacheExpirationTimeUnscannedResults: cacheExpirationTimeUnscannedResults,
+		CacheExpirationTimeForErrors: cacheExpirationTimeForErrors,
 	}
 	return NewARGDataProvider(instrumentationProvider, argClient, queryGenerator, argDataProviderCacheClient), nil
 }
