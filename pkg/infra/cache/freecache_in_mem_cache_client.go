@@ -65,18 +65,18 @@ func (client *FreeCacheInMemCacheClient) Get(key string) (string, error) {
 	value := string(entry)
 
 	client.metricSubmitter.SendMetric(1, cachemetrics.NewCacheClientGetMetric(client, operations.HIT))
-	tracer.Info("Key found", "Key", key, "value", value)
+	tracer.Info("Key found", "Key", key)
 	return value, nil
 }
 
 // Set
 func (client *FreeCacheInMemCacheClient) Set(key string, value string, expiration time.Duration) error {
 	tracer := client.tracerProvider.GetTracer("Set")
-	tracer.Info("Set new key", "Key", key, "Value", value, "Expiration", expiration)
+	tracer.Info("Set new key", "Key", key, "Value", "Expiration", expiration)
 
 	if expiration < 0 {
 		err := NewNegativeExpirationCacheError(expiration)
-		tracer.Error(err, "", "Key", key, "Value", value, "Expiration", expiration)
+		tracer.Error(err, "", "Key", key, "Expiration", expiration)
 		client.metricSubmitter.SendMetric(1, cachemetrics.NewSetErrEncounteredMetric(err, _freeCacheClientType))
 
 		return err
@@ -86,13 +86,13 @@ func (client *FreeCacheInMemCacheClient) Set(key string, value string, expiratio
 	expirationInt := int(expiration.Seconds())
 	err := client.freeCache.Set([]byte(key), []byte(value), expirationInt)
 	if err != nil {
-		tracer.Error(err, "Failed to set a key", "Key", key, "Value", value, "Expiration", expiration)
+		tracer.Error(err, "Failed to set a key", "Key", key, "Expiration", expiration)
 		client.metricSubmitter.SendMetric(1, cachemetrics.NewSetErrEncounteredMetric(err, _freeCacheClientType))
 
 		return err
 	}
 
 	client.metricSubmitter.SendMetric(utils.GetSizeInBytes(value), cachemetrics.NewAddItemToCacheMetric(_freeCacheClientType))
-	tracer.Info("Key was added successfully", "Key", key, "value", value)
+	tracer.Info("Key was added successfully", "Key", key)
 	return nil
 }
