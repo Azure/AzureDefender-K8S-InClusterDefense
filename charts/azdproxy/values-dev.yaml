@@ -141,7 +141,7 @@ AzDProxy:
 
     redisClient:
       #  -- Image of redis containers
-      image: redis:6
+      image: azuredefendermcrdev.azurecr.io/public/azuredefender/dev/in-cluster-defense-redis
       # -- amount of replicas of redis
       replicas: 1
       # -- the port that redis cache will be listened.
