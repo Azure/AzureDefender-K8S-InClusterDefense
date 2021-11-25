@@ -160,11 +160,8 @@ func main() {
 
 	acrTokenExchangerClientRetryPolicy := retrypolicy.NewRetryPolicy(instrumentationProvider, acrTokenExchangerClientRetryPolicyConfiguration)
 	acrTokenExchanger := registryauthazure.NewACRTokenExchanger(instrumentationProvider, &http.Client{}, acrTokenExchangerClientRetryPolicy)
-	acrTokenProviderFactory := registryauthazure.NewACRTokenProviderFactory()
-	acrTokenProvider, err := acrTokenProviderFactory.CreateACRTokenProvider(instrumentationProvider, acrTokenExchanger, azureBearerAuthorizerTokenProvider, freeCacheInMemCacheClient, acrTokenProviderConfiguration)
-	if err != nil {
-		log.Fatal("main.acrTokenProviderFactory.CreateACRTokenProvider", err)
-	}
+	acrTokenProvider := registryauthazure.NewACRTokenProvider(instrumentationProvider, acrTokenExchanger, azureBearerAuthorizerTokenProvider, freeCacheInMemCacheClient, acrTokenProviderConfiguration)
+
 	k8sKeychainFactory := crane.NewK8SKeychainFactory(instrumentationProvider, clientK8s)
 	acrKeychainFactory := crane.NewACRKeychainFactory(instrumentationProvider, acrTokenProvider)
 
@@ -172,11 +169,7 @@ func main() {
 	craneWrapper := registrywrappers.NewCraneWrapper(instrumentationProvider, craneWrapperRetryPolicy)
 	// Registry Client
 	registryClient := crane.NewCraneRegistryClient(instrumentationProvider, craneWrapper, acrKeychainFactory, k8sKeychainFactory)
-	tag2digestResolverFactory := tag2digest.NewTag2DigestResolverFactory()
-	tag2digestResolver, err := tag2digestResolverFactory.CreateTag2DigestResolver(instrumentationProvider, registryClient, redisCacheClient, tag2DigestResolverConfiguration)
-	if err != nil {
-		log.Fatal("main.tag2digestResolverFactory.CreateAzdSecInfoProvider", err)
-	}
+	tag2digestResolver := tag2digest.NewTag2DigestResolver(instrumentationProvider, registryClient, redisCacheClient, tag2DigestResolverConfiguration)
 
 	// ARG
 	//TODO complete it once we merge the rest of the PR's.
@@ -195,18 +188,11 @@ func main() {
 	if err != nil {
 		log.Fatal("main.CreateARGQueryGenerator", err)
 	}
-	argDataProviderFactory := arg.NewARGDataProviderFactory()
-	argDataProvider , err:= argDataProviderFactory.CreateARGDataProvider(instrumentationProvider, argClient, argQueryGenerator, redisCacheClient, argDataProviderConfiguration)
-	if err != nil {
-		log.Fatal("main.argDataProviderFactory.CreateARGDataProvider", err)
-	}
+	argDataProvider := arg.NewARGDataProvider(instrumentationProvider, argClient, argQueryGenerator, redisCacheClient, argDataProviderConfiguration)
+
 
 	// Handler and azdSecinfoProvider
-	azdSecInfoProviderFactory := azdsecinfo.NewAzdSecInfoProviderFactory()
-	azdSecInfoProvider, err := azdSecInfoProviderFactory.CreateAzdSecInfoProvider(instrumentationProvider, argDataProvider, tag2digestResolver, getContainersVulnerabilityScanInfoTimeoutDuration, azdSecInfoProviderConfiguration, redisCacheClient)
-	if err != nil {
-		log.Fatal("main.azdSecInfoProviderFactory.azdSecInfoProviderFactory", err)
-	}
+	azdSecInfoProvider := azdsecinfo.NewAzdSecInfoProvider(instrumentationProvider, argDataProvider, tag2digestResolver, getContainersVulnerabilityScanInfoTimeoutDuration, redisCacheClient, azdSecInfoProviderConfiguration)
 	handler := webhook.NewHandler(azdSecInfoProvider, handlerConfiguration, instrumentationProvider)
 
 	// Manager and server

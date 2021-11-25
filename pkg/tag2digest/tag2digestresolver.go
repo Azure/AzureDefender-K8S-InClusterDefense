@@ -37,35 +37,26 @@ type Tag2DigestResolver struct {
 	metricSubmitter metric.IMetricSubmitter
 	// registryClient is the client of the registry which is used to resolve image's digest
 	registryClient registry.IRegistryClient
-	// tag2DigestResolverCacheClient is the cache Tag2DigestResolver uses and its time expiration
-	tag2DigestResolverCacheClient *Tag2DigestResolverCacheClient
+	// cacheClient is a cache for mapping image full name to its digest
+	cacheClient cache.ICacheClient
+	// tag2DigestResolverConfiguration is configuration data for Tag2DigestResolver
+	tag2DigestResolverConfiguration *Tag2DigestResolverConfiguration
 }
 
 // Tag2DigestResolverConfiguration is configuration data for Tag2DigestResolver
 type Tag2DigestResolverConfiguration struct {
-	// cacheExpirationTime is the expiration time for digests in the cache client
-	CacheExpirationTimeForResults string
-	// cacheExpirationTime is the expiration time in the cache client for errors occurred during get digest
-	CacheExpirationTimeForErrors string
-}
-
-// Tag2DigestResolverCacheClient is a cache client for Tag2DigestResolver that contains the needed cache client configurations
-type Tag2DigestResolverCacheClient struct {
-	// cacheClient is a cache for mapping image full name to its digest
-	cacheClient cache.ICacheClient
-	// cacheExpirationTime is the expiration time for digests in the cache client
-	CacheExpirationTimeForResults time.Duration
-	// cacheExpirationTime is the expiration time in the cache client for errors occurred during get digest
-	CacheExpirationTimeForErrors time.Duration
+	// cacheExpirationTime is the expiration time **in minutes** for digests in the cache client
+	CacheExpirationTimeForResults int
 }
 
 // NewTag2DigestResolver Ctor
-func NewTag2DigestResolver(instrumentationProvider instrumentation.IInstrumentationProvider, registryClient registry.IRegistryClient, tag2DigestResolverCacheClient *Tag2DigestResolverCacheClient) *Tag2DigestResolver {
+func NewTag2DigestResolver(instrumentationProvider instrumentation.IInstrumentationProvider, registryClient registry.IRegistryClient, cacheClient cache.ICacheClient, tag2DigestResolverConfiguration *Tag2DigestResolverConfiguration) *Tag2DigestResolver {
 	return &Tag2DigestResolver{
 		tracerProvider:  instrumentationProvider.GetTracerProvider("Tag2DigestResolver"),
 		metricSubmitter: instrumentationProvider.GetMetricSubmitter(),
 		registryClient:  registryClient,
-		tag2DigestResolverCacheClient: tag2DigestResolverCacheClient,
+		cacheClient: cacheClient,
+		tag2DigestResolverConfiguration: tag2DigestResolverConfiguration,
 	}
 }
 
@@ -83,13 +74,8 @@ func (resolver *Tag2DigestResolver) Resolve(imageReference registry.IImageRefere
 	}
 
 	// Try to get digest from cache
-	gotResultsFromCache, digest, err := resolver.getDigestFromCache(imageReference)
-	if gotResultsFromCache{
-		if err != nil{
-			err = errors.Wrap(err, "Get error from cache as value")
-			tracer.Error(err, "")
-			return "", err
-		}
+	digest, err := resolver.getDigestFromCache(imageReference)
+	if err == nil{ // Key exist in cache
 		tracer.Info("got digest from cache")
 		return digest, nil
 	}
@@ -97,14 +83,13 @@ func (resolver *Tag2DigestResolver) Resolve(imageReference registry.IImageRefere
 	// Get digest
 	digest, err = resolver.getDigest(imageReference, resourceCtx)
 	if err != nil {
-		resolver.setErrorInCache(imageReference, err)
 		err = errors.Wrap(err, "Failed to get digest")
 		tracer.Error(err, "")
 		return "", err
 	}
 
 	// Save digest in cache
-	err = resolver.tag2DigestResolverCacheClient.cacheClient.Set(imageReference.Original(), digest, resolver.tag2DigestResolverCacheClient.CacheExpirationTimeForResults)
+	err = resolver.cacheClient.Set(imageReference.Original(), digest, resolver.tag2DigestResolverConfiguration.GetCacheExpirationTimeForResults())
 	if err != nil{
 		err = errors.Wrap(err, "Tag2DigestResolver.Resolve: Failed to set digest in cache")
 		tracer.Error(err, "")
@@ -118,27 +103,21 @@ func (resolver *Tag2DigestResolver) Resolve(imageReference registry.IImageRefere
 // The cache mapping image to digest or to known errors.
 // If the image exist in cache - return the value (digest or error) and a flag _gotResultsFromCache
 // If the image don't exist in cache or any other unknown error occurred - return "", nil and _didntGetResultsFromCache
-func (resolver *Tag2DigestResolver) getDigestFromCache(imageReference registry.IImageReference) (bool, string, error) {
+func (resolver *Tag2DigestResolver) getDigestFromCache(imageReference registry.IImageReference) (string, error) {
 	tracer := resolver.tracerProvider.GetTracer("getDigestFromCache")
 	// First check if we can get digest from cache
 	// Error as a result of key doesn't exist and error from the cache are treated the same (skip cache)
-	digestFromCache, err := resolver.tag2DigestResolverCacheClient.cacheClient.Get(imageReference.Original())
+	digestFromCache, err := resolver.cacheClient.Get(imageReference.Original())
 	// If key dont exist in cache
 	if err != nil {
-		tracer.Info("Digest don't exist in cache", "image", imageReference.Original())
-		return _didntGetResultsFromCache, "", nil
-	}
-	// If key exist
-	err, isKnownError := registryerrors.TryParseStringToUnscannedWithReasonErr(digestFromCache)
-	// A known error was found in cache as value
-	if isKnownError{
-		err = errors.Wrap(err, "got an error value instead of digest from cache")
+		err = errors.Wrap(err, "Digest as value don't exist in cache or there is an error in cache functionality")
 		tracer.Error(err, "")
-		return _gotResultsFromCache, "", err
+		return  "", err
 	}
+
 	// A valid digest found in cache
 	tracer.Info("Digest exist in cache", "image", imageReference.Original(), "digest", digestFromCache)
-	return _gotResultsFromCache, digestFromCache, nil
+	return digestFromCache, nil
 }
 
 // getDigest receives an image refernce and the resource deployed context and returns image digest
@@ -245,19 +224,9 @@ func (resolver *Tag2DigestResolver) shouldContinueOnError(err error) bool {
 	}
 }
 
-// setErrorInCache map image to a known error. If the given error is a known error, set it in cache.
-func (resolver *Tag2DigestResolver) setErrorInCache(imageReference registry.IImageReference, err error){
-	tracer := resolver.tracerProvider.GetTracer("setErrorInCache")
-	errorAsString, isErrParsedToUnscannedReason := registryerrors.TryParseErrToUnscannedWithReason(err)
-	if !isErrParsedToUnscannedReason {
-		err = errors.Wrap(err, "Unexpected error while trying to get results from ARGDataProvider - don't save in cache")
-		tracer.Error(err, "")
-		return
-	}
-	err = resolver.tag2DigestResolverCacheClient.cacheClient.Set(imageReference.Original(), string(*errorAsString), resolver.tag2DigestResolverCacheClient.CacheExpirationTimeForErrors)
-	if err != nil{
-		err = errors.Wrap(err, "Failed to set error in cache")
-		tracer.Error(err, "")
-	}
-	tracer.Info("Set error in cache", "image", imageReference.Original(), "error", errorAsString)
+// GetCacheExpirationTimeForResults uses Tag2DigestResolverConfiguration instance's CacheExpirationTimeForResults (int)
+// to a return a time.Duration object
+// In case of invalid argument, use default values (0) which means the value expires immediately.
+func (configuration *Tag2DigestResolverConfiguration) GetCacheExpirationTimeForResults() time.Duration {
+	return time.Duration(configuration.CacheExpirationTimeForResults) * time.Minute
 }

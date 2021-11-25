@@ -3,7 +3,6 @@ package acrauth
 import (
 	"context"
 	authmocks "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/azureauth/mocks"
-	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/cache"
 	cachemock "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/cache/mocks"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/acrauth/mocks"
@@ -12,22 +11,17 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 	"testing"
-	"time"
 )
 
 type TestSuiteTokenProvider struct {
 	suite.Suite
 }
 
-var _providerNoCacheFunctionality *ACRTokenProvider
-var _providerWithCacheFunctionality *ACRTokenProvider
+var _provider *ACRTokenProvider
 var _provider_exchangerMock *mocks.IACRTokenExchanger
 var _provider_azureTokenProviderMock *authmocks.IBearerAuthorizerTokenProvider
 var _provider_cacheClientMock *cachemock.ICacheClient
-var _provider_cacheClientInMemBasedMock cache.ICacheClient
-var _expirationTime = "1s"
-var _expirationTimeParsed, _ = time.ParseDuration(_expirationTime)
-var _providerFactory = NewACRTokenProviderFactory()
+var _expirationTime = 1
 var acrTokenProviderConfiguration = &ACRTokenProviderConfiguration{ ArmTokenCacheExpirationTime: _expirationTime, RegistryRefreshTokenCacheExpirationTime: _expirationTime}
 
 
@@ -35,6 +29,7 @@ const _provider_armToken = "ARMTokenMock.."
 const _provider_refreshToken = "ACRRefreshTokenMock.."
 const _provider_registry = "tomerw.azurecr.io"
 const _provider_registry_key_for_cache = "registryRefreshTokentomerw.azurecr.io"
+const _provider__armToken_for_cache = "armTokentomerw.azurecr.io"
 
 
 func (suite *TestSuiteTokenProvider) SetupTest() {
@@ -42,9 +37,7 @@ func (suite *TestSuiteTokenProvider) SetupTest() {
 	_provider_exchangerMock = &mocks.IACRTokenExchanger{}
 	_provider_azureTokenProviderMock = &authmocks.IBearerAuthorizerTokenProvider{}
 	_provider_cacheClientMock = &cachemock.ICacheClient{}
-	_provider_cacheClientInMemBasedMock = cachemock.NewICacheInMemBasedMock()
-	_providerNoCacheFunctionality, _ = _providerFactory.CreateACRTokenProvider(instrumentationProvider, _provider_exchangerMock, _provider_azureTokenProviderMock, _provider_cacheClientMock, acrTokenProviderConfiguration)
-	_providerWithCacheFunctionality, _ = _providerFactory.CreateACRTokenProvider(instrumentationProvider, _provider_exchangerMock, _provider_azureTokenProviderMock, _provider_cacheClientInMemBasedMock,acrTokenProviderConfiguration)
+	_provider = NewACRTokenProvider(instrumentationProvider, _provider_exchangerMock, _provider_azureTokenProviderMock, _provider_cacheClientMock, acrTokenProviderConfiguration)
 }
 
 func (suite *TestSuiteTokenProvider) Test_GetACRRefreshToken_Success() {
@@ -54,7 +47,7 @@ func (suite *TestSuiteTokenProvider) Test_GetACRRefreshToken_Success() {
 	_provider_cacheClientMock.On("Set", mock.Anything, mock.Anything, mock.Anything).Return(utils.NilArgumentError)
 
 
-	val, err := _providerNoCacheFunctionality.GetACRRefreshToken(_provider_registry)
+	val, err := _provider.GetACRRefreshToken(_provider_registry)
 
 	suite.Equal(_provider_refreshToken, val)
 	suite.Nil(err)
@@ -67,7 +60,7 @@ func (suite *TestSuiteTokenProvider) Test_GetACRRefreshToken_FailOnTokenGet_Erro
 	_provider_cacheClientMock.On("Get", mock.Anything).Return("", utils.NilArgumentError)
 	_provider_cacheClientMock.On("Set", mock.Anything, mock.Anything, mock.Anything).Return(utils.NilArgumentError)
 
-	val, err := _providerNoCacheFunctionality.GetACRRefreshToken(_provider_registry)
+	val, err := _provider.GetACRRefreshToken(_provider_registry)
 
 	suite.Equal("", val)
 	suite.ErrorIs(err, expectedError)
@@ -81,7 +74,7 @@ func (suite *TestSuiteTokenProvider) Test_GetACRRefreshToken_FailToExchange_Erro
 	_provider_cacheClientMock.On("Get", mock.Anything).Return("", utils.NilArgumentError)
 	_provider_cacheClientMock.On("Set", mock.Anything, mock.Anything, mock.Anything).Return(utils.NilArgumentError)
 
-	val, err := _providerNoCacheFunctionality.GetACRRefreshToken(_provider_registry)
+	val, err := _provider.GetACRRefreshToken(_provider_registry)
 
 	suite.Equal("", val)
 	suite.ErrorIs(err, expectedError)
@@ -89,59 +82,65 @@ func (suite *TestSuiteTokenProvider) Test_GetACRRefreshToken_FailToExchange_Erro
 }
 
 func (suite *TestSuiteTokenProvider) Test_GetACRRefreshToken_Success_NoKeyInCache() {
+	_provider_cacheClientMock.On("Get", mock.Anything).Return("", utils.NilArgumentError)
+	_provider_cacheClientMock.On("Set", mock.Anything, mock.Anything, mock.Anything).Return(utils.NilArgumentError)
 	_provider_azureTokenProviderMock.On("GetOAuthToken", context.Background()).Return(_provider_armToken, nil).Once()
 	_provider_exchangerMock.On("ExchangeACRAccessToken", _provider_registry, _provider_armToken).Return(_provider_refreshToken, nil).Once()
-	_, err := _provider_cacheClientInMemBasedMock.Get(_provider_registry_key_for_cache)
-	suite.NotNil(err)
-	val, err := _providerWithCacheFunctionality.GetACRRefreshToken(_provider_registry)
-	suite.Equal(_provider_refreshToken, val)
-	suite.Nil(err)
-	val, err = _provider_cacheClientInMemBasedMock.Get(_provider_registry_key_for_cache)
-	suite.Nil(err)
-	suite.Equal(_provider_refreshToken, val)
-	suite.AssertExpectations()
-}
 
-func (suite *TestSuiteTokenProvider) Test_GetACRRefreshToken_Success_KeyInCache() {
-	_ = _provider_cacheClientInMemBasedMock.Set(_provider_registry_key_for_cache, _provider_refreshToken, _expirationTimeParsed)
-	_, err := _provider_cacheClientInMemBasedMock.Get(_provider_registry_key_for_cache)
-	suite.Nil(err)
-	val, err := _providerWithCacheFunctionality.GetACRRefreshToken(_provider_registry)
+	val, err := _provider.GetACRRefreshToken(_provider_registry)
 	suite.Equal(_provider_refreshToken, val)
 	suite.Nil(err)
 	suite.AssertExpectations()
 }
 
-func (suite *TestSuiteTokenProvider) Test_GetACRRefreshToken_Success_NoKeyInCache_SetKey_GetKeySecondTryBeforeExpirationTime_ScannedResults() {
+func (suite *TestSuiteTokenProvider) Test_GetACRRefreshToken_Success_RegistryKeyInCache() {
+	_provider_cacheClientMock.On("Get", _provider_registry_key_for_cache).Return(_provider_refreshToken, nil)
+	_provider_cacheClientMock.On("Set", mock.Anything, mock.Anything, mock.Anything).Return(utils.NilArgumentError)
+
+	val, err := _provider.GetACRRefreshToken(_provider_registry)
+	suite.Equal(_provider_refreshToken, val)
+	suite.Nil(err)
+	suite.AssertExpectations()
+}
+
+func (suite *TestSuiteTokenProvider) Test_GetACRRefreshToken_Success_ArmTokenKeyInCache() {
+	_provider_cacheClientMock.On("Get", mock.Anything).Return("", utils.NilArgumentError).Once()
+	_provider_cacheClientMock.On("Get", _provider__armToken_for_cache).Return(_provider_armToken, nil).Once()
+	_provider_cacheClientMock.On("Set", mock.Anything, mock.Anything, mock.Anything).Return(utils.NilArgumentError)
+	_provider_exchangerMock.On("ExchangeACRAccessToken", _provider_registry, _provider_armToken).Return(_provider_refreshToken, nil).Once()
+
+	val, err := _provider.GetACRRefreshToken(_provider_registry)
+	suite.Equal(_provider_refreshToken, val)
+	suite.Nil(err)
+	suite.AssertExpectations()
+}
+
+func (suite *TestSuiteTokenProvider) Test_GetACRRefreshToken_Success_NoKeyInCache_SetKey_GetKeySecondTryBeforeExpirationTime_RegistryKey() {
+	_provider_cacheClientMock.On("Get", mock.Anything).Return("", utils.NilArgumentError).Twice()
+	_provider_cacheClientMock.On("Get", _provider_registry_key_for_cache).Return(_provider_refreshToken, nil).Once()
+	_provider_cacheClientMock.On("Set", mock.Anything, mock.Anything, mock.Anything).Return(utils.NilArgumentError)
 	_provider_azureTokenProviderMock.On("GetOAuthToken", context.Background()).Return(_provider_armToken, nil).Once()
 	_provider_exchangerMock.On("ExchangeACRAccessToken", _provider_registry, _provider_armToken).Return(_provider_refreshToken, nil).Once()
-	_, err := _provider_cacheClientInMemBasedMock.Get(_provider_registry_key_for_cache)
-	suite.NotNil(err)
-	val, err := _providerWithCacheFunctionality.GetACRRefreshToken(_provider_registry)
+
+	val, err := _provider.GetACRRefreshToken(_provider_registry)
 	suite.Equal(_provider_refreshToken, val)
 	suite.Nil(err)
-	val, err = _provider_cacheClientInMemBasedMock.Get(_provider_registry_key_for_cache)
-	suite.Nil(err)
-	suite.Equal(_provider_refreshToken, val)
-	val, err = _providerWithCacheFunctionality.GetACRRefreshToken(_provider_registry)
+	val, err = _provider.GetACRRefreshToken(_provider_registry)
 	suite.Equal(_provider_refreshToken, val)
 	suite.Nil(err)
 	suite.AssertExpectations()
 }
 
-func (suite *TestSuiteTokenProvider) Test_GetACRRefreshToken_Success_NoKeyInCache_SetKey_GetKeySecondTryAfterExpirationTime_ScannedResults() {
+func (suite *TestSuiteTokenProvider) Test_GetACRRefreshToken_Success_NoKeyInCache_SetKey_GetKeySecondTryAfterExpirationTime_RegistryKey() {
+	_provider_cacheClientMock.On("Get", mock.Anything).Return("", utils.NilArgumentError)
+	_provider_cacheClientMock.On("Set", mock.Anything, mock.Anything, mock.Anything).Return(utils.NilArgumentError)
 	_provider_azureTokenProviderMock.On("GetOAuthToken", context.Background()).Return(_provider_armToken, nil).Twice()
 	_provider_exchangerMock.On("ExchangeACRAccessToken", _provider_registry, _provider_armToken).Return(_provider_refreshToken, nil).Twice()
-	_, err := _provider_cacheClientInMemBasedMock.Get(_provider_registry_key_for_cache)
-	suite.NotNil(err)
-	val, err := _providerWithCacheFunctionality.GetACRRefreshToken(_provider_registry)
+
+	val, err := _provider.GetACRRefreshToken(_provider_registry)
 	suite.Equal(_provider_refreshToken, val)
 	suite.Nil(err)
-	val, err = _provider_cacheClientInMemBasedMock.Get(_provider_registry_key_for_cache)
-	suite.Nil(err)
-	suite.Equal(_provider_refreshToken, val)
-	time.Sleep(time.Second)
-	val, err = _providerWithCacheFunctionality.GetACRRefreshToken(_provider_registry)
+	val, err = _provider.GetACRRefreshToken(_provider_registry)
 	suite.Equal(_provider_refreshToken, val)
 	suite.Nil(err)
 	suite.AssertExpectations()

@@ -1,11 +1,9 @@
 package tag2digest
 
 import (
-	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/cache"
 	cachemock "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/cache/mocks"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry"
-	registryerrors "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/errors"
 	registrymocks "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/mocks"
 	registryutils "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/utils"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/utils"
@@ -13,24 +11,20 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 	"testing"
-	"time"
 )
 
 type TestSuiteTag2DigestResolver struct {
 	suite.Suite
 }
 
-var _resolverNoCacheFunctionality *Tag2DigestResolver
-var _resolverWithCacheFunctionality *Tag2DigestResolver
+var _resolver *Tag2DigestResolver
 var _registryClientMock *registrymocks.IRegistryClient
 var _cacheClientMock *cachemock.ICacheClient
-var _cacheClientInMemBasedMock cache.ICacheClient
 var _acrImageRefTag registry.IImageReference
 var _nonAcrImageRefTag registry.IImageReference
 var _ctx *ResourceContext
 var _ctxPullSecrets = []string{"tomer-pull-secret"}
-var _expirationTime= "1s"
-var _expirationTimeParsed, _ = time.ParseDuration(_expirationTime)
+var _expirationTime= 1
 
 const _ctxNamsespace = "tomer-ns"
 const _ctsServiceAccount = "tomer-sa"
@@ -40,22 +34,18 @@ func (suite *TestSuiteTag2DigestResolver) SetupTest() {
 	instrumentationP := instrumentation.NewNoOpInstrumentationProvider()
 	_registryClientMock = new(registrymocks.IRegistryClient)
 	_cacheClientMock = new(cachemock.ICacheClient)
-	_cacheClientInMemBasedMock = cachemock.NewICacheInMemBasedMock()
-	_resolverFactory := NewTag2DigestResolverFactory()
-	_tag2DigestResolverConfiguration := &Tag2DigestResolverConfiguration{ CacheExpirationTimeForResults: _expirationTime, CacheExpirationTimeForErrors: _expirationTime}
-	_resolverNoCacheFunctionality, _ = _resolverFactory.CreateTag2DigestResolver(instrumentationP, _registryClientMock, _cacheClientMock, _tag2DigestResolverConfiguration)
-	_resolverWithCacheFunctionality, _ = _resolverFactory.CreateTag2DigestResolver(instrumentationP, _registryClientMock, _cacheClientInMemBasedMock, _tag2DigestResolverConfiguration)
+	_tag2DigestResolverConfiguration := &Tag2DigestResolverConfiguration{ CacheExpirationTimeForResults: _expirationTime}
+	_resolver = NewTag2DigestResolver(instrumentationP, _registryClientMock, _cacheClientMock, _tag2DigestResolverConfiguration)
 	_acrImageRefTag, _ = registryutils.GetImageReference("tomerw.azurecr.io/redis:v0")
 	_nonAcrImageRefTag, _ = registryutils.GetImageReference("tomerw.nonacr.io/redis:v0")
 	_ctx = NewResourceContext(_ctxNamsespace, _ctxPullSecrets, _ctsServiceAccount)
-	_cacheClientMock.On("Get", mock.Anything).Return("", utils.NilArgumentError)
-	_cacheClientMock.On("Set", mock.Anything, mock.Anything, mock.Anything).Return(utils.NilArgumentError)
 }
 
 func (suite *TestSuiteTag2DigestResolver) Test_Resolve_DigestRefernce_ReturnDigestNoRegistryCalls() {
-
+	_cacheClientMock.On("Get", mock.Anything).Return("", utils.NilArgumentError)
+	_cacheClientMock.On("Set", mock.Anything, mock.Anything, mock.Anything).Return(utils.NilArgumentError)
 	imageRef, _ := registryutils.GetImageReference("tomerw.xyz.io/redis@" + _expectedDigest)
-	digest, err := _resolverNoCacheFunctionality.Resolve(imageRef, _ctx)
+	digest, err := _resolver.Resolve(imageRef, _ctx)
 
 	suite.Nil(err)
 	suite.Equal(_expectedDigest, digest)
@@ -64,10 +54,11 @@ func (suite *TestSuiteTag2DigestResolver) Test_Resolve_DigestRefernce_ReturnDige
 }
 
 func (suite *TestSuiteTag2DigestResolver) Test_Resolve_ACRReference_ACRAuthSuccess() {
-
+	_cacheClientMock.On("Get", mock.Anything).Return("", utils.NilArgumentError)
+	_cacheClientMock.On("Set", mock.Anything, mock.Anything, mock.Anything).Return(utils.NilArgumentError)
 	_registryClientMock.On("GetDigestUsingACRAttachAuth", _acrImageRefTag).Return(_expectedDigest, nil).Once()
 
-	digest, err := _resolverNoCacheFunctionality.Resolve(_acrImageRefTag, _ctx)
+	digest, err := _resolver.Resolve(_acrImageRefTag, _ctx)
 
 	suite.Nil(err)
 	suite.Equal(_expectedDigest, digest)
@@ -76,11 +67,12 @@ func (suite *TestSuiteTag2DigestResolver) Test_Resolve_ACRReference_ACRAuthSucce
 }
 
 func (suite *TestSuiteTag2DigestResolver) Test_Resolve_ACRReference_ACRAuthFailK8SAuthSuccess() {
-
+	_cacheClientMock.On("Get", mock.Anything).Return("", utils.NilArgumentError)
+	_cacheClientMock.On("Set", mock.Anything, mock.Anything, mock.Anything).Return(utils.NilArgumentError)
 	_registryClientMock.On("GetDigestUsingACRAttachAuth", _acrImageRefTag).Return("", errors.New("ACRAUthError")).Once()
 	_registryClientMock.On("GetDigestUsingK8SAuth", _acrImageRefTag, _ctxNamsespace, _ctx.imagePullSecrets, _ctsServiceAccount).Return(_expectedDigest, nil).Once()
 
-	digest, err := _resolverNoCacheFunctionality.Resolve(_acrImageRefTag, _ctx)
+	digest, err := _resolver.Resolve(_acrImageRefTag, _ctx)
 
 	suite.Nil(err)
 	suite.Equal(_expectedDigest, digest)
@@ -89,12 +81,13 @@ func (suite *TestSuiteTag2DigestResolver) Test_Resolve_ACRReference_ACRAuthFailK
 }
 
 func (suite *TestSuiteTag2DigestResolver) Test_Resolve_ACRReference_ACRAuthAndK8SAuthFailDefaultSuccess() {
-
+	_cacheClientMock.On("Get", mock.Anything).Return("", utils.NilArgumentError)
+	_cacheClientMock.On("Set", mock.Anything, mock.Anything, mock.Anything).Return(utils.NilArgumentError)
 	_registryClientMock.On("GetDigestUsingACRAttachAuth", _acrImageRefTag).Return("", errors.New("ACRAUthError")).Once()
 	_registryClientMock.On("GetDigestUsingK8SAuth", _acrImageRefTag, _ctxNamsespace, _ctx.imagePullSecrets, _ctsServiceAccount).Return("", errors.New("K8SAUthError")).Once()
 	_registryClientMock.On("GetDigestUsingDefaultAuth", _acrImageRefTag).Return(_expectedDigest, nil).Once()
 
-	digest, err := _resolverNoCacheFunctionality.Resolve(_acrImageRefTag, _ctx)
+	digest, err := _resolver.Resolve(_acrImageRefTag, _ctx)
 
 	suite.Nil(err)
 	suite.Equal(_expectedDigest, digest)
@@ -103,13 +96,14 @@ func (suite *TestSuiteTag2DigestResolver) Test_Resolve_ACRReference_ACRAuthAndK8
 }
 
 func (suite *TestSuiteTag2DigestResolver) Test_Resolve_ACRReference_ACRAuthAndK8SAuthFailDefaultFail_ReflectError() {
-
+	_cacheClientMock.On("Get", mock.Anything).Return("", utils.NilArgumentError)
+	_cacheClientMock.On("Set", mock.Anything, mock.Anything, mock.Anything).Return(utils.NilArgumentError)
 	expectedError := errors.New("DefaultAuthError")
 	_registryClientMock.On("GetDigestUsingACRAttachAuth", _acrImageRefTag).Return("", errors.New("ACRAuthError")).Once()
 	_registryClientMock.On("GetDigestUsingK8SAuth", _acrImageRefTag, _ctxNamsespace, _ctx.imagePullSecrets, _ctsServiceAccount).Return("", errors.New("K8SAuthError")).Once()
 	_registryClientMock.On("GetDigestUsingDefaultAuth", _acrImageRefTag).Return("", expectedError).Once()
 
-	digest, err := _resolverNoCacheFunctionality.Resolve(_acrImageRefTag, _ctx)
+	digest, err := _resolver.Resolve(_acrImageRefTag, _ctx)
 
 	suite.ErrorIs(err , expectedError)
 	suite.Equal("", digest)
@@ -118,10 +112,11 @@ func (suite *TestSuiteTag2DigestResolver) Test_Resolve_ACRReference_ACRAuthAndK8
 }
 
 func (suite *TestSuiteTag2DigestResolver) Test_Resolve_NonACRReference_K8SAuthSuccess() {
-
+	_cacheClientMock.On("Get", mock.Anything).Return("", utils.NilArgumentError)
+	_cacheClientMock.On("Set", mock.Anything, mock.Anything, mock.Anything).Return(utils.NilArgumentError)
 	_registryClientMock.On("GetDigestUsingK8SAuth", _nonAcrImageRefTag, _ctxNamsespace, _ctx.imagePullSecrets, _ctsServiceAccount).Return(_expectedDigest, nil).Once()
 
-	digest, err := _resolverNoCacheFunctionality.Resolve(_nonAcrImageRefTag, _ctx)
+	digest, err := _resolver.Resolve(_nonAcrImageRefTag, _ctx)
 
 	suite.Nil(err)
 	suite.Equal(_expectedDigest, digest)
@@ -130,10 +125,11 @@ func (suite *TestSuiteTag2DigestResolver) Test_Resolve_NonACRReference_K8SAuthSu
 }
 
 func (suite *TestSuiteTag2DigestResolver) Test_Resolve_NonACRReference_K8SAuthFailDefaultSuccess() {
-
+	_cacheClientMock.On("Get", mock.Anything).Return("", utils.NilArgumentError)
+	_cacheClientMock.On("Set", mock.Anything, mock.Anything, mock.Anything).Return(utils.NilArgumentError)
 	_registryClientMock.On("GetDigestUsingK8SAuth", _nonAcrImageRefTag, _ctxNamsespace, _ctx.imagePullSecrets, _ctsServiceAccount).Return("", errors.New("K8SAUthError")).Once()
 	_registryClientMock.On("GetDigestUsingDefaultAuth", _nonAcrImageRefTag).Return(_expectedDigest, nil).Once()
-	digest, err := _resolverNoCacheFunctionality.Resolve(_nonAcrImageRefTag, _ctx)
+	digest, err := _resolver.Resolve(_nonAcrImageRefTag, _ctx)
 
 	suite.Nil(err)
 	suite.Equal(_expectedDigest, digest)
@@ -142,12 +138,13 @@ func (suite *TestSuiteTag2DigestResolver) Test_Resolve_NonACRReference_K8SAuthFa
 }
 
 func (suite *TestSuiteTag2DigestResolver) Test_Resolve_NonACRReference_ACRAuthAndK8SAuthFailDefaultFail_ReflectError() {
-
+	_cacheClientMock.On("Get", mock.Anything).Return("", utils.NilArgumentError)
+	_cacheClientMock.On("Set", mock.Anything, mock.Anything, mock.Anything).Return(utils.NilArgumentError)
 	expectedError := errors.New("DefaultAUthError")
 	_registryClientMock.On("GetDigestUsingK8SAuth", _nonAcrImageRefTag, _ctxNamsespace, _ctx.imagePullSecrets, _ctsServiceAccount).Return("", errors.New("K8SAUthError")).Once()
 	_registryClientMock.On("GetDigestUsingDefaultAuth", _nonAcrImageRefTag).Return("", expectedError).Once()
 
-	digest, err := _resolverNoCacheFunctionality.Resolve(_nonAcrImageRefTag, _ctx)
+	digest, err := _resolver.Resolve(_nonAcrImageRefTag, _ctx)
 
 	suite.ErrorIs(err , expectedError)
 	suite.Equal("", digest)
@@ -156,96 +153,55 @@ func (suite *TestSuiteTag2DigestResolver) Test_Resolve_NonACRReference_ACRAuthAn
 }
 
 func (suite *TestSuiteTag2DigestResolver) Test_Resolve_ACRReference_ACRAuthSuccess_NoKeyInCache() {
+	_cacheClientMock.On("Get", _acrImageRefTag.Original()).Return("", utils.NilArgumentError)
+	_cacheClientMock.On("Set", _acrImageRefTag.Original(), mock.Anything, mock.Anything).Return(nil)
 
 	_registryClientMock.On("GetDigestUsingACRAttachAuth", _acrImageRefTag).Return(_expectedDigest, nil).Once()
-	_, err := _cacheClientInMemBasedMock.Get(_acrImageRefTag.Original())
-	suite.NotNil(err)
-	digest, err := _resolverWithCacheFunctionality.Resolve(_acrImageRefTag, _ctx)
-	suite.Nil(err)
-	suite.Equal(_expectedDigest, digest)
-	digest, err = _cacheClientInMemBasedMock.Get(_acrImageRefTag.Original())
+	digest, err := _resolver.Resolve(_acrImageRefTag, _ctx)
 	suite.Nil(err)
 	suite.Equal(_expectedDigest, digest)
 	_registryClientMock.AssertExpectations(suite.T())
 }
 
 func (suite *TestSuiteTag2DigestResolver) Test_Resolve_ACRReference_ACRAuthSuccess_KeyInCache() {
-	_ = _cacheClientInMemBasedMock.Set(_acrImageRefTag.Original(), _expectedDigest, _expirationTimeParsed)
-	digest, err := _cacheClientInMemBasedMock.Get(_acrImageRefTag.Original())
-	suite.Nil(err)
-	digest, err = _resolverWithCacheFunctionality.Resolve(_acrImageRefTag, _ctx)
+	_cacheClientMock.On("Get", _acrImageRefTag.Original()).Return(_expectedDigest, nil)
+	_cacheClientMock.On("Set", _acrImageRefTag.Original(), mock.Anything, mock.Anything).Return(nil)
+
+	digest, err := _resolver.Resolve(_acrImageRefTag, _ctx)
 	suite.Nil(err)
 	suite.Equal(_expectedDigest, digest)
 	_registryClientMock.AssertExpectations(suite.T())
 }
 
-func (suite *TestSuiteTag2DigestResolver) Test_Resolve_ACRReference_ACRAuthSuccess_NoKeyInCache_SetKey_GetKeySecondTryBeforeExpirationTime_ScannedResults() {
+func (suite *TestSuiteTag2DigestResolver) Test_Resolve_ACRReference_ACRAuthSuccess_NoKeyInCache_SetKey_GetKeySecondTryBeforeExpirationTime() {
+	_cacheClientMock.On("Get", _acrImageRefTag.Original()).Return("", utils.NilArgumentError).Once()
+	_cacheClientMock.On("Get", _acrImageRefTag.Original()).Return(_expectedDigest, nil).Once()
+	_cacheClientMock.On("Set", _acrImageRefTag.Original(), mock.Anything, mock.Anything).Return(nil)
 
 	_registryClientMock.On("GetDigestUsingACRAttachAuth", _acrImageRefTag).Return(_expectedDigest, nil).Once()
-	_, err := _cacheClientInMemBasedMock.Get(_acrImageRefTag.Original())
-	suite.NotNil(err)
-	digest, err := _resolverWithCacheFunctionality.Resolve(_acrImageRefTag, _ctx)
+	digest, err := _resolver.Resolve(_acrImageRefTag, _ctx)
 	suite.Nil(err)
 	suite.Equal(_expectedDigest, digest)
-	digest, err = _cacheClientInMemBasedMock.Get(_acrImageRefTag.Original())
-	suite.Nil(err)
-	suite.Equal(_expectedDigest, digest)
-	digest, err = _resolverWithCacheFunctionality.Resolve(_acrImageRefTag, _ctx)
+	digest, err = _resolver.Resolve(_acrImageRefTag, _ctx)
 	suite.Nil(err)
 	suite.Equal(_expectedDigest, digest)
 	_registryClientMock.AssertExpectations(suite.T())
 }
 
-func (suite *TestSuiteTag2DigestResolver) Test_Resolve_ACRReference_ACRAuthSuccess_NoKeyInCache_SetKey_GetKeySecondTryAfterExpirationTime_ScannedResults() {
+func (suite *TestSuiteTag2DigestResolver) Test_Resolve_ACRReference_ACRAuthSuccess_NoKeyInCache_SetKey_GetKeySecondTryAfterExpirationTime() {
+	_cacheClientMock.On("Get", _acrImageRefTag.Original()).Return("", utils.NilArgumentError)
+	_cacheClientMock.On("Set", _acrImageRefTag.Original(), mock.Anything, mock.Anything).Return(nil)
 
 	_registryClientMock.On("GetDigestUsingACRAttachAuth", _acrImageRefTag).Return(_expectedDigest, nil).Twice()
-	_, err := _cacheClientInMemBasedMock.Get(_acrImageRefTag.Original())
-	suite.NotNil(err)
-	digest, err := _resolverWithCacheFunctionality.Resolve(_acrImageRefTag, _ctx)
+	digest, err := _resolver.Resolve(_acrImageRefTag, _ctx)
 	suite.Nil(err)
 	suite.Equal(_expectedDigest, digest)
-	digest, err = _cacheClientInMemBasedMock.Get(_acrImageRefTag.Original())
-	suite.Nil(err)
-	suite.Equal(_expectedDigest, digest)
-	time.Sleep(time.Second)
-	digest, err = _resolverWithCacheFunctionality.Resolve(_acrImageRefTag, _ctx)
+	digest, err = _resolver.Resolve(_acrImageRefTag, _ctx)
 	suite.Nil(err)
 	suite.Equal(_expectedDigest, digest)
 	_registryClientMock.AssertExpectations(suite.T())
 }
 
-func (suite *TestSuiteTag2DigestResolver) Test_Resolve_ACRReference_ACRAuthSuccess_NoKeyInCache_SetKey_GetKeySecondTryBeforeExpirationTime_ErrorAsValue() {
-	_expectedError := new(registryerrors.ImageIsNotFoundErr)
-	_registryClientMock.On("GetDigestUsingACRAttachAuth", _acrImageRefTag).Return("", _expectedError).Once()
-	_, err := _cacheClientInMemBasedMock.Get(_acrImageRefTag.Original())
-	suite.NotNil(err)
-	_, err = _resolverWithCacheFunctionality.Resolve(_acrImageRefTag, _ctx)
-	suite.NotNil(err)
-	suite.IsType(_expectedError, errors.Cause(err))
-	_, err = _cacheClientInMemBasedMock.Get(_acrImageRefTag.Original())
-	suite.Nil(err)
-	_, err = _resolverWithCacheFunctionality.Resolve(_acrImageRefTag, _ctx)
-	suite.NotNil(err)
-	suite.IsType(_expectedError, errors.Cause(err))
-	_registryClientMock.AssertExpectations(suite.T())
-}
-
-func (suite *TestSuiteTag2DigestResolver) Test_Resolve_ACRReference_ACRAuthSuccess_NoKeyInCache_SetKey_GetKeySecondTryAfterExpirationTime_ErrorAsValue() {
-	_expectedError := new(registryerrors.ImageIsNotFoundErr)
-	_registryClientMock.On("GetDigestUsingACRAttachAuth", _acrImageRefTag).Return("", _expectedError).Twice()
-	_, err := _cacheClientInMemBasedMock.Get(_acrImageRefTag.Original())
-	suite.NotNil(err)
-	_, err = _resolverWithCacheFunctionality.Resolve(_acrImageRefTag, _ctx)
-	suite.NotNil(err)
-	suite.IsType(_expectedError, errors.Cause(err))
-	_, err = _cacheClientInMemBasedMock.Get(_acrImageRefTag.Original())
-	suite.Nil(err)
-	time.Sleep(time.Second)
-	_, err = _resolverWithCacheFunctionality.Resolve(_acrImageRefTag, _ctx)
-	suite.NotNil(err)
-	suite.IsType(_expectedError, errors.Cause(err))
-	_registryClientMock.AssertExpectations(suite.T())
-}
 
 func Test_Suite(t *testing.T) {
 	suite.Run(t, new(TestSuiteTag2DigestResolver))

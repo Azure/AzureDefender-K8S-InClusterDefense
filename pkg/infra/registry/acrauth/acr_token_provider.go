@@ -38,36 +38,29 @@ type ACRTokenProvider struct {
 	azureBearerAuthorizerTokenProvider azureauth.IBearerAuthorizerTokenProvider
 	// tokenExchanger is exchanger to exchange the bearer token to a refresh token
 	tokenExchanger IACRTokenExchanger
-	// acrTokenProviderCacheClient is the cache ACRTokenProvider uses and its time expiration
-	acrTokenProviderCacheClient *ACRTokenProviderCacheClient
+	// cacheClient is cache for mapping acr registry to token
+	cacheClient cache.ICacheClient
+	// acrTokenProviderConfiguration is configuration data for ACRTokenProvider
+	acrTokenProviderConfiguration *ACRTokenProviderConfiguration
 }
 
 // ACRTokenProviderConfiguration is configuration data for ACRTokenProvider
 type ACRTokenProviderConfiguration struct {
-	// ArmTokenCacheExpirationTime is the expiration time **in ms** for armToken in the cache client
-	ArmTokenCacheExpirationTime string
-	// RegistryRefreshTokenCacheExpirationTime is the expiration time **in ms** for registryRefreshToken in the cache client
-	RegistryRefreshTokenCacheExpirationTime string
-}
-
-// ACRTokenProviderCacheClient is a cache client for ACRTokenProvider that contains the needed cache client configurations
-type ACRTokenProviderCacheClient struct {
-	// cacheClient is cache for mapping acr registry to token
-	cacheClient cache.ICacheClient
-	// armTokenCacheExpirationTime is the expiration time **in ms** for armToken in the cache client
-	armTokenCacheExpirationTime time.Duration
-	// registryRefreshTokenCacheExpirationTime is the expiration time **in ms** for registryRefreshToken in the cache client
-	registryRefreshTokenCacheExpirationTime time.Duration
+	// ArmTokenCacheExpirationTime is the expiration time **in minutes** for armToken in the cache client
+	ArmTokenCacheExpirationTime int
+	// RegistryRefreshTokenCacheExpirationTime is the expiration time **in minutes** for registryRefreshToken in the cache client
+	RegistryRefreshTokenCacheExpirationTime int
 }
 
 // NewACRTokenProvider Ctor
-func NewACRTokenProvider(instrumentationProvider instrumentation.IInstrumentationProvider, tokenExchanger IACRTokenExchanger, azureBearerAuthorizerTokenProvider azureauth.IBearerAuthorizerTokenProvider, acrTokenProviderCacheClient *ACRTokenProviderCacheClient) *ACRTokenProvider {
+func NewACRTokenProvider(instrumentationProvider instrumentation.IInstrumentationProvider, tokenExchanger IACRTokenExchanger, azureBearerAuthorizerTokenProvider azureauth.IBearerAuthorizerTokenProvider, cacheClient cache.ICacheClient, acrTokenProviderConfiguration *ACRTokenProviderConfiguration) *ACRTokenProvider {
 	return &ACRTokenProvider{
 		tracerProvider:                     instrumentationProvider.GetTracerProvider("ACRTokenProvider"),
 		metricSubmitter:                    instrumentationProvider.GetMetricSubmitter(),
 		azureBearerAuthorizerTokenProvider: azureBearerAuthorizerTokenProvider,
 		tokenExchanger:                     tokenExchanger,
-		acrTokenProviderCacheClient: acrTokenProviderCacheClient,
+		cacheClient: cacheClient,
+		acrTokenProviderConfiguration: acrTokenProviderConfiguration,
 	}
 }
 
@@ -80,7 +73,7 @@ func (tokenProvider *ACRTokenProvider) GetACRRefreshToken(registry string) (stri
 
 	// First check if we can get registryRefreshToken from cache
 	registryRefreshTokenCacheKey := tokenProvider.getRegistryRefreshTokenCacheKey(registry)
-	registryRefreshToken, err := tokenProvider.acrTokenProviderCacheClient.cacheClient.Get(registryRefreshTokenCacheKey)
+	registryRefreshToken, err := tokenProvider.cacheClient.Get(registryRefreshTokenCacheKey)
 	// Error as a result of key doesn't exist and error from the cache are treated the same (skip cache)
 	if err == nil { // If key exist - return token
 		tracer.Info("registryRefreshToken exist in cache", "registry", registry)
@@ -105,7 +98,7 @@ func (tokenProvider *ACRTokenProvider) GetACRRefreshToken(registry string) (stri
 	}
 
 	// Save registryRefreshToken in cache
-	err = tokenProvider.acrTokenProviderCacheClient.cacheClient.Set(registryRefreshTokenCacheKey, registryRefreshToken, tokenProvider.acrTokenProviderCacheClient.registryRefreshTokenCacheExpirationTime)
+	err = tokenProvider.cacheClient.Set(registryRefreshTokenCacheKey, registryRefreshToken, tokenProvider.acrTokenProviderConfiguration.GetRegistryRefreshTokenCacheExpirationTime())
 	if err != nil{
 		err = errors.Wrap(err, "Failed to set registryRefreshToken in cache")
 		tracer.Error(err, "")
@@ -121,7 +114,7 @@ func (tokenProvider *ACRTokenProvider) getARMToken(registry string) (string, err
 
 	armTokenCacheKey := tokenProvider.getARMTokenCacheKey(registry)
 	// First check if we can get armToken from cache
-	armToken, err := tokenProvider.acrTokenProviderCacheClient.cacheClient.Get(armTokenCacheKey)
+	armToken, err := tokenProvider.cacheClient.Get(armTokenCacheKey)
 	// Error as a result of key doesn't exist and error from the cache are treated the same (skip cache)
 	if err == nil { // If key exist - return token
 		tracer.Info("ARMToken exist in cache", "registry", registry)
@@ -138,7 +131,7 @@ func (tokenProvider *ACRTokenProvider) getARMToken(registry string) (string, err
 	}
 
 	// Save ARMToken in cache
-	err = tokenProvider.acrTokenProviderCacheClient.cacheClient.Set(armTokenCacheKey, armToken, tokenProvider.acrTokenProviderCacheClient.armTokenCacheExpirationTime)
+	err = tokenProvider.cacheClient.Set(armTokenCacheKey, armToken, tokenProvider.acrTokenProviderConfiguration.GetArmTokenCacheExpirationTime())
 	if err != nil{
 		err = errors.Wrap(err, "Failed to set armToken in cache")
 		tracer.Error(err, "")
@@ -156,4 +149,18 @@ func (tokenProvider *ACRTokenProvider) getARMTokenCacheKey(registry string) stri
 // getARMTokenCacheKey returns the RegistryRefreshToken cache key of a given registry
 func (tokenProvider *ACRTokenProvider) getRegistryRefreshTokenCacheKey (registry string) string {
 	return _registryRefreshTokenCacheKeyPrefix + registry
+}
+
+// GetArmTokenCacheExpirationTime uses ACRTokenProviderConfiguration instance's ArmTokenCacheExpirationTime (int)
+// to a return a time.Duration object
+// In case of invalid argument, use default values (0) which means the value expires immediately.
+func (configuration *ACRTokenProviderConfiguration) GetArmTokenCacheExpirationTime() time.Duration {
+	return time.Duration(configuration.ArmTokenCacheExpirationTime) * time.Minute
+}
+
+// GetRegistryRefreshTokenCacheExpirationTime uses ACRTokenProviderConfiguration instance's RegistryRefreshTokenCacheExpirationTime (int)
+// to a return a time.Duration object
+// In case of invalid argument, use default values (0) which means the value expires immediately.
+func (configuration *ACRTokenProviderConfiguration) GetRegistryRefreshTokenCacheExpirationTime() time.Duration {
+	return time.Duration(configuration.ArmTokenCacheExpirationTime) * time.Minute
 }

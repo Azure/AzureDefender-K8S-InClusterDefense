@@ -124,10 +124,10 @@ AzDProxy:
         retryDurationInMS: 10
 
     acrTokenProviderConfiguration:
-      # Expiration time in seconds of armToken in cache  (acr token is valid for 3 hours since the last command az acr login)
-      armTokenCacheExpirationTime: 10m # 10 minutes
-      # Expiration time in seconds of registryRefreshToken in cache
-      registryRefreshTokenCacheExpirationTime: 10m # 10 minutes
+      # Expiration time in minutes of armToken in cache  (acr token is valid for 3 hours since the last command az acr login)
+      armTokenCacheExpirationTime: 10 # 10 minutes
+      # Expiration time in minutes of registryRefreshToken in cache
+      registryRefreshTokenCacheExpirationTime: 10 # 10 minutes
 
   # ARG values
   arg:
@@ -143,20 +143,16 @@ AzDProxy:
         retryDurationInMS: 100
 
     argDataProviderConfiguration:
-      # Expiration time in seconds of scan results in status unscanned in cache (redeploy will take at least a minute and scanning an image takes 4 minutes on average)
-      cacheExpirationTimeUnscannedResults: 4m # 1 minute
-      # Expiration time in minutes of scan results in status scanned in cache (need to sync with image-scan periodic scans - every 10 days)
-      cacheExpirationTimeScannedResults: 24h # 24 hours
-      # cacheExpirationTime is the expiration time in the cache client for errors occurred during GetImageVulnerabilityScanResults
-      cacheExpirationTimeForErrors: 1m  # 1 minute
+      # Expiration time in minutes of scan results in status unscanned in cache (redeploy will take at least a minute and scanning an image takes 4 minutes on average)
+      cacheExpirationTimeUnscannedResults: 4 # 4 minute
+      # Expiration time in hours of scan results in status scanned in cache (need to sync with image-scan periodic scans - every 10 days)
+      cacheExpirationTimeScannedResults: 24 # 24 hours
 
   # Tag2Digest configuration
   tag2digest:
     tag2DigestResolverConfiguration:
-      # Expiration time of digest in cache - changing image digest require editing source code, building image and pushing image. Longer than 2 minutes
-      cacheExpirationTimeForResults: 2m # 2 minute
-      # Expiration time in the cache client for errors occurred during get digest
-      cacheExpirationTimeForErrors: 1m # 1 minute
+      # Expiration time in minutes of digest in cache - changing image digest require editing source code, building image and pushing image. Longer than 2 minutes
+      cacheExpirationTimeForResults: 2 # 2 minute
 
   # Cache configuration
   cache:
@@ -191,5 +187,7 @@ AzDProxy:
         timeDurationInMS: 2850
 
     azdSecInfoProviderConfiguration:
-      # Expiration time of timeout status in cache - 1 hour in order to avoid multiple timeouts
-      CacheExpirationTimeTimeout: "1h"
+      # Expiration time in hours of timeout status in cache - 1 hour in order to avoid multiple timeouts
+      CacheExpirationTimeTimeout: 1 # 1 hour
+      # Expiration time in seconds of containerVulnerabilityScanInfo in cache - 30 seconds in order to handle replica set (multiply requests on the same pod)
+      CacheExpirationContainerVulnerabilityScanInfo: 30 # 30 seconds
