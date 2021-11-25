@@ -55,7 +55,7 @@ func NewTag2DigestResolver(instrumentationProvider instrumentation.IInstrumentat
 		tracerProvider:  instrumentationProvider.GetTracerProvider("Tag2DigestResolver"),
 		metricSubmitter: instrumentationProvider.GetMetricSubmitter(),
 		registryClient:  registryClient,
-		cacheClient: cacheClient,
+		cacheClient: cache.NewSafeCacheClient(cacheClient),
 		tag2DigestResolverConfiguration: tag2DigestResolverConfiguration,
 	}
 }
@@ -226,7 +226,6 @@ func (resolver *Tag2DigestResolver) shouldContinueOnError(err error) bool {
 
 // GetCacheExpirationTimeForResults uses Tag2DigestResolverConfiguration instance's CacheExpirationTimeForResults (int)
 // to a return a time.Duration object
-// In case of invalid argument, use default values (0) which means the value expires immediately.
 func (configuration *Tag2DigestResolverConfiguration) GetCacheExpirationTimeForResults() time.Duration {
 	return time.Duration(configuration.CacheExpirationTimeForResults) * time.Minute
 }

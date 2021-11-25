@@ -59,7 +59,7 @@ func NewACRTokenProvider(instrumentationProvider instrumentation.IInstrumentatio
 		metricSubmitter:                    instrumentationProvider.GetMetricSubmitter(),
 		azureBearerAuthorizerTokenProvider: azureBearerAuthorizerTokenProvider,
 		tokenExchanger:                     tokenExchanger,
-		cacheClient: cacheClient,
+		cacheClient: cache.NewSafeCacheClient(cacheClient),
 		acrTokenProviderConfiguration: acrTokenProviderConfiguration,
 	}
 }
@@ -153,14 +153,12 @@ func (tokenProvider *ACRTokenProvider) getRegistryRefreshTokenCacheKey (registry
 
 // GetArmTokenCacheExpirationTime uses ACRTokenProviderConfiguration instance's ArmTokenCacheExpirationTime (int)
 // to a return a time.Duration object
-// In case of invalid argument, use default values (0) which means the value expires immediately.
 func (configuration *ACRTokenProviderConfiguration) GetArmTokenCacheExpirationTime() time.Duration {
 	return time.Duration(configuration.ArmTokenCacheExpirationTime) * time.Minute
 }
 
 // GetRegistryRefreshTokenCacheExpirationTime uses ACRTokenProviderConfiguration instance's RegistryRefreshTokenCacheExpirationTime (int)
 // to a return a time.Duration object
-// In case of invalid argument, use default values (0) which means the value expires immediately.
 func (configuration *ACRTokenProviderConfiguration) GetRegistryRefreshTokenCacheExpirationTime() time.Duration {
 	return time.Duration(configuration.ArmTokenCacheExpirationTime) * time.Minute
 }

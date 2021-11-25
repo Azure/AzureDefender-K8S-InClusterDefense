@@ -88,7 +88,7 @@ func NewAzdSecInfoProvider(instrumentationProvider instrumentation.IInstrumentat
 		argDataProvider:    argDataProvider,
 		tag2digestResolver: tag2digestResolver,
 		getContainersVulnerabilityScanInfoTimeoutDuration: getContainersVulnerabilityScanInfoTimeoutDuration,
-		cacheClient: cacheClient,
+		cacheClient: cache.NewSafeCacheClient(cacheClient),
 		azdSecInfoProviderConfiguration:   azdSecInfoProviderConfiguration,
 	}
 }
@@ -487,14 +487,12 @@ func (provider *AzdSecInfoProvider) getConcatenatedImages(podSpec *corev1.PodSpe
 
 // GetCacheExpirationTimeTimeout uses AzdSecInfoProviderConfiguration instance's CacheExpirationTimeTimeout (int)
 // to a return a time.Duration object
-// In case of invalid argument, use default values (0) which means the value expires immediately.
 func (configuration *AzdSecInfoProviderConfiguration) GetCacheExpirationTimeTimeout() time.Duration {
 	return time.Duration(configuration.CacheExpirationTimeTimeout) * time.Hour
 }
 
 // GetCacheExpirationContainerVulnerabilityScanInfo uses AzdSecInfoProviderConfiguration instance's CacheExpirationContainerVulnerabilityScanInfo (int)
 // to a return a time.Duration object
-// In case of invalid argument, use default values (0) which means the value expires immediately.
 func (configuration *AzdSecInfoProviderConfiguration) GetCacheExpirationContainerVulnerabilityScanInfo() time.Duration {
 	return time.Duration(configuration.CacheExpirationTimeTimeout) * time.Second
 }

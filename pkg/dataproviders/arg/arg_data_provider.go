@@ -71,7 +71,7 @@ func NewARGDataProvider(instrumentationProvider instrumentation.IInstrumentation
 		metricSubmitter:   instrumentationProvider.GetMetricSubmitter(),
 		argQueryGenerator: queryGenerator,
 		argClient:         argClient,
-		cacheClient: cacheClient,
+		cacheClient: cache.NewSafeCacheClient(cacheClient),
 		argDataProviderConfiguration: configuration,
 	}
 }
@@ -311,14 +311,12 @@ func (provider *ARGDataProvider) getImageScanDataFromARGQueryScanResult(scanResu
 
 // GetCacheExpirationTimeUnscannedResults uses ARGDataProviderConfiguration instance's CacheExpirationTimeUnscannedResults (int)
 // to a return a time.Duration object
-// In case of invalid argument, use default values (0) which means the value expires immediately.
 func (configuration *ARGDataProviderConfiguration) GetCacheExpirationTimeUnscannedResults() time.Duration {
 	return time.Duration(configuration.CacheExpirationTimeUnscannedResults) * time.Minute
 }
 
 // GetCacheExpirationTimeScannedResults uses ARGDataProviderConfiguration instance's CacheExpirationTimeScannedResults (int)
 // to a return a time.Duration object
-// In case of invalid argument, use default values (0) which means the value expires immediately.
 func (configuration *ARGDataProviderConfiguration) GetCacheExpirationTimeScannedResults() time.Duration {
 	return time.Duration(configuration.CacheExpirationTimeScannedResults) * time.Hour
 }
