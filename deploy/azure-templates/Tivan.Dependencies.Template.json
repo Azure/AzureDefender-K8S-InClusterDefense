@@ -1,0 +1,183 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "subscriptionId": {
+      "type": "string"
+    },
+    "clusterName": {
+      "type": "string"
+    },
+    "clusterResourceGroup": {
+      "type": "string"
+    },
+    "resourceLocation": {
+      "type": "string"
+    }
+  },
+  "variables": {
+    "deploymentName": "[concat(parameters('clusterName'), '-securityProfile')]",
+    "deployDefaultAscResourceGroup": "[concat('deployDefaultAscResourceGroup-', uniqueString(deployment().name))]",
+    "locationLongNameToShortMap": {
+      "australiacentral": "CAU",
+      "australiaeast": "EAU",
+      "australiasoutheast": "SEAU",
+      "brazilsouth": "CQ",
+      "canadacentral": "CCA",
+      "centralindia": "CIN",
+      "centralus": "CUS",
+      "eastasia": "EA",
+      "eastus": "EUS",
+      "eastus2": "EUS2",
+      "eastus2euap": "eus2p",
+      "germanywestcentral": "DEWC",
+      "francecentral": "PAR",
+      "japaneast": "EJP",
+      "koreacentral": "SE",
+      "northcentralus": "NCUS",
+      "northeurope": "NEU",
+      "norwayeast": "NOE",
+      "southafricanorth": "JNB",
+      "southcentralus": "SCUS",
+      "southeastasia": "SEA",
+      "swedencentral": "SEC",
+      "switzerlandnorth": "CHN",
+      "switzerlandwest": "CHW",
+      "uaenorth": "DXB",
+      "uksouth": "SUK",
+      "ukwest": "WUK",
+      "westcentralus": "WCUS",
+      "westeurope": "WEU",
+      "westus": "WUS",
+      "westus2": "WUS2",
+      "usgovvirginia": "USGV",
+      "usgovarizona": "USGA",
+      "usgovtexas": "USGT",
+      "chinaeast": "CNE",
+      "chinaeast2": "CNE2",
+      "chinawest": "CNW",
+      "chinawest2": "CNW2"
+    },
+    "locationCode": "[variables('locationLongNameToShortMap')[parameters('resourceLocation')]]",
+    "defaultRGName": "[concat('DefaultResourceGroup-', variables('locationCode'))]",
+    "workspaceName": "[concat('DefaultWorkspace-', parameters('subscriptionId'),'-', variables('locationCode'))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Resources/resourceGroups",
+      "name": "[variables('defaultRGName')]",
+      "apiVersion": "2019-05-01",
+      "location": "[parameters('resourceLocation')]"
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "name": "[variables('deployDefaultAscResourceGroup')]",
+      "apiVersion": "2020-06-01",
+      "resourceGroup": "[variables('defaultRGName')]",
+      "properties": {
+        "mode": "Incremental",
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "parameters": {
+          "resourceLocation": {
+            "value": "[parameters('resourceLocation')]"
+          },
+          "workspaceName": {
+            "value": "[variables('workspaceName')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "parameters": {
+            "resourceLocation": {
+              "type": "string"
+            },
+            "workspaceName": {
+              "type": "string"
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.OperationalInsights/workspaces",
+              "name": "[parameters('workspaceName')]",
+              "apiVersion": "2015-11-01-preview",
+              "location": "[parameters('resourceLocation')]",
+              "properties": {
+                "sku": {
+                  "name": "pernode"
+                },
+                "retentionInDays": 30,
+                "features": {
+                  "searchVersion": 1
+                }
+              }
+            }
+          ]
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/resourceGroups', variables('defaultRGName'))]"
+      ]
+    },
+    {
+      "apiVersion": "2020-10-01",
+      "type": "Microsoft.Resources/deployments",
+      "name": "[variables('deploymentName')]",
+      "subscriptionId": "[parameters('subscriptionId')]",
+      "resourceGroup": "[parameters('clusterResourceGroup')]",
+      "properties": {
+        "mode": "Incremental",
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "parameters": {
+          "workspaceResourceId": {
+            "value": "[concat('/subscriptions/', parameters('subscriptionId'), '/resourcegroups/', variables('defaultRGName'), '/providers/Microsoft.OperationalInsights/workspaces/', variables('workspaceName'))]"
+          },
+          "clusterName": {
+            "value": "[parameters('clusterName')]"
+          },
+          "resourceLocation": {
+            "value": "[parameters('resourceLocation')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "parameters": {
+            "workspaceResourceId": {
+              "type": "string"
+            },
+            "clusterName": {
+              "type": "string"
+            },
+            "resourceLocation": {
+              "type": "string"
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.ContainerService/managedClusters",
+              "apiVersion": "2021-07-01",
+              "name": "[parameters('clusterName')]",
+              "location": "[parameters('resourceLocation')]",
+              "properties": {
+                "securityProfile": {
+                  "azureDefender": {
+                    "enabled": true,
+                    "logAnalyticsWorkspaceResourceId": "[parameters('workspaceResourceId')]"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "dependsOn": [
+        "[variables('deployDefaultAscResourceGroup')]"
+      ]
+    }
+  ]
+}
