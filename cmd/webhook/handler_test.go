@@ -73,6 +73,7 @@ func (suite *TestSuite) Test_Handle_DryRunTrue_ShouldNotPatched() {
 	// Act
 	resp := handler.Handle(context.Background(), *req)
 	// Test
+	suite.Equal(admission.Allowed(string(_notPatchedHandlerDryRunReason)), resp)
 	suite.Equal(metav1.StatusReason(_notPatchedHandlerDryRunReason), resp.Result.Reason)
 	suite.Emptyf(resp.Patches, "response.Patches should be empty on dryrun mode")
 }
@@ -83,13 +84,23 @@ func (suite *TestSuite) Test_Handle_DryRunFalse_ShouldPatched() {
 	pod := createPodForTests(containers, nil)
 	req := createRequestForTests(pod)
 	expectedInfo := []*contracts.ContainerVulnerabilityScanInfo{_firstContainerVulnerabilityScanInfo}
+	expected := []*contracts.ContainerVulnerabilityScanInfo{
+		_firstContainerVulnerabilityScanInfo,
+	}
+
 	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", &pod.Spec, &pod.ObjectMeta, &pod.TypeMeta).Return(expectedInfo, nil).Once()
 
 	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider())
 	// Act
 	resp := handler.Handle(context.Background(), *req)
 	// Test
+	suite.Equal(admission.Allowed(string(_patchedReason)).AdmissionResponse, resp.AdmissionResponse)
 	suite.Equal(metav1.StatusReason(_patchedReason), resp.Result.Reason)
+	suite.Equal(1, len(resp.Patches))
+	patch := resp.Patches[0]
+
+	suite.checkPatch(expected, patch)
+	suite.azdSecProviderMock.AssertExpectations(suite.T())
 }
 
 func (suite *TestSuite) Test_Handle_RequestKindIsNotPod_ShouldNotPatched() {
@@ -103,7 +114,9 @@ func (suite *TestSuite) Test_Handle_RequestKindIsNotPod_ShouldNotPatched() {
 	// Act
 	resp := handler.Handle(context.Background(), *req)
 	// Test
+	suite.Equal(admission.Allowed(string(_noMutationForKindReason)), resp)
 	suite.Equal(metav1.StatusReason(_noMutationForKindReason), resp.Result.Reason)
+	suite.azdSecProviderMock.AssertExpectations(suite.T())
 }
 
 func (suite *TestSuite) Test_Handle_RequestDeleteOperation_ShouldNotPatched() {
@@ -117,7 +130,9 @@ func (suite *TestSuite) Test_Handle_RequestDeleteOperation_ShouldNotPatched() {
 	// Act
 	resp := handler.Handle(context.Background(), *req)
 	// Test
+	suite.Equal(admission.Allowed(string(_noMutationForOperationReason)), resp)
 	suite.Equal(metav1.StatusReason(_noMutationForOperationReason), resp.Result.Reason)
+	suite.azdSecProviderMock.AssertExpectations(suite.T())
 }
 
 func (suite *TestSuite) Test_Handle_RequestConnectOperation_ShouldNotPatched() {
@@ -131,7 +146,9 @@ func (suite *TestSuite) Test_Handle_RequestConnectOperation_ShouldNotPatched() {
 	// Act
 	resp := handler.Handle(context.Background(), *req)
 	// Test
+	suite.Equal(admission.Allowed(string(_noMutationForOperationReason)), resp)
 	suite.Equal(metav1.StatusReason(_noMutationForOperationReason), resp.Result.Reason)
+	suite.azdSecProviderMock.AssertExpectations(suite.T())
 }
 
 func (suite *TestSuite) Test_Handle_RequestUpdateOperation_ShouldPatched() {
@@ -141,13 +158,23 @@ func (suite *TestSuite) Test_Handle_RequestUpdateOperation_ShouldPatched() {
 	req := createRequestForTests(pod)
 	req.Operation = admissionv1.Update
 	expectedInfo := []*contracts.ContainerVulnerabilityScanInfo{_firstContainerVulnerabilityScanInfo}
+	expected := []*contracts.ContainerVulnerabilityScanInfo{
+		_firstContainerVulnerabilityScanInfo,
+	}
+
 	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", &pod.Spec, &pod.ObjectMeta, &pod.TypeMeta).Return(expectedInfo, nil).Once()
 
 	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider())
 	// Act
 	resp := handler.Handle(context.Background(), *req)
 	// Test
+	suite.Equal(admission.Allowed(string(_patchedReason)).AdmissionResponse, resp.AdmissionResponse)
 	suite.Equal(metav1.StatusReason(_patchedReason), resp.Result.Reason)
+	suite.Equal(1, len(resp.Patches))
+	patch := resp.Patches[0]
+
+	suite.checkPatch(expected, patch)
+	suite.azdSecProviderMock.AssertExpectations(suite.T())
 }
 
 func (suite *TestSuite) Test_Handle_OneContainerZeroInitContainer_ShouldPatchedOne() {
@@ -168,10 +195,12 @@ func (suite *TestSuite) Test_Handle_OneContainerZeroInitContainer_ShouldPatchedO
 	resp := handler.Handle(context.Background(), *req)
 
 	// Test
+	suite.Equal(admission.Allowed(string(_patchedReason)).AdmissionResponse, resp.AdmissionResponse)
 	suite.Equal(1, len(resp.Patches))
 	patch := resp.Patches[0]
 
 	suite.checkPatch(expected, patch)
+	suite.azdSecProviderMock.AssertExpectations(suite.T())
 }
 
 func (suite *TestSuite) Test_Handle_TwoContainerZeroInitContainer_ShouldPatchedTwo() {
@@ -187,6 +216,7 @@ func (suite *TestSuite) Test_Handle_TwoContainerZeroInitContainer_ShouldPatchedT
 	// Act
 	resp := handler.Handle(context.Background(), *req)
 	// Test
+	suite.Equal(admission.Allowed(string(_patchedReason)).AdmissionResponse, resp.AdmissionResponse)
 	suite.Equal(1, len(resp.Patches))
 	patch := resp.Patches[0]
 
@@ -208,9 +238,11 @@ func (suite *TestSuite) Test_Handle_ZeroContainerOneInitContainer_ShouldPatchedO
 	resp := handler.Handle(context.Background(), *req)
 
 	//Test
+	suite.Equal(admission.Allowed(string(_patchedReason)).AdmissionResponse, resp.AdmissionResponse)
 	suite.Equal(1, len(resp.Patches))
 	patch := resp.Patches[0]
 	suite.checkPatch(expectedInfo, patch)
+	suite.azdSecProviderMock.AssertExpectations(suite.T())
 }
 
 func (suite *TestSuite) Test_Handle_ZeroContainerTwoInitContainer_ShouldPatchedTwo() {
@@ -228,9 +260,12 @@ func (suite *TestSuite) Test_Handle_ZeroContainerTwoInitContainer_ShouldPatchedT
 	resp := handler.Handle(context.Background(), *req)
 
 	//Test
+	suite.Equal(admission.Allowed(string(_patchedReason)).AdmissionResponse, resp.AdmissionResponse)
 	suite.Equal(1, len(resp.Patches))
 	patch := resp.Patches[0]
 	suite.checkPatch(expectedInfo, patch)
+	suite.azdSecProviderMock.AssertExpectations(suite.T())
+
 }
 
 func (suite *TestSuite) Test_Handle_OneContainerOneInitContainer_ShouldPatchedTwo() {
@@ -247,9 +282,11 @@ func (suite *TestSuite) Test_Handle_OneContainerOneInitContainer_ShouldPatchedTw
 	// Act
 	resp := handler.Handle(context.Background(), *req)
 	// Test
+	suite.Equal(admission.Allowed(string(_patchedReason)).AdmissionResponse, resp.AdmissionResponse)
 	suite.Equal(1, len(resp.Patches))
 	patch := resp.Patches[0]
 	suite.checkPatch(expectedInfo, patch)
+	suite.azdSecProviderMock.AssertExpectations(suite.T())
 }
 
 func (suite *TestSuite) checkPatch(expected []*contracts.ContainerVulnerabilityScanInfo, patch jsonpatch.JsonPatchOperation) {

@@ -32,7 +32,7 @@ write-host "Params that were entered:`r`nresource group : $resource_group `r`ncl
 $stepCount = 1
 Function PrinitNewSection($stepTitle)
 {
-    write-host "########################################## Step: $stepCount - $stepTitle ##########################################"
+    write-host "########################################## Step: $stepTitle ##########################################"
     $stepCount++
 }
 #######################################################################################################################
