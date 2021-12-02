@@ -10,6 +10,7 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric/util"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/utils"
 	"github.com/pkg/errors"
 	"strings"
 	"time"
@@ -50,9 +51,9 @@ type ARGDataProvider struct {
 
 // ARGDataProviderConfiguration is configuration data for ARGDataProvider
 type ARGDataProviderConfiguration struct {
-	// CacheExpirationTimeUnscannedResults is the expiration time **in minutes** for unscanned results in the cache client
+	// CacheExpirationTimeUnscannedResults is the expiration time **IN MINUTES** for unscanned results in the cache client
 	CacheExpirationTimeUnscannedResults int
-	// CacheExpirationTimeScannedResults is the expiration time **in hours** for scan results in the cache client
+	// CacheExpirationTimeScannedResults is the expiration time **IN HOURS** for scan results in the cache client
 	CacheExpirationTimeScannedResults int
 }
 
@@ -199,9 +200,9 @@ func (provider *ARGDataProvider) setScanFindingsInCache(scanFindings []*contract
 	}
 
 	scanFindingsString := string(scanFindingsBuffer)
-	expirationTime := provider.argDataProviderConfiguration.GetCacheExpirationTimeScannedResults()
+	expirationTime := utils.GetHours(provider.argDataProviderConfiguration.CacheExpirationTimeScannedResults)
 	if scanStatus == contracts.Unscanned{
-		expirationTime =  provider.argDataProviderConfiguration.GetCacheExpirationTimeUnscannedResults()
+		expirationTime =  utils.GetHours(provider.argDataProviderConfiguration.CacheExpirationTimeUnscannedResults)
 	}
 	err = provider.cacheClient.Set(digest, scanFindingsString, expirationTime)
 	if err != nil{
@@ -307,17 +308,5 @@ func (provider *ARGDataProvider) getImageScanDataFromARGQueryScanResult(scanResu
 	provider.metricSubmitter.SendMetric(len(scanFindings), argmetric.NewArgDataProviderResponseNumOfRecordsMetric())
 	provider.metricSubmitter.SendMetric(util.GetDurationMilliseconds(startTime), argmetric.NewArgDataProviderResponseLatencyMetricWithGetImageVulnerabilityScanResultsQuery(contracts.UnhealthyScan))
 	return contracts.UnhealthyScan, scanFindings, nil
-}
-
-// GetCacheExpirationTimeUnscannedResults uses ARGDataProviderConfiguration instance's CacheExpirationTimeUnscannedResults (int)
-// to a return a time.Duration object
-func (configuration *ARGDataProviderConfiguration) GetCacheExpirationTimeUnscannedResults() time.Duration {
-	return time.Duration(configuration.CacheExpirationTimeUnscannedResults) * time.Minute
-}
-
-// GetCacheExpirationTimeScannedResults uses ARGDataProviderConfiguration instance's CacheExpirationTimeScannedResults (int)
-// to a return a time.Duration object
-func (configuration *ARGDataProviderConfiguration) GetCacheExpirationTimeScannedResults() time.Duration {
-	return time.Duration(configuration.CacheExpirationTimeScannedResults) * time.Hour
 }
 

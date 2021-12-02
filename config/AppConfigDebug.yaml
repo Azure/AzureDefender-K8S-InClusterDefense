@@ -57,8 +57,6 @@ acr:
       retryDurationInMS: 10
 
   acrTokenProviderConfiguration:
-    # Expiration time in minutes of armToken in cache  (acr token is valid for 3 hours since the last command az acr login)
-    armTokenCacheExpirationTime: 10 # 10 minutes
     # Expiration time in minutes of registryRefreshToken in cache
     registryRefreshTokenCacheExpirationTime: 10 # 10 minutes
 
@@ -73,14 +71,14 @@ arg:
       retryDurationInMS: 100
 
   argDataProviderConfiguration:
-    # Expiration time in minutes of scan results in status unscanned in cache (redeploy will take at least a minute and scanning an image takes 4 minutes on average)
+    # Expiration time IN MINUTES of scan results in status unscanned in cache (redeploy will take at least a minute and scanning an image takes 4 minutes on average)
     cacheExpirationTimeUnscannedResults: 4 # 4 minute
-    # Expiration time in hours of scan results in status scanned in cache (need to sync with image-scan periodic scans - every 10 days)
+    # Expiration time IN HOURS of scan results in status scanned in cache (need to sync with image-scan periodic scans - every 10 days)
     cacheExpirationTimeScannedResults: 24 # 24 hours
 
 tag2digest:
   tag2DigestResolverConfiguration:
-    # Expiration time in minutes of digest in cache - changing image digest require editing source code, building image and pushing image. Longer than 2 minutes
+    # Expiration time IN MINUTES of digest in cache - changing image digest require editing source code, building image and pushing image. Longer than 2 minutes
     cacheExpirationTimeForResults: 2 # 2 minute
 
 # Cache configuration
@@ -110,7 +108,7 @@ azdSecInfoProvider:
     timeDurationInMS: 10000
 
   azdSecInfoProviderConfiguration:
-    # Expiration time in hours of timeout status in cache - 1 hour in order to avoid multiple timeouts
-    CacheExpirationTimeTimeout: 1 # 1 hour
-    # Expiration time in seconds of containerVulnerabilityScanInfo in cache - 30 seconds in order to handle replica set (multiply requests on the same pod)
+    # Expiration time IN MINUTES of timeout status in cache - 15 minutes in order to avoid multiple timeouts
+    CacheExpirationTimeTimeout: 15 # 15 minutes
+    # Expiration time IN SECONDS of containerVulnerabilityScanInfo in cache - 30 seconds in order to handle replica set (multiply requests on the same pod)
     CacheExpirationContainerVulnerabilityScanInfo: 30 # 30 seconds

@@ -10,6 +10,7 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/utils"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/tag2digest"
 	tag2DigestResolverMocks "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/tag2digest/mocks"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 	corev1 "k8s.io/api/core/v1"
@@ -34,7 +35,10 @@ var (
 	_imageTagTest2      = "2.0"
 	_imageOriginalTest1 = _imageRegistry + "/" + _imageRepo + ":" + _imageTagTest1
 	_imageOriginalTest2 = _imageRegistry + "/" + _imageRepo + ":" + _imageTagTest2
-	_containerVulnerabilityScanInfoForCacheKey = "ContainerVulnerabilityScanInfo" + _imageOriginalTest1
+	_containerVulnerabilityScanInfoForCacheKey = _containerVulnerabilityScanInfoPrefixForCacheKey + _imageOriginalTest1
+	_timeoutForCacheKey = _timeoutPrefixForCacheKey + _imageOriginalTest1
+
+	// Test1
 	_containers = []corev1.Container{
 		{
 			Name:  "containerTest1",
@@ -62,9 +66,26 @@ var (
 		ScanStatus: _scanStatus,
 		ScanFindings: _scanFindings,
 	}
-	_expectedResults = []*contracts.ContainerVulnerabilityScanInfo{_containerVulnerabilityScanInfo}
-	_expectedResultsString = "{\"ContainerVulnerabilityScanInfo\":[{\"name\":\"containerTest1\",\"image\":{\"name\":\"playground.azurecr.io\\/testrepo:1.0\",\"digest\":\"sha256:9f9ed5fe24766b31bcb64aabba73e96cc5b7c2da578f9cd2fca20846cf5d7557\"},\"scanStatus\":\"unhealthyScan\",\"scanFindings\":[{\"patchable\":true,\"id\":\"1\",\"severity\":\"High\"}]}],\"Err\":null}"
+	_expectedResultsTest1             = []*contracts.ContainerVulnerabilityScanInfo{_containerVulnerabilityScanInfo}
+	_expectedResultsStringTestScanned = "{\"ContainerVulnerabilityScanInfo\":[{\"name\":\"containerTest1\",\"image\":{\"name\":\"playground.azurecr.io/testrepo:1.0\",\"digest\":\"sha256:9f9ed5fe24766b31bcb64aabba73e96cc5b7c2da578f9cd2fca20846cf5d7557\"},\"scanStatus\":\"unhealthyScan\",\"scanFindings\":[{\"patchable\":true,\"id\":\"1\",\"severity\":\"High\"}]}],\"Err\":null}"
+	_expectedResultsStringTestUnscanned            = "{\"ContainerVulnerabilityScanInfo\":[{\"name\":\"containerTest1\",\"image\":{\"name\":\"playground.azurecr.io/testrepo:1.0\",\"digest\":\"sha256:9f9ed5fe24766b31bcb64aabba73e96cc5b7c2da578f9cd2fca20846cf5d7557\"},\"scanStatus\":\"unscanned\",\"scanFindings\":null}],\"Err\":null}"
 
+	// Test2
+
+	info = &contracts.ContainerVulnerabilityScanInfo{
+		Name: "",
+		Image: &contracts.Image{
+			Name:   "",
+			Digest: "",
+		},
+		ScanStatus:   contracts.Unscanned,
+		ScanFindings: nil,
+		AdditionalData: map[string]string{
+			contracts.UnscannedReasonAnnotationKey: string(contracts.GetContainersVulnerabilityScanInfoTimeoutUnscannedReason),
+		},
+	}
+
+	_expectedResultsTest2 = []*contracts.ContainerVulnerabilityScanInfo{info}
 )
 
 type AzdSecInfoProviderTestSuite struct {
@@ -85,8 +106,9 @@ func (suite *AzdSecInfoProviderTestSuite) SetupTest() {
 }
 
 func (suite *AzdSecInfoProviderTestSuite) Test_getContainersVulnerabilityScanInfo_NoResultsInCache_ScannedResults() {
-	suite.cacheClientMock.On("Get", mock.Anything).Return("", new(cache.MissingKeyCacheError))
-	suite.cacheClientMock.On("Set", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	suite.cacheClientMock.On("Get", _containerVulnerabilityScanInfoForCacheKey).Return("", new(cache.MissingKeyCacheError))
+	suite.cacheClientMock.On("Get", _timeoutForCacheKey).Return("", new(cache.MissingKeyCacheError))
+	suite.cacheClientMock.On("Set", _containerVulnerabilityScanInfoForCacheKey, _expectedResultsStringTestScanned, mock.Anything).Return(nil)
 	containers := []corev1.Container{_containers[0]}
 	pod := createPodForTests(containers, nil)
 	suite.tag2DigestResolverMock.On("Resolve", _imageRedTest1, _resourceCtxTest1).Return(_digestTest1, nil).Once()
@@ -95,13 +117,15 @@ func (suite *AzdSecInfoProviderTestSuite) Test_getContainersVulnerabilityScanInf
 	// Act
 	res, _ := suite.azdSecInfoProvider.GetContainersVulnerabilityScanInfo(&pod.Spec, &pod.ObjectMeta, &pod.TypeMeta)
 	// Test
-	suite.Equal(res, _expectedResults)
+	suite.Equal(res, _expectedResultsTest1)
 	suite.AssertExpectation()
 }
 
 func (suite *AzdSecInfoProviderTestSuite) Test_getContainersVulnerabilityScanInfo_NoResultsInCache_UnscannedResults() {
-	suite.cacheClientMock.On("Get", mock.Anything).Return("", new(cache.MissingKeyCacheError))
-	suite.cacheClientMock.On("Set", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	suite.cacheClientMock.On("Get", _containerVulnerabilityScanInfoForCacheKey).Return("", new(cache.MissingKeyCacheError))
+	suite.cacheClientMock.On("Get", _timeoutForCacheKey).Return("", new(cache.MissingKeyCacheError))
+	suite.cacheClientMock.On("Set", _containerVulnerabilityScanInfoForCacheKey, _expectedResultsStringTestUnscanned, mock.Anything).Return(nil)
+
 	containers := []corev1.Container{_containers[0]}
 	pod := createPodForTests(containers, nil)
 	suite.tag2DigestResolverMock.On("Resolve", _imageRedTest1, _resourceCtxTest1).Return(_digestTest1, nil).Once()
@@ -115,15 +139,166 @@ func (suite *AzdSecInfoProviderTestSuite) Test_getContainersVulnerabilityScanInf
 }
 
 func (suite *AzdSecInfoProviderTestSuite) Test_getContainersVulnerabilityScanInfo_ResultsInCache_ScannedResults() {
-	suite.cacheClientMock.On("Get", _containerVulnerabilityScanInfoForCacheKey).Return(_expectedResultsString, nil)
-	suite.cacheClientMock.On("Set", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	suite.cacheClientMock.On("Get", _containerVulnerabilityScanInfoForCacheKey).Return(_expectedResultsStringTestScanned, nil)
+	suite.cacheClientMock.On("Get", _timeoutForCacheKey).Return("", new(cache.MissingKeyCacheError))
+	suite.cacheClientMock.On("Set", _containerVulnerabilityScanInfoForCacheKey, _expectedResultsStringTestScanned, mock.Anything).Return(nil)
 	containers := []corev1.Container{_containers[0]}
 	pod := createPodForTests(containers, nil)
 
 	// Act
 	res, _ := suite.azdSecInfoProvider.GetContainersVulnerabilityScanInfo(&pod.Spec, &pod.ObjectMeta, &pod.TypeMeta)
 	// Test
-	suite.Equal(res, _expectedResults)
+	suite.Equal(res, _expectedResultsTest1)
+	suite.AssertExpectation()
+}
+
+func (suite *AzdSecInfoProviderTestSuite) Test_getContainersVulnerabilityScanInfo_NoResultsInCache_ScannedResults_NoTimeOut() {
+	suite.cacheClientMock.On("Get", _containerVulnerabilityScanInfoForCacheKey).Return("", new(cache.MissingKeyCacheError))
+	suite.cacheClientMock.On("Get", _timeoutForCacheKey).Return(noTimeOutEncountered, nil)
+	suite.cacheClientMock.On("Set", _containerVulnerabilityScanInfoForCacheKey, _expectedResultsStringTestScanned, mock.Anything).Return(nil)
+
+	containers := []corev1.Container{_containers[0]}
+	pod := createPodForTests(containers, nil)
+	suite.tag2DigestResolverMock.On("Resolve", _imageRedTest1, _resourceCtxTest1).Return(_digestTest1, nil).Once()
+	suite.argDataProviderMock.On("GetImageVulnerabilityScanResults", _imageRedTest1.Registry(), _imageRedTest1.Repository(), _digestTest1).Once().Return(_scanStatus, _scanFindings, nil)
+
+	// Act
+	res, _ := suite.azdSecInfoProvider.GetContainersVulnerabilityScanInfo(&pod.Spec, &pod.ObjectMeta, &pod.TypeMeta)
+	// Test
+	suite.Equal(res, _expectedResultsTest1)
+	suite.AssertExpectation()
+}
+
+func (suite *AzdSecInfoProviderTestSuite) Test_getContainersVulnerabilityScanInfo_NoResultsInCache_ScannedResults_NoTimeOut_ErrorFromCache() {
+	suite.cacheClientMock.On("Get", _containerVulnerabilityScanInfoForCacheKey).Return("", errors.New(""))
+	suite.cacheClientMock.On("Get", _timeoutForCacheKey).Return(noTimeOutEncountered, nil)
+	suite.cacheClientMock.On("Set", _containerVulnerabilityScanInfoForCacheKey, _expectedResultsStringTestScanned, mock.Anything).Return(nil)
+
+	containers := []corev1.Container{_containers[0]}
+	pod := createPodForTests(containers, nil)
+	suite.tag2DigestResolverMock.On("Resolve", _imageRedTest1, _resourceCtxTest1).Return(_digestTest1, nil).Once()
+	suite.argDataProviderMock.On("GetImageVulnerabilityScanResults", _imageRedTest1.Registry(), _imageRedTest1.Repository(), _digestTest1).Once().Return(_scanStatus, _scanFindings, nil)
+
+	// Act
+	res, _ := suite.azdSecInfoProvider.GetContainersVulnerabilityScanInfo(&pod.Spec, &pod.ObjectMeta, &pod.TypeMeta)
+	// Test
+	suite.Equal(res, _expectedResultsTest1)
+	suite.AssertExpectation()
+}
+
+func (suite *AzdSecInfoProviderTestSuite) Test_getContainersVulnerabilityScanInfo_NoResultsInCache_ScannedResults_OneTimeOut() {
+	suite.cacheClientMock.On("Get", _containerVulnerabilityScanInfoForCacheKey).Return("", new(cache.MissingKeyCacheError))
+	suite.cacheClientMock.On("Get", _timeoutForCacheKey).Return(oneTimeOutEncountered, nil)
+	suite.cacheClientMock.On("Set", _containerVulnerabilityScanInfoForCacheKey, _expectedResultsStringTestScanned, mock.Anything).Return(nil)
+	suite.cacheClientMock.On("Set", _timeoutForCacheKey, noTimeOutEncountered, mock.Anything).Return(nil)
+
+	containers := []corev1.Container{_containers[0]}
+	pod := createPodForTests(containers, nil)
+	suite.tag2DigestResolverMock.On("Resolve", _imageRedTest1, _resourceCtxTest1).Return(_digestTest1, nil).Once()
+	suite.argDataProviderMock.On("GetImageVulnerabilityScanResults", _imageRedTest1.Registry(), _imageRedTest1.Repository(), _digestTest1).Once().Return(_scanStatus, _scanFindings, nil)
+
+	// Act
+	res, _ := suite.azdSecInfoProvider.GetContainersVulnerabilityScanInfo(&pod.Spec, &pod.ObjectMeta, &pod.TypeMeta)
+	// Test
+	suite.Equal(res, _expectedResultsTest1)
+	suite.AssertExpectation()
+}
+
+func (suite *AzdSecInfoProviderTestSuite) Test_getContainersVulnerabilityScanInfo_NoResultsInCache_ScannedResults_TwoTimeOut() {
+	suite.cacheClientMock.On("Get", _containerVulnerabilityScanInfoForCacheKey).Return("", new(cache.MissingKeyCacheError))
+	suite.cacheClientMock.On("Get", _timeoutForCacheKey).Return(twoTimeOutEncountered, nil)
+	suite.cacheClientMock.On("Set", _containerVulnerabilityScanInfoForCacheKey, _expectedResultsStringTestScanned, mock.Anything).Return(nil)
+	suite.cacheClientMock.On("Set", _timeoutForCacheKey, noTimeOutEncountered, mock.Anything).Return(nil)
+
+	containers := []corev1.Container{_containers[0]}
+	pod := createPodForTests(containers, nil)
+	suite.tag2DigestResolverMock.On("Resolve", _imageRedTest1, _resourceCtxTest1).Return(_digestTest1, nil).Once()
+	suite.argDataProviderMock.On("GetImageVulnerabilityScanResults", _imageRedTest1.Registry(), _imageRedTest1.Repository(), _digestTest1).Once().Return(_scanStatus, _scanFindings, nil)
+
+	// Act
+	res, _ := suite.azdSecInfoProvider.GetContainersVulnerabilityScanInfo(&pod.Spec, &pod.ObjectMeta, &pod.TypeMeta)
+	// Test
+	suite.Equal(res, _expectedResultsTest1)
+	suite.AssertExpectation()
+}
+
+func (suite *AzdSecInfoProviderTestSuite) Test_getContainersVulnerabilityScanInfo_EncounteredTimeout_FirstTimeout() {
+	suite.cacheClientMock.On("Get", _containerVulnerabilityScanInfoForCacheKey).Return("", new(cache.MissingKeyCacheError))
+	suite.cacheClientMock.On("Get", _timeoutForCacheKey).Return("", new(cache.MissingKeyCacheError))
+	suite.cacheClientMock.On("Set", _containerVulnerabilityScanInfoForCacheKey, _expectedResultsStringTestScanned, mock.Anything).Return(nil)
+	suite.cacheClientMock.On("Set", _timeoutForCacheKey, oneTimeOutEncountered, mock.Anything).Return(nil)
+
+	containers := []corev1.Container{_containers[0]}
+	pod := createPodForTests(containers, nil)
+	suite.tag2DigestResolverMock.On("Resolve", _imageRedTest1, _resourceCtxTest1).Return(_digestTest1, nil).Once()
+	suite.argDataProviderMock.On("GetImageVulnerabilityScanResults", _imageRedTest1.Registry(), _imageRedTest1.Repository(), _digestTest1).Once().Return(_scanStatus, _scanFindings, nil).Run(func(args mock.Arguments) {
+		time.Sleep(_defaultTimeDurationGetContainersVulnerabilityScanInfo * time.Second)
+	})
+
+	// Act
+	res, _ := suite.azdSecInfoProvider.GetContainersVulnerabilityScanInfo(&pod.Spec, &pod.ObjectMeta, &pod.TypeMeta)
+	// Test
+	suite.Equal(res, _expectedResultsTest2)
+	suite.AssertExpectation()
+}
+
+func (suite *AzdSecInfoProviderTestSuite) Test_getContainersVulnerabilityScanInfo_EncounteredTimeout_SecondTimeout() {
+	suite.cacheClientMock.On("Get", _containerVulnerabilityScanInfoForCacheKey).Return("", new(cache.MissingKeyCacheError))
+	suite.cacheClientMock.On("Get", _timeoutForCacheKey).Return(oneTimeOutEncountered, nil)
+	suite.cacheClientMock.On("Set", _containerVulnerabilityScanInfoForCacheKey, _expectedResultsStringTestScanned, mock.Anything).Return(nil)
+	suite.cacheClientMock.On("Set", _timeoutForCacheKey, twoTimeOutEncountered, mock.Anything).Return(nil)
+
+	containers := []corev1.Container{_containers[0]}
+	pod := createPodForTests(containers, nil)
+	suite.tag2DigestResolverMock.On("Resolve", _imageRedTest1, _resourceCtxTest1).Return(_digestTest1, nil).Once()
+	suite.argDataProviderMock.On("GetImageVulnerabilityScanResults", _imageRedTest1.Registry(), _imageRedTest1.Repository(), _digestTest1).Once().Return(_scanStatus, _scanFindings, nil).Run(func(args mock.Arguments) {
+		time.Sleep(_defaultTimeDurationGetContainersVulnerabilityScanInfo * time.Second)
+	})
+
+	// Act
+	res, _ := suite.azdSecInfoProvider.GetContainersVulnerabilityScanInfo(&pod.Spec, &pod.ObjectMeta, &pod.TypeMeta)
+	// Test
+	suite.Equal(res, _expectedResultsTest2)
+	suite.AssertExpectation()
+}
+
+func (suite *AzdSecInfoProviderTestSuite) Test_getContainersVulnerabilityScanInfo_EncounteredTimeout_ThirdTimeout() {
+	suite.cacheClientMock.On("Get", _containerVulnerabilityScanInfoForCacheKey).Return("", new(cache.MissingKeyCacheError))
+	suite.cacheClientMock.On("Get", _timeoutForCacheKey).Return(twoTimeOutEncountered, nil)
+	suite.cacheClientMock.On("Set", _containerVulnerabilityScanInfoForCacheKey, _expectedResultsStringTestScanned, mock.Anything).Return(nil)
+
+	containers := []corev1.Container{_containers[0]}
+	pod := createPodForTests(containers, nil)
+	suite.tag2DigestResolverMock.On("Resolve", _imageRedTest1, _resourceCtxTest1).Return(_digestTest1, nil).Once()
+	suite.argDataProviderMock.On("GetImageVulnerabilityScanResults", _imageRedTest1.Registry(), _imageRedTest1.Repository(), _digestTest1).Once().Return(_scanStatus, _scanFindings, nil).Run(func(args mock.Arguments) {
+		time.Sleep(_defaultTimeDurationGetContainersVulnerabilityScanInfo * time.Second)
+	})
+
+	// Act
+	res, err := suite.azdSecInfoProvider.GetContainersVulnerabilityScanInfo(&pod.Spec, &pod.ObjectMeta, &pod.TypeMeta)
+	// Test
+	suite.Nil(res)
+	suite.NotNil(err)
+	suite.AssertExpectation()
+}
+
+func (suite *AzdSecInfoProviderTestSuite) Test_getContainersVulnerabilityScanInfo_EncounteredTimeout_ErrorFromCache() {
+	suite.cacheClientMock.On("Get", _containerVulnerabilityScanInfoForCacheKey).Return("", new(cache.MissingKeyCacheError))
+	suite.cacheClientMock.On("Get", _timeoutForCacheKey).Return("", errors.New(""))
+	suite.cacheClientMock.On("Set", _containerVulnerabilityScanInfoForCacheKey, _expectedResultsStringTestScanned, mock.Anything).Return(nil)
+
+	containers := []corev1.Container{_containers[0]}
+	pod := createPodForTests(containers, nil)
+	suite.tag2DigestResolverMock.On("Resolve", _imageRedTest1, _resourceCtxTest1).Return(_digestTest1, nil).Once()
+	suite.argDataProviderMock.On("GetImageVulnerabilityScanResults", _imageRedTest1.Registry(), _imageRedTest1.Repository(), _digestTest1).Once().Return(_scanStatus, _scanFindings, nil).Run(func(args mock.Arguments) {
+		time.Sleep(_defaultTimeDurationGetContainersVulnerabilityScanInfo * time.Second)
+	})
+
+	// Act
+	res, err := suite.azdSecInfoProvider.GetContainersVulnerabilityScanInfo(&pod.Spec, &pod.ObjectMeta, &pod.TypeMeta)
+	// Test
+	suite.Nil(res)
+	suite.NotNil(err)
 	suite.AssertExpectation()
 }
 

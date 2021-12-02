@@ -10,7 +10,6 @@ import (
 	registryutils "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/utils"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/utils"
 	"github.com/pkg/errors"
-	"time"
 )
 
 // ITag2DigestResolver responsible to resolve resource's image to it's digest
@@ -22,12 +21,6 @@ type ITag2DigestResolver interface {
 // Tag2DigestResolver implements ITag2DigestResolver interface
 var _ ITag2DigestResolver = (*Tag2DigestResolver)(nil)
 
-const (
-	// _gotResultsFromCache is a flag representing that the results are from cache
-	_gotResultsFromCache = true
-	// _didntGetResultsFromCache is a flag representing that the results aren't from cache
-	_didntGetResultsFromCache = false
-)
 
 // Tag2DigestResolver represents basic implementation of ITag2DigestResolver interface
 type Tag2DigestResolver struct {
@@ -45,7 +38,7 @@ type Tag2DigestResolver struct {
 
 // Tag2DigestResolverConfiguration is configuration data for Tag2DigestResolver
 type Tag2DigestResolverConfiguration struct {
-	// cacheExpirationTime is the expiration time **in minutes** for digests in the cache client
+	// cacheExpirationTime is the expiration time **IN MINUTES** for digests in the cache client
 	CacheExpirationTimeForResults int
 }
 
@@ -89,7 +82,7 @@ func (resolver *Tag2DigestResolver) Resolve(imageReference registry.IImageRefere
 	}
 
 	// Save digest in cache
-	err = resolver.cacheClient.Set(imageReference.Original(), digest, resolver.tag2DigestResolverConfiguration.GetCacheExpirationTimeForResults())
+	err = resolver.cacheClient.Set(imageReference.Original(), digest, utils.GetMinutes(resolver.tag2DigestResolverConfiguration.CacheExpirationTimeForResults))
 	if err != nil{
 		err = errors.Wrap(err, "Tag2DigestResolver.Resolve: Failed to set digest in cache")
 		tracer.Error(err, "")
@@ -222,10 +215,4 @@ func (resolver *Tag2DigestResolver) shouldContinueOnError(err error) bool {
 	default:
 		return true
 	}
-}
-
-// GetCacheExpirationTimeForResults uses Tag2DigestResolverConfiguration instance's CacheExpirationTimeForResults (int)
-// to a return a time.Duration object
-func (configuration *Tag2DigestResolverConfiguration) GetCacheExpirationTimeForResults() time.Duration {
-	return time.Duration(configuration.CacheExpirationTimeForResults) * time.Minute
 }
