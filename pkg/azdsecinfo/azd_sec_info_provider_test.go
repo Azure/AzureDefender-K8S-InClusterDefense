@@ -67,8 +67,8 @@ var (
 		ScanFindings: _scanFindings,
 	}
 	_expectedResultsTest1             = []*contracts.ContainerVulnerabilityScanInfo{_containerVulnerabilityScanInfo}
-	_expectedResultsStringTestScanned = "{\"ContainerVulnerabilityScanInfo\":[{\"name\":\"containerTest1\",\"image\":{\"name\":\"playground.azurecr.io/testrepo:1.0\",\"digest\":\"sha256:9f9ed5fe24766b31bcb64aabba73e96cc5b7c2da578f9cd2fca20846cf5d7557\"},\"scanStatus\":\"unhealthyScan\",\"scanFindings\":[{\"patchable\":true,\"id\":\"1\",\"severity\":\"High\"}]}],\"Err\":null}"
-	_expectedResultsStringTestUnscanned            = "{\"ContainerVulnerabilityScanInfo\":[{\"name\":\"containerTest1\",\"image\":{\"name\":\"playground.azurecr.io/testrepo:1.0\",\"digest\":\"sha256:9f9ed5fe24766b31bcb64aabba73e96cc5b7c2da578f9cd2fca20846cf5d7557\"},\"scanStatus\":\"unscanned\",\"scanFindings\":null}],\"Err\":null}"
+	_expectedResultsStringTestScanned = "{\"containerVulnerabilityScanInfo\":[{\"name\":\"containerTest1\",\"image\":{\"name\":\"playground.azurecr.io/testrepo:1.0\",\"digest\":\"sha256:9f9ed5fe24766b31bcb64aabba73e96cc5b7c2da578f9cd2fca20846cf5d7557\"},\"scanStatus\":\"unhealthyScan\",\"scanFindings\":[{\"patchable\":true,\"id\":\"1\",\"severity\":\"High\"}]}],\"err\":null}"
+	_expectedResultsStringTestUnscanned            = "{\"containerVulnerabilityScanInfo\":[{\"name\":\"containerTest1\",\"image\":{\"name\":\"playground.azurecr.io/testrepo:1.0\",\"digest\":\"sha256:9f9ed5fe24766b31bcb64aabba73e96cc5b7c2da578f9cd2fca20846cf5d7557\"},\"scanStatus\":\"unscanned\",\"scanFindings\":null}],\"err\":null}"
 
 	// Test2
 
@@ -140,8 +140,6 @@ func (suite *AzdSecInfoProviderTestSuite) Test_getContainersVulnerabilityScanInf
 
 func (suite *AzdSecInfoProviderTestSuite) Test_getContainersVulnerabilityScanInfo_ResultsInCache_ScannedResults() {
 	suite.cacheClientMock.On("Get", _containerVulnerabilityScanInfoForCacheKey).Return(_expectedResultsStringTestScanned, nil)
-	suite.cacheClientMock.On("Get", _timeoutForCacheKey).Return("", new(cache.MissingKeyCacheError))
-	suite.cacheClientMock.On("Set", _containerVulnerabilityScanInfoForCacheKey, _expectedResultsStringTestScanned, mock.Anything).Return(nil)
 	containers := []corev1.Container{_containers[0]}
 	pod := createPodForTests(containers, nil)
 
@@ -206,7 +204,7 @@ func (suite *AzdSecInfoProviderTestSuite) Test_getContainersVulnerabilityScanInf
 
 func (suite *AzdSecInfoProviderTestSuite) Test_getContainersVulnerabilityScanInfo_NoResultsInCache_ScannedResults_TwoTimeOut() {
 	suite.cacheClientMock.On("Get", _containerVulnerabilityScanInfoForCacheKey).Return("", new(cache.MissingKeyCacheError))
-	suite.cacheClientMock.On("Get", _timeoutForCacheKey).Return(twoTimeOutEncountered, nil)
+	suite.cacheClientMock.On("Get", _timeoutForCacheKey).Return(twoTimesOutEncountered, nil)
 	suite.cacheClientMock.On("Set", _containerVulnerabilityScanInfoForCacheKey, _expectedResultsStringTestScanned, mock.Anything).Return(nil)
 	suite.cacheClientMock.On("Set", _timeoutForCacheKey, noTimeOutEncountered, mock.Anything).Return(nil)
 
@@ -246,7 +244,7 @@ func (suite *AzdSecInfoProviderTestSuite) Test_getContainersVulnerabilityScanInf
 	suite.cacheClientMock.On("Get", _containerVulnerabilityScanInfoForCacheKey).Return("", new(cache.MissingKeyCacheError))
 	suite.cacheClientMock.On("Get", _timeoutForCacheKey).Return(oneTimeOutEncountered, nil)
 	suite.cacheClientMock.On("Set", _containerVulnerabilityScanInfoForCacheKey, _expectedResultsStringTestScanned, mock.Anything).Return(nil)
-	suite.cacheClientMock.On("Set", _timeoutForCacheKey, twoTimeOutEncountered, mock.Anything).Return(nil)
+	suite.cacheClientMock.On("Set", _timeoutForCacheKey, twoTimesOutEncountered, mock.Anything).Return(nil)
 
 	containers := []corev1.Container{_containers[0]}
 	pod := createPodForTests(containers, nil)
@@ -264,7 +262,7 @@ func (suite *AzdSecInfoProviderTestSuite) Test_getContainersVulnerabilityScanInf
 
 func (suite *AzdSecInfoProviderTestSuite) Test_getContainersVulnerabilityScanInfo_EncounteredTimeout_ThirdTimeout() {
 	suite.cacheClientMock.On("Get", _containerVulnerabilityScanInfoForCacheKey).Return("", new(cache.MissingKeyCacheError))
-	suite.cacheClientMock.On("Get", _timeoutForCacheKey).Return(twoTimeOutEncountered, nil)
+	suite.cacheClientMock.On("Get", _timeoutForCacheKey).Return(twoTimesOutEncountered, nil)
 	suite.cacheClientMock.On("Set", _containerVulnerabilityScanInfoForCacheKey, _expectedResultsStringTestScanned, mock.Anything).Return(nil)
 
 	containers := []corev1.Container{_containers[0]}

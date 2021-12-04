@@ -20,10 +20,6 @@ import (
 const (
 	// Default time duration for GetContainersVulnerabilityScanInfo IN MILLISECONDS
 	_defaultTimeDurationGetContainersVulnerabilityScanInfo = 2850 * time.Millisecond // 2.85 seconds - can't multiply float in seconds
-	// _timeoutPrefixForCacheKey is a prefix for PodSpecCacheKey for timeout keys. The prefix is used to separate timeout keys with containerVulnerabilityScanInfo keys
-	_timeoutPrefixForCacheKey = "timeout"
-	// _containerVulnerabilityScanInfoPrefixForCacheKey is a prefix for PodSpecCacheKey for containerVulnerabilityScanInfo keys. The prefix is used to separate timeout keys with containerVulnerabilityScanInfo keys
-	_containerVulnerabilityScanInfoPrefixForCacheKey = "ContainerVulnerabilityScanInfo"
 )
 
 // IAzdSecInfoProvider represents interface for providing azure defender security information
@@ -62,21 +58,13 @@ type AzdSecInfoProviderConfiguration struct {
 	CacheExpirationContainerVulnerabilityScanInfo int
 }
 
-// ContainerVulnerabilityScanInfoWrapper is a wrapper for ContainerVulnerabilityScanInfo
-// It holds both data and error.
-type ContainerVulnerabilityScanInfoWrapper struct {
-	// ContainerVulnerabilityScanInfo array of ContainerVulnerabilityScanInfo
-	ContainerVulnerabilityScanInfo []*contracts.ContainerVulnerabilityScanInfo
-	// err is an error occurred while getting ContainerVulnerabilityScanInfo
-	Err                            error
-}
 
 // The status of timeout during the run
 const (
 	noTimeOutEncountered  = "noTimeOut"
-	oneTimeOutEncountered = "firstTimeOut"
-	twoTimeOutEncountered =  "secondTimeOut"
-	unknownTimeOutStatus = "unknown"
+	oneTimeOutEncountered  = "firstTimeOut"
+	twoTimesOutEncountered =  "secondTimeOut"
+	unknownTimeOutStatus   = "unknown"
 )
 
 // NewAzdSecInfoProvider - AzdSecInfoProvider Ctor
@@ -126,8 +114,15 @@ func (provider *AzdSecInfoProvider) GetContainersVulnerabilityScanInfo(podSpec *
 	podSpecCacheKey := provider.cacheClient.getPodSpecCacheKey(podSpec)
 
 	// Try to get ContainersVulnerabilityScanInfo from cache
+	// If error is not nil - There are two options: 1. missing key 2. functionality error from cache. In both cases continue to fetch results from provider.
+	// If error is nil - There are results from cache. Two options for the results from cache:
+	// 1. The result is an error occurred in previous run. Return the error occurred
+	// 2. The result is ContainerVulnerabilityScanInfo  -  no errors occurred in previous run. Return the results
 	ContainersVulnerabilityScanInfoWrapperFromCache, err := provider.cacheClient.getContainerVulnerabilityScanInfofromCache(podSpecCacheKey)
-	if err == nil{ // No error means that there are results from cache
+	if err != nil{ // failed to get results from cache - skip and get results from providers
+		err = errors.Wrap(err, "Couldn't get ContainersVulnerabilityScanInfo from cache")
+		tracer.Error(err, "")
+	}else { // No error means that there are results from cache
 		ErrorStoredInCacheFromPreviousRuns :=  ContainersVulnerabilityScanInfoWrapperFromCache.Err
 		// If an error was stored in cache (error from previous results) return the error in order to avoid multiple failed requests
 		if ErrorStoredInCacheFromPreviousRuns != nil{
@@ -138,8 +133,7 @@ func (provider *AzdSecInfoProvider) GetContainersVulnerabilityScanInfo(podSpec *
 		// Results are valid - return the results
 		tracer.Info("Got ContainersVulnerabilityScanInfo from cache successfully")
 		return ContainersVulnerabilityScanInfoWrapperFromCache.ContainerVulnerabilityScanInfo, nil
-	} // failed to get results from cache - skip and get results from providers
-	tracer.Info("No ContainersVulnerabilityScanInfo as value in cache")
+	}
 
 	// Try to get containers vulnerabilities in diff thread.
 	chanTimeout := make(chan *utils.ChannelDataWrapper, 1)
@@ -163,7 +157,11 @@ func (provider *AzdSecInfoProvider) getContainersVulnerabilityScanInfoSyncWrappe
 
 	// Set both ContainersVulnerabilityScanInfo and err in cache
 	// Set results in cache here and not in the upper function in order to set results in cache even if timeout has occurred.
-	provider.cacheClient.setContainerVulnerabilityScanInfoInCache(podSpecCacheKey, containerVulnerabilityScanInfo, err)
+	errFromCache := provider.cacheClient.setContainerVulnerabilityScanInfoInCache(podSpecCacheKey, containerVulnerabilityScanInfo, err)
+	if errFromCache != nil{
+		errFromCache := errors.Wrap(errFromCache, "Failed to set containerVulnerabilityScanInfo in cache")
+		tracer.Error(errFromCache, "")
+	}
 
 	// Send results to the channel
 	channelData := utils.NewChannelDataWrapper(containerVulnerabilityScanInfo, err)
@@ -426,7 +424,7 @@ func (provider *AzdSecInfoProvider) timeoutEncounteredGetContainersVulnerability
 	}
 
 	// In case that this is the third time encountered timeout (already encountered twice).
-	if timeoutStatus == twoTimeOutEncountered {
+	if timeoutStatus == twoTimesOutEncountered {
 		err = errors.Wrap(utils.TimeOutError, "Third time that timeout was encountered.")
 		tracer.Error(err, "")
 		return nil, err
@@ -464,7 +462,11 @@ func (provider *AzdSecInfoProvider) noTimeoutEncounteredGetContainersVulnerabili
 
 	// Success path:
 	// Update cache to no timeout encountered for this pod
-	provider.cacheClient.resetTimeOutInCacheAfterGettingScanResults(podSpecCacheKey)
+	err = provider.cacheClient.resetTimeOutInCacheAfterGettingScanResults(podSpecCacheKey)
+	if err != nil {
+		err = errors.Wrap(err, "failed resetTimeOutInCacheAfterGettingScanResults")
+		tracer.Error(err, "")
+	}
 	close(chanTimeout)
 	tracer.Info("GetContainersVulnerabilityScanInfo finished extract []*contracts.ContainerVulnerabilityScanInfo.", "podSpec", podSpec, "ContainerVulnerabilityScanInfo", containerVulnerabilityScanInfo)
 	return containerVulnerabilityScanInfo, nil

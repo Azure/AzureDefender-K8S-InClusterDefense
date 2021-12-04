@@ -68,7 +68,10 @@ func (resolver *Tag2DigestResolver) Resolve(imageReference registry.IImageRefere
 
 	// Try to get digest from cache
 	digest, err := resolver.getDigestFromCache(imageReference)
-	if err == nil{ // Key exist in cache
+	if err != nil{ // Couldn't get digest from cache - skip and get results from provider
+		err = errors.Wrap(err, "Couldn't get digest from cache")
+		tracer.Error(err, "")
+	}else { // Key exist in cache
 		tracer.Info("got digest from cache")
 		return digest, nil
 	}
@@ -103,6 +106,11 @@ func (resolver *Tag2DigestResolver) getDigestFromCache(imageReference registry.I
 	digestFromCache, err := resolver.cacheClient.Get(imageReference.Original())
 	// If key dont exist in cache
 	if err != nil {
+		_, isKeyNotFound := err.(*cache.MissingKeyCacheError)
+		if isKeyNotFound{
+			tracer.Info("image as key is not in cache", "image", imageReference.Original())
+			return "", err
+		}
 		err = errors.Wrap(err, "Digest as value don't exist in cache or there is an error in cache functionality")
 		tracer.Error(err, "")
 		return  "", err

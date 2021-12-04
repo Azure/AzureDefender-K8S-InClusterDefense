@@ -64,11 +64,13 @@ func (tokenProvider *ACRTokenProvider) GetACRRefreshToken(registry string) (stri
 
 	registryRefreshToken, err := tokenProvider.cacheClient.Get(registry)
 	// Error as a result of key doesn't exist and error from the cache are treated the same (skip cache)
-	if err == nil { // If key exist - return token
+	if err != nil { // Couldn't get token from cache - skip and get results from provider
+		err = errors.Wrap(err, "Couldn't get registryRefreshToken from cache")
+		tracer.Error(err, "")
+	}else { // If key exist - return token
 		tracer.Info("registryRefreshToken exist in cache", "registry", registry)
 		return registryRefreshToken, nil
 	}
-	tracer.Info("registryRefreshToken don't exist in cache", "registry", registry)
 
 	// Otherwise, get azure token
 	armToken, err := tokenProvider.azureBearerAuthorizerTokenProvider.GetOAuthToken(context.Background())
