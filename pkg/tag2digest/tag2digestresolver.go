@@ -48,7 +48,7 @@ func NewTag2DigestResolver(instrumentationProvider instrumentation.IInstrumentat
 		tracerProvider:  instrumentationProvider.GetTracerProvider("Tag2DigestResolver"),
 		metricSubmitter: instrumentationProvider.GetMetricSubmitter(),
 		registryClient:  registryClient,
-		cacheClient: cache.NewSafeCacheClient(cacheClient),
+		cacheClient: cacheClient,
 		tag2DigestResolverConfiguration: tag2DigestResolverConfiguration,
 	}
 }

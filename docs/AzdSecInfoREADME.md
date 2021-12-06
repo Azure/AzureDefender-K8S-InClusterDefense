@@ -2,7 +2,7 @@
 
 ##Background
 
-- Due to the Kubernetes API server time frame, each mutation webhook should return its response in 3 seconds, otherwise the API server will continue without the webhook response.
+- Due to the Kubernetes API server time frame, each mutation webhook should return its response in 3 seconds (defined [here](AzureDefender-K8S-InClusterDefense/charts/azdproxy/templates/mutation-configuration.yaml), otherwise the API server will continue without the webhook response.
 - As a result, providing security information for the mutation webhook should be shorter than the time limit.
 
 ## AZDSecInfoProvider

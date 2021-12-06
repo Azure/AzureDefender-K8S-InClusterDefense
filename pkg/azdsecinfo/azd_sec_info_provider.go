@@ -47,7 +47,7 @@ type AzdSecInfoProvider struct {
 	//the results still will be saved in the cache.
 	getContainersVulnerabilityScanInfoTimeoutDuration time.Duration
 	// cacheClient is a cache client for AzdSecInfoProvider (mapping podSpec to scan results and save timeout status)
-	cacheClient *AzdSecInfoProviderCacheClient
+	cacheClient *azdSecInfoProviderCacheClient
 }
 
 // AzdSecInfoProviderConfiguration is configuration data for AzdSecInfoProvider
@@ -58,13 +58,12 @@ type AzdSecInfoProviderConfiguration struct {
 	CacheExpirationContainerVulnerabilityScanInfo int
 }
 
-
 // The status of timeout during the run
 const (
-	noTimeOutEncountered  = "noTimeOut"
-	oneTimeOutEncountered  = "firstTimeOut"
-	twoTimesOutEncountered =  "secondTimeOut"
-	unknownTimeOutStatus   = "unknown"
+	_noTimeOutEncountered  = 0
+	_oneTimeOutEncountered  = 1
+	_twoTimesOutEncountered = 2
+	_unknownTimeOutStatus   = -1
 )
 
 // NewAzdSecInfoProvider - AzdSecInfoProvider Ctor
@@ -72,7 +71,7 @@ func NewAzdSecInfoProvider(instrumentationProvider instrumentation.IInstrumentat
 	argDataProvider arg.IARGDataProvider,
 	tag2digestResolver tag2digest.ITag2DigestResolver,
 	GetContainersVulnerabilityScanInfoTimeoutDuration *utils.TimeoutConfiguration,
- 	cacheClient cache.ICacheClient, azdSecInfoProviderConfiguration *AzdSecInfoProviderConfiguration) *AzdSecInfoProvider {
+	cacheClient cache.ICacheClient, azdSecInfoProviderConfiguration *AzdSecInfoProviderConfiguration) *AzdSecInfoProvider {
 
 	// In case that GetContainersVulnerabilityScanInfoTimeoutDuration.TimeDurationInMS is empty (zero) - use default value.
 	getContainersVulnerabilityScanInfoTimeoutDuration := _defaultTimeDurationGetContainersVulnerabilityScanInfo
@@ -85,7 +84,7 @@ func NewAzdSecInfoProvider(instrumentationProvider instrumentation.IInstrumentat
 		argDataProvider:    argDataProvider,
 		tag2digestResolver: tag2digestResolver,
 		getContainersVulnerabilityScanInfoTimeoutDuration: getContainersVulnerabilityScanInfoTimeoutDuration,
-		cacheClient: NewAzdSecInfoProviderCacheClient(instrumentationProvider, cacheClient, azdSecInfoProviderConfiguration),
+		cacheClient: newAzdSecInfoProviderCacheClient(instrumentationProvider, cacheClient, azdSecInfoProviderConfiguration),
 	}
 }
 
@@ -116,16 +115,16 @@ func (provider *AzdSecInfoProvider) GetContainersVulnerabilityScanInfo(podSpec *
 	// Try to get ContainersVulnerabilityScanInfo from cache
 	// If error is not nil - There are two options: 1. missing key 2. functionality error from cache. In both cases continue to fetch results from provider.
 	// If error is nil - There are results from cache. Two options for the results from cache:
-	// 1. The result is an error occurred in previous run. Return the error occurred
-	// 2. The result is ContainerVulnerabilityScanInfo  -  no errors occurred in previous run. Return the results
+	// 		1. The result is an error occurred in previous run. Return the error occurred
+	// 		2. The result is ContainerVulnerabilityScanInfo  -  no errors occurred in previous run. Return the results
 	ContainersVulnerabilityScanInfoWrapperFromCache, err := provider.cacheClient.getContainerVulnerabilityScanInfofromCache(podSpecCacheKey)
-	if err != nil{ // failed to get results from cache - skip and get results from providers
+	if err != nil { // failed to get results from cache - skip and get results from providers
 		err = errors.Wrap(err, "Couldn't get ContainersVulnerabilityScanInfo from cache")
 		tracer.Error(err, "")
-	}else { // No error means that there are results from cache
-		ErrorStoredInCacheFromPreviousRuns :=  ContainersVulnerabilityScanInfoWrapperFromCache.Err
+	} else { // No error means that there are results from cache
+		ErrorStoredInCacheFromPreviousRuns := ContainersVulnerabilityScanInfoWrapperFromCache.Err
 		// If an error was stored in cache (error from previous results) return the error in order to avoid multiple failed requests
-		if ErrorStoredInCacheFromPreviousRuns != nil{
+		if ErrorStoredInCacheFromPreviousRuns != nil {
 			ErrorStoredInCacheFromPreviousRuns = errors.Wrap(ErrorStoredInCacheFromPreviousRuns, "Got error from ContainerVulnerabilityScanInfo stored in cache")
 			tracer.Error(ErrorStoredInCacheFromPreviousRuns, "")
 			return nil, ErrorStoredInCacheFromPreviousRuns
@@ -157,8 +156,9 @@ func (provider *AzdSecInfoProvider) getContainersVulnerabilityScanInfoSyncWrappe
 
 	// Set both ContainersVulnerabilityScanInfo and err in cache
 	// Set results in cache here and not in the upper function in order to set results in cache even if timeout has occurred.
+	// TODO  extract all set operations to different goroutines
 	errFromCache := provider.cacheClient.setContainerVulnerabilityScanInfoInCache(podSpecCacheKey, containerVulnerabilityScanInfo, err)
-	if errFromCache != nil{
+	if errFromCache != nil {
 		errFromCache := errors.Wrap(errFromCache, "Failed to set containerVulnerabilityScanInfo in cache")
 		tracer.Error(errFromCache, "")
 	}
@@ -225,7 +225,7 @@ func (provider *AzdSecInfoProvider) getContainersVulnerabilityScanInfo(podSpec *
 
 // getVulnSecInfoContainers gets vulnSecInfoContainers array with the scan results of the given containers.
 // It runs each container scan in parallel and returns only when all the scans are finished and the array is updated
-func (provider *AzdSecInfoProvider) getVulnSecInfoContainers(podSpec *corev1.PodSpec, resourceCtx *tag2digest.ResourceContext)  ([]*contracts.ContainerVulnerabilityScanInfo, error) {
+func (provider *AzdSecInfoProvider) getVulnSecInfoContainers(podSpec *corev1.PodSpec, resourceCtx *tag2digest.ResourceContext) ([]*contracts.ContainerVulnerabilityScanInfo, error) {
 	tracer := provider.tracerProvider.GetTracer("getVulnSecInfoContainers")
 
 	// Initialize container vuln scan info list
@@ -238,7 +238,7 @@ func (provider *AzdSecInfoProvider) getVulnSecInfoContainers(podSpec *corev1.Pod
 	}
 
 	// vulnerabilitySecInfoChannel is a channel for (*contracts.ContainerVulnerabilityScanInfo, error)
-	vulnerabilitySecInfoChannel := make(chan *utils.ChannelDataWrapper, len(podSpec.InitContainers) + len(podSpec.Containers))
+	vulnerabilitySecInfoChannel := make(chan *utils.ChannelDataWrapper, len(podSpec.InitContainers)+len(podSpec.Containers))
 	// Get container vulnerability scan information in parallel
 	// Each call send data to channel vulnerabilitySecInfoChannel
 	for i := range podSpec.InitContainers {
@@ -248,8 +248,8 @@ func (provider *AzdSecInfoProvider) getVulnSecInfoContainers(podSpec *corev1.Pod
 		go provider.getSingleContainerVulnerabilityScanInfoSyncWrapper(&podSpec.Containers[i], resourceCtx, vulnerabilitySecInfoChannel)
 	}
 
-	for i := 0; i <  len(podSpec.InitContainers) + len(podSpec.Containers); i++ { // No deadlock as a result of the loop because the number of receivers is identical to the number of senders
-		vulnerabilitySecInfoWrapper, isChannelOpen := <- vulnerabilitySecInfoChannel // Because the channel is buffered all goroutines will finish executing (no goroutine leak)
+	for i := 0; i < len(podSpec.InitContainers)+len(podSpec.Containers); i++ { // No deadlock as a result of the loop because the number of receivers is identical to the number of senders
+		vulnerabilitySecInfoWrapper, isChannelOpen := <-vulnerabilitySecInfoChannel // Because the channel is buffered all goroutines will finish executing (no goroutine leak)
 		if !isChannelOpen {
 			err := errors.Wrap(utils.ReadFromClosedChannelError, "failed in AzdSecInfoProvider.getVulnSecInfoContainers. Channel closed unexpectedly")
 			tracer.Error(err, "")
@@ -284,7 +284,7 @@ func (provider *AzdSecInfoProvider) getVulnSecInfoContainers(podSpec *corev1.Pod
 
 //getSingleContainerVulnerabilityScanInfoSyncWrapper wrap getSingleContainerVulnerabilityScanInfo.
 // It sends getSingleContainerVulnerabilityScanInfo results to the channel
-func (provider *AzdSecInfoProvider) getSingleContainerVulnerabilityScanInfoSyncWrapper(container *corev1.Container, resourceCtx *tag2digest.ResourceContext,  vulnerabilitySecInfoChannel chan *utils.ChannelDataWrapper){
+func (provider *AzdSecInfoProvider) getSingleContainerVulnerabilityScanInfoSyncWrapper(container *corev1.Container, resourceCtx *tag2digest.ResourceContext, vulnerabilitySecInfoChannel chan *utils.ChannelDataWrapper) {
 	info, err := provider.getSingleContainerVulnerabilityScanInfo(container, resourceCtx)
 	vulnerabilitySecInfoChannel <- utils.NewChannelDataWrapper(info, err)
 }
@@ -416,7 +416,7 @@ func (provider *AzdSecInfoProvider) timeoutEncounteredGetContainersVulnerability
 	// Get the timeoutStatus from cache
 	timeoutStatus, err := provider.cacheClient.getTimeOutStatus(podSpecCacheKey)
 	// If an error occurred while getting timeout status from cache return an error because we shouldn't block the pod request
-	if err != nil{
+	if err != nil {
 		// TODO Add metric new error encountered
 		err = errors.Wrap(err, "error encountered while trying to get result of timeout from cache.")
 		tracer.Error(err, "")
@@ -424,12 +424,12 @@ func (provider *AzdSecInfoProvider) timeoutEncounteredGetContainersVulnerability
 	}
 
 	// In case that this is the third time encountered timeout (already encountered twice).
-	if timeoutStatus == twoTimesOutEncountered {
+	if timeoutStatus == _twoTimesOutEncountered {
 		err = errors.Wrap(utils.TimeOutError, "Third time that timeout was encountered.")
 		tracer.Error(err, "")
 		return nil, err
 	}
-	// Add to cache and return unscanned and timeout.
+	// If this is the first or second time there is a timeout - update timeout status in cache and return unscanned and timeout.
 	// If an error occurred while setting timeout status in cache return an error because if we can't update timeout status we shouldn't block the pod request.
 	if err := provider.cacheClient.setTimeOutStatusAfterEncounteredTimeout(podSpecCacheKey, timeoutStatus); err != nil {
 		// TODO Add metric new error encountered
@@ -471,4 +471,3 @@ func (provider *AzdSecInfoProvider) noTimeoutEncounteredGetContainersVulnerabili
 	tracer.Info("GetContainersVulnerabilityScanInfo finished extract []*contracts.ContainerVulnerabilityScanInfo.", "podSpec", podSpec, "ContainerVulnerabilityScanInfo", containerVulnerabilityScanInfo)
 	return containerVulnerabilityScanInfo, nil
 }
-

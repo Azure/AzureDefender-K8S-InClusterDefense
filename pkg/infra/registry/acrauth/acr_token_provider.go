@@ -50,7 +50,7 @@ func NewACRTokenProvider(instrumentationProvider instrumentation.IInstrumentatio
 		metricSubmitter:                    instrumentationProvider.GetMetricSubmitter(),
 		azureBearerAuthorizerTokenProvider: azureBearerAuthorizerTokenProvider,
 		tokenExchanger:                     tokenExchanger,
-		cacheClient: cache.NewSafeCacheClient(cacheClient),
+		cacheClient: cacheClient,
 		acrTokenProviderConfiguration: acrTokenProviderConfiguration,
 	}
 }

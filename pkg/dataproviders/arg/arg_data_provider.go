@@ -43,7 +43,7 @@ type ARGDataProvider struct {
 	// argClient is the arg client of the ARGDataProvider
 	argClient IARGClient
 	// cacheClient is a cache for mapping digest to scan results
-	cacheClient *ARGDataProviderCacheClient
+	cacheClient *argDataProviderCacheClient
 	// ARGDataProviderConfiguration is configuration data for ARGDataProvider
 	argDataProviderConfiguration *ARGDataProviderConfiguration
 }
@@ -67,11 +67,11 @@ type ScanFindingsInCache struct {
 // NewARGDataProvider Constructor
 func NewARGDataProvider(instrumentationProvider instrumentation.IInstrumentationProvider, argClient IARGClient, queryGenerator queries.IARGQueryGenerator, cacheClient cache.ICacheClient, configuration *ARGDataProviderConfiguration) *ARGDataProvider {
 	return &ARGDataProvider{
-		tracerProvider:    instrumentationProvider.GetTracerProvider("ARGDataProvider"),
-		metricSubmitter:   instrumentationProvider.GetMetricSubmitter(),
-		argQueryGenerator: queryGenerator,
-		argClient:         argClient,
-		cacheClient: NewARGDataProviderCacheClient(instrumentationProvider, cacheClient, configuration),
+		tracerProvider:               instrumentationProvider.GetTracerProvider("ARGDataProvider"),
+		metricSubmitter:              instrumentationProvider.GetMetricSubmitter(),
+		argQueryGenerator:            queryGenerator,
+		argClient:                    argClient,
+		cacheClient:                  newARGDataProviderCacheClient(instrumentationProvider, cacheClient, configuration),
 		argDataProviderConfiguration: configuration,
 	}
 }
