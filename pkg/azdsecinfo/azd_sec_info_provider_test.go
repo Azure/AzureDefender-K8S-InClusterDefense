@@ -75,8 +75,8 @@ var (
 		ScanFindings: _scanFindings,
 	}
 	_expectedResultsTest1             = []*contracts.ContainerVulnerabilityScanInfo{_containerVulnerabilityScanInfo}
-	_expectedResultsStringTestScanned = "{\"containerVulnerabilityScanInfo\":[{\"name\":\"containerTest1\",\"image\":{\"name\":\"playground.azurecr.io/testrepo:1.0\",\"digest\":\"sha256:9f9ed5fe24766b31bcb64aabba73e96cc5b7c2da578f9cd2fca20846cf5d7557\"},\"scanStatus\":\"unhealthyScan\",\"scanFindings\":[{\"patchable\":true,\"id\":\"1\",\"severity\":\"High\"}]}],\"err\":null}"
-	_expectedResultsStringTestUnscanned            = "{\"containerVulnerabilityScanInfo\":[{\"name\":\"containerTest1\",\"image\":{\"name\":\"playground.azurecr.io/testrepo:1.0\",\"digest\":\"sha256:9f9ed5fe24766b31bcb64aabba73e96cc5b7c2da578f9cd2fca20846cf5d7557\"},\"scanStatus\":\"unscanned\",\"scanFindings\":null}],\"err\":null}"
+	_expectedResultsStringTestScanned = "{\"containerVulnerabilityScanInfo\":[{\"name\":\"containerTest1\",\"image\":{\"name\":\"playground.azurecr.io/testrepo:1.0\",\"digest\":\"sha256:9f9ed5fe24766b31bcb64aabba73e96cc5b7c2da578f9cd2fca20846cf5d7557\"},\"scanStatus\":\"unhealthyScan\",\"scanFindings\":[{\"patchable\":true,\"id\":\"1\",\"severity\":\"High\"}]}],\"err\":\"\"}"
+	_expectedResultsStringTestUnscanned            = "{\"containerVulnerabilityScanInfo\":[{\"name\":\"containerTest1\",\"image\":{\"name\":\"playground.azurecr.io/testrepo:1.0\",\"digest\":\"sha256:9f9ed5fe24766b31bcb64aabba73e96cc5b7c2da578f9cd2fca20846cf5d7557\"},\"scanStatus\":\"unscanned\",\"scanFindings\":null}],\"err\":\"\"}"
 
 	// Test2
 
@@ -94,6 +94,8 @@ var (
 	}
 
 	_expectedResultsTest2 = []*contracts.ContainerVulnerabilityScanInfo{info}
+
+	configuration = &AzdSecInfoProviderConfiguration{CacheExpirationTimeTimeout: _cacheExpirationTimeTimeout, CacheExpirationContainerVulnerabilityScanInfo: _cacheExpirationTimeTimeout}
 )
 
 type AzdSecInfoProviderTestSuite struct {
@@ -110,7 +112,8 @@ func (suite *AzdSecInfoProviderTestSuite) SetupTest() {
 	suite.tag2DigestResolverMock = &tag2DigestResolverMocks.ITag2DigestResolver{}
 	suite.argDataProviderMock = &argDataProviderMocks.IARGDataProvider{}
 	suite.cacheClientMock = new(cachemock.ICacheClient)
-	suite.azdSecInfoProvider = NewAzdSecInfoProvider(instrumentation.NewNoOpInstrumentationProvider(), suite.argDataProviderMock, suite.tag2DigestResolverMock, &utils.TimeoutConfiguration{TimeDurationInMS: _TimeDurationGetContainersVulnerabilityScanInfo}, suite.cacheClientMock, &AzdSecInfoProviderConfiguration{CacheExpirationTimeTimeout: _cacheExpirationTimeTimeout, CacheExpirationContainerVulnerabilityScanInfo: _cacheExpirationTimeTimeout})
+	azdSecInfoProviderCacheClient := NewAzdSecInfoProviderCacheClient(instrumentation.NewNoOpInstrumentationProvider(), suite.cacheClientMock, configuration)
+	suite.azdSecInfoProvider = NewAzdSecInfoProvider(instrumentation.NewNoOpInstrumentationProvider(), suite.argDataProviderMock, suite.tag2DigestResolverMock, &utils.TimeoutConfiguration{TimeDurationInMS: _TimeDurationGetContainersVulnerabilityScanInfo}, azdSecInfoProviderCacheClient, configuration)
 }
 
 func (suite *AzdSecInfoProviderTestSuite) Test_getContainersVulnerabilityScanInfo_NoResultsInCache_ScannedResults() {

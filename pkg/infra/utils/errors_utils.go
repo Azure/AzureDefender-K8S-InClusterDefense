@@ -10,6 +10,7 @@ var (
 	CantConvertChannelDataWrapper = errors.New("Cant Convert Channel Data Wrapper to the designated type")
 	SetKeyInCacheWithNoExpiration = errors.New("SetKeyInCacheWithNoExpiration")
 	TimeOutError = errors.New("TimeOutError")
+	InvalidConfiguration = errors.New("InvalidConfiguration")
 
 )
 

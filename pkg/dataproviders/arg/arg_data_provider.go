@@ -5,7 +5,6 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/azdsecinfo/contracts"
 	argmetric "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/dataproviders/arg/metric"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/dataproviders/arg/queries"
-	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/cache"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric/util"
@@ -43,7 +42,7 @@ type ARGDataProvider struct {
 	// argClient is the arg client of the ARGDataProvider
 	argClient IARGClient
 	// cacheClient is a cache for mapping digest to scan results
-	cacheClient *argDataProviderCacheClient
+	cacheClient *ArgDataProviderCacheClient
 	// ARGDataProviderConfiguration is configuration data for ARGDataProvider
 	argDataProviderConfiguration *ARGDataProviderConfiguration
 }
@@ -65,13 +64,13 @@ type ScanFindingsInCache struct {
 }
 
 // NewARGDataProvider Constructor
-func NewARGDataProvider(instrumentationProvider instrumentation.IInstrumentationProvider, argClient IARGClient, queryGenerator queries.IARGQueryGenerator, cacheClient cache.ICacheClient, configuration *ARGDataProviderConfiguration) *ARGDataProvider {
+func NewARGDataProvider(instrumentationProvider instrumentation.IInstrumentationProvider, argClient IARGClient, queryGenerator queries.IARGQueryGenerator, cacheClient *ArgDataProviderCacheClient, configuration *ARGDataProviderConfiguration) *ARGDataProvider {
 	return &ARGDataProvider{
 		tracerProvider:               instrumentationProvider.GetTracerProvider("ARGDataProvider"),
 		metricSubmitter:              instrumentationProvider.GetMetricSubmitter(),
 		argQueryGenerator:            queryGenerator,
 		argClient:                    argClient,
-		cacheClient:                  newARGDataProviderCacheClient(instrumentationProvider, cacheClient, configuration),
+		cacheClient:                  cacheClient,
 		argDataProviderConfiguration: configuration,
 	}
 }

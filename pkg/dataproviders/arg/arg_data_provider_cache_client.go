@@ -12,12 +12,12 @@ import (
 	"time"
 )
 
-// argDataProviderCacheClient is cache client designated for ARGDataProvider
+// ArgDataProviderCacheClient is cache client designated for ARGDataProvider
 // It wraps ICache client
-type argDataProviderCacheClient struct {
-	//tracerProvider is tracer provider of argDataProviderCacheClient
+type ArgDataProviderCacheClient struct {
+	//tracerProvider is tracer provider of ArgDataProviderCacheClient
 	tracerProvider trace.ITracerProvider
-	//metricSubmitter is metric submitter of argDataProviderCacheClient
+	//metricSubmitter is metric submitter of ArgDataProviderCacheClient
 	metricSubmitter metric.IMetricSubmitter
 	// cacheClient is a cache for mapping digest to scan results and save timeout status
 	cacheClient cache.ICacheClient
@@ -27,10 +27,10 @@ type argDataProviderCacheClient struct {
 	cacheExpirationTimeScannedResults time.Duration
 }
 
-// newARGDataProviderCacheClient - argDataProviderCacheClient Ctor
-func newARGDataProviderCacheClient(instrumentationProvider instrumentation.IInstrumentationProvider, cacheClient cache.ICacheClient, argDataProviderConfiguration *ARGDataProviderConfiguration) *argDataProviderCacheClient {
-	return &argDataProviderCacheClient{
-		tracerProvider:     instrumentationProvider.GetTracerProvider("argDataProviderCacheClient"),
+// NewARGDataProviderCacheClient - ArgDataProviderCacheClient Ctor
+func NewARGDataProviderCacheClient(instrumentationProvider instrumentation.IInstrumentationProvider, cacheClient cache.ICacheClient, argDataProviderConfiguration *ARGDataProviderConfiguration) *ArgDataProviderCacheClient {
+	return &ArgDataProviderCacheClient{
+		tracerProvider:     instrumentationProvider.GetTracerProvider("ArgDataProviderCacheClient"),
 		metricSubmitter:    instrumentationProvider.GetMetricSubmitter(),
 		cacheClient: cacheClient,
 		cacheExpirationTimeUnscannedResults: utils.GetMinutes(argDataProviderConfiguration.CacheExpirationTimeUnscannedResults),
@@ -38,25 +38,11 @@ func newARGDataProviderCacheClient(instrumentationProvider instrumentation.IInst
 	}
 }
 
-// parseScanFindingsFromCache parse scan results as string to contracts.ScanStatus and []*contracts.ScanFinding objects
-func (client *argDataProviderCacheClient) parseScanFindingsFromCache(scanFindingsString string) (contracts.ScanStatus, []*contracts.ScanFinding, error) {
-	tracer := client.tracerProvider.GetTracer("parseScanFindingsFromCache")
-
-	scanFindingsFromCache :=  new(ScanFindingsInCache)
-	unmarshalErr := json.Unmarshal([]byte(scanFindingsString), scanFindingsFromCache)
-	if unmarshalErr != nil {
-		unmarshalErr = errors.Wrap(unmarshalErr, "Failed on json.Unmarshal scanFindingsWrapper")
-		tracer.Error(unmarshalErr, "")
-		return "", nil, unmarshalErr
-	}
-	return scanFindingsFromCache.ScanStatus, scanFindingsFromCache.ScanFindings, nil
-}
-
 // getResultsFromCache try to get ImageVulnerabilityScanResults from cache.
 // The cache mapping digest to scan results or to known errors.
 // If the digest exist in cache - return the value (scan results or error) and a flag _gotResultsFromCache
 // If the digest dont exist in cache or any other unknown error occurred - return "", nil, nil and _didntGotResultsFromCache
-func (client *argDataProviderCacheClient) getResultsFromCache(digest string) (contracts.ScanStatus, []*contracts.ScanFinding, error){
+func (client *ArgDataProviderCacheClient) getResultsFromCache(digest string) (contracts.ScanStatus, []*contracts.ScanFinding, error){
 	tracer := client.tracerProvider.GetTracer("getResultsFromCache")
 
 	scanFindingsString, err := client.cacheClient.Get(digest)
@@ -78,7 +64,7 @@ func (client *argDataProviderCacheClient) getResultsFromCache(digest string) (co
 	if unmarshalErr != nil{ // json.unmarshall failed - trace the error and continue without cache
 		unmarshalErr = errors.Wrap(unmarshalErr, "Failed on unmarshall scan results from cache")
 		tracer.Error(unmarshalErr, "")
-		return  "", nil, err
+		return  "", nil, unmarshalErr
 	}
 
 	// results successfully extracted from cache - return the results
@@ -88,10 +74,10 @@ func (client *argDataProviderCacheClient) getResultsFromCache(digest string) (co
 
 
 // setScanFindingsInCache map digest to scan results
-func (client *argDataProviderCacheClient) setScanFindingsInCache(scanFindings []*contracts.ScanFinding, scanStatus contracts.ScanStatus, digest string) error {
+func (client *ArgDataProviderCacheClient) setScanFindingsInCache(scanFindings []*contracts.ScanFinding, scanStatus contracts.ScanStatus, digest string) error {
 	tracer := client.tracerProvider.GetTracer("setScanFindingsInCache")
 
-	// Convert results to string in order to set the results in the cahce
+	// Convert results to string in order to set the results in the cache
 	scanFindingsWrapper := &ScanFindingsInCache{ScanStatus: scanStatus, ScanFindings: scanFindings}
 	scanFindingsBuffer, err := json.Marshal(scanFindingsWrapper)
 	if err != nil {
@@ -117,4 +103,18 @@ func (client *argDataProviderCacheClient) setScanFindingsInCache(scanFindings []
 
 	tracer.Info("set scanFindings in cache", "digest", digest)
 	return nil
+}
+
+// parseScanFindingsFromCache parse scan results as string to contracts.ScanStatus and []*contracts.ScanFinding objects
+func (client *ArgDataProviderCacheClient) parseScanFindingsFromCache(scanFindingsString string) (contracts.ScanStatus, []*contracts.ScanFinding, error) {
+	tracer := client.tracerProvider.GetTracer("parseScanFindingsFromCache")
+
+	scanFindingsFromCache :=  new(ScanFindingsInCache)
+	unmarshalErr := json.Unmarshal([]byte(scanFindingsString), scanFindingsFromCache)
+	if unmarshalErr != nil {
+		unmarshalErr = errors.Wrap(unmarshalErr, "Failed on json.Unmarshal scanFindingsWrapper")
+		tracer.Error(unmarshalErr, "")
+		return "", nil, unmarshalErr
+	}
+	return scanFindingsFromCache.ScanStatus, scanFindingsFromCache.ScanFindings, nil
 }

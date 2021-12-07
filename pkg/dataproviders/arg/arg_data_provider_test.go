@@ -18,7 +18,7 @@ const (
 	_digestMock = "xckjhcdjdjhdh"
 
 	_expirationTimeScanned = 1 // for scanned results - 1 minutes
-	_expirationTimeUnscanned = 1 // for unscanned results - 1 seconds
+	_expirationTimeUnscanned = 2 // for unscanned results - 1 seconds
 	_registry = "imagescane2eacrdev.azurecr.io"
 	_repository = "pushunhealthyimage/vulnerables/cve-2014-6271"
 	_digest = "sha256:bdac8529e22931c1d99bf4907e12df3c2df0214070635a0b076fb11e66409883"
@@ -51,6 +51,11 @@ var (
 			Severity:  "High",
 				},
 	}
+
+	configuration = &ARGDataProviderConfiguration{
+		CacheExpirationTimeScannedResults:   _expirationTimeScanned,
+		CacheExpirationTimeUnscannedResults: _expirationTimeUnscanned,
+	}
 )
 
 type ARGDataProviderTestSuite struct {
@@ -65,7 +70,8 @@ func (suite *ARGDataProviderTestSuite) SetupTest() {
 	suite.argClientMock = new(mocks.IARGClient)
 	suite.queryGeneratorMock = new(queriesmock.IARGQueryGenerator)
 	suite.cacheMock = new(cachemock.ICacheClient)
-	suite.provider = NewARGDataProvider(instrumentation.NewNoOpInstrumentationProvider(), suite.argClientMock, suite.queryGeneratorMock, suite.cacheMock,
+	argDataProviderCacheClient := NewARGDataProviderCacheClient(instrumentation.NewNoOpInstrumentationProvider(), suite.cacheMock, configuration)
+	suite.provider = NewARGDataProvider(instrumentation.NewNoOpInstrumentationProvider(), suite.argClientMock, suite.queryGeneratorMock, argDataProviderCacheClient,
 		&ARGDataProviderConfiguration{
 			CacheExpirationTimeScannedResults:   _expirationTimeScanned,
 			CacheExpirationTimeUnscannedResults: _expirationTimeUnscanned,

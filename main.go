@@ -109,6 +109,11 @@ func main() {
 		}
 	}
 
+	// Validate all TTL values for cache clients configurations are non-positive. Non-positive values are not allowed in order to make sure each value in cache has valid TTL.
+	err = utils.ValidatePositiveInt(azdSecInfoProviderConfiguration.CacheExpirationContainerVulnerabilityScanInfo, azdSecInfoProviderConfiguration.CacheExpirationTimeTimeout, argDataProviderConfiguration.CacheExpirationTimeScannedResults, argDataProviderConfiguration.CacheExpirationTimeUnscannedResults, tag2DigestResolverConfiguration.CacheExpirationTimeForResults, acrTokenProviderConfiguration.RegistryRefreshTokenCacheExpirationTime)
+	if err != nil {
+		log.Fatal("Got non-positive cache TTL. Only positive values are allowed.", err)
+	}
 	// Create deployment singleton.
 	if _, err = utils.NewDeployment(deploymentConfiguration); err != nil {
 		log.Fatal("main.NewDeployment", err)
@@ -187,11 +192,13 @@ func main() {
 	if err != nil {
 		log.Fatal("main.CreateARGQueryGenerator", err)
 	}
-	argDataProvider := arg.NewARGDataProvider(instrumentationProvider, argClient, argQueryGenerator, redisCacheClient, argDataProviderConfiguration)
+	argDataProviderCacheClient := arg.NewARGDataProviderCacheClient(instrumentationProvider, redisCacheClient, argDataProviderConfiguration)
+	argDataProvider := arg.NewARGDataProvider(instrumentationProvider, argClient, argQueryGenerator, argDataProviderCacheClient, argDataProviderConfiguration)
 
 
 	// Handler and azdSecinfoProvider
-	azdSecInfoProvider := azdsecinfo.NewAzdSecInfoProvider(instrumentationProvider, argDataProvider, tag2digestResolver, getContainersVulnerabilityScanInfoTimeoutDuration, redisCacheClient, azdSecInfoProviderConfiguration)
+	azdSecInfoProviderCacheClient := azdsecinfo.NewAzdSecInfoProviderCacheClient(instrumentationProvider, redisCacheClient, azdSecInfoProviderConfiguration)
+	azdSecInfoProvider := azdsecinfo.NewAzdSecInfoProvider(instrumentationProvider, argDataProvider, tag2digestResolver, getContainersVulnerabilityScanInfoTimeoutDuration, azdSecInfoProviderCacheClient, azdSecInfoProviderConfiguration)
 	handler := webhook.NewHandler(azdSecInfoProvider, handlerConfiguration, instrumentationProvider)
 
 	// Manager and server
