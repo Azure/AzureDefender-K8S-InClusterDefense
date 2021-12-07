@@ -216,7 +216,7 @@ $HELM_EXPERIMENTAL_OCI = 1
 
 # TODO Change to remote repo once helm chart is published to public repo.
 #helm upgrade --install microsoft-in-cluster-defense azuredefendermcrprod.azurecr.io/public/azuredefender/stable/in-cluster-defense-helm:$helm_chart_version `
-helm upgrade in-cluster-defense charts/azdproxy --install `
+helm upgrade in-cluster-defense charts/azdproxy --install --wait `
             -n kube-system `
                 --set AzDProxy.kubeletIdentity.envAzureAuthorizerConfiguration.mSIClientId=$kubelet_client_id `
                 --set AzDProxy.azdIdentity.envAzureAuthorizerConfiguration.mSIClientId=$in_cluster_defense_identity_client_id `
