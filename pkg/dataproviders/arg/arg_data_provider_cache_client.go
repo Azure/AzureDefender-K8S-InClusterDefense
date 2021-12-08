@@ -12,12 +12,12 @@ import (
 	"time"
 )
 
-// ArgDataProviderCacheClient is cache client designated for ARGDataProvider
+// ARGDataProviderCacheClient is cache client designated for ARGDataProvider
 // It wraps ICache client
-type ArgDataProviderCacheClient struct {
-	//tracerProvider is tracer provider of ArgDataProviderCacheClient
+type ARGDataProviderCacheClient struct {
+	//tracerProvider is tracer provider of ARGDataProviderCacheClient
 	tracerProvider trace.ITracerProvider
-	//metricSubmitter is metric submitter of ArgDataProviderCacheClient
+	//metricSubmitter is metric submitter of ARGDataProviderCacheClient
 	metricSubmitter metric.IMetricSubmitter
 	// cacheClient is a cache for mapping digest to scan results and save timeout status
 	cacheClient cache.ICacheClient
@@ -27,10 +27,10 @@ type ArgDataProviderCacheClient struct {
 	cacheExpirationTimeScannedResults time.Duration
 }
 
-// NewARGDataProviderCacheClient - ArgDataProviderCacheClient Ctor
-func NewARGDataProviderCacheClient(instrumentationProvider instrumentation.IInstrumentationProvider, cacheClient cache.ICacheClient, argDataProviderConfiguration *ARGDataProviderConfiguration) *ArgDataProviderCacheClient {
-	return &ArgDataProviderCacheClient{
-		tracerProvider:     instrumentationProvider.GetTracerProvider("ArgDataProviderCacheClient"),
+// NewARGDataProviderCacheClient - ARGDataProviderCacheClient Ctor
+func NewARGDataProviderCacheClient(instrumentationProvider instrumentation.IInstrumentationProvider, cacheClient cache.ICacheClient, argDataProviderConfiguration *ARGDataProviderConfiguration) *ARGDataProviderCacheClient {
+	return &ARGDataProviderCacheClient{
+		tracerProvider:     instrumentationProvider.GetTracerProvider("ARGDataProviderCacheClient"),
 		metricSubmitter:    instrumentationProvider.GetMetricSubmitter(),
 		cacheClient: cacheClient,
 		cacheExpirationTimeUnscannedResults: utils.GetMinutes(argDataProviderConfiguration.CacheExpirationTimeUnscannedResults),
@@ -42,7 +42,7 @@ func NewARGDataProviderCacheClient(instrumentationProvider instrumentation.IInst
 // The cache mapping digest to scan results or to known errors.
 // If the digest exist in cache - return the value (scan results or error) and a flag _gotResultsFromCache
 // If the digest dont exist in cache or any other unknown error occurred - return "", nil, nil and _didntGotResultsFromCache
-func (client *ArgDataProviderCacheClient) getResultsFromCache(digest string) (contracts.ScanStatus, []*contracts.ScanFinding, error){
+func (client *ARGDataProviderCacheClient) getResultsFromCache(digest string) (contracts.ScanStatus, []*contracts.ScanFinding, error){
 	tracer := client.tracerProvider.GetTracer("getResultsFromCache")
 
 	scanFindingsString, err := client.cacheClient.Get(digest)
@@ -74,7 +74,7 @@ func (client *ArgDataProviderCacheClient) getResultsFromCache(digest string) (co
 
 
 // setScanFindingsInCache map digest to scan results
-func (client *ArgDataProviderCacheClient) setScanFindingsInCache(scanFindings []*contracts.ScanFinding, scanStatus contracts.ScanStatus, digest string) error {
+func (client *ARGDataProviderCacheClient) setScanFindingsInCache(scanFindings []*contracts.ScanFinding, scanStatus contracts.ScanStatus, digest string) error {
 	tracer := client.tracerProvider.GetTracer("setScanFindingsInCache")
 
 	// Convert results to string in order to set the results in the cache
@@ -106,7 +106,7 @@ func (client *ArgDataProviderCacheClient) setScanFindingsInCache(scanFindings []
 }
 
 // parseScanFindingsFromCache parse scan results as string to contracts.ScanStatus and []*contracts.ScanFinding objects
-func (client *ArgDataProviderCacheClient) parseScanFindingsFromCache(scanFindingsString string) (contracts.ScanStatus, []*contracts.ScanFinding, error) {
+func (client *ARGDataProviderCacheClient) parseScanFindingsFromCache(scanFindingsString string) (contracts.ScanStatus, []*contracts.ScanFinding, error) {
 	tracer := client.tracerProvider.GetTracer("parseScanFindingsFromCache")
 
 	scanFindingsFromCache :=  new(ScanFindingsInCache)

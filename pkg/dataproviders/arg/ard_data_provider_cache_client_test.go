@@ -15,7 +15,7 @@ import (
 type ARGDataProviderCacheClientTestSuite struct {
 	suite.Suite
 	cacheMock *cachemock.ICacheClient
-	argDataProviderCacheClient *ArgDataProviderCacheClient
+	argDataProviderCacheClient *ARGDataProviderCacheClient
 }
 
 func (suite *ARGDataProviderCacheClientTestSuite) SetupTest() {
