@@ -35,17 +35,3 @@ func (err *NegativeExpirationCacheError) Error() string {
 	msg := fmt.Sprintf("Invalid expiration, expiration should be non-negative. got <%v>", err.expiration)
 	return msg
 }
-
-// NotPositiveExpirationCacheError abstract class that implements negative expiration error
-type NotPositiveExpirationCacheError struct {
-	expiration int
-}
-
-func NewNotPositiveExpirationCacheError(expiration int) error {
-	return &NotPositiveExpirationCacheError{expiration: expiration}
-}
-
-func (err *NotPositiveExpirationCacheError) Error() string {
-	msg := fmt.Sprintf("Invalid expiration, expiration should be positive. got <%v>", err.expiration)
-	return msg
-}

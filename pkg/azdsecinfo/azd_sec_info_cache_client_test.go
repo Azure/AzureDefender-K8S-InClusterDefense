@@ -20,7 +20,7 @@ const(
 )
 
 var (
-	expectedResultsTest1 = &containerVulnerabilityCacheResultsWrapper{ContainerVulnerabilityScanInfo: _expectedResultsTest1, ErrString: ""}
+	_expectedResultsWrapperTest1 = &containerVulnerabilityCacheResultsWrapper{ContainerVulnerabilityScanInfo: _expectedResultsTest1, ErrString: ""}
 )
 
 type AzdSecInfoProviderCacheClientTestSuite struct {
@@ -72,7 +72,7 @@ func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_getContainerVulnerabil
 
 func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_setContainerVulnerabilityScanInfoInCache_SetGotError(){
 	suite.cacheClientMock.On("Set", _containerVulnerabilityScanInfoKeyTest1, _expectedResultsStringTestScanned, mock.Anything).Return(utils.NilArgumentError)
-	err := suite.azdSecInfoProviderCacheClient.setContainerVulnerabilityScanInfoInCache(_podSpecCacheKeyTest1, expectedResultsTest1.ContainerVulnerabilityScanInfo, nil)
+	err := suite.azdSecInfoProviderCacheClient.setContainerVulnerabilityScanInfoInCache(_podSpecCacheKeyTest1, _expectedResultsWrapperTest1.ContainerVulnerabilityScanInfo, nil)
 	suite.NotNil(err)
 }
 
@@ -85,7 +85,7 @@ func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_setContainerVulnerabil
 
 func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_setContainerVulnerabilityScanInfoInCache(){
 	suite.cacheClientMock.On("Set", _containerVulnerabilityScanInfoKeyTest1, _expectedResultsStringTestScanned, mock.Anything).Return(nil)
-	err := suite.azdSecInfoProviderCacheClient.setContainerVulnerabilityScanInfoInCache(_podSpecCacheKeyTest1, expectedResultsTest1.ContainerVulnerabilityScanInfo, nil)
+	err := suite.azdSecInfoProviderCacheClient.setContainerVulnerabilityScanInfoInCache(_podSpecCacheKeyTest1, _expectedResultsWrapperTest1.ContainerVulnerabilityScanInfo, nil)
 	suite.Nil(err)
 }
 

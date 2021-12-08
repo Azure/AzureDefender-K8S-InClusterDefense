@@ -110,9 +110,9 @@ func main() {
 	}
 
 	// Validate all TTL values for cache clients configurations are non-positive. Non-positive values are not allowed in order to make sure each value in cache has valid TTL.
-	err = utils.ValidatePositiveInt(azdSecInfoProviderConfiguration.CacheExpirationContainerVulnerabilityScanInfo, azdSecInfoProviderConfiguration.CacheExpirationTimeTimeout, argDataProviderConfiguration.CacheExpirationTimeScannedResults, argDataProviderConfiguration.CacheExpirationTimeUnscannedResults, tag2DigestResolverConfiguration.CacheExpirationTimeForResults, acrTokenProviderConfiguration.RegistryRefreshTokenCacheExpirationTime)
-	if err != nil {
-		log.Fatal("Got non-positive cache TTL. Only positive values are allowed.", err)
+	isValidConfiguration := utils.ValidatePositiveInt(azdSecInfoProviderConfiguration.CacheExpirationContainerVulnerabilityScanInfo, azdSecInfoProviderConfiguration.CacheExpirationTimeTimeout, argDataProviderConfiguration.CacheExpirationTimeScannedResults, argDataProviderConfiguration.CacheExpirationTimeUnscannedResults, tag2DigestResolverConfiguration.CacheExpirationTimeForResults, acrTokenProviderConfiguration.RegistryRefreshTokenCacheExpirationTime)
+	if !isValidConfiguration {
+		log.Fatal("Got non-positive cache TTL. Only positive values are allowed.", utils.InvalidConfiguration)
 	}
 	// Create deployment singleton.
 	if _, err = utils.NewDeployment(deploymentConfiguration); err != nil {

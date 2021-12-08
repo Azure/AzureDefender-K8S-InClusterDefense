@@ -19,8 +19,8 @@ import (
 	// Default time duration for GetContainersVulnerabilityScanInfo IN MILLISECONDS
 const _defaultTimeDurationGetContainersVulnerabilityScanInfo = 2850 * time.Millisecond // 2.85 seconds - can't multiply float in seconds
 
+// The status of timeout during the run
 const (
-	// The status of timeout during the run
 		_unknownTimeOutStatus   = iota -1
 		_noTimeOutEncountered
 		_oneTimeOutEncountered

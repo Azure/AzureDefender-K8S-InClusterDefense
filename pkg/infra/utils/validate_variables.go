@@ -1,15 +1,13 @@
 package utils
 
-import "github.com/pkg/errors"
-
-// ValidatePositiveInt gets an unknown number of variables of type int and return an error in case at least one of them is non-positive
-func ValidatePositiveInt(variables... int) error{
+// ValidatePositiveInt gets an unknown number of variables of type int and return an false in case at least one of them is non-positive
+// Otherwise return true
+func ValidatePositiveInt(variables... int) bool{
 	for _, variable := range variables{
 		if variable <= 0 {
-			err := errors.Wrapf(InvalidConfiguration, "Got non-positive int %v", variable)
-			return err
+			return false
 		}
 	}
 	// All variables are positive
-	return nil
+	return true
 }
