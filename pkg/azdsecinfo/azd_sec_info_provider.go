@@ -21,10 +21,9 @@ const _defaultTimeDurationGetContainersVulnerabilityScanInfo = 2850 * time.Milli
 
 // The status of timeout during the run
 const (
-		_unknownTimeOutStatus   = iota -1
-		_noTimeOutEncountered
-		_oneTimeOutEncountered
-		_twoTimesOutEncountered
+		_unknownTimeOutStatus = -1
+		_noTimeOutEncountered = 0
+		_numberOfTimeOutEncounteredThreshold = 3
 )
 
 // IAzdSecInfoProvider represents interface for providing azure defender security information
@@ -419,13 +418,16 @@ func (provider *AzdSecInfoProvider) timeoutEncounteredGetContainersVulnerability
 		return nil, err
 	}
 
+	// Update timeoutStatus - increase the number of encountered timeouts by 1
+	timeoutStatus += 1
+
 	// In case that this is the third time encountered timeout (already encountered twice).
-	if timeoutStatus == _twoTimesOutEncountered {
+	if timeoutStatus == _numberOfTimeOutEncounteredThreshold {
 		err = errors.Wrap(utils.TimeOutError, "Third time that timeout was encountered.")
 		tracer.Error(err, "")
 		return nil, err
 	}
-	// If this is the first or second time there is a timeout - update timeout status in cache and return unscanned and timeout.
+	// If this is the first or second time there is a timeout - set new timeout status in cache and return unscanned and timeout.
 	// If an error occurred while setting timeout status in cache return an error because if we can't update timeout status we shouldn't block the pod request.
 	if err := provider.cacheClient.setTimeOutStatusAfterEncounteredTimeout(podSpecCacheKey, timeoutStatus); err != nil {
 		// TODO Add metric new error encountered

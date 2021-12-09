@@ -66,7 +66,6 @@ data:
           retryDurationInMS: {{ .Values.AzDProxy.acr.craneWrappers.retryPolicyConfiguration.retryDurationInMS }}
 
       acrTokenProviderConfiguration:
-        armTokenCacheExpirationTime: {{ .Values.AzDProxy.acr.acrTokenProviderConfiguration.armTokenCacheExpirationTime }}
         registryRefreshTokenCacheExpirationTime: {{ .Values.AzDProxy.acr.acrTokenProviderConfiguration.registryRefreshTokenCacheExpirationTime }}
 
     arg:
@@ -81,12 +80,10 @@ data:
       argDataProviderConfiguration:
         cacheExpirationTimeUnscannedResults: {{ .Values.AzDProxy.arg.argDataProviderConfiguration.cacheExpirationTimeUnscannedResults }}
         cacheExpirationTimeScannedResults: {{ .Values.AzDProxy.arg.argDataProviderConfiguration.cacheExpirationTimeScannedResults }}
-        cacheExpirationTimeForErrors: {{ .Values.AzDProxy.arg.argDataProviderConfiguration.cacheExpirationTimeForErrors }}
 
     tag2digest:
       tag2DigestResolverConfiguration:
         cacheExpirationTimeForResults: {{ .Values.AzDProxy.tag2digest.tag2DigestResolverConfiguration.cacheExpirationTimeForResults }}
-        cacheExpirationTimeForErrors: {{ .Values.AzDProxy.tag2digest.tag2DigestResolverConfiguration.cacheExpirationTimeForErrors }}
 
     # Cache configuration
     cache:
@@ -115,3 +112,4 @@ data:
 
       azdSecInfoProviderConfiguration:
         CacheExpirationTimeTimeout: {{ .Values.AzDProxy.azdSecInfoProvider.azdSecInfoProviderConfiguration.CacheExpirationTimeTimeout }}
+        CacheExpirationContainerVulnerabilityScanInfo: {{ .Values.AzDProxy.azdSecInfoProvider.azdSecInfoProviderConfiguration.CacheExpirationContainerVulnerabilityScanInfo }}

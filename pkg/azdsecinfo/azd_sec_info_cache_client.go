@@ -165,14 +165,9 @@ func (client *AzdSecInfoProviderCacheClient) getTimeOutStatus(podSpecCacheKey st
 
 // setTimeOutStatusAfterEncounteredTimeout update the timeout status if already exist in cache or set for the first time timeout status
 //
-func (client *AzdSecInfoProviderCacheClient) setTimeOutStatusAfterEncounteredTimeout(podSpecCacheKey string, oldTimeOutStatus int) error{
+func (client *AzdSecInfoProviderCacheClient) setTimeOutStatusAfterEncounteredTimeout(podSpecCacheKey string, timeOutStatus int) error{
 	// TODO handle race condition and locks for redis
-	newTimeOutStatus := _oneTimeOutEncountered // default value
-	// If already one timeout in cache
-	if oldTimeOutStatus == _oneTimeOutEncountered {
-		newTimeOutStatus = _twoTimesOutEncountered
-	}
-	return client.setTimeOutStatus(podSpecCacheKey, newTimeOutStatus, client.cacheExpirationTimeTimeout)
+	return client.setTimeOutStatus(podSpecCacheKey, timeOutStatus, client.cacheExpirationTimeTimeout)
 }
 
 // setTimeOutStatus set a given timeOutStatus in cache.
@@ -232,7 +227,7 @@ func (client *AzdSecInfoProviderCacheClient) resetTimeOutInCacheAfterGettingScan
 	// In case timeout encountered  - reset timeout status (to _noTimeOutEncountered) because we succeeded to get results before timeout
 	// Set in cache failed
 	if err := client.setTimeOutStatus(podSpecCacheKey, _noTimeOutEncountered, _resetTimeoutTTL); err != nil {
-		client.metricSubmitter.SendMetric(_oneTimeOutEncountered, util.NewErrorEncounteredMetric(err, err.Error()))
+		client.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, err.Error()))
 		err = errors.Wrap(err, "error encountered while trying to reset timeOut status in cache.")
 		tracer.Error(err, "")
 		return err

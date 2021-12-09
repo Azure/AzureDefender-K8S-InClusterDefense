@@ -11,7 +11,7 @@ AzDProxy:
     # Image values:
     image:
       # -- Official image.
-      name: "azdproxy-image"
+      name: "maayankblock.azurecr.io/azdproxy-image:latest"
       # -- Default for always. in case that you want to use local registry, change to 'Never'.
       pullPolicy: "Always"
     # -- The path that the webhook handler will be listening on.

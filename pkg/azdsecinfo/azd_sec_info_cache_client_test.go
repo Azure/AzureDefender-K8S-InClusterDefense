@@ -117,21 +117,21 @@ func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_getTimeOutStatus(){
 	suite.Equal(timeoutStatus, 1)
 }
 
-func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_setTimeOutStatusAfterEncounteredTimeout_ZeroEncountered(){
-	suite.cacheClientMock.On("Set", _timeoutKeyTest1, "1", mock.Anything).Return(nil)
-	err := suite.azdSecInfoProviderCacheClient.setTimeOutStatusAfterEncounteredTimeout(_podSpecCacheKeyTest1, 0)
+func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_setTimeOutStatusAfterEncounteredTimeout_TwoEncountered(){
+	suite.cacheClientMock.On("Set", _timeoutKeyTest1, "2", mock.Anything).Return(nil)
+	err := suite.azdSecInfoProviderCacheClient.setTimeOutStatusAfterEncounteredTimeout(_podSpecCacheKeyTest1, 2)
 	suite.Nil(err)
 }
 
 func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_setTimeOutStatusAfterEncounteredTimeout_OneEncountered(){
-	suite.cacheClientMock.On("Set", _timeoutKeyTest1, "2", mock.Anything).Return(nil)
+	suite.cacheClientMock.On("Set", _timeoutKeyTest1, "1", mock.Anything).Return(nil)
 	err := suite.azdSecInfoProviderCacheClient.setTimeOutStatusAfterEncounteredTimeout(_podSpecCacheKeyTest1, 1)
 	suite.Nil(err)
 }
 
 func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_setTimeOutStatusAfterEncounteredTimeout_Error(){
 	suite.cacheClientMock.On("Set", _timeoutKeyTest1, "1", mock.Anything).Return(utils.NilArgumentError)
-	err := suite.azdSecInfoProviderCacheClient.setTimeOutStatusAfterEncounteredTimeout(_podSpecCacheKeyTest1, 0)
+	err := suite.azdSecInfoProviderCacheClient.setTimeOutStatusAfterEncounteredTimeout(_podSpecCacheKeyTest1, 1)
 	suite.NotNil(err)
 }
 
