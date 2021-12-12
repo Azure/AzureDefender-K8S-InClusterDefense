@@ -26,14 +26,13 @@ Param (
     [bool]$should_enable_aks_security_profile = $true
 )
 
-write-host "Params that were entered:`r`nresource group : $resource_group `r`ncluster name : $cluster_name `r`n subscription: $subscripiton"
+write-host "Params that were entered:`r`nresource group : $resource_group `r`ncluster name : $cluster_name `r`n subscription: $subscription"
 #######################################################################################################################
 # Function for printing new section.
-$stepCount = 1
+
 Function PrinitNewSection($stepTitle)
 {
     write-host "########################################## Step: $stepTitle ##########################################"
-    $stepCount++
 }
 #######################################################################################################################
 #                                   Extract used variables
@@ -69,7 +68,7 @@ if ($LASTEXITCODE -eq 3 -or $vmss_list.Length -eq 0)
 }
 #######################################################################################################################
 
-PrinitNewSection("Setting account to subscripiton")
+PrinitNewSection("Setting account to subscription")
 # login with az login.
 az account set -s $subscription
 

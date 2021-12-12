@@ -83,12 +83,11 @@ func (suite *TestSuite) Test_Handle_DryRunFalse_ShouldPatched() {
 	containers := []corev1.Container{_containers[0]}
 	pod := createPodForTests(containers, nil)
 	req := createRequestForTests(pod)
-	expectedInfo := []*contracts.ContainerVulnerabilityScanInfo{_firstContainerVulnerabilityScanInfo}
 	expected := []*contracts.ContainerVulnerabilityScanInfo{
 		_firstContainerVulnerabilityScanInfo,
 	}
 
-	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", &pod.Spec, &pod.ObjectMeta, &pod.TypeMeta).Return(expectedInfo, nil).Once()
+	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", &pod.Spec, &pod.ObjectMeta, &pod.TypeMeta).Return(expected, nil).Once()
 
 	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider())
 	// Act
@@ -157,12 +156,11 @@ func (suite *TestSuite) Test_Handle_RequestUpdateOperation_ShouldPatched() {
 	pod := createPodForTests(containers, nil)
 	req := createRequestForTests(pod)
 	req.Operation = admissionv1.Update
-	expectedInfo := []*contracts.ContainerVulnerabilityScanInfo{_firstContainerVulnerabilityScanInfo}
 	expected := []*contracts.ContainerVulnerabilityScanInfo{
 		_firstContainerVulnerabilityScanInfo,
 	}
 
-	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", &pod.Spec, &pod.ObjectMeta, &pod.TypeMeta).Return(expectedInfo, nil).Once()
+	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", &pod.Spec, &pod.ObjectMeta, &pod.TypeMeta).Return(expected, nil).Once()
 
 	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider())
 	// Act

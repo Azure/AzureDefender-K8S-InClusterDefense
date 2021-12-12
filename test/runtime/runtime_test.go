@@ -13,7 +13,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"net/http"
+	"os"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
+	"strings"
 	"testing"
 	"time"
 )
@@ -24,6 +26,7 @@ const (
 	_url          = "https://localhost:8000/mutate"
 	_alpineDigest = "sha256:def822f9851ca422481ec6fee59a9966f12b351c62ccb9aca841526ffaa9f748"
 	_imageScanUnhealthyDigest = "sha256:f6a835256950f699175eecb9fd82e4a84684c9bab6ffb641b6fc23ff7b23e4b3"
+	_runtimeTestEnabledEnvKey = "RuntimeTestsEnabled"
 )
 
 var (
@@ -306,7 +309,11 @@ func (suite *RuntimeTestSuite) checkPatch(expected []*contracts.ContainerVulnera
 
 
 func TestRuntime(t *testing.T){
-	t.SkipNow() // remove on local runtimee - this is done to allow PR testing
+	e, ok := os.LookupEnv(_runtimeTestEnabledEnvKey)
+	if !ok || strings.ToLower(e) != "true"{
+		t.SkipNow() // set test env var _runtimeTestEnabledEnvKey to true
+	}
+
 	suite.Run(t, new(RuntimeTestSuite))
 }
 
