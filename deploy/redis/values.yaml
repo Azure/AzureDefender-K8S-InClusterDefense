@@ -1,0 +1,17 @@
+#tls:
+#  enabled: true
+#  certificatesSecret: "certificates-tls-secret"
+#  certFilename: "cert.pemkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"
+#  certKeyFilename: "cert.key"
+#  certCAFilename: "ca.pem"
+
+tls:
+  enabled: true
+  certificatesSecret: "azure-policy-webhook-cert"
+  certFilename: "tls.cert"
+  certKeyFilename: "tls.key"
+  certCAFilename: "ca.cert"
+
+global:
+  redis:
+    password: "a"

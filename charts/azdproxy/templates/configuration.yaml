@@ -10,6 +10,12 @@ metadata:
   {{ include "common.labels" . | indent 6 }}
 # Application's configuration settings. Arranged by project's filesystem hierarchy
 data:
+  redis-config: |-
+    port 0
+    tls-port 6379
+    tls-cert-file ../tls/tls.crt
+    tls-key-file ../tls/tls.key
+    tls-ca-cert-file ../tls/ca.cert
   appConfig.yaml: |-
     webhook:
       certRotatorConfiguration:

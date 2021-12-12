@@ -3,7 +3,10 @@ package wrappers
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"github.com/go-redis/redis/v8"
+	"io/ioutil"
+	"log"
 	"time"
 )
 
@@ -41,12 +44,38 @@ type RedisCacheClientConfiguration struct {
 }
 
 func NewRedisBaseClientWrapper(configuration *RedisCacheClientConfiguration) *redis.Client {
+
+	cert, err := tls.LoadX509KeyPair("tls/tls.crt", "tls/tls.key")
+	if err != nil {
+		log.Fatal(err)
+	}
+	caCert, err := ioutil.ReadFile("tls/ca.cert")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	password, err := ioutil.ReadFile("tls/REDIS_PASS")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	pool := x509.NewCertPool()
+	pool.AppendCertsFromPEM(caCert)
+
+	tlsConfig := &tls.Config{
+		ServerName:   "azure-defender-proxy-redis-service",
+		Certificates: []tls.Certificate{cert},
+		RootCAs:      pool,
+	}
+
+
 	redisClient := redis.NewClient(&redis.Options{
 		Addr:            configuration.Address,
-		Password:        configuration.Password,
+		Password:        string(password),
 		DB:              configuration.Table,
 		MaxRetries:      configuration.MaxRetries,
 		MinRetryBackoff: configuration.MinRetryBackoff,
+		TLSConfig: tlsConfig,
 	})
 
 	return redisClient

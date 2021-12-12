@@ -21,5 +21,34 @@ spec:
         - name: {{.Values.AzDProxy.prefixResourceDeployment}}-redis
           image: {{.Values.AzDProxy.cache.redisClient.image}}
           imagePullPolicy: 'Always'
+          args: ["--requirepass", "$(REDIS_PASS)"]
+          command:
+            - redis-server
+            - "/redis-master/redis.conf"
           ports:
             - containerPort: {{.Values.AzDProxy.cache.redisClient.port}}
+          volumeMounts:
+            # App's config file
+            - mountPath: /redis-master
+              name: {{.Values.AzDProxy.configuration.volume.name}}
+              readOnly: true
+            # redis's secret
+            - mountPath: tls
+              name: tls
+              readOnly: true
+          env:
+          - name: REDIS_PASS
+            valueFrom:
+              secretKeyRef:
+                name: secret-tls-certs
+                key: REDIS_PASS
+      volumes:
+        - name: tls
+          secret:
+            secretName: secret-tls-certs
+        - name: {{.Values.AzDProxy.configuration.volume.name}}
+          configMap:
+            name: {{.Values.AzDProxy.prefixResourceDeployment}}-config
+            items:
+            - key: redis-config
+              path: redis.conf
