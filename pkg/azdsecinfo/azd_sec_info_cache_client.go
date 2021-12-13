@@ -166,6 +166,8 @@ func (client *AzdSecInfoProviderCacheClient) getTimeOutStatus(podSpecCacheKey st
 // setTimeOutStatusAfterEncounteredTimeout update the timeout status if already exist in cache or set for the first time timeout status
 //
 func (client *AzdSecInfoProviderCacheClient) setTimeOutStatusAfterEncounteredTimeout(podSpecCacheKey string, timeOutStatus int) error{
+	tracer := client.tracerProvider.GetTracer("setTimeOutStatusAfterEncounteredTimeout")
+	tracer.Info("Try to set timeOutStatus in cache", "timeOutStatus", timeOutStatus)
 	// TODO handle race condition and locks for redis
 	return client.setTimeOutStatus(podSpecCacheKey, timeOutStatus, client.cacheExpirationTimeTimeout)
 }
