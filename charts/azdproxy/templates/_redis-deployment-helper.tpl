@@ -1,5 +1,5 @@
 {{/*
-Generate certificates for api server
+Generate certificates for redis cache
 */}}
 {{- define "custom.gen-certs" -}}
 {{- $ca := genCA "custom-ca" 365 -}}
