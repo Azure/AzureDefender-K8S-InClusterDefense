@@ -13,9 +13,9 @@ data:
   redis-config: |-
     port 0
     tls-port 6379
-    tls-cert-file ../tls/tls.crt
-    tls-key-file ../tls/tls.key
-    tls-ca-cert-file ../tls/ca.cert
+    tls-cert-file ..{{.Values.AzDProxy.cache.redisClient.secret.volume.mountPath}}/tls.crt
+    tls-key-file ..{{.Values.AzDProxy.cache.redisClient.secret.volume.mountPath}}/tls.key
+    tls-ca-cert-file ..{{.Values.AzDProxy.cache.redisClient.secret.volume.mountPath}}/ca.cert
   appConfig.yaml: |-
     webhook:
       certRotatorConfiguration:
@@ -103,8 +103,13 @@ data:
           retryDurationInMS: {{ .Values.AzDProxy.cache.redisClient.retryPolicyConfiguration.retryDurationInMS }}
 
       argDataProviderCacheConfiguration:
-        address: {{.Values.AzDProxy.cache.argDataProviderCacheConfiguration.address}}
+        address: "{{.Values.AzDProxy.cache.argDataProviderCacheConfiguration.address}}:{{.Values.AzDProxy.cache.redisClient.port}}"
+        Host: {{.Values.AzDProxy.cache.argDataProviderCacheConfiguration.address}}
         table: {{.Values.AzDProxy.cache.argDataProviderCacheConfiguration.table}}
+        tlsCrtPath: "{{.Values.AzDProxy.cache.redisClient.secret.volume.mountPath}}/tls.crt"
+        tlsKeyPath: "{{.Values.AzDProxy.cache.redisClient.secret.volume.mountPath}}/tls.key"
+        caCertPath: "{{.Values.AzDProxy.cache.redisClient.secret.volume.mountPath}}/ca.cert"
+        passwordPath: "{{.Values.AzDProxy.cache.redisClient.secret.volume.mountPath}}/REDIS_PASS"
 
       tokensCacheConfiguration:
         cacheSize: {{.Values.AzDProxy.cache.tokensCacheConfiguration.cacheSize}} # in Bytes

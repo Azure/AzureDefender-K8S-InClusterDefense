@@ -28,24 +28,24 @@ spec:
           ports:
             - containerPort: {{.Values.AzDProxy.cache.redisClient.port}}
           volumeMounts:
-            # App's config file
-            - mountPath: /redis-master
+            # redis config file
+            - mountPath: {{.Values.AzDProxy.cache.redisClient.mountPath}}
               name: {{.Values.AzDProxy.configuration.volume.name}}
               readOnly: true
-            # redis's secret
-            - mountPath: tls
-              name: tls
+            # redis secret
+            - mountPath: {{.Values.AzDProxy.cache.redisClient.secret.volume.mountPath | quote}}
+              name: {{.Values.AzDProxy.cache.redisClient.secret.volume.name}}
               readOnly: true
           env:
           - name: REDIS_PASS
             valueFrom:
               secretKeyRef:
-                name: secret-tls-certs
+                name: {{.Values.AzDProxy.prefixResourceDeployment}}-tls-certs
                 key: REDIS_PASS
       volumes:
-        - name: tls
+        - name: {{.Values.AzDProxy.cache.redisClient.secret.volume.name}}
           secret:
-            secretName: secret-tls-certs
+            secretName: {{.Values.AzDProxy.prefixResourceDeployment}}-tls-certs
         - name: {{.Values.AzDProxy.configuration.volume.name}}
           configMap:
             name: {{.Values.AzDProxy.prefixResourceDeployment}}-config

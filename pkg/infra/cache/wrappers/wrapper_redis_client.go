@@ -2,11 +2,7 @@ package wrappers
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
 	"github.com/go-redis/redis/v8"
-	"io/ioutil"
-	"log"
 	"time"
 )
 
@@ -28,9 +24,17 @@ type IRedisBaseClientWrapper interface {
 type RedisCacheClientConfiguration struct {
 	// Address host:port address.
 	Address string
+	// Host address
+	Host string
 	// Password Optional password. Must match the password specified in the
 	// requirement pass server configuration option.
-	Password string
+	PasswordPath string
+	// TlsCrt is the path to the tls.crt file
+	TlsCrtPath string
+	// TlsKey is the path to the tls.key file
+	TlsKeyPath string
+	// CaCert is the path to the ca.cert file
+	CaCertPath string
 	// Table is Database to be selected after connecting to the server.
 	Table int
 	// MaxRetries Maximum number of retries before giving up.
@@ -39,44 +43,4 @@ type RedisCacheClientConfiguration struct {
 	// MinRetryBackoff Minimum backoff between each retry.
 	// Default is 8 milliseconds; -1 disables backoff.
 	MinRetryBackoff time.Duration
-	// TLS Config to use. When set TLS will be negotiated.
-	TLSConfig *tls.Config
-}
-
-func NewRedisBaseClientWrapper(configuration *RedisCacheClientConfiguration) *redis.Client {
-
-	cert, err := tls.LoadX509KeyPair("tls/tls.crt", "tls/tls.key")
-	if err != nil {
-		log.Fatal(err)
-	}
-	caCert, err := ioutil.ReadFile("tls/ca.cert")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	password, err := ioutil.ReadFile("tls/REDIS_PASS")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	pool := x509.NewCertPool()
-	pool.AppendCertsFromPEM(caCert)
-
-	tlsConfig := &tls.Config{
-		ServerName:   "azure-defender-proxy-redis-service",
-		Certificates: []tls.Certificate{cert},
-		RootCAs:      pool,
-	}
-
-
-	redisClient := redis.NewClient(&redis.Options{
-		Addr:            configuration.Address,
-		Password:        string(password),
-		DB:              configuration.Table,
-		MaxRetries:      configuration.MaxRetries,
-		MinRetryBackoff: configuration.MinRetryBackoff,
-		TLSConfig: tlsConfig,
-	})
-
-	return redisClient
 }

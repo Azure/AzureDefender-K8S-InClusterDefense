@@ -162,6 +162,15 @@ AzDProxy:
       replicas: 1
       # -- the port that redis cache will be listened.
       port: 6379
+      # -- The mount path of the redis config file in redis deployment.
+      mountPath: "/redis-master"
+      # The secret values of the tls secret
+      secret:
+        volume:
+          # name of secret volume in redis deployment and webhook deployment
+          name: "tls"
+          # name of secret mountPath in redis deployment and webhook deployment
+          mountPath: /tls
 
       retryPolicyConfiguration:
         #  -- Number of retry attempts
@@ -171,7 +180,7 @@ AzDProxy:
 
     argDataProviderCacheConfiguration:
       # -- Address that the redis client will listen to. set to redis service + the port of the service.
-      address: "azure-defender-proxy-redis-service:6379"
+      address: "azure-defender-proxy-redis-service"
       # -- The table (Db) that the argDataProviderCache will save to data.
       table: 0
 
