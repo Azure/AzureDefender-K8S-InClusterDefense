@@ -110,9 +110,17 @@ func main() {
 	}
 
 	// Validate all TTL values for cache clients configurations are non-positive. Non-positive values are not allowed in order to make sure each value in cache has valid TTL.
-	isValidConfiguration := utils.ValidatePositiveInt(azdSecInfoProviderConfiguration.CacheExpirationContainerVulnerabilityScanInfo, azdSecInfoProviderConfiguration.CacheExpirationTimeTimeout, argDataProviderConfiguration.CacheExpirationTimeScannedResults, argDataProviderConfiguration.CacheExpirationTimeUnscannedResults, tag2DigestResolverConfiguration.CacheExpirationTimeForResults, acrTokenProviderConfiguration.RegistryRefreshTokenCacheExpirationTime)
+	isValidConfiguration, configurationName := utils.ValidatePositiveInt(
+		&utils.PositiveIntValidationObject{VariableName: "azdSecInfoProviderConfiguration.CacheExpirationContainerVulnerabilityScanInfo", Variable: azdSecInfoProviderConfiguration.CacheExpirationContainerVulnerabilityScanInfo},
+		&utils.PositiveIntValidationObject{VariableName: "azdSecInfoProviderConfiguration.CacheExpirationTimeTimeout", Variable: azdSecInfoProviderConfiguration.CacheExpirationTimeTimeout},
+		&utils.PositiveIntValidationObject{VariableName: "argDataProviderConfiguration.CacheExpirationTimeScannedResults", Variable: argDataProviderConfiguration.CacheExpirationTimeScannedResults},
+		&utils.PositiveIntValidationObject{VariableName: "argDataProviderConfiguration.CacheExpirationTimeUnscannedResults", Variable: argDataProviderConfiguration.CacheExpirationTimeUnscannedResults},
+		&utils.PositiveIntValidationObject{VariableName: "tag2DigestResolverConfiguration.CacheExpirationTimeForResults", Variable: tag2DigestResolverConfiguration.CacheExpirationTimeForResults},
+		&utils.PositiveIntValidationObject{VariableName: "acrTokenProviderConfiguration.RegistryRefreshTokenCacheExpirationTime", Variable: acrTokenProviderConfiguration.RegistryRefreshTokenCacheExpirationTime},
+		)
 	if !isValidConfiguration {
-		log.Fatal("Got non-positive cache TTL. Only positive values are allowed.", utils.InvalidConfiguration)
+		errMsg := fmt.Sprintf("Got non-positive cache TTL. Only positive values are allowed. Configuration name: <%s>", configurationName)
+		log.Fatal(errMsg, utils.InvalidConfiguration)
 	}
 	// Create deployment singleton.
 	if _, err = utils.NewDeployment(deploymentConfiguration); err != nil {
