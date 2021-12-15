@@ -24,7 +24,7 @@ const (
 )
 
 var (
-	_ctx             = context.Background()
+	_cacheContext = context.Background()
 	_retryPolicy     retrypolicy.IRetryPolicy
 	_client          *RedisCacheClient
 	_redisClientMock *redis.Client
@@ -36,7 +36,7 @@ func (suite *TestSuiteRedisCache) SetupTest() {
 	_redisClientMock, _redisMock = redismock.NewClientMock()
 	retryPolicyConfiguration := &retrypolicy.RetryPolicyConfiguration{RetryAttempts: 1, RetryDurationInMS: 10}
 	_retryPolicy = retrypolicy.NewRetryPolicy(instrumentation.NewNoOpInstrumentationProvider(), retryPolicyConfiguration)
-	_client = NewRedisCacheClient(instrumentation.NewNoOpInstrumentationProvider(), _redisClientMock, _retryPolicy)
+	_client = NewRedisCacheClient(instrumentation.NewNoOpInstrumentationProvider(), _redisClientMock, _retryPolicy, _cacheContext)
 }
 
 func (suite *TestSuiteRedisCache) Test_Get_KeyIsExist_ShouldReturnValue() {
@@ -46,7 +46,7 @@ func (suite *TestSuiteRedisCache) Test_Get_KeyIsExist_ShouldReturnValue() {
 	_redisMock.ExpectGet(_key).SetVal(expectedValue)
 
 	// Act
-	actual, err := _client.Get(_ctx, _key)
+	actual, err := _client.Get(_key)
 
 	// Test
 	suite.Nil(err)
@@ -58,7 +58,7 @@ func (suite *TestSuiteRedisCache) Test_Get_KeyIsNotExist_ShouldReturnErr() {
 	_redisMock.ExpectGet(_key).SetErr(redis.Nil)
 
 	// Act
-	_, err := _client.Get(_ctx, _key)
+	_, err := _client.Get(_key)
 
 	// Test
 	suite.NotNil(err)
@@ -70,7 +70,7 @@ func (suite *TestSuiteRedisCache) Test_Set_NewKey_ShouldReturnNil() {
 	_redisMock.ExpectSet(_key, _value, duration).RedisNil()
 
 	// Act
-	err := _client.Set(_ctx, _key, _value, duration)
+	err := _client.Set(_key, _value, duration)
 	suite.Nil(err)
 }
 
@@ -80,7 +80,7 @@ func (suite *TestSuiteRedisCache) Test_Set_NegativeExpiration_ShouldReturnErr() 
 	_redisMock.ExpectSet(_key, _value, duration).SetVal(_value)
 
 	// Act
-	err := _client.Set(_ctx, _key, _value, duration)
+	err := _client.Set(_key, _value, duration)
 	suite.IsType(&NegativeExpirationCacheError{}, err)
 }
 

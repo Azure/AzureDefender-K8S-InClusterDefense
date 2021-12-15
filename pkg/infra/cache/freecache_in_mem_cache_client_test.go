@@ -1,6 +1,7 @@
 package cache
 
 import (
+
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/cache/wrappers"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/cache/wrappers/mocks"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
@@ -26,7 +27,7 @@ func (suite *TestSuiteFreeCache) TestFreeCacheInMemCacheClient_Get_KeyIsExist_Sh
 	client := NewFreeCacheInMemCacheClient(instrumentation.NewNoOpInstrumentationProvider(), wrapper)
 
 	// Act
-	actual, err := client.Get(nil, _key)
+	actual, err := client.Get(_key)
 
 	// Test
 	suite.Nil(err)
@@ -40,7 +41,7 @@ func (suite *TestSuiteFreeCache) TestFreeCacheInMemCacheClient_Get_KeyIsNotExist
 	client := NewFreeCacheInMemCacheClient(instrumentation.NewNoOpInstrumentationProvider(), wrapper)
 
 	// Act
-	_, err := client.Get(nil, _key)
+	_, err := client.Get(_key)
 
 	// Test
 	suite.Equal(errors.Cause(err), expectedError)
@@ -54,7 +55,7 @@ func (suite *TestSuiteFreeCache) TestFreeCacheInMemCacheClient_Set_NewKey_Should
 	client := NewFreeCacheInMemCacheClient(instrumentation.NewNoOpInstrumentationProvider(), wrapper)
 
 	// Act
-	err := client.Set(nil, _key, _value, duration)
+	err := client.Set(_key, _value, duration)
 
 	// Test
 	suite.Nil(err)
@@ -72,7 +73,7 @@ func (suite *TestSuiteFreeCache) TestFreeCacheInMemCacheClient_Set_KeyAlreadyExi
 	client := NewFreeCacheInMemCacheClient(instrumentation.NewNoOpInstrumentationProvider(), wrapper)
 
 	// Act
-	err := client.Set(nil, _key, _value, duration)
+	err := client.Set(_key, _value, duration)
 
 	// Test
 	suite.Nil(err)
@@ -88,7 +89,7 @@ func (suite *TestSuiteFreeCache) TestFreeCacheInMemCacheClient_Set_NegativeExpir
 	client := NewFreeCacheInMemCacheClient(instrumentation.NewNoOpInstrumentationProvider(), wrapper)
 
 	// Act
-	err := client.Set(nil, _key, _value, duration)
+	err := client.Set( _key, _value, duration)
 
 	// Test
 	suite.Equal(errors.Cause(err), NewNegativeExpirationCacheError(duration))
@@ -100,7 +101,7 @@ func (suite *TestSuiteFreeCache) TestFreeCacheInMemCacheClient_Get_MissingKey_Sh
 	client := NewFreeCacheInMemCacheClient(instrumentation.NewNoOpInstrumentationProvider(), wrapper)
 
 	// Act
-	val, err := client.Get(nil, _key)
+	val, err := client.Get(_key)
 
 	// Test
 	suite.Equal(err, NewMissingKeyCacheError(_key))
@@ -114,10 +115,10 @@ func (suite *TestSuiteFreeCache) TestFreeCacheInMemCacheClient_Get_ExpiredKey_Sh
 	duration := 1 * time.Second
 	durationToSleep := 3 * time.Second
 
-	client.Set(nil, _key, _value, duration)
+	client.Set(_key, _value, duration)
 	time.Sleep(durationToSleep)
 	// Act
-	val, err := client.Get(nil, _key)
+	val, err := client.Get(_key)
 
 	// Test
 	suite.NotNil(err)
@@ -131,7 +132,7 @@ func (suite *TestSuiteFreeCache) TestFreeCacheInMemCacheClient_Get_Error() {
 	wrapperMock.On("Get", []byte(_key)).Return(nil, expectedError)
 	client := NewFreeCacheInMemCacheClient(instrumentation.NewNoOpInstrumentationProvider(), wrapperMock)
 
-	val, err := client.Get(nil, _key)
+	val, err := client.Get(_key)
 	// Test
 	suite.Equal("", val)
 	suite.ErrorIs(err, expectedError)
@@ -145,7 +146,7 @@ func (suite *TestSuiteFreeCache) TestFreeCacheInMemCacheClient_Set_Error() {
 	wrapperMock.On("Set", []byte(_key), []byte(_value), 60).Return(expectedError)
 	client := NewFreeCacheInMemCacheClient(instrumentation.NewNoOpInstrumentationProvider(), wrapperMock)
 
-	err := client.Set(nil, _key, _value, time.Minute)
+	err := client.Set(_key, _value, time.Minute)
 	// Test
 	suite.ErrorIs(err, expectedError)
 	wrapperMock.AssertExpectations(suite.T())

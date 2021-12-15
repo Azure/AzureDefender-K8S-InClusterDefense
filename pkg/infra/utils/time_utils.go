@@ -12,3 +12,23 @@ type TimeoutConfiguration struct {
 func (configuration *TimeoutConfiguration) ParseTimeoutConfigurationToDuration() time.Duration {
 	return time.Duration(configuration.TimeDurationInMS) * time.Millisecond
 }
+
+// GetMilliseconds receive durationInMilliseconds as int and return it as time.Duration in milliseconds.
+func GetMilliseconds(durationInMilliseconds int) time.Duration {
+	return time.Duration(durationInMilliseconds) * time.Millisecond
+}
+
+// GetSeconds receive durationInSeconds as int and return it as time.Duration in seconds.
+func GetSeconds(durationInSeconds int) time.Duration {
+	return time.Duration(durationInSeconds) * time.Second
+}
+
+// GetMinutes receive durationInMinutes as int and return it as time.Duration in minutes.
+func GetMinutes(durationInMinutes int) time.Duration {
+	return time.Duration(durationInMinutes) * time.Minute
+}
+
+// GetHours receive durationInHours as int and return it as time.Duration in hours.
+func GetHours(durationInHours int) time.Duration {
+	return time.Duration(durationInHours) * time.Hour
+}

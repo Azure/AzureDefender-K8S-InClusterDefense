@@ -41,15 +41,37 @@ type ARGDataProvider struct {
 	argQueryGenerator queries.IARGQueryGenerator
 	// argClient is the arg client of the ARGDataProvider
 	argClient IARGClient
+	// cacheClient is a cache for mapping digest to scan results
+	cacheClient *ARGDataProviderCacheClient
+	// ARGDataProviderConfiguration is configuration data for ARGDataProvider
+	argDataProviderConfiguration *ARGDataProviderConfiguration
+}
+
+// ARGDataProviderConfiguration is configuration data for ARGDataProvider
+type ARGDataProviderConfiguration struct {
+	// CacheExpirationTimeUnscannedResults is the expiration time **IN MINUTES** for unscanned results in the cache client
+	CacheExpirationTimeUnscannedResults int
+	// CacheExpirationTimeScannedResults is the expiration time **IN HOURS** for scan results in the cache client
+	CacheExpirationTimeScannedResults int
+}
+
+// ScanFindingsInCache represents findings of image vulnerability scan with its scan status
+type ScanFindingsInCache struct {
+	//ScanStatus vulnerability scan status for image
+	ScanStatus contracts.ScanStatus `json:"scanStatus"`
+	// ScanFindings vulnerability scan findings for image
+	ScanFindings []*contracts.ScanFinding `json:"scanFindings"`
 }
 
 // NewARGDataProvider Constructor
-func NewARGDataProvider(instrumentationProvider instrumentation.IInstrumentationProvider, argClient IARGClient, queryGenerator queries.IARGQueryGenerator) *ARGDataProvider {
+func NewARGDataProvider(instrumentationProvider instrumentation.IInstrumentationProvider, argClient IARGClient, queryGenerator queries.IARGQueryGenerator, cacheClient *ARGDataProviderCacheClient, configuration *ARGDataProviderConfiguration) *ARGDataProvider {
 	return &ARGDataProvider{
-		tracerProvider:    instrumentationProvider.GetTracerProvider("ARGDataProvider"),
-		metricSubmitter:   instrumentationProvider.GetMetricSubmitter(),
-		argQueryGenerator: queryGenerator,
-		argClient:         argClient,
+		tracerProvider:               instrumentationProvider.GetTracerProvider("ARGDataProvider"),
+		metricSubmitter:              instrumentationProvider.GetMetricSubmitter(),
+		argQueryGenerator:            queryGenerator,
+		argClient:                    argClient,
+		cacheClient:                  cacheClient,
+		argDataProviderConfiguration: configuration,
 	}
 }
 
@@ -62,6 +84,39 @@ func (provider *ARGDataProvider) GetImageVulnerabilityScanResults(registry strin
 	tracer := provider.tracerProvider.GetTracer("GetImageVulnerabilityScanResults")
 	tracer.Info("Received", "registry", registry, "repository", repository, "digest", digest)
 
+	// Try to get results from cache. If a key doesn't exist or an error occurred - continue without cache
+	scanStatus, scanFindings, err := provider.cacheClient.getResultsFromCache(digest)
+	if err != nil{ // Couldn't get ImageVulnerabilityScanResults from cache - skip and get results from provider
+		err = errors.Wrap(err, "Couldn't get ImageVulnerabilityScanResults from cache")
+		tracer.Error(err, "")
+	}else { //  Key exist in cache
+		tracer.Info("got ImageVulnerabilityScanResults from cache")
+		return scanStatus, scanFindings, nil
+	}
+
+	// Try to get results from ARG
+	scanStatus, scanFindings, err = provider.getResultsFromArg(registry, repository, digest)
+	if err != nil {
+		err = errors.Wrap(err, "Failed to get get results from Arg")
+		tracer.Error(err, "")
+		return "", nil, err
+	}
+	tracer.Info("got results from Arg")
+
+	// Set scan findings in cache
+	err = provider.cacheClient.setScanFindingsInCache(scanFindings, scanStatus, digest)
+	if err != nil { // in case error occurred - continue without cache
+		err = errors.Wrap(err, "Failed to set scan findings in cache")
+		tracer.Error(err, "")
+	}
+
+	return scanStatus, scanFindings, nil
+}
+
+// getResultsFromArg gets scan results from arg
+func (provider *ARGDataProvider) getResultsFromArg(registry string, repository string, digest string) (contracts.ScanStatus, []*contracts.ScanFinding, error) {
+	tracer := provider.tracerProvider.GetTracer("getResultsFromArg")
+
 	// Generate image scan result ARG query for this specific image
 	query, err := provider.argQueryGenerator.GenerateImageVulnerabilityScanQuery(&queries.ContainerVulnerabilityScanResultsQueryParameters{
 		Registry:   registry,
@@ -70,7 +125,7 @@ func (provider *ARGDataProvider) GetImageVulnerabilityScanResults(registry strin
 	})
 
 	if err != nil {
-		err = errors.Wrap(err, "ARGDataProvider.GetImageVulnerabilityScanResults failed on argQueryGenerator.GenerateImageVulnerabilityScanQuery")
+		err = errors.Wrap(err, "Failed on argQueryGenerator.GenerateImageVulnerabilityScanQuery")
 		tracer.Error(err, "")
 		return "", nil, err
 	}
@@ -80,7 +135,7 @@ func (provider *ARGDataProvider) GetImageVulnerabilityScanResults(registry strin
 	// Query arg for scan results for image
 	results, err := provider.argClient.QueryResources(query)
 	if err != nil {
-		err = errors.Wrap(err, "ARGDataProvider.GetImageVulnerabilityScanResults failed on argClient.QueryResources")
+		err = errors.Wrap(err, "Failed on argClient.QueryResources")
 		tracer.Error(err, "")
 		return "", nil, err
 	}
@@ -88,7 +143,7 @@ func (provider *ARGDataProvider) GetImageVulnerabilityScanResults(registry strin
 	// Parse ARG client generic results to scan results ARG query array
 	scanResultsQueryResponseObjectList, err := provider.parseARGImageScanResults(results)
 	if err != nil {
-		err = errors.Wrap(err, "ARGDataProvider.GetImageVulnerabilityScanResults failed on parseARGImageScanResults")
+		err = errors.Wrap(err, "Failed on parseARGImageScanResults")
 		tracer.Error(err, "")
 		return "", nil, err
 	}
@@ -97,11 +152,10 @@ func (provider *ARGDataProvider) GetImageVulnerabilityScanResults(registry strin
 	// Get image scan data from the ARG query parsed results
 	scanStatus, scanFindings, err := provider.getImageScanDataFromARGQueryScanResult(scanResultsQueryResponseObjectList)
 	if err != nil {
-		err = errors.Wrap(err, "ARGDataProvider.GetImageVulnerabilityScanResults failed on getImageScanDataFromARGQueryScanResult")
+		err = errors.Wrap(err, "Failed on getImageScanDataFromARGQueryScanResult")
 		tracer.Error(err, "")
 		return "", nil, err
 	}
-
 	return scanStatus, scanFindings, nil
 }
 
@@ -118,7 +172,7 @@ func (provider *ARGDataProvider) parseARGImageScanResults(argImageScanResults []
 	// TODO check if there is more efficient way for this - might be a performance hit..(maybe with other client return value)
 	marshaled, err := json.Marshal(argImageScanResults)
 	if err != nil {
-		err = errors.Wrap(err, "ARGDataProvider.parseARGImageScanResults failed on json.Marshal results")
+		err = errors.Wrap(err, "Failed on json.Marshal results")
 		tracer.Error(err, "")
 		return nil, err
 	}
@@ -127,7 +181,7 @@ func (provider *ARGDataProvider) parseARGImageScanResults(argImageScanResults []
 	containerVulnerabilityScanResultsQueryResponseObjectList := []*queries.ContainerVulnerabilityScanResultsQueryResponseObject{}
 	err = json.Unmarshal(marshaled, &containerVulnerabilityScanResultsQueryResponseObjectList)
 	if err != nil {
-		err = errors.Wrap(err, "ARGDataProvider.parseARGImageScanResults failed on json.Unmarshal results")
+		err = errors.Wrap(err, "Failed on json.Unmarshal results")
 		tracer.Error(err, "")
 		return nil, err
 	}
@@ -184,3 +238,4 @@ func (provider *ARGDataProvider) getImageScanDataFromARGQueryScanResult(scanResu
 	provider.metricSubmitter.SendMetric(util.GetDurationMilliseconds(startTime), argmetric.NewArgDataProviderResponseLatencyMetricWithGetImageVulnerabilityScanResultsQuery(contracts.UnhealthyScan))
 	return contracts.UnhealthyScan, scanFindings, nil
 }
+

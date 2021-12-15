@@ -8,6 +8,10 @@ var (
 	NilArgumentError              = errors.New("NilArgumentError")
 	ReadFromClosedChannelError    = errors.New("ReadFromClosedChannelError")
 	CantConvertChannelDataWrapper = errors.New("Cant Convert Channel Data Wrapper to the designated type")
+	SetKeyInCacheWithNoExpiration = errors.New("SetKeyInCacheWithNoExpiration")
+	TimeOutError = errors.New("TimeOutError")
+	InvalidConfiguration = errors.New("InvalidConfiguration")
+
 )
 
 // IsErrorIsTypeOf gets an error and type of interface and returns true or false if the error caused by some error of type t.

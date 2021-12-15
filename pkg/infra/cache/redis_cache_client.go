@@ -34,27 +34,29 @@ type RedisCacheClient struct {
 	metricSubmitter metric.IMetricSubmitter
 	//retryPolicy retry policy for communication with redis cluster.
 	retryPolicy retrypolicy.IRetryPolicy
+	// cacheContext is the cache cacheContext
+	cacheContext context.Context
 }
 
 // NewRedisCacheClient is factory for RedisCacheClient
-func NewRedisCacheClient(instrumentationProvider instrumentation.IInstrumentationProvider, redisBaseClient wrappers.IRedisBaseClientWrapper, retryPolicy retrypolicy.IRetryPolicy) *RedisCacheClient {
+func NewRedisCacheClient(instrumentationProvider instrumentation.IInstrumentationProvider, redisBaseClient wrappers.IRedisBaseClientWrapper, retryPolicy retrypolicy.IRetryPolicy, cacheContext context.Context) *RedisCacheClient {
 
 	return &RedisCacheClient{
 		tracerProvider:  instrumentationProvider.GetTracerProvider("RedisCacheClient"),
 		metricSubmitter: instrumentationProvider.GetMetricSubmitter(),
 		redisClient:     redisBaseClient,
 		retryPolicy:     retryPolicy,
+		cacheContext:    cacheContext,
 	}
 }
 
 // Get gets a value from the redis cache. It returns error when key does not exist.
-func (client *RedisCacheClient) Get(ctx context.Context, key string) (string, error) {
+func (client *RedisCacheClient) Get(key string) (string, error) {
 	tracer := client.tracerProvider.GetTracer("Get")
 	tracer.Info("Get key executed", "Key", key)
-
 	value, err := client.retryPolicy.RetryActionString(
 		/*action ActionString get key using client.redisClient */
-		func() (string, error) { return client.redisClient.Get(ctx, key).Result() },
+		func() (string, error) { return client.redisClient.Get(client.cacheContext, key).Result() },
 		/*handler ShouldRetryOnSpecificError - handle with key is missing error*/
 		func(err error) bool {
 			return !errors.Is(err, redis.Nil)
@@ -86,7 +88,7 @@ func (client *RedisCacheClient) Get(ctx context.Context, key string) (string, er
 //Zero expiration means the key has no expiration time.
 // It returns error when there was a problem trying to set the key.
 // expiration must be non-negative expiration.
-func (client *RedisCacheClient) Set(ctx context.Context, key string, value string, expiration time.Duration) error {
+func (client *RedisCacheClient) Set(key string, value string, expiration time.Duration) error {
 	tracer := client.tracerProvider.GetTracer("Set")
 	tracer.Info("Set new key", "Key", key, "Value", value, "Expiration", expiration)
 
@@ -100,7 +102,7 @@ func (client *RedisCacheClient) Set(ctx context.Context, key string, value strin
 
 	err := client.retryPolicy.RetryAction(
 		// Action - set the values redis client.
-		func() error { return client.redisClient.Set(ctx, key, value, expiration).Err() },
+		func() error { return client.redisClient.Set(client.cacheContext, key, value, expiration).Err() },
 		// HandleError - if the err is redis.Nil then it means that the get is not exist.
 		// TODO @liorkesten -- How is this related to set??
 		func(err error) bool { return err != redis.Nil },

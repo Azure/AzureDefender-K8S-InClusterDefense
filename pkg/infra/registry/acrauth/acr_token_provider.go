@@ -3,9 +3,11 @@ package acrauth
 import (
 	"context"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/azureauth"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/cache"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/utils"
 	"github.com/pkg/errors"
 )
 
@@ -29,15 +31,27 @@ type ACRTokenProvider struct {
 	azureBearerAuthorizerTokenProvider azureauth.IBearerAuthorizerTokenProvider
 	// tokenExchanger is exchanger to exchange the bearer token to a refresh token
 	tokenExchanger IACRTokenExchanger
+	// cacheClient is cache for mapping acr registry to token
+	cacheClient cache.ICacheClient
+	// acrTokenProviderConfiguration is configuration data for ACRTokenProvider
+	acrTokenProviderConfiguration *ACRTokenProviderConfiguration
+}
+
+// ACRTokenProviderConfiguration is configuration data for ACRTokenProvider
+type ACRTokenProviderConfiguration struct {
+	// RegistryRefreshTokenCacheExpirationTime is the expiration time **IN MINUTES** for registryRefreshToken in the cache client
+	RegistryRefreshTokenCacheExpirationTime int
 }
 
 // NewACRTokenProvider Ctor
-func NewACRTokenProvider(instrumentationProvider instrumentation.IInstrumentationProvider, tokenExchanger IACRTokenExchanger, azureBearerAuthorizerTokenProvider azureauth.IBearerAuthorizerTokenProvider) *ACRTokenProvider {
+func NewACRTokenProvider(instrumentationProvider instrumentation.IInstrumentationProvider, tokenExchanger IACRTokenExchanger, azureBearerAuthorizerTokenProvider azureauth.IBearerAuthorizerTokenProvider, cacheClient cache.ICacheClient, acrTokenProviderConfiguration *ACRTokenProviderConfiguration) *ACRTokenProvider {
 	return &ACRTokenProvider{
-		tracerProvider:        instrumentationProvider.GetTracerProvider("ACRTokenProvider"),
-		metricSubmitter:       instrumentationProvider.GetMetricSubmitter(),
+		tracerProvider:                     instrumentationProvider.GetTracerProvider("ACRTokenProvider"),
+		metricSubmitter:                    instrumentationProvider.GetMetricSubmitter(),
 		azureBearerAuthorizerTokenProvider: azureBearerAuthorizerTokenProvider,
-		tokenExchanger:        tokenExchanger,
+		tokenExchanger:                     tokenExchanger,
+		cacheClient: cacheClient,
+		acrTokenProviderConfiguration: acrTokenProviderConfiguration,
 	}
 }
 
@@ -48,22 +62,39 @@ func (tokenProvider *ACRTokenProvider) GetACRRefreshToken(registry string) (stri
 	tracer := tokenProvider.tracerProvider.GetTracer("GetACRRefreshToken")
 	tracer.Info("Received", "registry", registry)
 
-	// Get azure token
+	registryRefreshToken, err := tokenProvider.cacheClient.Get(registry)
+	// Error as a result of key doesn't exist and error from the cache are treated the same (skip cache)
+	if err != nil { // Couldn't get token from cache - skip and get results from provider
+		err = errors.Wrap(err, "Couldn't get registryRefreshToken from cache")
+		tracer.Error(err, "")
+	}else { // If key exist - return token
+		tracer.Info("registryRefreshToken exist in cache", "registry", registry)
+		return registryRefreshToken, nil
+	}
+
+	// Otherwise, get azure token
 	armToken, err := tokenProvider.azureBearerAuthorizerTokenProvider.GetOAuthToken(context.Background())
 	if err != nil {
-		err = errors.Wrap(err, "ACRTokenProvider.azureauth.azureBearerAuthorizerTokenProvider: failed")
+		err = errors.Wrap(err, "Failed to get armToken")
 		tracer.Error(err, "")
 		return "", err
 	}
 
 	// Exchange arm token to ACR refresh token
-	registryRefreshToken, err := tokenProvider.tokenExchanger.ExchangeACRAccessToken(registry, armToken)
+	registryRefreshToken, err = tokenProvider.tokenExchanger.ExchangeACRAccessToken(registry, armToken)
 	if err != nil {
-		err = errors.Wrap(err, "ACRTokenProvider.tokenExchanger.ExchangeACRAccessToken: failed")
+		err = errors.Wrap(err, "Failed to exchange ACR access token")
 		tracer.Error(err, "")
 		return "", err
 	}
 
-	// TODO add caching + experation
+	// Save registryRefreshToken in cache
+	err = tokenProvider.cacheClient.Set(registry, registryRefreshToken, utils.GetMinutes(tokenProvider.acrTokenProviderConfiguration.RegistryRefreshTokenCacheExpirationTime))
+	if err != nil{
+		err = errors.Wrap(err, "Failed to set registryRefreshToken in cache")
+		tracer.Error(err, "")
+	}
+	tracer.Info("Set registryRefreshToken in cache", "registry", registry)
+
 	return registryRefreshToken, nil
 }

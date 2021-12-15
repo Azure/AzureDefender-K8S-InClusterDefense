@@ -65,6 +65,9 @@ data:
           retryAttempts: {{ .Values.AzDProxy.acr.craneWrappers.retryPolicyConfiguration.retryAttempts }}
           retryDurationInMS: {{ .Values.AzDProxy.acr.craneWrappers.retryPolicyConfiguration.retryDurationInMS }}
 
+      acrTokenProviderConfiguration:
+        registryRefreshTokenCacheExpirationTime: {{ .Values.AzDProxy.acr.acrTokenProviderConfiguration.registryRefreshTokenCacheExpirationTime }}
+
     arg:
       argClientConfiguration:
         subscriptions: {{ .Values.AzDProxy.arg.argClientConfiguration.subscriptions }}
@@ -73,6 +76,14 @@ data:
         retryPolicyConfiguration:
           retryAttempts: {{ .Values.AzDProxy.arg.argBaseClient.retryPolicyConfiguration.retryAttempts }}
           retryDurationInMS: {{ .Values.AzDProxy.arg.argBaseClient.retryPolicyConfiguration.retryDurationInMS }}
+
+      argDataProviderConfiguration:
+        cacheExpirationTimeUnscannedResults: {{ .Values.AzDProxy.arg.argDataProviderConfiguration.cacheExpirationTimeUnscannedResults }}
+        cacheExpirationTimeScannedResults: {{ .Values.AzDProxy.arg.argDataProviderConfiguration.cacheExpirationTimeScannedResults }}
+
+    tag2digest:
+      tag2DigestResolverConfiguration:
+        cacheExpirationTimeForResults: {{ .Values.AzDProxy.tag2digest.tag2DigestResolverConfiguration.cacheExpirationTimeForResults }}
 
     # Cache configuration
     cache:
@@ -98,3 +109,7 @@ data:
     azdSecInfoProvider:
       GetContainersVulnerabilityScanInfoTimeoutDuration:
         timeDurationInMS: {{ .Values.AzDProxy.azdSecInfoProvider.GetContainersVulnerabilityScanInfo.timeout.timeDurationInMS }}
+
+      azdSecInfoProviderConfiguration:
+        CacheExpirationTimeTimeout: {{ .Values.AzDProxy.azdSecInfoProvider.azdSecInfoProviderConfiguration.CacheExpirationTimeTimeout }}
+        CacheExpirationContainerVulnerabilityScanInfo: {{ .Values.AzDProxy.azdSecInfoProvider.azdSecInfoProviderConfiguration.CacheExpirationContainerVulnerabilityScanInfo }}

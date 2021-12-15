@@ -56,6 +56,9 @@ acr:
       retryAttempts: 3
       retryDurationInMS: 10
 
+  acrTokenProviderConfiguration:
+    # Expiration time in minutes of registryRefreshToken in cache
+    registryRefreshTokenCacheExpirationTime: 10 # 10 minutes
 
 arg:
   argClientConfiguration:
@@ -66,6 +69,17 @@ arg:
     retryPolicyConfiguration:
       retryAttempts: 3
       retryDurationInMS: 100
+
+  argDataProviderConfiguration:
+    # Expiration time IN MINUTES of scan results in status unscanned in cache (redeploy will take at least a minute and scanning an image takes 4 minutes on average)
+    cacheExpirationTimeUnscannedResults: 4 # 4 minute
+    # Expiration time IN HOURS of scan results in status scanned in cache (need to sync with image-scan periodic scans - every 10 days)
+    cacheExpirationTimeScannedResults: 24 # 24 hours
+
+tag2digest:
+  tag2DigestResolverConfiguration:
+    # Expiration time IN MINUTES of digest in cache - changing image digest require editing source code, building image and pushing image. Longer than 2 minutes
+    cacheExpirationTimeForResults: 2 # 2 minute
 
 # Cache configuration
 cache:
@@ -86,9 +100,15 @@ cache:
     # In bytes, where 1024 * 1024 represents a single Megabyte, and 100 * 1024*1024 represents 100 Megabytes.
     cacheSize: 104857600 # 100 * 1024 * 1024
 deployment:
-  isLocalDevelopment:  true
+  isLocalDevelopment: true
   namespace: "kube-system"
 
 azdSecInfoProvider:
   GetContainersVulnerabilityScanInfoTimeoutDuration:
     timeDurationInMS: 10000
+
+  azdSecInfoProviderConfiguration:
+    # Expiration time IN MINUTES of timeout status in cache - 15 minutes in order to avoid multiple timeouts
+    CacheExpirationTimeTimeout: 15 # 15 minutes
+    # Expiration time IN SECONDS of containerVulnerabilityScanInfo in cache - 30 seconds in order to handle replica set (multiply requests on the same pod)
+    CacheExpirationContainerVulnerabilityScanInfo: 30 # 30 seconds
