@@ -30,6 +30,7 @@ import (
 	"os"
 	k8sclientconfig "sigs.k8s.io/controller-runtime/pkg/client/config"
 )
+
 var (
 	_cacheContext = context.Background()
 )
@@ -110,9 +111,17 @@ func main() {
 	}
 
 	// Validate all TTL values for cache clients configurations are non-positive. Non-positive values are not allowed in order to make sure each value in cache has valid TTL.
-	isValidConfiguration := utils.ValidatePositiveInt(azdSecInfoProviderConfiguration.CacheExpirationContainerVulnerabilityScanInfo, azdSecInfoProviderConfiguration.CacheExpirationTimeTimeout, argDataProviderConfiguration.CacheExpirationTimeScannedResults, argDataProviderConfiguration.CacheExpirationTimeUnscannedResults, tag2DigestResolverConfiguration.CacheExpirationTimeForResults, acrTokenProviderConfiguration.RegistryRefreshTokenCacheExpirationTime)
+	isValidConfiguration, configurationName := utils.ValidatePositiveInt(
+		&utils.PositiveIntValidationObject{VariableName: "azdSecInfoProviderConfiguration.CacheExpirationContainerVulnerabilityScanInfo", Variable: azdSecInfoProviderConfiguration.CacheExpirationContainerVulnerabilityScanInfo},
+		&utils.PositiveIntValidationObject{VariableName: "azdSecInfoProviderConfiguration.CacheExpirationTimeTimeout", Variable: azdSecInfoProviderConfiguration.CacheExpirationTimeTimeout},
+		&utils.PositiveIntValidationObject{VariableName: "argDataProviderConfiguration.CacheExpirationTimeScannedResults", Variable: argDataProviderConfiguration.CacheExpirationTimeScannedResults},
+		&utils.PositiveIntValidationObject{VariableName: "argDataProviderConfiguration.CacheExpirationTimeUnscannedResults", Variable: argDataProviderConfiguration.CacheExpirationTimeUnscannedResults},
+		&utils.PositiveIntValidationObject{VariableName: "tag2DigestResolverConfiguration.CacheExpirationTimeForResults", Variable: tag2DigestResolverConfiguration.CacheExpirationTimeForResults},
+		&utils.PositiveIntValidationObject{VariableName: "acrTokenProviderConfiguration.RegistryRefreshTokenCacheExpirationTime", Variable: acrTokenProviderConfiguration.RegistryRefreshTokenCacheExpirationTime},
+	)
 	if !isValidConfiguration {
-		log.Fatal("Got non-positive cache TTL. Only positive values are allowed.", utils.InvalidConfiguration)
+		errMsg := fmt.Sprintf("Got non-positive cache TTL. Only positive values are allowed. Configuration name: <%s>", configurationName)
+		log.Fatal(errMsg, utils.InvalidConfiguration)
 	}
 	// Create deployment singleton.
 	deploymentInstance, err := utils.NewDeployment(deploymentConfiguration)
@@ -163,9 +172,9 @@ func main() {
 	var redisCacheClient cache.ICacheClient
 	// TODO create a path to communicate with Redis while using local deployment
 	// If this is local deployment - use in mem cache instead of redis
-	if deploymentInstance.IsLocalDevelopment(){
+	if deploymentInstance.IsLocalDevelopment() {
 		redisCacheClient = freeCacheInMemCacheClient
-	}else {
+	} else {
 		redisCacheBaseClientFactory := cachewrappers.NewWrapperRedisClientFactory(instrumentationProvider)
 		redisCacheBaseClient, err := redisCacheBaseClientFactory.Create(argDataProviderCacheConfiguration)
 		if err != nil {
@@ -208,7 +217,6 @@ func main() {
 	}
 	argDataProviderCacheClient := arg.NewARGDataProviderCacheClient(instrumentationProvider, redisCacheClient, argDataProviderConfiguration)
 	argDataProvider := arg.NewARGDataProvider(instrumentationProvider, argClient, argQueryGenerator, argDataProviderCacheClient, argDataProviderConfiguration)
-
 
 	// Handler and azdSecinfoProvider
 	azdSecInfoProviderCacheClient := azdsecinfo.NewAzdSecInfoProviderCacheClient(instrumentationProvider, redisCacheClient, azdSecInfoProviderConfiguration)

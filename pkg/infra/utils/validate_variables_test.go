@@ -13,23 +13,23 @@ func (suite *ValidateVariablesTestSuite) SetupTest() {
 
 }
 
-func (suite *ValidateVariablesTestSuite) Test_ValidatePositiveInt_Valid(){
-	result := ValidatePositiveInt(1,2,3,4,5)
+func (suite *ValidateVariablesTestSuite) Test_ValidatePositiveInt_Valid() {
+	result, name := ValidatePositiveInt(&PositiveIntValidationObject{"1", 1}, &PositiveIntValidationObject{"2", 2}, &PositiveIntValidationObject{"3", 3})
 	suite.Equal(true, result)
+	suite.Equal("", name)
 }
 
-
-func (suite *ValidateVariablesTestSuite) Test_ValidatePositiveInt_Zero(){
-	result := ValidatePositiveInt(1,2,3,0,5)
+func (suite *ValidateVariablesTestSuite) Test_ValidatePositiveInt_Zero() {
+	result, name := ValidatePositiveInt(&PositiveIntValidationObject{"1", 1}, &PositiveIntValidationObject{"2", 2}, &PositiveIntValidationObject{"0", 0})
 	suite.Equal(false, result)
+	suite.Equal("0", name)
 }
 
-
-func (suite *ValidateVariablesTestSuite) Test_ValidatePositiveInt_Neg(){
-	result := ValidatePositiveInt(1,-2,3,4,5)
-	suite.Equal(false ,result)
+func (suite *ValidateVariablesTestSuite) Test_ValidatePositiveInt_Neg() {
+	result, name := ValidatePositiveInt(&PositiveIntValidationObject{"1", 1}, &PositiveIntValidationObject{"-2", -2}, &PositiveIntValidationObject{"0", 0})
+	suite.Equal(false, result)
+	suite.Equal("-2", name)
 }
-
 
 func Test_ValidateVariablesTestSuite(t *testing.T) {
 	suite.Run(t, new(ValidateVariablesTestSuite))
