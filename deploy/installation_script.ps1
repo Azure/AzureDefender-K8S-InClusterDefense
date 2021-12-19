@@ -155,9 +155,7 @@ else
     $authorization_header = @{
         Authorization = "Bearer $token"
     }
-    write-host $token
-    write-host $authorization_header
-    write-host $url $authorization_header
+
     $response = Invoke-WebRequest -Method POST -Uri $url -Headers $authorization_header -UseBasicParsing
 
     if ($LASTEXITCODE -eq 3 -or $response.StatusCode -ne 200)
