@@ -26,14 +26,13 @@ Param (
     [bool]$should_enable_aks_security_profile = $true
 )
 
-write-host "Params that were entered:`r`nresource group : $resource_group `r`ncluster name : $cluster_name `r`nsubscription: $subscription"
+write-host "Params that were entered:`r`nresource group : $resource_group `r`ncluster name : $cluster_name `r`n subscription: $subscription"
 #######################################################################################################################
 # Function for printing new section.
-$stepCount = 1
+
 Function PrinitNewSection($stepTitle)
 {
     write-host "########################################## Step: $stepTitle ##########################################"
-    $stepCount++
 }
 #######################################################################################################################
 #                                   Extract used variables
@@ -69,7 +68,7 @@ if ($LASTEXITCODE -eq 3 -or $vmss_list.Length -eq 0)
 }
 #######################################################################################################################
 
-PrinitNewSection("Setting account to subscripiton")
+PrinitNewSection("Setting account to subscription")
 # login with az login.
 az account set -s $subscription
 
@@ -155,7 +154,6 @@ else
     $authorization_header = @{
         Authorization = "Bearer $token"
     }
-
     $response = Invoke-WebRequest -Method POST -Uri $url -Headers $authorization_header -UseBasicParsing
 
     if ($LASTEXITCODE -eq 3 -or $response.StatusCode -ne 200)
@@ -222,4 +220,4 @@ helm upgrade in-cluster-defense charts/azdproxy --install --wait `
                 --set AzDProxy.kubeletIdentity.envAzureAuthorizerConfiguration.mSIClientId=$kubelet_client_id `
                 --set AzDProxy.azdIdentity.envAzureAuthorizerConfiguration.mSIClientId=$in_cluster_defense_identity_client_id `
                 --set "AzDProxy.arg.argClientConfiguration.subscriptions={$subscription}" `
-                --set AzDProxy.webhook.image.name=maayankblock.azurecr.io/azdproxy-image                 # TODO Delete above line once helm chart is published to public repo.
+                --set AzDProxy.webhook.image.name=blockregistrydev.azurecr.io/azdproxy-image                 # TODO Delete above line once helm chart is published to public repo.
