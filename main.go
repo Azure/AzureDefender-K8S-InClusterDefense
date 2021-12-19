@@ -115,7 +115,8 @@ func main() {
 		log.Fatal("Got non-positive cache TTL. Only positive values are allowed.", utils.InvalidConfiguration)
 	}
 	// Create deployment singleton.
-	if _, err = utils.NewDeployment(deploymentConfiguration); err != nil {
+	deploymentInstance, err := utils.NewDeployment(deploymentConfiguration)
+	if err != nil {
 		log.Fatal("main.NewDeployment", err)
 	}
 	// Create Tivan's instrumentation
@@ -155,15 +156,24 @@ func main() {
 
 	}
 	//Cache clients
-	redisCacheBaseClientFactory := cachewrappers.NewWrapperRedisClientFactory(instrumentationProvider)
-	redisCacheBaseClient, err := redisCacheBaseClientFactory.Create(argDataProviderCacheConfiguration)
-	if err != nil {
-		log.Fatal("main.redisCacheBaseClientFactory.Create got invalid certificates or failed to load cert files or password file", err)
-	}
-	redisCacheRetryPolicy := retrypolicy.NewRetryPolicy(instrumentationProvider, redisCacheClientRetryPolicyConfiguration)
-	redisCacheClient := cache.NewRedisCacheClient(instrumentationProvider, redisCacheBaseClient, redisCacheRetryPolicy, _cacheContext)
+	//In mem
 	freeCacheInMemCache := cachewrappers.NewFreeCacheInMem(tokensCacheConfiguration)
 	freeCacheInMemCacheClient := cache.NewFreeCacheInMemCacheClient(instrumentationProvider, freeCacheInMemCache)
+	//Redis
+	var redisCacheClient cache.ICacheClient
+	// TODO create a path to communicate with Redis while using local deployment
+	// If this is local deployment - use in mem cache instead of redis
+	if deploymentInstance.IsLocalDevelopment(){
+		redisCacheClient = freeCacheInMemCacheClient
+	}else {
+		redisCacheBaseClientFactory := cachewrappers.NewWrapperRedisClientFactory(instrumentationProvider)
+		redisCacheBaseClient, err := redisCacheBaseClientFactory.Create(argDataProviderCacheConfiguration)
+		if err != nil {
+			log.Fatal("main.redisCacheBaseClientFactory.Create got invalid certificates or failed to load cert files or password file", err)
+		}
+		redisCacheRetryPolicy := retrypolicy.NewRetryPolicy(instrumentationProvider, redisCacheClientRetryPolicyConfiguration)
+		redisCacheClient = cache.NewRedisCacheClient(instrumentationProvider, redisCacheBaseClient, redisCacheRetryPolicy, _cacheContext)
+	}
 
 	azureBearerAuthorizerTokenProvider := azureauth.NewBearerAuthorizerTokenProvider(azureBearerAuthorizer)
 
