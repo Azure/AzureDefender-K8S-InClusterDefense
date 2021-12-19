@@ -40,12 +40,12 @@ spec:
           - name: REDIS_PASS
             valueFrom:
               secretKeyRef:
-                name: {{.Values.AzDProxy.prefixResourceDeployment}}-tls-certs
+                name: {{.Values.AzDProxy.prefixResourceDeployment}}-redis-tls-certs
                 key: REDIS_PASS
       volumes:
         - name: {{.Values.AzDProxy.cache.redisClient.secret.volume.name}}
           secret:
-            secretName: {{.Values.AzDProxy.prefixResourceDeployment}}-tls-certs
+            secretName: {{.Values.AzDProxy.prefixResourceDeployment}}-redis-tls-certs
         - name: {{.Values.AzDProxy.configuration.volume.name}}
           configMap:
             name: {{.Values.AzDProxy.prefixResourceDeployment}}-config

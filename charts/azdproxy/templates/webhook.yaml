@@ -47,7 +47,7 @@ spec:
       volumes:
         - name: {{.Values.AzDProxy.cache.redisClient.secret.volume.name}}
           secret:
-            secretName: {{.Values.AzDProxy.prefixResourceDeployment}}-tls-certs
+            secretName: {{.Values.AzDProxy.prefixResourceDeployment}}-redis-tls-certs
         - name: {{.Values.AzDProxy.webhook.volume.name}}
           secret:
             secretName: {{.Values.AzDProxy.prefixResourceDeployment}}-cert
