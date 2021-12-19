@@ -8,6 +8,9 @@
 # Step 1: Get arguments: resourcegroup, cluster_name
 Param (
     [Parameter(Mandatory = $True)]
+    [string]$subscription,
+
+    [Parameter(Mandatory = $True)]
     [string]$resource_group,
 
     [Parameter(Mandatory = $True)]
@@ -23,14 +26,13 @@ Param (
     [bool]$should_enable_aks_security_profile = $true
 )
 
-write-host "Params that were entered:`r`nresource group : $resource_group `r`ncluster name : $cluster_name"
+write-host "Params that were entered:`r`nresource group : $resource_group `r`ncluster name : $cluster_name `r`n subscription: $subscription"
 #######################################################################################################################
 # Function for printing new section.
-$stepCount = 1
+
 Function PrinitNewSection($stepTitle)
 {
-    write-host "########################################## Step: $stepCount - $stepTitle ##########################################"
-    $stepCount++
+    write-host "########################################## Step: $stepTitle ##########################################"
 }
 #######################################################################################################################
 #                                   Extract used variables
@@ -42,7 +44,7 @@ if ($LASTEXITCODE -eq 3)
     exit $LASTEXITCODE
 }
 # Create node resource group variable - MC_<RESOURCE_GROUP>_<CLUSTER_NAME>_<REGION>
-$node_resource_group = az aks show --resource-group $resource_group --name $cluster_name --query nodeResourceGroup
+$node_resource_group = az aks show --resource-group $resource_group --name $cluster_name --query nodeResourceGroup -o tsv
 if ($LASTEXITCODE -eq 3)
 {
     write-error "Failed to get the node resource group of the cluster"
@@ -66,12 +68,10 @@ if ($LASTEXITCODE -eq 3 -or $vmss_list.Length -eq 0)
 }
 #######################################################################################################################
 
-PrinitNewSection("Logging in")
+PrinitNewSection("Setting account to subscription")
 # login with az login.
-az login
+az account set -s $subscription
 
-$subscription = az account show -o tsv --query "id"
-write-host "Extracted subscription <$subscription> successfully"
 
 #######################################################################################################################
 # Step 2: Install azure addon policy in the cluster if not exists
@@ -113,12 +113,13 @@ PrinitNewSection("AzureDefenderInClusterDefense Dependencies")
 
 # TODO Change the teamplate file to uri.
 $deployment_name = "mdfc-incluster-$cluster_name-$region"
+
 az deployment sub create --name  $deployment_name  --location $region `
                                                     --template-file .\deploy\azure-templates\AzureDefenderInClusterDefense.Dependecies.Template.json `
                                                     --parameters `
-                                                        resource_group = $node_resource_group `
-                                                        location = $region `
-                                                        managedIdentityName = $in_cluster_defense_identity_name
+                                                        resource_group=$node_resource_group `
+                                                        location=$region `
+                                                        managedIdentityName=$in_cluster_defense_identity_name
 
 if ($LASTEXITCODE -eq 3)
 {
@@ -153,7 +154,7 @@ else
     $authorization_header = @{
         Authorization = "Bearer $token"
     }
-    $response = Invoke-WebRequest -Method POST -Uri $url -Headers $authorization_header
+    $response = Invoke-WebRequest -Method POST -Uri $url -Headers $authorization_header -UseBasicParsing
 
     if ($LASTEXITCODE -eq 3 -or $response.StatusCode -ne 200)
     {
@@ -167,10 +168,10 @@ else
     az deployment sub create --name $deployment_name    --location "$region" `
                                                         --template-file .\deploy\azure-templates\Tivan.Dependencies.Template.json `
                                                         --parameters `
-                                                            subscriptionId = $subscription `
-                                                            clusterName = $cluster_name `
-                                                            clusterResourceGroup = $resource_group `
-                                                            resourceLocation = $region
+                                                            subscriptionId=$subscription `
+                                                            clusterName=$cluster_name `
+                                                            clusterResourceGroup=$resource_group `
+                                                            resourceLocation=$region
 
     if ($LASTEXITCODE -eq 3)
     {
@@ -214,9 +215,9 @@ $HELM_EXPERIMENTAL_OCI = 1
 
 # TODO Change to remote repo once helm chart is published to public repo.
 #helm upgrade --install microsoft-in-cluster-defense azuredefendermcrprod.azurecr.io/public/azuredefender/stable/in-cluster-defense-helm:$helm_chart_version `
-helm upgrade in-cluster-defense charts/azdproxy --install`
+helm upgrade in-cluster-defense charts/azdproxy --install --wait `
             -n kube-system `
-                --set AzDProxy.kubeletIdentity.envAzureAuthorizerConfiguration.mSIClientId = $kubelet_client_id `
-                --set AzDProxy.azdIdentity.envAzureAuthorizerConfiguration.mSIClientId = $in_cluster_defense_identity_client_id `
+                --set AzDProxy.kubeletIdentity.envAzureAuthorizerConfiguration.mSIClientId=$kubelet_client_id `
+                --set AzDProxy.azdIdentity.envAzureAuthorizerConfiguration.mSIClientId=$in_cluster_defense_identity_client_id `
                 --set "AzDProxy.arg.argClientConfiguration.subscriptions={$subscription}" `
-                --set AzDProxy.webhook.image.name = blockregistrydev.azurecr.io/azdproxy-image                 # TODO Delete above line once helm chart is published to public repo.
+                --set AzDProxy.webhook.image.name=blockregistrydev.azurecr.io/azdproxy-image                 # TODO Delete above line once helm chart is published to public repo.
