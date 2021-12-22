@@ -170,7 +170,6 @@ func main() {
 	freeCacheInMemCacheClient := cache.NewFreeCacheInMemCacheClient(instrumentationProvider, freeCacheInMemCache)
 	//Redis
 	var redisCacheClient cache.ICacheClient
-	// TODO create a path to communicate with Redis while using local deployment
 	// If this is local deployment - use in mem cache instead of redis
 	if deploymentInstance.IsLocalDevelopment() {
 		redisCacheClient = freeCacheInMemCacheClient

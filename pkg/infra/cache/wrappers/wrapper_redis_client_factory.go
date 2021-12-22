@@ -1,14 +1,12 @@
 package wrappers
 
 import (
-	"crypto/tls"
-	"crypto/x509"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/utils"
 	"github.com/go-redis/redis/v8"
 	"github.com/pkg/errors"
-	"io/ioutil"
 )
 
 // WrapperRedisClientFactory is a factory for WrapperRedisClient.
@@ -31,39 +29,21 @@ func NewWrapperRedisClientFactory (instrumentationProvider instrumentation.IInst
 func (factory *WrapperRedisClientFactory) Create(configuration *RedisCacheClientConfiguration) (*redis.Client, error){
 	tracer := factory.tracerProvider.GetTracer("Create")
 
-	// Get certificates
-	cert, err := tls.LoadX509KeyPair(configuration.TlsCrtPath, configuration.TlsKeyPath)
+	// Get tlsConfig
+	tlsConfig, err := utils.CreateTlsConfig(configuration.TlsCrtPath, configuration.TlsKeyPath, configuration.CaCertPath, configuration.Host)
 	if err != nil {
-		err = errors.Wrap(err, "Failed to LoadX509KeyPair")
+		err = errors.Wrap(err, "Failed to create tls config object")
 		tracer.Error(err, "")
 		return nil, err
-	}
-	caCert, err := ioutil.ReadFile(configuration.CaCertPath)
-	if err != nil {
-		err = errors.Wrap(err, "Failed to read ca.cert file ")
-		tracer.Error(err, "")
-		return nil, err
-	}
-
-	pool := x509.NewCertPool()
-	pool.AppendCertsFromPEM(caCert)
-
-	// Create tlsConfig object with the cert files
-	tlsConfig := &tls.Config{
-		ServerName:   configuration.Host,
-		Certificates: []tls.Certificate{cert},
-		RootCAs:      pool,
 	}
 
 	// Get password
-	passwordInBytes, err := ioutil.ReadFile(configuration.PasswordPath)
-	if err != nil {
-		err = errors.Wrap(err, "Failed to read password file")
+	password, err := utils.GetPasswordFromSecret(configuration.PasswordPath)
+	if err != nil{
+		err = errors.Wrap(err, "Failed to get password from secret")
 		tracer.Error(err, "")
 		return nil, err
 	}
-	password := string(passwordInBytes)
-
 
 	// Create redis client
 	redisClient := redis.NewClient(&redis.Options{

@@ -1,4 +1,3 @@
-# TODO Redis deployments should be updated with stable/distributed and secured version.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -21,10 +20,12 @@ spec:
         - name: {{.Values.AzDProxy.prefixResourceDeployment}}-redis
           image: {{.Values.AzDProxy.cache.redisClient.image}}
           imagePullPolicy: 'Always'
+          # Configure Redis to use password
           args: ["--requirepass", "$(REDIS_PASS)"]
+          # Direct redis to its config file
           command:
             - redis-server
-            - "/redis-master/redis.conf"
+            - "{{.Values.AzDProxy.cache.redisClient.mountPath}}/redis.conf"
           ports:
             - containerPort: {{.Values.AzDProxy.cache.redisClient.port}}
           volumeMounts:
