@@ -17,6 +17,7 @@ import (
 
 const (
 	_redisClientType = "RedisCacheClient"
+	_expectedPingResult = "PONG"
 )
 
 // RedisCacheClient implements ICacheClient interface
@@ -117,4 +118,27 @@ func (client *RedisCacheClient) Set(key string, value string, expiration time.Du
 	client.metricSubmitter.SendMetric(utils.GetSizeInBytes(value), cachemetrics.NewAddItemToCacheMetric(_redisClientType))
 	tracer.Info("Key was added successfully", "Key", key, "value", value)
 	return nil
+}
+
+func (client *RedisCacheClient) Ping() (string, error) {
+	tracer := client.tracerProvider.GetTracer("Ping")
+	tracer.Info("Ping executed")
+
+	value, err := client.retryPolicy.RetryActionString(
+		/*action ActionString ping using client.redisClient */
+		func() (string, error) { return client.redisClient.Ping(client.cacheContext).Result() },
+		/*handler ShouldRetryOnSpecificError - handle when received an error from ping result*/
+		func(err error) bool {
+			return !errors.Is(err, redis.Nil)
+		},
+	)
+	// Check if there was an error
+	if err != nil || value != _expectedPingResult {
+		tracer.Error(err, "Pinging redis server has failed")
+		return "", err
+	}
+
+	// Ping succeed.
+	tracer.Info("Received pong from server")
+	return value, nil
 }

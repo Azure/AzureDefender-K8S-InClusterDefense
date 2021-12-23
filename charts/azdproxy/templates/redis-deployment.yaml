@@ -21,35 +21,47 @@ spec:
           image: {{.Values.AzDProxy.cache.redisClient.image}}
           imagePullPolicy: 'Always'
           # Configure Redis to use password
-          args: ["--requirepass", "$(REDIS_PASS)"]
+          # Configure Redis to save snapshots of its data in appendonly mode.
+          # The parameters after the save are <time intervals>, <number of keys added>.
+          # It means that if at least <number of keys added> have been added in the last <time intervals>, a new snapshot will be saved.
+          args: ["--requirepass", "$(REDIS_PASS)", "--appendonly", "yes", "--save", "1", "1"]
           # Direct redis to its config file
           command:
             - redis-server
-            - "{{.Values.AzDProxy.cache.redisClient.mountPath}}/redis.conf"
+            - "{{.Values.AzDProxy.cache.redisClient.volumeConfigFile.mountPath}}/redis.conf"
           ports:
             - containerPort: {{.Values.AzDProxy.cache.redisClient.port}}
           volumeMounts:
             # redis config file
-            - mountPath: {{.Values.AzDProxy.cache.redisClient.mountPath}}
-              name: {{.Values.AzDProxy.configuration.volume.name}}
+            - mountPath: {{.Values.AzDProxy.cache.redisClient.volumeConfigFile.mountPath}}
+              name: {{.Values.AzDProxy.cache.redisClient.volumeConfigFile.name}}
               readOnly: true
             # redis secret
-            - mountPath: {{.Values.AzDProxy.cache.redisClient.secret.volume.mountPath | quote}}
-              name: {{.Values.AzDProxy.cache.redisClient.secret.volume.name}}
+            - mountPath: {{.Values.AzDProxy.cache.redisClient.volumeSecret.mountPath | quote}}
+              name: {{.Values.AzDProxy.cache.redisClient.volumeSecret.name}}
               readOnly: true
+            # redis pvc
+            # The mount path of the redis data storage (pvc) - Don't change this value!
+            - mountPath: "/data"
+              name: {{.Values.AzDProxy.cache.redisClient.volumePVC.name }}
+              readOnly: false
           env:
+          # If this value is changed, spec.containers.args must be changed too!
           - name: REDIS_PASS
             valueFrom:
               secretKeyRef:
                 name: {{.Values.AzDProxy.prefixResourceDeployment}}-redis-tls-certs
                 key: REDIS_PASS
       volumes:
-        - name: {{.Values.AzDProxy.cache.redisClient.secret.volume.name}}
-          secret:
-            secretName: {{.Values.AzDProxy.prefixResourceDeployment}}-redis-tls-certs
-        - name: {{.Values.AzDProxy.configuration.volume.name}}
+        - name: {{.Values.AzDProxy.cache.redisClient.volumeConfigFile.name}}
           configMap:
             name: {{.Values.AzDProxy.prefixResourceDeployment}}-config
             items:
             - key: redis-config
               path: redis.conf
+        - name: {{.Values.AzDProxy.cache.redisClient.volumeSecret.name}}
+          secret:
+            secretName: {{.Values.AzDProxy.prefixResourceDeployment}}-redis-tls-certs
+        - name: {{.Values.AzDProxy.cache.redisClient.volumePVC.name }}
+          persistentVolumeClaim:
+            claimName: {{.Values.AzDProxy.prefixResourceDeployment}}-redis-pvc

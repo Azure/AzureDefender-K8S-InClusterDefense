@@ -32,8 +32,8 @@ spec:
             - containerPort: {{ .Values.AzDProxy.service.targetPort }}
           volumeMounts:
             # redis's secret
-            - mountPath: {{.Values.AzDProxy.cache.redisClient.secret.volume.mountPath | quote}}
-              name: {{.Values.AzDProxy.cache.redisClient.secret.volume.name}}
+            - mountPath: {{.Values.AzDProxy.cache.redisClient.volumeSecret.mountPath | quote}}
+              name: {{.Values.AzDProxy.cache.redisClient.volumeSecret.name}}
               readOnly: true
             # App's secrets
             - mountPath: {{.Values.AzDProxy.webhook.volume.mountPath}}
@@ -45,7 +45,7 @@ spec:
               readOnly: true
           resources: {{- toYaml .Values.AzDProxy.webhook.resources | nindent 12 }}
       volumes:
-        - name: {{.Values.AzDProxy.cache.redisClient.secret.volume.name}}
+        - name: {{.Values.AzDProxy.cache.redisClient.volumeSecret.name}}
           secret:
             secretName: {{.Values.AzDProxy.prefixResourceDeployment}}-redis-tls-certs
         - name: {{.Values.AzDProxy.webhook.volume.name}}

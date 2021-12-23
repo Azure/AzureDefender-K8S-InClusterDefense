@@ -7,11 +7,11 @@ AzDProxy:
   # Webhook values
   webhook:
     # -- Amount of replicas of azdproxy.
-    replicas: 3
+    replicas: 1
     # Image values:
     image:
       # -- Official image.
-      name: "azdproxy-image"
+      name: "maayankblock.azurecr.io/azdproxy-image:latest"
       # -- Default for always. in case that you want to use local registry, change to 'Never'.
       pullPolicy: "Always"
     # -- The path that the webhook handler will be listening on.
@@ -154,22 +154,32 @@ AzDProxy:
 
   # Cache configuration
   cache:
+    pvc:
+      storage: 1Gi
     redisClient:
       # Image of redis containers
       image: azuredefendermcrdev.azurecr.io/public/azuredefender/dev/in-cluster-defense-redis
       # -- amount of replicas of redis
-      replicas: 1
+      replicas: 2
       # -- the port that redis cache will be listened.
       port: 6379
-      # -- The mount path of the redis config file in redis deployment.
-      mountPath: "/redis-master"
-      # The secret values of the tls secret
-      secret:
-        volume:
-          # name of secret volume in redis deployment and webhook deployment
-          name: "tls"
-          # name of secret mountPath in redis deployment and webhook deployment
-          mountPath: /tls
+      # The redis config file volume
+      volumeConfigFile:
+        # -- The mount path of the redis config file in redis deployment - Don't change this value!
+        mountPath: "/redis-master"
+        # -- Volume name for redis config file.
+        name: "config"
+      # The secret volume of the tls secret
+      volumeSecret:
+        # name of secret volume in redis deployment and webhook deployment
+        name: "tls"
+        # name of secret mountPath in redis deployment and webhook deployment
+        mountPath: /tls
+      # The pvc volume
+      volumePVC:
+        # -- Volume name for redis pvc.
+        name: "redis-storage"
+
 
 
       retryPolicyConfiguration:

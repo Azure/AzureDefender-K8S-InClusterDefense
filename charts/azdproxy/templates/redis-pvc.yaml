@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  namespace: '{{ .Release.Namespace }}'
+  name: {{.Values.AzDProxy.prefixResourceDeployment}}-redis-pvc
+spec:
+  accessModes:
+    # ReadWriteOnce means the pv will be available for all pods in the same node.
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{.Values.AzDProxy.cache.pvc.storage}}  # TBD
