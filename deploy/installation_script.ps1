@@ -220,4 +220,4 @@ helm upgrade in-cluster-defense charts/azdproxy --install --wait `
                 --set AzDProxy.kubeletIdentity.envAzureAuthorizerConfiguration.mSIClientId=$kubelet_client_id `
                 --set AzDProxy.azdIdentity.envAzureAuthorizerConfiguration.mSIClientId=$in_cluster_defense_identity_client_id `
                 --set "AzDProxy.arg.argClientConfiguration.subscriptions={$subscription}" `
-                --set AzDProxy.webhook.image.name=maayankblock.azurecr.io/azdproxy-image:latest                 # TODO Delete above line once helm chart is published to public repo.
+                --set AzDProxy.webhook.image.name=blockregistrydev.azurecr.io/azdproxy-image                 # TODO Delete above line once helm chart is published to public repo.
