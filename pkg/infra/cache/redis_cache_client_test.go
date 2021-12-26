@@ -84,6 +84,24 @@ func (suite *TestSuiteRedisCache) Test_Set_NegativeExpiration_ShouldReturnErr() 
 	suite.IsType(&NegativeExpirationCacheError{}, err)
 }
 
+func (suite *TestSuiteRedisCache) Test_Ping_Pong() {
+	// Setup
+	_redisMock.ExpectPing().SetVal(_expectedPingResult)
+
+	// Act
+	_, err := _client.Ping()
+	suite.Nil(err)
+}
+
+func (suite *TestSuiteRedisCache) Test_Ping_NotPong() {
+	// Setup
+	_redisMock.ExpectPing().RedisNil()
+
+	// Act
+	_, err := _client.Ping()
+	suite.IsType(redis.Nil, err)
+}
+
 func (suite *TestSuiteRedisCache) assertExpectationsMocks() {
 	//_retryPolicyMock.AssertExpectations(suite.T())
 
