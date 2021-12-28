@@ -42,7 +42,7 @@ func (suite *TestSuiteTokenProvider) Test_GetACRRefreshToken_Success() {
 	_provider_azureTokenProviderMock.On("GetOAuthToken", context.Background()).Return(_provider_armToken, nil).Once()
 	_provider_exchangerMock.On("ExchangeACRAccessToken", _provider_registry, _provider_armToken).Return(_provider_refreshToken, nil).Once()
 	_provider_cacheClientMock.On("Get", mock.Anything).Return("", utils.NilArgumentError)
-	_provider_cacheClientMock.On("Set", mock.Anything, mock.Anything, mock.Anything).Return(utils.NilArgumentError)
+	_provider_cacheClientMock.On("Set", mock.Anything, mock.Anything, mock.Anything).Return(utils.NilArgumentError).Maybe()
 
 
 	val, err := _provider.GetACRRefreshToken(_provider_registry)
@@ -56,7 +56,7 @@ func (suite *TestSuiteTokenProvider) Test_GetACRRefreshToken_FailOnTokenGet_Erro
 	expectedError := errors.New("azureTokenProviderMockError")
 	_provider_azureTokenProviderMock.On("GetOAuthToken", context.Background()).Return("", expectedError).Once()
 	_provider_cacheClientMock.On("Get", mock.Anything).Return("", utils.NilArgumentError)
-	_provider_cacheClientMock.On("Set", mock.Anything, mock.Anything, mock.Anything).Return(utils.NilArgumentError)
+	_provider_cacheClientMock.On("Set", mock.Anything, mock.Anything, mock.Anything).Return(utils.NilArgumentError).Maybe()
 
 	val, err := _provider.GetACRRefreshToken(_provider_registry)
 
@@ -70,7 +70,7 @@ func (suite *TestSuiteTokenProvider) Test_GetACRRefreshToken_FailToExchange_Erro
 	_provider_azureTokenProviderMock.On("GetOAuthToken", context.Background()).Return(_provider_armToken, nil).Once()
 	_provider_exchangerMock.On("ExchangeACRAccessToken", _provider_registry, _provider_armToken).Return("", expectedError).Once()
 	_provider_cacheClientMock.On("Get", mock.Anything).Return("", utils.NilArgumentError)
-	_provider_cacheClientMock.On("Set", mock.Anything, mock.Anything, mock.Anything).Return(utils.NilArgumentError)
+	_provider_cacheClientMock.On("Set", mock.Anything, mock.Anything, mock.Anything).Return(utils.NilArgumentError).Maybe()
 
 	val, err := _provider.GetACRRefreshToken(_provider_registry)
 
@@ -81,7 +81,7 @@ func (suite *TestSuiteTokenProvider) Test_GetACRRefreshToken_FailToExchange_Erro
 
 func (suite *TestSuiteTokenProvider) Test_GetRefreshToken_Success_NoKeyInCache() {
 	_provider_cacheClientMock.On("Get", _provider_registry).Return("", utils.NilArgumentError)
-	_provider_cacheClientMock.On("Set", _provider_registry, _provider_refreshToken, mock.Anything).Return(utils.NilArgumentError)
+	_provider_cacheClientMock.On("Set", _provider_registry, _provider_refreshToken, mock.Anything).Return(utils.NilArgumentError).Maybe()
 	_provider_azureTokenProviderMock.On("GetOAuthToken", context.Background()).Return(_provider_armToken, nil).Once()
 	_provider_exchangerMock.On("ExchangeACRAccessToken", _provider_registry, _provider_armToken).Return(_provider_refreshToken, nil).Once()
 
@@ -103,7 +103,7 @@ func (suite *TestSuiteTokenProvider) Test_GetACRRefreshToken_Success_RegistryKey
 func (suite *TestSuiteTokenProvider) Test_GetACRRefreshToken_Success_NoKeyInCache_SetKey_GetKeySecondTryBeforeExpirationTime_RegistryKey() {
 	_provider_cacheClientMock.On("Get", _provider_registry).Return("", utils.NilArgumentError).Once()
 	_provider_cacheClientMock.On("Get", _provider_registry).Return(_provider_refreshToken, nil).Once()
-	_provider_cacheClientMock.On("Set", _provider_registry, _provider_refreshToken, mock.Anything).Return(utils.NilArgumentError).Once()
+	_provider_cacheClientMock.On("Set", _provider_registry, _provider_refreshToken, mock.Anything).Return(utils.NilArgumentError).Maybe()
 	_provider_azureTokenProviderMock.On("GetOAuthToken", context.Background()).Return(_provider_armToken, nil).Once()
 	_provider_exchangerMock.On("ExchangeACRAccessToken", _provider_registry, _provider_armToken).Return(_provider_refreshToken, nil).Once()
 
@@ -118,7 +118,7 @@ func (suite *TestSuiteTokenProvider) Test_GetACRRefreshToken_Success_NoKeyInCach
 
 func (suite *TestSuiteTokenProvider) Test_GetACRRefreshToken_Success_NoKeyInCache_SetKey_GetKeySecondTryAfterExpirationTime_RegistryKey() {
 	_provider_cacheClientMock.On("Get",_provider_registry).Return("", utils.NilArgumentError)
-	_provider_cacheClientMock.On("Set", _provider_registry, _provider_refreshToken, mock.Anything).Return(utils.NilArgumentError).Twice()
+	_provider_cacheClientMock.On("Set", _provider_registry, _provider_refreshToken, mock.Anything).Return(utils.NilArgumentError).Maybe()
 	_provider_azureTokenProviderMock.On("GetOAuthToken", context.Background()).Return(_provider_armToken, nil).Twice()
 	_provider_exchangerMock.On("ExchangeACRAccessToken", _provider_registry, _provider_armToken).Return(_provider_refreshToken, nil).Twice()
 
@@ -135,6 +135,7 @@ func (suite *TestSuiteTokenProvider) Test_GetACRRefreshToken_Success_NoKeyInCach
 func (suite *TestSuiteTokenProvider) AssertExpectations(){
 	_provider_exchangerMock.AssertExpectations(suite.T())
 	_provider_azureTokenProviderMock.AssertExpectations(suite.T())
+	_provider_cacheClientMock.AssertExpectations(suite.T())
 }
 
 func Test_Suite_TokenProvider(t *testing.T) {

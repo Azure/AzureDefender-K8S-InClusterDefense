@@ -85,12 +85,15 @@ func (resolver *Tag2DigestResolver) Resolve(imageReference registry.IImageRefere
 	}
 
 	// Save digest in cache
-	err = resolver.cacheClient.Set(imageReference.Original(), digest, utils.GetMinutes(resolver.tag2DigestResolverConfiguration.CacheExpirationTimeForResults))
-	if err != nil{
-		err = errors.Wrap(err, "Tag2DigestResolver.Resolve: Failed to set digest in cache")
-		tracer.Error(err, "")
-	}
-	tracer.Info("Set digest in cache", "image", imageReference.Original(), "digest", digest)
+	go func() {
+		err := resolver.cacheClient.Set(imageReference.Original(), digest, utils.GetMinutes(resolver.tag2DigestResolverConfiguration.CacheExpirationTimeForResults))
+		if err != nil {
+			err = errors.Wrap(err, "Tag2DigestResolver.Resolve: Failed to set digest in cache")
+			tracer.Error(err, "")
+		}else{
+			tracer.Info("Set digest in cache successfully", "image", imageReference.Original(), "digest", digest)
+		}
+	}()
 
 	return digest, nil
 }

@@ -89,12 +89,15 @@ func (tokenProvider *ACRTokenProvider) GetACRRefreshToken(registry string) (stri
 	}
 
 	// Save registryRefreshToken in cache
-	err = tokenProvider.cacheClient.Set(registry, registryRefreshToken, utils.GetMinutes(tokenProvider.acrTokenProviderConfiguration.RegistryRefreshTokenCacheExpirationTime))
-	if err != nil{
-		err = errors.Wrap(err, "Failed to set registryRefreshToken in cache")
-		tracer.Error(err, "")
-	}
-	tracer.Info("Set registryRefreshToken in cache", "registry", registry)
+	go func() {
+		err = tokenProvider.cacheClient.Set(registry, registryRefreshToken, utils.GetMinutes(tokenProvider.acrTokenProviderConfiguration.RegistryRefreshTokenCacheExpirationTime))
+		if err != nil {
+			err = errors.Wrap(err, "Failed to set registryRefreshToken in cache")
+			tracer.Error(err, "")
+		}else{
+			tracer.Info("Set registryRefreshToken in cache successfully", "registry", registry)
+		}
+	}()
 
 	return registryRefreshToken, nil
 }

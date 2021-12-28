@@ -12,7 +12,23 @@ import (
 	"time"
 )
 
-// ARGDataProviderCacheClient is cache client designated for ARGDataProvider
+// IARGDataProviderCacheClient is a cache client designated for ARGDataProvider
+type IARGDataProviderCacheClient interface {
+
+	// GetResultsFromCache try to get ImageVulnerabilityScanResults from cache.
+	// The cache mapping digest to scan results or to known errors.
+	// If the digest exist in cache - return the value (scan results or error) and a flag _gotResultsFromCache
+	// If the digest dont exist in cache or any other unknown error occurred - return "", nil, nil and _didntGotResultsFromCache
+	GetResultsFromCache(digest string) (contracts.ScanStatus, []*contracts.ScanFinding, error)
+
+	// SetScanFindingsInCache map digest to scan results
+	SetScanFindingsInCache(scanFindings []*contracts.ScanFinding, scanStatus contracts.ScanStatus, digest string) error
+}
+
+// ARGDataProviderCacheClient implements IARGDataProviderCacheClient interface
+var _ IARGDataProviderCacheClient = (*ARGDataProviderCacheClient)(nil)
+
+// ARGDataProviderCacheClient is a cache client designated for ARGDataProvider
 // It wraps ICache client
 type ARGDataProviderCacheClient struct {
 	//tracerProvider is tracer provider of ARGDataProviderCacheClient
@@ -38,12 +54,12 @@ func NewARGDataProviderCacheClient(instrumentationProvider instrumentation.IInst
 	}
 }
 
-// getResultsFromCache try to get ImageVulnerabilityScanResults from cache.
+// GetResultsFromCache try to get ImageVulnerabilityScanResults from cache.
 // The cache mapping digest to scan results or to known errors.
 // If the digest exist in cache - return the value (scan results or error) and a flag _gotResultsFromCache
 // If the digest dont exist in cache or any other unknown error occurred - return "", nil, nil and _didntGotResultsFromCache
-func (client *ARGDataProviderCacheClient) getResultsFromCache(digest string) (contracts.ScanStatus, []*contracts.ScanFinding, error){
-	tracer := client.tracerProvider.GetTracer("getResultsFromCache")
+func (client *ARGDataProviderCacheClient) GetResultsFromCache(digest string) (contracts.ScanStatus, []*contracts.ScanFinding, error){
+	tracer := client.tracerProvider.GetTracer("GetResultsFromCache")
 
 	scanFindingsString, err := client.cacheClient.Get(digest)
 
@@ -72,10 +88,9 @@ func (client *ARGDataProviderCacheClient) getResultsFromCache(digest string) (co
 	return scanStatusFromCache, scanFindingsFromCache, nil
 }
 
-
-// setScanFindingsInCache map digest to scan results
-func (client *ARGDataProviderCacheClient) setScanFindingsInCache(scanFindings []*contracts.ScanFinding, scanStatus contracts.ScanStatus, digest string) error {
-	tracer := client.tracerProvider.GetTracer("setScanFindingsInCache")
+// SetScanFindingsInCache map digest to scan results
+func (client *ARGDataProviderCacheClient) SetScanFindingsInCache(scanFindings []*contracts.ScanFinding, scanStatus contracts.ScanStatus, digest string) error {
+	tracer := client.tracerProvider.GetTracer("SetScanFindingsInCache")
 
 	// Convert results to string in order to set the results in the cache
 	scanFindingsWrapper := &ScanFindingsInCache{ScanStatus: scanStatus, ScanFindings: scanFindings}
@@ -101,7 +116,7 @@ func (client *ARGDataProviderCacheClient) setScanFindingsInCache(scanFindings []
 		return err
 	}
 
-	tracer.Info("set scanFindings in cache", "digest", digest)
+	tracer.Info("set scanFindings in cache successfully", "digest", digest)
 	return nil
 }
 
