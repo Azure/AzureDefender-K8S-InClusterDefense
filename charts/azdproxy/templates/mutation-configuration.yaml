@@ -23,9 +23,9 @@ webhooks:
       # Cert-controller is overriding this value.
       caBundle: Cg==
     namespaceSelector:
-      # Exclude all pods that have 'admission.azdproxy.sh/ignore' label
+      # Exclude all pods that have 'admission.gatekeeper.sh/ignore' label - exactly like GK.
       matchExpressions:
-        - key: admission.azdproxy.sh/ignore #TODO find better solution/ add script that adds this label.
+        - key: admission.gatekeeper.sh/ignore #TODO find better solution/ add script that adds this label.
           operator: DoesNotExist
     failurePolicy: Ignore
     admissionReviewVersions: [ "v1" ]
