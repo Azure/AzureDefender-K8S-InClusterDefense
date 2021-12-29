@@ -30,7 +30,7 @@ write-host "Params that were entered:`r`nresource group : $resource_group `r`ncl
 #######################################################################################################################
 # Function for printing new section.
 
-Function PrinitNewSection($stepTitle)
+Function PrintNewSection($stepTitle)
 {
     write-host "########################################## Step: $stepTitle ##########################################"
 }
@@ -68,14 +68,14 @@ if ($LASTEXITCODE -eq 3 -or $vmss_list.Length -eq 0)
 }
 #######################################################################################################################
 
-PrinitNewSection("Setting account to subscription")
+PrintNewSection("Setting account to subscription")
 # login with az login.
 az account set -s $subscription
 
 
 #######################################################################################################################
 # Step 2: Install azure addon policy in the cluster if not exists
-PrinitNewSection("Azure addon policy")
+PrintNewSection("Azure addon policy")
 
 <#
 https://docs.microsoft.com/en-us/azure/governance/policy/concepts/policy-for-kubernetes
@@ -109,7 +109,7 @@ else
 }
 
 #######################################################################################################################
-PrinitNewSection("AzureDefenderInClusterDefense Dependencies")
+PrintNewSection("AzureDefenderInClusterDefense Dependencies")
 
 # TODO Change the teamplate file to uri.
 $deployment_name = "mdfc-incluster-$cluster_name-$region"
@@ -127,7 +127,7 @@ if ($LASTEXITCODE -eq 3)
     exit $LASTEXITCODE
 }
 # #####################################################################################################################
-PrinitNewSection("azure-defender-k8s-security-profile Dependencies")
+PrintNewSection("azure-defender-k8s-security-profile Dependencies")
 
 if ($should_enable_aks_security_profile -eq $false)
 {
@@ -180,7 +180,7 @@ else
     }
 }
 #######################################################################################################################
-PrinitNewSection("Attach identity to VMSS on node resource group")
+PrintNewSection("Attach identity to VMSS on node resource group")
 
 For($i = 0; $i -lt $vmss_list.Length; $i++){
     write-host "Assigning identity to vmss <$vmss_list[$i]>"
@@ -193,7 +193,13 @@ For($i = 0; $i -lt $vmss_list.Length; $i++){
     }
 }
 #######################################################################################################################
-PrinitNewSection("Installing Helm Chart")
+PrintNewSection("Adding labels to namespaces")
+# Ignore system namespaces.
+# TODO should we get those ns as param ?
+kubectl label namespaces gatekeeper-system, kube-system admission.incluster-defense.sh/ignore=true
+
+#######################################################################################################################
+PrintNewSection("Installing Helm Chart")
 
 # Step 6: Install helm chart
 

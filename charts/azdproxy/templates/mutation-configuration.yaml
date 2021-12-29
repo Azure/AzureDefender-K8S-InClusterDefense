@@ -25,7 +25,8 @@ webhooks:
     namespaceSelector:
       # Exclude all pods that have 'admission.gatekeeper.sh/ignore' label - exactly like GK.
       matchExpressions:
-        - key: admission.gatekeeper.sh/ignore #TODO find better solution/ add script that adds this label.
+        # TODO find better solution/ add script that adds this label.
+        - key: admission.incluster-defense.sh/ignore # We add this label in the installation script to kube-system and gatekeeper-system ns
           operator: DoesNotExist
     failurePolicy: Ignore
     admissionReviewVersions: [ "v1" ]
