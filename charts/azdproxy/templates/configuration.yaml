@@ -34,11 +34,11 @@ data:
           tracerLevel: {{.Values.AzDProxy.instrumentation.trace.tracerConfiguration.tracerLevel }}
       tivan:
         tivanInstrumentationConfiguration:
-          componentName: {{ .Chart.Name | quote}}
+          componentName: {{ .Values.AzDProxy.instrumentation.tivan.tivanInstrumentationConfiguration.azureResourceID | quote}}
           azureResourceID: {{ .Values.AzDProxy.instrumentation.tivan.tivanInstrumentationConfiguration.azureResourceID | quote}}
           region: {{ .Values.AzDProxy.instrumentation.tivan.tivanInstrumentationConfiguration.region | quote}}
           clusterDistribution: {{ .Values.AzDProxy.instrumentation.tivan.tivanInstrumentationConfiguration.clusterDistribution | quote}}
-          chartVersion: {{ .Values.AzDProxy.instrumentation.tivan.tivanInstrumentationConfiguration.chartVersion | quote}}
+          chartVersion: {{ .Chart.Version}}
           imageName: {{ .Values.AzDProxy.webhook.image.name | quote}}
           imageVersion: {{ .Values.AzDProxy.webhook.image.tag | quote}}
           releaseTrain: {{ .Values.AzDProxy.instrumentation.tivan.tivanInstrumentationConfiguration.releaseTrain | quote}}

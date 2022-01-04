@@ -75,10 +75,10 @@ AzDProxy:
     tivan:
       # Values for Tivan's instrumentation configuration:
       tivanInstrumentationConfiguration:
-        componentName: "azure-defender-proxy"
+        componentName: "ClusterStateCollector" # TODO Change it to InCLusterDefense once the publisher will be deployed to AKS
         azureResourceID: ""
         region: ""
-        clusterDistribution: ""
+        clusterDistribution: "AKS" # TODO we should do it generic for ARC
         chartVersion: ""
         releaseTrain: ""
         nodeName: ""

@@ -30,6 +30,7 @@ import (
 	"os"
 	k8sclientconfig "sigs.k8s.io/controller-runtime/pkg/client/config"
 )
+
 var (
 	_cacheContext = context.Background()
 )
@@ -117,7 +118,7 @@ func main() {
 		&utils.PositiveIntValidationObject{VariableName: "argDataProviderConfiguration.CacheExpirationTimeUnscannedResults", Variable: argDataProviderConfiguration.CacheExpirationTimeUnscannedResults},
 		&utils.PositiveIntValidationObject{VariableName: "tag2DigestResolverConfiguration.CacheExpirationTimeForResults", Variable: tag2DigestResolverConfiguration.CacheExpirationTimeForResults},
 		&utils.PositiveIntValidationObject{VariableName: "acrTokenProviderConfiguration.RegistryRefreshTokenCacheExpirationTime", Variable: acrTokenProviderConfiguration.RegistryRefreshTokenCacheExpirationTime},
-		)
+	)
 	if !isValidConfiguration {
 		errMsg := fmt.Sprintf("Got non-positive cache TTL. Only positive values are allowed. Configuration name: <%s>", configurationName)
 		log.Fatal(errMsg, utils.InvalidConfiguration)
@@ -127,6 +128,7 @@ func main() {
 		log.Fatal("main.NewDeployment", err)
 	}
 	// Create Tivan's instrumentation
+	// TODO we need a way get the pod name (probably using kubectl).
 	tivanInstrumentationResult, err := tivan.NewTivanInstrumentationResult(tivanInstrumentationConfiguration)
 	if err != nil {
 		log.Fatal("main.NewTivanInstrumentationResult", err)
@@ -202,7 +204,6 @@ func main() {
 	}
 	argDataProviderCacheClient := arg.NewARGDataProviderCacheClient(instrumentationProvider, redisCacheClient, argDataProviderConfiguration)
 	argDataProvider := arg.NewARGDataProvider(instrumentationProvider, argClient, argQueryGenerator, argDataProviderCacheClient, argDataProviderConfiguration)
-
 
 	// Handler and azdSecinfoProvider
 	azdSecInfoProviderCacheClient := azdsecinfo.NewAzdSecInfoProviderCacheClient(instrumentationProvider, redisCacheClient, azdSecInfoProviderConfiguration)
