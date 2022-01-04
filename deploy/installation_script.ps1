@@ -192,11 +192,6 @@ For($i = 0; $i -lt $vmss_list.Length; $i++){
         exit $LASTEXITCODE
     }
 }
-#######################################################################################################################
-PrintNewSection("Adding labels to namespaces")
-# Ignore system namespaces.
-# TODO should we get those ns as param ?
-kubectl label namespaces gatekeeper-system, kube-system admission.incluster-defense.sh/ignore=true
 
 #######################################################################################################################
 PrintNewSection("Installing Helm Chart")

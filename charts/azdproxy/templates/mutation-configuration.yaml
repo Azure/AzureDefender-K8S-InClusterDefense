@@ -26,8 +26,13 @@ webhooks:
       # Exclude all pods that have 'admission.incluster-defense.sh/ignore' label.
       matchExpressions:
         # TODO find better solution/ add script that adds this label.
-        - key: admission.incluster-defense.sh/ignore # We add this label in the installation script to kube-system and gatekeeper-system ns
+        - key: control-plane # Default label for kube-system (at least in AKS), gatekeeper also ignore this label.
+          operator: DoesNotExist #
+        - key: admission.gatekeeper.sh/ignore # Gatekeeper label. we don't want to mutate resources that gatekeeper ignores.
           operator: DoesNotExist
+        - key: admission.incluster-defense.sh/ignore # InClusterDefense label
+          operator: DoesNotExist
+
     failurePolicy: Ignore
     admissionReviewVersions: [ "v1" ]
     sideEffects: None
