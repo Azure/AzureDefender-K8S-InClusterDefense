@@ -42,7 +42,7 @@ type ARGDataProvider struct {
 	// argClient is the arg client of the ARGDataProvider
 	argClient IARGClient
 	// cacheClient is a cache for mapping digest to scan results
-	cacheClient *ARGDataProviderCacheClient
+	cacheClient IARGDataProviderCacheClient
 	// ARGDataProviderConfiguration is configuration data for ARGDataProvider
 	argDataProviderConfiguration *ARGDataProviderConfiguration
 }
@@ -64,7 +64,7 @@ type ScanFindingsInCache struct {
 }
 
 // NewARGDataProvider Constructor
-func NewARGDataProvider(instrumentationProvider instrumentation.IInstrumentationProvider, argClient IARGClient, queryGenerator queries.IARGQueryGenerator, cacheClient *ARGDataProviderCacheClient, configuration *ARGDataProviderConfiguration) *ARGDataProvider {
+func NewARGDataProvider(instrumentationProvider instrumentation.IInstrumentationProvider, argClient IARGClient, queryGenerator queries.IARGQueryGenerator, cacheClient IARGDataProviderCacheClient, configuration *ARGDataProviderConfiguration) *ARGDataProvider {
 	return &ARGDataProvider{
 		tracerProvider:               instrumentationProvider.GetTracerProvider("ARGDataProvider"),
 		metricSubmitter:              instrumentationProvider.GetMetricSubmitter(),
@@ -85,7 +85,7 @@ func (provider *ARGDataProvider) GetImageVulnerabilityScanResults(registry strin
 	tracer.Info("Received", "registry", registry, "repository", repository, "digest", digest)
 
 	// Try to get results from cache. If a key doesn't exist or an error occurred - continue without cache
-	scanStatus, scanFindings, err := provider.cacheClient.getResultsFromCache(digest)
+	scanStatus, scanFindings, err := provider.cacheClient.GetResultsFromCache(digest)
 	if err != nil{ // Couldn't get ImageVulnerabilityScanResults from cache - skip and get results from provider
 		err = errors.Wrap(err, "Couldn't get ImageVulnerabilityScanResults from cache")
 		tracer.Error(err, "")
@@ -104,11 +104,8 @@ func (provider *ARGDataProvider) GetImageVulnerabilityScanResults(registry strin
 	tracer.Info("got results from Arg")
 
 	// Set scan findings in cache
-	err = provider.cacheClient.setScanFindingsInCache(scanFindings, scanStatus, digest)
-	if err != nil { // in case error occurred - continue without cache
-		err = errors.Wrap(err, "Failed to set scan findings in cache")
-		tracer.Error(err, "")
-	}
+	// In case error occurred - continue without cache
+	go provider.cacheClient.SetScanFindingsInCache(scanFindings, scanStatus, digest)
 
 	return scanStatus, scanFindings, nil
 }
