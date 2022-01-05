@@ -24,7 +24,7 @@ spec:
           # Configure Redis to save snapshots of its data in appendonly mode.
           # The parameters after the save are <time intervals>, <number of keys added>.
           # It means that if at least <number of keys added> have been added in the last <time intervals>, a new snapshot will be saved.
-          args: ["--requirepass", "$(REDIS_PASS)", "--appendonly", "yes", "--save", "1", "1"]
+          args: ["--requirepass", "$(REDIS_PASS)"]
           # Direct redis to its config file
           command:
             - redis-server

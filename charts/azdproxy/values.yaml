@@ -7,7 +7,7 @@ AzDProxy:
   # Webhook values
   webhook:
     # -- Amount of replicas of azdproxy.
-    replicas: 3
+    replicas: 1
     # Image values:
     image:
       # -- Official image.
@@ -171,6 +171,40 @@ AzDProxy:
       # cert expire duration
       certs:
         expireDuration: 365
+      redisConfig:
+        # Automatic rewrite of the append only file.
+        # Redis is able to automatically rewrite the log file implicitly calling
+        # BGREWRITEAOF when the AOF log size will growth by the specified percentage.
+        #
+        # This is how it works: Redis remembers the size of the AOF file after the
+        # latest rewrite (or if no rewrite happened since the restart, the size of
+        # the AOF at startup is used).
+        #
+        # This base size is compared to the current size. If the current size is
+        # bigger than the specified percentage, the rewrite is triggered. Also
+        # you need to specify a minimal size for the AOF file to be rewritten, this
+        # is useful to avoid rewriting the AOF file even if the percentage increase
+        # is reached but it is still pretty small.
+        #
+        # Specify a precentage of zero in order to disable the automatic AOF
+        # rewrite feature.
+        autoAofRewritePercentage: 1
+        autoAofRewriteMinSize: 1kb
+        # Save the DB on disk:
+        #
+        #   save <seconds> <changes>
+        #
+        #   Will save the DB if both the given number of seconds and the given
+        #   number of write operations against the DB occurred.
+        #
+        #   In the example below the behaviour will be to save:
+        #   after 900 sec (15 min) if at least 1 key changed
+        #   after 300 sec (5 min) if at least 10 keys changed
+        #   after 60 sec if at least 10000 keys changed
+        #
+        #   Note: you can disable saving at all commenting all the "save" lines.
+        appendonly: 'yes'
+        save: 1 1
       volumes:
         # The secret values of the tls secret
         volumeSecretPass:
@@ -214,4 +248,4 @@ AzDProxy:
       # Expiration time IN MINUTES of timeout status in cache - 15 minutes in order to avoid multiple timeouts
       CacheExpirationTimeTimeout: 15 # 15 minutes
       # Expiration time IN SECONDS of containerVulnerabilityScanInfo in cache - 30 seconds in order to handle multiple requests on the same pod.
-      CacheExpirationContainerVulnerabilityScanInfo: 30 # 30 seconds
+      CacheExpirationContainerVulnerabilityScanInfo: 3000 # 30 seconds
