@@ -8,10 +8,6 @@
     "location": {
       "type": "string"
     },
-    "guidValue": {
-      "type": "string",
-      "defaultValue": "[newGuid()]"
-    },
     "managedIdentityName": {
       "type": "string"
     }
