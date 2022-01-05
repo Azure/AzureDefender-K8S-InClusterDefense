@@ -35,8 +35,6 @@ data:
       tivan:
         tivanInstrumentationConfiguration:
           componentName: {{ .Values.AzDProxy.instrumentation.tivan.tivanInstrumentationConfiguration.componentName | quote}}
-          azureResourceID: {{ .Values.AzDProxy.instrumentation.tivan.tivanInstrumentationConfiguration.azureResourceID | quote}}
-          region: {{ .Values.AzDProxy.instrumentation.tivan.tivanInstrumentationConfiguration.region | quote}}
           clusterDistribution: {{ .Values.AzDProxy.instrumentation.tivan.tivanInstrumentationConfiguration.clusterDistribution | quote}}
           chartVersion: {{ .Chart.Version}}
           imageName: {{ .Values.AzDProxy.webhook.image.name | quote}}

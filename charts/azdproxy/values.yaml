@@ -76,15 +76,12 @@ AzDProxy:
       # Values for Tivan's instrumentation configuration:
       tivanInstrumentationConfiguration:
         componentName: "ClusterStateCollector" # TODO Change it to InCLusterDefense once the publisher will be deployed to AKS
-        azureResourceID: ""
-        region: ""
         clusterDistribution: "AKS" # TODO we should do it generic for ARC
-        chartVersion: ""
         releaseTrain: ""
         nodeName: ""
         dirPath: "/var/log/azuredefender"
-        mdmAccount: ""
-        mdmNamespace: ""
+        mdmAccount: "RomeDetection"
+        mdmNamespace: "Block.InClusterDefense"
         platformMdmAccount: ""
         platformMdmNamespace: ""
 
