@@ -38,7 +38,7 @@ func (factory *WrapperRedisClientFactory) Create(configuration *RedisCacheClient
 	}
 
 	// Get password
-	password, err := utils.GetPasswordFromSecret(configuration.PasswordPath)
+	password, err := utils.GetPasswordFromFile(configuration.PasswordPath)
 	if err != nil{
 		err = errors.Wrap(err, "Failed to get password from secret")
 		tracer.Error(err, "")

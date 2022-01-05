@@ -89,21 +89,21 @@ data:
     cache:
 
       redisClient:
-        replicas: {{.Values.AzDProxy.cache.redisClient.replicas}}
-        port: {{.Values.AzDProxy.cache.redisClient.port}}
-        targetport: {{.Values.AzDProxy.cache.redisClient.port}}
+        replicas: {{.Values.AzDProxy.cache.redis.replicas}}
+        port: {{.Values.AzDProxy.cache.redis.port}}
+        targetport: {{.Values.AzDProxy.cache.redis.port}}
         retryPolicyConfiguration:
-          retryAttempts: {{ .Values.AzDProxy.cache.redisClient.retryPolicyConfiguration.retryAttempts }}
-          retryDurationInMS: {{ .Values.AzDProxy.cache.redisClient.retryPolicyConfiguration.retryDurationInMS }}
+          retryAttempts: {{ .Values.AzDProxy.cache.redis.retryPolicyConfiguration.retryAttempts }}
+          retryDurationInMS: {{ .Values.AzDProxy.cache.redis.retryPolicyConfiguration.retryDurationInMS }}
 
       argDataProviderCacheConfiguration:
-        address: "{{.Values.AzDProxy.cache.argDataProviderCacheConfiguration.address}}:{{.Values.AzDProxy.cache.redisClient.port}}"
-        Host: {{.Values.AzDProxy.cache.argDataProviderCacheConfiguration.address}}
-        table: {{.Values.AzDProxy.cache.argDataProviderCacheConfiguration.table}}
-        tlsCrtPath: "{{.Values.AzDProxy.cache.redisClient.secret.volume.mountPath}}/tls.crt"
-        tlsKeyPath: "{{.Values.AzDProxy.cache.redisClient.secret.volume.mountPath}}/tls.key"
-        caCertPath: "{{.Values.AzDProxy.cache.redisClient.secret.volume.mountPath}}/ca.cert"
-        passwordPath: "{{.Values.AzDProxy.cache.redisClient.secret.volume.mountPath}}/REDIS_PASS"
+        address: "{{.Values.AzDProxy.cache.redis.host}}:{{.Values.AzDProxy.cache.redis.port}}"
+        host: {{.Values.AzDProxy.cache.redis.host}}
+        table: {{.Values.AzDProxy.cache.redis.table}}
+        tlsCrtPath: "{{.Values.AzDProxy.cache.redis.secret.volume.mountPath}}/tls.crt"
+        tlsKeyPath: "{{.Values.AzDProxy.cache.redis.secret.volume.mountPath}}/tls.key"
+        caCertPath: "{{.Values.AzDProxy.cache.redis.secret.volume.mountPath}}/ca.cert"
+        passwordPath: "/redis-pass/REDIS_PASS"
 
       tokensCacheConfiguration:
         cacheSize: {{.Values.AzDProxy.cache.tokensCacheConfiguration.cacheSize}} # in Bytes
@@ -118,12 +118,3 @@ data:
       azdSecInfoProviderConfiguration:
         CacheExpirationTimeTimeout: {{ .Values.AzDProxy.azdSecInfoProvider.azdSecInfoProviderConfiguration.CacheExpirationTimeTimeout }}
         CacheExpirationContainerVulnerabilityScanInfo: {{ .Values.AzDProxy.azdSecInfoProvider.azdSecInfoProviderConfiguration.CacheExpirationContainerVulnerabilityScanInfo }}
-  # Redis configuration file - no ':' is needed because Redis expect the file in this format.
-    # port 0 - No tls communication is allowed
-    # tls-port 6379 - Port for tls communication
-  redis-config: |-
-    port 0
-    tls-port 6379
-    tls-cert-file {{.Values.AzDProxy.cache.redisClient.secret.volume.mountPath}}/tls.crt
-    tls-key-file {{.Values.AzDProxy.cache.redisClient.secret.volume.mountPath}}/tls.key
-    tls-ca-cert-file {{.Values.AzDProxy.cache.redisClient.secret.volume.mountPath}}/ca.cert

@@ -9,7 +9,7 @@ spec:
   selector:
     matchLabels:
       run: redis
-  replicas: {{.Values.AzDProxy.cache.redisClient.replicas}}
+  replicas: {{.Values.AzDProxy.cache.redis.replicas}}
   template:
     metadata:
       labels:
@@ -18,38 +18,39 @@ spec:
       containers:
         # TODO : Add securityContext section.
         - name: {{.Values.AzDProxy.prefixResourceDeployment}}-redis
-          image: {{.Values.AzDProxy.cache.redisClient.image}}
+          image: {{.Values.AzDProxy.cache.redis.image}}
           imagePullPolicy: 'Always'
           # Configure Redis to use password
           args: ["--requirepass", "$(REDIS_PASS)"]
           # Direct redis to its config file
           command:
             - redis-server
-            - "{{.Values.AzDProxy.cache.redisClient.mountPath}}/redis.conf"
+            - "{{.Values.AzDProxy.cache.redis.mountPath}}/redis.conf"
           ports:
-            - containerPort: {{.Values.AzDProxy.cache.redisClient.port}}
+            - containerPort: {{.Values.AzDProxy.cache.redis.port}}
           volumeMounts:
             # redis config file
-            - mountPath: {{.Values.AzDProxy.cache.redisClient.mountPath}}
+            - mountPath: {{.Values.AzDProxy.cache.redis.mountPath}}
               name: {{.Values.AzDProxy.configuration.volume.name}}
               readOnly: true
             # redis secret
-            - mountPath: {{.Values.AzDProxy.cache.redisClient.secret.volume.mountPath | quote}}
-              name: {{.Values.AzDProxy.cache.redisClient.secret.volume.name}}
+            - mountPath: {{ .Values.AzDProxy.cache.redis.secret.volume.mountPath }}
+              name: {{.Values.AzDProxy.cache.redis.secret.volume.name}}
               readOnly: true
+          # TODO change to mount instead of env
           env:
           - name: REDIS_PASS
             valueFrom:
               secretKeyRef:
-                name: {{.Values.AzDProxy.prefixResourceDeployment}}-redis-tls-certs
+                name: {{.Values.AzDProxy.prefixResourceDeployment}}-redis-pass
                 key: REDIS_PASS
       volumes:
-        - name: {{.Values.AzDProxy.cache.redisClient.secret.volume.name}}
+        - name: {{.Values.AzDProxy.cache.redis.secret.volume.name}}
           secret:
             secretName: {{.Values.AzDProxy.prefixResourceDeployment}}-redis-tls-certs
         - name: {{.Values.AzDProxy.configuration.volume.name}}
           configMap:
-            name: {{.Values.AzDProxy.prefixResourceDeployment}}-config
+            name: {{.Values.AzDProxy.prefixResourceDeployment}}-redis-config
             items:
             - key: redis-config
               path: redis.conf

@@ -1,5 +1,5 @@
 package utils
-
+//TODO add test for this package
 import (
 	"crypto/tls"
 	"crypto/x509"
@@ -33,8 +33,9 @@ func CreateTlsConfig(tlsCrtPath string, tlsKeyPath string, caCertPath string, ho
 	return tlsConfig, nil
 }
 
-// GetPasswordFromSecret gets a password from a file containing only the password
-func GetPasswordFromSecret(passwordPath string)(string, error){
+// GetPasswordFromFile gets a password from a file containing only the password
+//TODO - change to get password directly from the secret (no mount)
+func GetPasswordFromFile(passwordPath string)(string, error){
 	// Get password
 	passwordInBytes, err := ioutil.ReadFile(passwordPath)
 	if err != nil {

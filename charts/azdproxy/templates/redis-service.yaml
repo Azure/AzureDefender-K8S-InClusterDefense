@@ -9,7 +9,7 @@ metadata:
     run: redis
 spec:
   ports:
-    - port: {{.Values.AzDProxy.cache.redisClient.port}}
-      targetPort: {{.Values.AzDProxy.cache.redisClient.targetport}}
+    - port: {{.Values.AzDProxy.cache.redis.port}}
+      targetPort: {{.Values.AzDProxy.cache.redis.port}}
   selector:
     run: redis

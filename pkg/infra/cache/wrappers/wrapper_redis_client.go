@@ -22,7 +22,7 @@ type IRedisBaseClientWrapper interface {
 
 // RedisCacheClientConfiguration redis cache client configuration
 type RedisCacheClientConfiguration struct {
-	// Address host:port address.
+	// Address is host:port address. For example azure-defender-proxy-redis-service:6379
 	Address string
 	// Host address
 	Host string
