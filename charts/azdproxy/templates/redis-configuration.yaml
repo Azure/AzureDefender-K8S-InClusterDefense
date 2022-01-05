@@ -11,7 +11,7 @@ data:
   redis-config: |-
     # port 0 - No tls communication is allowed
     port 0
-    # tls-port 6379 - Port for tls communication
+    # tls-port - Port for tls communication
     tls-port {{.Values.AzDProxy.cache.redis.port}}
     tls-cert-file {{.Values.AzDProxy.cache.redis.volumes.volumeSecretTls.mountPath}}/tls.crt
     tls-key-file {{.Values.AzDProxy.cache.redis.volumes.volumeSecretTls.mountPath}}/tls.key

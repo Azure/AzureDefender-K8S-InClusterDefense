@@ -5,8 +5,8 @@ metadata:
   name: {{.Values.AzDProxy.prefixResourceDeployment}}-redis-pvc
 spec:
   accessModes:
-    # ReadWriteOnce means the pv will be available for all pods in the same node.
-    - ReadWriteOnce
+    # ReadWriteMany the volume can be mounted as read-write by many nodes.
+    - ReadWriteMany
   resources:
     requests:
-      storage: {{.Values.AzDProxy.cache.pvc.storage}}  # TBD
+      storage: {{.Values.AzDProxy.cache.pvc.storage}}

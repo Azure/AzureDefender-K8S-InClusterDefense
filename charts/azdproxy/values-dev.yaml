@@ -155,7 +155,7 @@ AzDProxy:
   # Cache configuration
   cache:
     pvc:
-      storage: 1Gi
+      storage: 8Gi
     redis:
       # Image of redis containers
       image: azuredefendermcrdev.azurecr.io/public/azuredefender/dev/in-cluster-defense-redis
@@ -228,6 +228,11 @@ AzDProxy:
         volumePVC:
           # -- Volume name for redis pvc.
           name: "redis-storage"
+      # -- The resources of the redis pod.
+      resources:
+        limits:
+          memory: "8Gi"
+          cpu: "500m"
 
       retryPolicyConfiguration:
         #  -- Number of retry attempts

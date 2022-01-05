@@ -53,7 +53,7 @@ spec:
               secretKeyRef:
                 name: {{.Values.AzDProxy.prefixResourceDeployment}}-redis-pass
                 key: REDIS_PASS
-          resources: {{- toYaml .Values.AzDProxy.webhook.resources | nindent 12 }}
+          resources: {{- toYaml .Values.AzDProxy.cache.redis.resources | nindent 10 }}
       volumes:
         - name: {{.Values.AzDProxy.cache.redis.volumes.volumeConfigFile.name}}
           configMap:

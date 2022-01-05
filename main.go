@@ -169,10 +169,10 @@ func main() {
 	freeCacheInMemCache := cachewrappers.NewFreeCacheInMem(tokensCacheConfiguration)
 	freeCacheInMemCacheClient := cache.NewFreeCacheInMemCacheClient(instrumentationProvider, freeCacheInMemCache)
 	//Redis
-	var appCacheClient cache.ICacheClient
+	var persistentCacheClient cache.ICacheClient
 	// If this is local deployment - use in mem cache instead of redis
 	if deploymentInstance.IsLocalDevelopment() {
-		appCacheClient = freeCacheInMemCacheClient
+		persistentCacheClient = freeCacheInMemCacheClient
 	} else {
 		// create Redis client
 		redisCacheBaseClientFactory := cachewrappers.NewWrapperRedisClientFactory(instrumentationProvider)
@@ -190,7 +190,7 @@ func main() {
 		}
 		
 		// Export the client
-		appCacheClient = redisCacheClient
+		persistentCacheClient = redisCacheClient
 	}
 
 	azureBearerAuthorizerTokenProvider := azureauth.NewBearerAuthorizerTokenProvider(azureBearerAuthorizer)
@@ -206,7 +206,7 @@ func main() {
 	craneWrapper := registrywrappers.NewCraneWrapper(instrumentationProvider, craneWrapperRetryPolicy)
 	// Registry Client
 	registryClient := crane.NewCraneRegistryClient(instrumentationProvider, craneWrapper, acrKeychainFactory, k8sKeychainFactory)
-	tag2digestResolver := tag2digest.NewTag2DigestResolver(instrumentationProvider, registryClient, appCacheClient, tag2DigestResolverConfiguration)
+	tag2digestResolver := tag2digest.NewTag2DigestResolver(instrumentationProvider, registryClient, persistentCacheClient, tag2DigestResolverConfiguration)
 
 	// ARG
 
@@ -224,11 +224,11 @@ func main() {
 	if err != nil {
 		log.Fatal("main.CreateARGQueryGenerator", err)
 	}
-	argDataProviderCacheClient := arg.NewARGDataProviderCacheClient(instrumentationProvider, appCacheClient, argDataProviderConfiguration)
+	argDataProviderCacheClient := arg.NewARGDataProviderCacheClient(instrumentationProvider, persistentCacheClient, argDataProviderConfiguration)
 	argDataProvider := arg.NewARGDataProvider(instrumentationProvider, argClient, argQueryGenerator, argDataProviderCacheClient, argDataProviderConfiguration)
 
 	// Handler and azdSecinfoProvider
-	azdSecInfoProviderCacheClient := azdsecinfo.NewAzdSecInfoProviderCacheClient(instrumentationProvider, appCacheClient, azdSecInfoProviderConfiguration)
+	azdSecInfoProviderCacheClient := azdsecinfo.NewAzdSecInfoProviderCacheClient(instrumentationProvider, persistentCacheClient, azdSecInfoProviderConfiguration)
 	azdSecInfoProvider := azdsecinfo.NewAzdSecInfoProvider(instrumentationProvider, argDataProvider, tag2digestResolver, getContainersVulnerabilityScanInfoTimeoutDuration, azdSecInfoProviderCacheClient)
 	handler := webhook.NewHandler(azdSecInfoProvider, handlerConfiguration, instrumentationProvider)
 
