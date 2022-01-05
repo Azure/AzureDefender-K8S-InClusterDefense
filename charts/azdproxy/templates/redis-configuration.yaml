@@ -13,6 +13,6 @@ data:
   redis-config: |-
     port 0
     tls-port {{.Values.AzDProxy.cache.redis.port}}
-    tls-cert-file {{.Values.AzDProxy.cache.redis.secret.volume.mountPath}}/tls.crt
-    tls-key-file {{.Values.AzDProxy.cache.redis.secret.volume.mountPath}}/tls.key
-    tls-ca-cert-file {{.Values.AzDProxy.cache.redis.secret.volume.mountPath}}/ca.cert
+    tls-cert-file {{.Values.AzDProxy.cache.redis.volumes.volumeSecretTls.mountPath}}/tls.crt
+    tls-key-file {{.Values.AzDProxy.cache.redis.volumes.volumeSecretTls.mountPath}}/tls.key
+    tls-ca-cert-file {{.Values.AzDProxy.cache.redis.volumes.volumeSecretTls.mountPath}}/ca.cert

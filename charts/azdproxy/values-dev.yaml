@@ -154,16 +154,13 @@ AzDProxy:
 
   # Cache configuration
   cache:
-    redis:
-      # Image of redis containers
     pvc:
       storage: 1Gi
-
-    redisClient:
-      #  -- Image of redis containers
+    redis:
+      # Image of redis containers
       image: azuredefendermcrdev.azurecr.io/public/azuredefender/dev/in-cluster-defense-redis
       # -- amount of replicas of redis
-      replicas: 1
+      replicas: 2
       # -- the port that redis cache will be listened.
       port: 6379
       # TODO Change this address to helm function
@@ -171,41 +168,32 @@ AzDProxy:
       host: "azure-defender-proxy-redis-service"
       # -- The table (Db) that the argDataProviderCache will save to data.
       table: 0
-      # -- The mount path of the redis config file in redis deployment.
-      mountPath: "/redis-master"
-      # The secret values of the tls secret
-      secret:
-        volume:
-          # name of secret volume in redis deployment and webhook deployment
-          name: "redis-tls"
-          # name of secret mountPath in redis deployment and webhook deployment
-          mountPath: /tls
       # cert expire duration
       certs:
         expireDuration: 365
-      # The secret values of the tls secret
-      secretPass:
-        volume:
+      volumes:
+        # The secret values of the tls secret
+        volumeSecretPass:
           # name of secret volume in redis deployment and webhook deployment
           name: "redis-pass"
           # name of secret mountPath in redis deployment and webhook deployment
           mountPath: /redis-pass
-      # The redis config file volume
-      volumeConfigFile:
-        # -- The mount path of the redis config file in redis deployment - Don't change this value!
-        mountPath: "/redis-master"
-        # -- Volume name for redis config file.
-        name: "config"
-      # The secret volume of the tls secret
-      volumeSecret:
-        # name of secret volume in redis deployment and webhook deployment
-        name: "tls"
-        # name of secret mountPath in redis deployment and webhook deployment
-        mountPath: /tls
-      # The pvc volume
-      volumePVC:
-        # -- Volume name for redis pvc.
-        name: "redis-storage"
+        # The redis config file volume
+        volumeConfigFile:
+          # -- The mount path of the redis config file in redis deployment - Don't change this value!
+          mountPath: "/redis-master"
+          # -- Volume name for redis config file.
+          name: "config"
+        # The secret volume of the tls secret
+        volumeSecretTls:
+          # name of secret volume in redis deployment and webhook deployment
+          name: "redis-tls"
+          # name of secret mountPath in redis deployment and webhook deployment
+          mountPath: /tls
+        # The pvc volume
+        volumePVC:
+          # -- Volume name for redis pvc.
+          name: "redis-storage"
 
       retryPolicyConfiguration:
         #  -- Number of retry attempts
