@@ -75,15 +75,17 @@ AzDProxy:
     tivan:
       # Values for Tivan's instrumentation configuration:
       tivanInstrumentationConfiguration:
+        azureResourceID: "Unknown"
+        region: "Unknown"
         componentName: "ClusterStateCollector" # TODO Change it to InCLusterDefense once the publisher will be deployed to AKS
         clusterDistribution: "AKS" # TODO we should do it generic for ARC
-        releaseTrain: ""
-        nodeName: ""
+        releaseTrain: "Unknown"
+        nodeName: "Unknown"
         dirPath: "/var/log/azuredefender"
         mdmAccount: "RomeDetection"
         mdmNamespace: "Block.InClusterDefense"
-        platformMdmAccount: ""
-        platformMdmNamespace: ""
+        platformMdmAccount: "RomeDetection"
+        platformMdmNamespace: "Tivan.Platform"
 
     # Trace values
     trace:

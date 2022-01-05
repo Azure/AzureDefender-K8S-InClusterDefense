@@ -76,7 +76,6 @@ AzDProxy:
       # Values for Tivan's instrumentation configuration:
       tivanInstrumentationConfiguration:
         componentName: "azure-defender-proxy"
-        azureResourceID: ""
         region: ""
         clusterDistribution: ""
         chartVersion: ""

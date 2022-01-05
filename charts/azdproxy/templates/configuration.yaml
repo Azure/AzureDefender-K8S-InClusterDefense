@@ -34,11 +34,13 @@ data:
           tracerLevel: {{.Values.AzDProxy.instrumentation.trace.tracerConfiguration.tracerLevel }}
       tivan:
         tivanInstrumentationConfiguration:
-          componentName: {{ .Values.AzDProxy.instrumentation.tivan.tivanInstrumentationConfiguration.componentName | quote}}
+          azureResourceID: {{ .Values.AzDProxy.instrumentation.tivan.tivanInstrumentationConfiguration.azureResourceID | quote}}
+          region: {{ .Values.AzDProxy.instrumentation.tivan.tivanInstrumentationConfiguration.region | quote}}
           clusterDistribution: {{ .Values.AzDProxy.instrumentation.tivan.tivanInstrumentationConfiguration.clusterDistribution | quote}}
+          componentName: {{ .Values.AzDProxy.instrumentation.tivan.tivanInstrumentationConfiguration.componentName | quote}}
           chartVersion: {{ .Chart.Version}}
           imageName: {{ .Values.AzDProxy.webhook.image.name | quote}}
-          imageVersion: {{ .Values.AzDProxy.webhook.image.tag | quote}}
+          imageVersion: {{ .Values.AzDProxy.webhook.image.name | quote}}
           releaseTrain: {{ .Values.AzDProxy.instrumentation.tivan.tivanInstrumentationConfiguration.releaseTrain | quote}}
           nodeName: {{ .Values.AzDProxy.instrumentation.tivan.tivanInstrumentationConfiguration.nodeName | quote}}
           dirPath: {{ .Values.AzDProxy.instrumentation.tivan.tivanInstrumentationConfiguration.dirPath | quote}}
@@ -46,6 +48,7 @@ data:
           mdmNamespace: {{ .Values.AzDProxy.instrumentation.tivan.tivanInstrumentationConfiguration.mdmNamespace | quote}}
           platformMdmAccount: {{ .Values.AzDProxy.instrumentation.tivan.tivanInstrumentationConfiguration.platformMdmAccount | quote}}
           platformMdmNamespace: {{ .Values.AzDProxy.instrumentation.tivan.tivanInstrumentationConfiguration.platformMdmNamespace | quote}}
+
     azdIdentity:
       envAzureAuthorizerConfiguration:
         mSIClientId: {{.Values.AzDProxy.azdIdentity.envAzureAuthorizerConfiguration.mSIClientId}}
