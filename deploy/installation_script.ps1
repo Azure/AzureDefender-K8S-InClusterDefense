@@ -23,10 +23,13 @@ Param (
     [bool]$should_install_azure_addon_policy = $true,
 
     [Parameter()]
-    [bool]$should_enable_aks_security_profile = $true
+    [bool]$should_enable_aks_security_profile = $true,
+	
+	[Parameter()]
+    [bool]$should_install_inclusterdefense_dependencies = $true
 )
 
-write-host "Params that were entered:`r`nresource group : $resource_group `r`ncluster name : $cluster_name `r`n subscription: $subscription"
+write-host "Params that were entered:`r`nresource group : $resource_group `r`ncluster name : $cluster_name `r`nsubscription: $subscription"
 #######################################################################################################################
 # Function for printing new section.
 
@@ -109,17 +112,27 @@ else
 }
 
 #######################################################################################################################
-PrintNewSection("AzureDefenderInClusterDefense Dependencies")
+if ($should_install_inclusterdefense_dependencies -eq $false)
+{
+   write-host "Skipping installation of InClusterDefense Depe - should_install_azure_addon_policy param is false"
+}
+else
+{
+	
+	PrintNewSection("AzureDefenderInClusterDefense Dependencies")
 
-# TODO Change the teamplate file to uri.
-$deployment_name = "mdfc-incluster-$cluster_name-$region"
+	# TODO Change the teamplate file to uri.
+	$deployment_name = "mdfc-incluster-$cluster_name-$region"
 
-az deployment sub create --name  $deployment_name  --location $region `
-                                                    --template-file .\deploy\azure-templates\AzureDefenderInClusterDefense.Dependecies.Template.json `
-                                                    --parameters `
-                                                        resource_group=$node_resource_group `
-                                                        location=$region `
-                                                        managedIdentityName=$in_cluster_defense_identity_name
+	az deployment sub create --name  $deployment_name  --location $region `
+														--template-file .\deploy\azure-templates\AzureDefenderInClusterDefense.Dependecies.Template.json `
+														--parameters `
+															resource_group=$node_resource_group `
+															location=$region `
+                                                            managedIdentityName=$in_cluster_defense_identity_name
+															
+}
+
 
 if ($LASTEXITCODE -eq 3)
 {
