@@ -7,7 +7,7 @@ AzDProxy:
   # Webhook values
   webhook:
     # -- Amount of replicas of azdproxy.
-    replicas: 1
+    replicas: 3
     # Image values:
     image:
       # -- Official image.
@@ -188,8 +188,8 @@ AzDProxy:
         #
         # Specify a precentage of zero in order to disable the automatic AOF
         # rewrite feature.
-        autoAofRewritePercentage: 1
-        autoAofRewriteMinSize: 1kb
+        autoAofRewritePercentage: 100
+        autoAofRewriteMinSize: 64mb
         # Save the DB on disk:
         #
         #   save <seconds> <changes>
@@ -204,7 +204,7 @@ AzDProxy:
         #
         #   Note: you can disable saving at all commenting all the "save" lines.
         appendonly: 'yes'
-        save: 1 1
+        save: 900 1
       volumes:
         # The secret values of the tls secret
         volumeSecretPass:
