@@ -18,7 +18,8 @@
   },
   "variables": {
     "identityDeploymentName": "deployment-assets-except-role-assignment",
-    "bootstrapRoleAssignmentId": "[guid(subscription().id, variables('readerRoleDefinitionId'), parameters('managedIdentityName'), parameters('guidValue'))]",
+	//needs to be unique across tenant but same on redeploy
+    "bootstrapRoleAssignmentId": "[guid(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('managedIdentityName')), subscription().id ,variables('readerRoleDefinitionId'), 'InClusterDefenseReader')]",
     "readerRoleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'acdd72a7-3385-48ef-bd42-f606fba81ae7')]"
   },
   "resources": [
@@ -66,7 +67,7 @@
               "value": "[reference(parameters('managedIdentityName')).principalId]"
             }
           }
-        }
+        }        
       }
     },
     {
