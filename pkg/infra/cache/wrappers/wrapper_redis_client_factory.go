@@ -26,6 +26,7 @@ func NewWrapperRedisClientFactory (instrumentationProvider instrumentation.IInst
 }
 
 // Create creates redis client by getting RedisCacheClientConfiguration and extracting the certificates and password.
+// TODO  use only CA bundle and Server DNS + Password to Authenticate
 func (factory *WrapperRedisClientFactory) Create(configuration *RedisCacheClientConfiguration) (*redis.Client, error){
 	tracer := factory.tracerProvider.GetTracer("Create")
 

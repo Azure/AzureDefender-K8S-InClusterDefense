@@ -16,7 +16,7 @@ tls.key: {{ $cert.Key | b64enc }}
 
 
 {{/*
-Generate secret data containing certs files and password.
+Generate secret data containing certs files.
 No indentation is needed - just place it under the data key in your secret.
 please note that there is no watch or verification of the certs.
 Get 4 arguments - secret name, release namespace, service name and expire duration as strings
