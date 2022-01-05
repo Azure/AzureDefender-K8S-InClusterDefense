@@ -26,7 +26,10 @@ Param (
     [bool]$should_enable_aks_security_profile = $true,
 	
 	[Parameter()]
-    [bool]$should_install_inclusterdefense_dependencies = $true
+    [bool]$should_install_inclusterdefense_dependencies = $true,
+	
+	[Parameter()]
+    [bool]$should_install_inclusterdefense_vmss_assign_identities = $true
 )
 
 write-host "Params that were entered:`r`nresource group : $resource_group `r`ncluster name : $cluster_name `r`nsubscription: $subscription"
@@ -40,7 +43,9 @@ Function PrintNewSection($stepTitle)
 #######################################################################################################################
 #                                   Extract used variables
 # Extract the region of the cluster
-$region = az aks show --resource-group $resource_group --name $cluster_name --query location
+$region = az aks show --resource-group $resource_group --name $cluster_name --query location -o tsv
+$azureResourceID = az aks show --resource-group $resource_group --name $cluster_name --query id -o tsv
+
 if ($LASTEXITCODE -eq 3)
 {
     write-error "Failed to get the region of the cluster"
@@ -194,16 +199,23 @@ else
 }
 #######################################################################################################################
 PrintNewSection("Attach identity to VMSS on node resource group")
-
-For($i = 0; $i -lt $vmss_list.Length; $i++){
-    write-host "Assigning identity to vmss <$vmss_list[$i]>"
-    az vmss identity assign --resource-group $node_resource_group --name $vmss_list[$i] --identities $in_cluster_defense_identity_name
-
-    if ($LASTEXITCODE -eq 3)
-    {
-        write-error "Failed to attach identity to vmss <$vmss_list[$i]>"
-        exit $LASTEXITCODE
-    }
+if ($should_install_inclusterdefense_vmss_assign_identities -eq $false)
+{
+    write-host "Skipping on enabling assign vmss identities - should_install_inclusterdefense_vmss_assign_identities param is false"
+}
+else
+{
+	For($i = 0; $i -lt $vmss_list.Length; $i++){
+		write-host "Assigning identity to vmss <$vmss_list[$i]>"
+		az vmss identity assign --resource-group $node_resource_group --name $vmss_list[$i] --identities $in_cluster_defense_identity_name
+	
+		if ($LASTEXITCODE -eq 3)
+		{
+			write-error "Failed to attach identity to vmss <$vmss_list[$i]>"
+			exit $LASTEXITCODE
+		}
+	}
+	
 }
 
 #######################################################################################################################
@@ -234,4 +246,6 @@ helm upgrade in-cluster-defense charts/azdproxy --install --wait `
                 --set AzDProxy.kubeletIdentity.envAzureAuthorizerConfiguration.mSIClientId=$kubelet_client_id `
                 --set AzDProxy.azdIdentity.envAzureAuthorizerConfiguration.mSIClientId=$in_cluster_defense_identity_client_id `
                 --set "AzDProxy.arg.argClientConfiguration.subscriptions={$subscription}" `
-                --set AzDProxy.webhook.image.name=blockregistrydev.azurecr.io/azdproxy-image                 # TODO Delete above line once helm chart is published to public repo.
+                --set AzDProxy.instrumentation.tivan.tivanInstrumentationConfiguration.region=$region `
+                --set AzDProxy.instrumentation.tivan.tivanInstrumentationConfiguration.azureResourceID=$azureResourceID `
+                --set AzDProxy.webhook.image.name=maayankblock.azurecr.io/azdproxy-image:9d71ce9-dirty                 # TODO Delete above line once helm chart is published to public repo.

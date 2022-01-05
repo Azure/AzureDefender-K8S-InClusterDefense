@@ -60,6 +60,6 @@ func (suite *TestSuite) Test_AreConfigurationFilesHaveTheSameKeys() {
 
 // TestHelmValuesSuite We need this function to kick off the test suite, otherwise
 // "go test" won't know about our tests
-func TestArgClientTestSuite(t *testing.T) {
+func TestHelmValuesSuite(t *testing.T) {
 	suite.Run(t, new(TestSuite))
 }

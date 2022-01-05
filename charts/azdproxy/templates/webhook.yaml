@@ -47,6 +47,9 @@ spec:
             - mountPath: {{.Values.AzDProxy.configuration.volume.mountPath}}
               name: {{.Values.AzDProxy.configuration.volume.name}}
               readOnly: true
+            # The logs and metrics of the server. the publisher will consume those files from the host and publish them.
+            - mountPath: /var/log/azuredefender
+              name: azuredefender-log
           resources: {{- toYaml .Values.AzDProxy.webhook.resources | nindent 12 }}
       volumes:
         - name: {{.Values.AzDProxy.cache.redis.secret.volume.name}}
@@ -61,3 +64,6 @@ spec:
         - name: {{.Values.AzDProxy.configuration.volume.name}}
           configMap:
             name: {{.Values.AzDProxy.prefixResourceDeployment}}-config
+        - name: azuredefender-log
+          hostPath:
+            path: /var/log/azuredefender
