@@ -22,13 +22,11 @@ var _provider_exchangerMock *mocks.IACRTokenExchanger
 var _provider_azureTokenProviderMock *authmocks.IBearerAuthorizerTokenProvider
 var _provider_cacheClientMock *cachemock.ICacheClient
 var _expirationTime = 1
-var acrTokenProviderConfiguration = &ACRTokenProviderConfiguration{ RegistryRefreshTokenCacheExpirationTime: _expirationTime}
-
+var acrTokenProviderConfiguration = &ACRTokenProviderConfiguration{RegistryRefreshTokenCacheExpirationTime: _expirationTime}
 
 const _provider_armToken = "ARMTokenMock.."
 const _provider_refreshToken = "ACRRefreshTokenMock.."
 const _provider_registry = "tomerw.azurecr.io"
-
 
 func (suite *TestSuiteTokenProvider) SetupTest() {
 	instrumentationProvider := instrumentation.NewNoOpInstrumentationProvider()
@@ -43,7 +41,6 @@ func (suite *TestSuiteTokenProvider) Test_GetACRRefreshToken_Success() {
 	_provider_exchangerMock.On("ExchangeACRAccessToken", _provider_registry, _provider_armToken).Return(_provider_refreshToken, nil).Once()
 	_provider_cacheClientMock.On("Get", mock.Anything).Return("", utils.NilArgumentError)
 	_provider_cacheClientMock.On("Set", mock.Anything, mock.Anything, mock.Anything).Return(utils.NilArgumentError).Maybe()
-
 
 	val, err := _provider.GetACRRefreshToken(_provider_registry)
 
@@ -117,7 +114,7 @@ func (suite *TestSuiteTokenProvider) Test_GetACRRefreshToken_Success_NoKeyInCach
 }
 
 func (suite *TestSuiteTokenProvider) Test_GetACRRefreshToken_Success_NoKeyInCache_SetKey_GetKeySecondTryAfterExpirationTime_RegistryKey() {
-	_provider_cacheClientMock.On("Get",_provider_registry).Return("", utils.NilArgumentError)
+	_provider_cacheClientMock.On("Get", _provider_registry).Return("", utils.NilArgumentError)
 	_provider_cacheClientMock.On("Set", _provider_registry, _provider_refreshToken, mock.Anything).Return(utils.NilArgumentError).Maybe()
 	_provider_azureTokenProviderMock.On("GetOAuthToken", context.Background()).Return(_provider_armToken, nil).Twice()
 	_provider_exchangerMock.On("ExchangeACRAccessToken", _provider_registry, _provider_armToken).Return(_provider_refreshToken, nil).Twice()
@@ -131,8 +128,7 @@ func (suite *TestSuiteTokenProvider) Test_GetACRRefreshToken_Success_NoKeyInCach
 	suite.AssertExpectations()
 }
 
-
-func (suite *TestSuiteTokenProvider) AssertExpectations(){
+func (suite *TestSuiteTokenProvider) AssertExpectations() {
 	_provider_exchangerMock.AssertExpectations(suite.T())
 	_provider_azureTokenProviderMock.AssertExpectations(suite.T())
 	_provider_cacheClientMock.AssertExpectations(suite.T())

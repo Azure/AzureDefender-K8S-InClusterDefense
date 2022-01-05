@@ -16,14 +16,14 @@ import (
 	"time"
 )
 
-	// Default time duration for GetContainersVulnerabilityScanInfo IN MILLISECONDS
+// Default time duration for GetContainersVulnerabilityScanInfo IN MILLISECONDS
 const _defaultTimeDurationGetContainersVulnerabilityScanInfo = 2850 * time.Millisecond // 2.85 seconds - can't multiply float in seconds
 
 // The status of timeout during the run
 const (
-		_unknownTimeOutStatus = -1
-		_noTimeOutEncountered = 0
-		_numberOfTimeOutEncounteredThreshold = 3
+	_unknownTimeOutStatus                = -1
+	_noTimeOutEncountered                = 0
+	_numberOfTimeOutEncounteredThreshold = 3
 )
 
 // IAzdSecInfoProvider represents interface for providing azure defender security information
@@ -156,7 +156,7 @@ func (provider *AzdSecInfoProvider) getContainersVulnerabilityScanInfoSyncWrappe
 		if errFromCache != nil {
 			errFromCache = errors.Wrap(errFromCache, "Failed to set containerVulnerabilityScanInfo in cache")
 			tracer.Error(errFromCache, "")
-		}else{
+		} else {
 			tracer.Info("Set containerVulnerabilityScanInfo in cache successfully")
 		}
 	}()

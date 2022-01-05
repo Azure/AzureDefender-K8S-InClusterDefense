@@ -21,7 +21,6 @@ type ITag2DigestResolver interface {
 // Tag2DigestResolver implements ITag2DigestResolver interface
 var _ ITag2DigestResolver = (*Tag2DigestResolver)(nil)
 
-
 // Tag2DigestResolver represents basic implementation of ITag2DigestResolver interface
 type Tag2DigestResolver struct {
 	//tracerProvider is tracer provider of AzdSecInfoProvider
@@ -45,10 +44,10 @@ type Tag2DigestResolverConfiguration struct {
 // NewTag2DigestResolver Ctor
 func NewTag2DigestResolver(instrumentationProvider instrumentation.IInstrumentationProvider, registryClient registry.IRegistryClient, cacheClient cache.ICacheClient, tag2DigestResolverConfiguration *Tag2DigestResolverConfiguration) *Tag2DigestResolver {
 	return &Tag2DigestResolver{
-		tracerProvider:  instrumentationProvider.GetTracerProvider("Tag2DigestResolver"),
-		metricSubmitter: instrumentationProvider.GetMetricSubmitter(),
-		registryClient:  registryClient,
-		cacheClient: cacheClient,
+		tracerProvider:                  instrumentationProvider.GetTracerProvider("Tag2DigestResolver"),
+		metricSubmitter:                 instrumentationProvider.GetMetricSubmitter(),
+		registryClient:                  registryClient,
+		cacheClient:                     cacheClient,
 		tag2DigestResolverConfiguration: tag2DigestResolverConfiguration,
 	}
 }
@@ -68,10 +67,10 @@ func (resolver *Tag2DigestResolver) Resolve(imageReference registry.IImageRefere
 
 	// Try to get digest from cache
 	digest, err := resolver.getDigestFromCache(imageReference)
-	if err != nil{ // Couldn't get digest from cache - skip and get results from provider
+	if err != nil { // Couldn't get digest from cache - skip and get results from provider
 		err = errors.Wrap(err, "Couldn't get digest from cache")
 		tracer.Error(err, "")
-	}else { // Key exist in cache
+	} else { // Key exist in cache
 		tracer.Info("got digest from cache")
 		return digest, nil
 	}
@@ -90,7 +89,7 @@ func (resolver *Tag2DigestResolver) Resolve(imageReference registry.IImageRefere
 		if err != nil {
 			err = errors.Wrap(err, "Tag2DigestResolver.Resolve: Failed to set digest in cache")
 			tracer.Error(err, "")
-		}else{
+		} else {
 			tracer.Info("Set digest in cache successfully", "image", imageReference.Original(), "digest", digest)
 		}
 	}()
@@ -110,13 +109,13 @@ func (resolver *Tag2DigestResolver) getDigestFromCache(imageReference registry.I
 	// If key dont exist in cache
 	if err != nil {
 		_, isKeyNotFound := err.(*cache.MissingKeyCacheError)
-		if isKeyNotFound{
+		if isKeyNotFound {
 			tracer.Info("image as key is not in cache", "image", imageReference.Original())
 			return "", err
 		}
 		err = errors.Wrap(err, "Digest as value don't exist in cache or there is an error in cache functionality")
 		tracer.Error(err, "")
-		return  "", err
+		return "", err
 	}
 
 	// A valid digest found in cache
@@ -128,7 +127,7 @@ func (resolver *Tag2DigestResolver) getDigestFromCache(imageReference registry.I
 // It tries to see if it's a digest based image reference - if so, extract its digest
 // Then if it ACR based registry - tries to get digest using registry client's ACR attach auth method
 // If above fails or not applicable - tries to get digest using registry client's k8s auth method.
-func (resolver *Tag2DigestResolver) getDigest(imageReference registry.IImageReference, resourceCtx *ResourceContext) (string, error){
+func (resolver *Tag2DigestResolver) getDigest(imageReference registry.IImageReference, resourceCtx *ResourceContext) (string, error) {
 	tracer := resolver.tracerProvider.GetTracer("getDigest")
 	tracer.Info("Received:", "imageReference", imageReference, "resourceCtx", resourceCtx)
 

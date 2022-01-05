@@ -11,12 +11,12 @@ import (
 	"time"
 )
 
-const(
-	_podSpecCacheKeyTest1 = "Test1"
-	_timeoutKeyTest1 = _timeoutPrefixForCacheKey + _podSpecCacheKeyTest1
+const (
+	_podSpecCacheKeyTest1                   = "Test1"
+	_timeoutKeyTest1                        = _timeoutPrefixForCacheKey + _podSpecCacheKeyTest1
 	_containerVulnerabilityScanInfoKeyTest1 = _containerVulnerabilityScanInfoPrefixForCacheKey + _podSpecCacheKeyTest1
 	_resultsStringTestWithError             = "{\"containerVulnerabilityScanInfo\":null,\"err\":\"NilArgumentError\"}"
-	_expectedErrorString = "NilArgumentError"
+	_expectedErrorString                    = "NilArgumentError"
 )
 
 var (
@@ -25,7 +25,7 @@ var (
 
 type AzdSecInfoProviderCacheClientTestSuite struct {
 	suite.Suite
-	cacheClientMock *cachemock.ICacheClient
+	cacheClientMock               *cachemock.ICacheClient
 	azdSecInfoProviderCacheClient *AzdSecInfoProviderCacheClient
 }
 
@@ -33,29 +33,29 @@ type AzdSecInfoProviderCacheClientTestSuite struct {
 func (suite *AzdSecInfoProviderCacheClientTestSuite) SetupTest() {
 	// Mock
 	suite.cacheClientMock = new(cachemock.ICacheClient)
-	suite.azdSecInfoProviderCacheClient = NewAzdSecInfoProviderCacheClient(instrumentation.NewNoOpInstrumentationProvider(), suite.cacheClientMock , &AzdSecInfoProviderConfiguration{CacheExpirationTimeTimeout: _cacheExpirationTimeTimeout, CacheExpirationContainerVulnerabilityScanInfo: _cacheExpirationTimeTimeout})
+	suite.azdSecInfoProviderCacheClient = NewAzdSecInfoProviderCacheClient(instrumentation.NewNoOpInstrumentationProvider(), suite.cacheClientMock, &AzdSecInfoProviderConfiguration{CacheExpirationTimeTimeout: _cacheExpirationTimeTimeout, CacheExpirationContainerVulnerabilityScanInfo: _cacheExpirationTimeTimeout})
 
 }
 
-func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_getContainerVulnerabilityScanInfofromCache_KeyNotFound(){
+func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_getContainerVulnerabilityScanInfofromCache_KeyNotFound() {
 	suite.cacheClientMock.On("Get", _containerVulnerabilityScanInfoKeyTest1).Return("", new(cache.MissingKeyCacheError))
 	containersVulnerabilityScanInfo, errorStoredInCache, err := suite.azdSecInfoProviderCacheClient.GetContainerVulnerabilityScanInfofromCache(_podSpecCacheKeyTest1)
 	suite.Nil(containersVulnerabilityScanInfo)
 	suite.Nil(errorStoredInCache)
-	suite.IsTypef(cache.NewMissingKeyCacheError(""), err,"")
+	suite.IsTypef(cache.NewMissingKeyCacheError(""), err, "")
 	suite.cacheClientMock.AssertExpectations(suite.T())
 }
 
-func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_getContainerVulnerabilityScanInfofromCache_UnmarshalError(){
+func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_getContainerVulnerabilityScanInfofromCache_UnmarshalError() {
 	suite.cacheClientMock.On("Get", _containerVulnerabilityScanInfoKeyTest1).Return("", nil)
 	containersVulnerabilityScanInfo, errorStoredInCache, err := suite.azdSecInfoProviderCacheClient.GetContainerVulnerabilityScanInfofromCache(_podSpecCacheKeyTest1)
 	suite.Nil(containersVulnerabilityScanInfo)
 	suite.Nil(errorStoredInCache)
-	suite.NotNil( err)
+	suite.NotNil(err)
 	suite.cacheClientMock.AssertExpectations(suite.T())
 }
 
-func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_getContainerVulnerabilityScanInfofromCache_ErrorStoredInCache(){
+func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_getContainerVulnerabilityScanInfofromCache_ErrorStoredInCache() {
 	suite.cacheClientMock.On("Get", _containerVulnerabilityScanInfoKeyTest1).Return(_resultsStringTestWithError, nil)
 	result, errorStoredInCache, err := suite.azdSecInfoProviderCacheClient.GetContainerVulnerabilityScanInfofromCache(_podSpecCacheKeyTest1)
 	suite.Nil(err)
@@ -64,7 +64,7 @@ func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_getContainerVulnerabil
 	suite.cacheClientMock.AssertExpectations(suite.T())
 }
 
-func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_getContainerVulnerabilityScanInfofromCache(){
+func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_getContainerVulnerabilityScanInfofromCache() {
 	suite.cacheClientMock.On("Get", _containerVulnerabilityScanInfoKeyTest1).Return(_expectedResultsStringTestScanned, nil)
 	result, errorStoredInCache, err := suite.azdSecInfoProviderCacheClient.GetContainerVulnerabilityScanInfofromCache(_podSpecCacheKeyTest1)
 	suite.Nil(err)
@@ -73,30 +73,28 @@ func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_getContainerVulnerabil
 	suite.cacheClientMock.AssertExpectations(suite.T())
 }
 
-
-func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_setContainerVulnerabilityScanInfoInCache_SetGotError(){
+func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_setContainerVulnerabilityScanInfoInCache_SetGotError() {
 	suite.cacheClientMock.On("Set", _containerVulnerabilityScanInfoKeyTest1, _expectedResultsStringTestScanned, mock.Anything).Return(utils.NilArgumentError)
 	err := suite.azdSecInfoProviderCacheClient.SetContainerVulnerabilityScanInfoInCache(_podSpecCacheKeyTest1, _expectedResultsWrapperTest1.ContainerVulnerabilityScanInfo, nil)
 	suite.NotNil(err)
 	suite.cacheClientMock.AssertExpectations(suite.T())
 }
 
-
-func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_setContainerVulnerabilityScanInfoInCache_SetErrorInCache(){
+func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_setContainerVulnerabilityScanInfoInCache_SetErrorInCache() {
 	suite.cacheClientMock.On("Set", _containerVulnerabilityScanInfoKeyTest1, _resultsStringTestWithError, mock.Anything).Return(nil)
 	err := suite.azdSecInfoProviderCacheClient.SetContainerVulnerabilityScanInfoInCache(_podSpecCacheKeyTest1, nil, utils.NilArgumentError)
 	suite.Nil(err)
 	suite.cacheClientMock.AssertExpectations(suite.T())
 }
 
-func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_setContainerVulnerabilityScanInfoInCache(){
+func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_setContainerVulnerabilityScanInfoInCache() {
 	suite.cacheClientMock.On("Set", _containerVulnerabilityScanInfoKeyTest1, _expectedResultsStringTestScanned, mock.Anything).Return(nil)
 	err := suite.azdSecInfoProviderCacheClient.SetContainerVulnerabilityScanInfoInCache(_podSpecCacheKeyTest1, _expectedResultsWrapperTest1.ContainerVulnerabilityScanInfo, nil)
 	suite.Nil(err)
 	suite.cacheClientMock.AssertExpectations(suite.T())
 }
 
-func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_getTimeOutStatus_KeyNotFound(){
+func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_getTimeOutStatus_KeyNotFound() {
 	suite.cacheClientMock.On("Get", _timeoutKeyTest1).Return("", new(cache.MissingKeyCacheError))
 	timeoutStatus, err := suite.azdSecInfoProviderCacheClient.GetTimeOutStatus(_podSpecCacheKeyTest1)
 	suite.Nil(err)
@@ -104,7 +102,7 @@ func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_getTimeOutStatus_KeyNo
 	suite.cacheClientMock.AssertExpectations(suite.T())
 }
 
-func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_getTimeOutStatus_GotError(){
+func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_getTimeOutStatus_GotError() {
 	suite.cacheClientMock.On("Get", _timeoutKeyTest1).Return("", utils.NilArgumentError)
 	timeoutStatus, err := suite.azdSecInfoProviderCacheClient.GetTimeOutStatus(_podSpecCacheKeyTest1)
 	suite.NotNil(err)
@@ -112,7 +110,7 @@ func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_getTimeOutStatus_GotEr
 	suite.cacheClientMock.AssertExpectations(suite.T())
 }
 
-func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_getTimeOutStatus_ValueNotValidInt(){
+func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_getTimeOutStatus_ValueNotValidInt() {
 	suite.cacheClientMock.On("Get", _timeoutKeyTest1).Return("invalid int", nil)
 	timeoutStatus, err := suite.azdSecInfoProviderCacheClient.GetTimeOutStatus(_podSpecCacheKeyTest1)
 	suite.NotNil(err)
@@ -120,7 +118,7 @@ func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_getTimeOutStatus_Value
 	suite.cacheClientMock.AssertExpectations(suite.T())
 }
 
-func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_getTimeOutStatus(){
+func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_getTimeOutStatus() {
 	suite.cacheClientMock.On("Get", _timeoutKeyTest1).Return("1", nil)
 	timeoutStatus, err := suite.azdSecInfoProviderCacheClient.GetTimeOutStatus(_podSpecCacheKeyTest1)
 	suite.Nil(err)
@@ -128,56 +126,56 @@ func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_getTimeOutStatus(){
 	suite.cacheClientMock.AssertExpectations(suite.T())
 }
 
-func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_setTimeOutStatusAfterEncounteredTimeout_TwoEncountered(){
+func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_setTimeOutStatusAfterEncounteredTimeout_TwoEncountered() {
 	suite.cacheClientMock.On("Set", _timeoutKeyTest1, "2", mock.Anything).Return(nil)
 	err := suite.azdSecInfoProviderCacheClient.SetTimeOutStatusAfterEncounteredTimeout(_podSpecCacheKeyTest1, 2)
 	suite.Nil(err)
 	suite.cacheClientMock.AssertExpectations(suite.T())
 }
 
-func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_setTimeOutStatusAfterEncounteredTimeout_OneEncountered(){
+func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_setTimeOutStatusAfterEncounteredTimeout_OneEncountered() {
 	suite.cacheClientMock.On("Set", _timeoutKeyTest1, "1", mock.Anything).Return(nil)
 	err := suite.azdSecInfoProviderCacheClient.SetTimeOutStatusAfterEncounteredTimeout(_podSpecCacheKeyTest1, 1)
 	suite.Nil(err)
 	suite.cacheClientMock.AssertExpectations(suite.T())
 }
 
-func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_setTimeOutStatusAfterEncounteredTimeout_Error(){
+func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_setTimeOutStatusAfterEncounteredTimeout_Error() {
 	suite.cacheClientMock.On("Set", _timeoutKeyTest1, "1", mock.Anything).Return(utils.NilArgumentError)
 	err := suite.azdSecInfoProviderCacheClient.SetTimeOutStatusAfterEncounteredTimeout(_podSpecCacheKeyTest1, 1)
 	suite.NotNil(err)
 	suite.cacheClientMock.AssertExpectations(suite.T())
 }
 
-func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_resetTimeOutInCacheAfterGettingScanResults_KeyNotFound(){
+func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_resetTimeOutInCacheAfterGettingScanResults_KeyNotFound() {
 	suite.cacheClientMock.On("Get", _timeoutKeyTest1).Return("", new(cache.MissingKeyCacheError))
 	err := suite.azdSecInfoProviderCacheClient.ResetTimeOutInCacheAfterGettingScanResults(_podSpecCacheKeyTest1)
 	suite.Nil(err)
 	suite.cacheClientMock.AssertExpectations(suite.T())
 }
 
-func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_resetTimeOutInCacheAfterGettingScanResults_GetError(){
+func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_resetTimeOutInCacheAfterGettingScanResults_GetError() {
 	suite.cacheClientMock.On("Get", _timeoutKeyTest1).Return("", utils.NilArgumentError)
 	err := suite.azdSecInfoProviderCacheClient.ResetTimeOutInCacheAfterGettingScanResults(_podSpecCacheKeyTest1)
 	suite.NotNil(err)
 	suite.cacheClientMock.AssertExpectations(suite.T())
 }
 
-func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_resetTimeOutInCacheAfterGettingScanResults_GetInvalidValue(){
+func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_resetTimeOutInCacheAfterGettingScanResults_GetInvalidValue() {
 	suite.cacheClientMock.On("Get", _timeoutKeyTest1).Return("invalid value", nil)
 	err := suite.azdSecInfoProviderCacheClient.ResetTimeOutInCacheAfterGettingScanResults(_podSpecCacheKeyTest1)
 	suite.NotNil(err)
 	suite.cacheClientMock.AssertExpectations(suite.T())
 }
 
-func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_resetTimeOutInCacheAfterGettingScanResults_GotZero(){
+func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_resetTimeOutInCacheAfterGettingScanResults_GotZero() {
 	suite.cacheClientMock.On("Get", _timeoutKeyTest1).Return("0", nil)
 	err := suite.azdSecInfoProviderCacheClient.ResetTimeOutInCacheAfterGettingScanResults(_podSpecCacheKeyTest1)
 	suite.Nil(err)
 	suite.cacheClientMock.AssertExpectations(suite.T())
 }
 
-func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_resetTimeOutInCacheAfterGettingScanResults_GotOne(){
+func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_resetTimeOutInCacheAfterGettingScanResults_GotOne() {
 	suite.cacheClientMock.On("Get", _timeoutKeyTest1).Return("1", nil)
 	suite.cacheClientMock.On("Set", _timeoutKeyTest1, "0", time.Duration(1)).Return(nil)
 	err := suite.azdSecInfoProviderCacheClient.ResetTimeOutInCacheAfterGettingScanResults(_podSpecCacheKeyTest1)
@@ -185,8 +183,7 @@ func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_resetTimeOutInCacheAft
 	suite.cacheClientMock.AssertExpectations(suite.T())
 }
 
-
-func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_resetTimeOutInCacheAfterGettingScanResults_GotTwo(){
+func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_resetTimeOutInCacheAfterGettingScanResults_GotTwo() {
 	suite.cacheClientMock.On("Get", _timeoutKeyTest1).Return("2", nil)
 	suite.cacheClientMock.On("Set", _timeoutKeyTest1, "0", time.Duration(1)).Return(nil)
 	err := suite.azdSecInfoProviderCacheClient.ResetTimeOutInCacheAfterGettingScanResults(_podSpecCacheKeyTest1)
@@ -194,7 +191,7 @@ func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_resetTimeOutInCacheAft
 	suite.cacheClientMock.AssertExpectations(suite.T())
 }
 
-func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_resetTimeOutInCacheAfterGettingScanResults_SetError(){
+func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_resetTimeOutInCacheAfterGettingScanResults_SetError() {
 	suite.cacheClientMock.On("Get", _timeoutKeyTest1).Return("2", nil)
 	suite.cacheClientMock.On("Set", _timeoutKeyTest1, "0", time.Duration(1)).Return(utils.NilArgumentError)
 	err := suite.azdSecInfoProviderCacheClient.ResetTimeOutInCacheAfterGettingScanResults(_podSpecCacheKeyTest1)

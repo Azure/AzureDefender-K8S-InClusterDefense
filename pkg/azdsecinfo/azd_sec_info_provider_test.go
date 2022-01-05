@@ -28,24 +28,21 @@ const (
 	_maxAllowedDifferenceBetweenRuns                = 0.3
 	_cacheExpirationTimeTimeout                     = 1
 
-
-	_noTimeOutEncounteredTestString  = "0"
+	_noTimeOutEncounteredTestString   = "0"
 	_oneTimeOutEncounteredTestString  = "1"
 	_twoTimesOutEncounteredTestString = "2"
 	_unknownTimeOutStatusTestString   = "-1"
-
 )
 
 var (
-
-	_imageRegistry      = "playground.azurecr.io"
-	_imageRepo          = "testrepo"
-	_imageTagTest1      = "1.0"
-	_imageTagTest2      = "2.0"
-	_imageOriginalTest1 = _imageRegistry + "/" + _imageRepo + ":" + _imageTagTest1
-	_imageOriginalTest2 = _imageRegistry + "/" + _imageRepo + ":" + _imageTagTest2
+	_imageRegistry                             = "playground.azurecr.io"
+	_imageRepo                                 = "testrepo"
+	_imageTagTest1                             = "1.0"
+	_imageTagTest2                             = "2.0"
+	_imageOriginalTest1                        = _imageRegistry + "/" + _imageRepo + ":" + _imageTagTest1
+	_imageOriginalTest2                        = _imageRegistry + "/" + _imageRepo + ":" + _imageTagTest2
 	_containerVulnerabilityScanInfoForCacheKey = _containerVulnerabilityScanInfoPrefixForCacheKey + _imageOriginalTest1
-	_timeoutForCacheKey = _timeoutPrefixForCacheKey + _imageOriginalTest1
+	_timeoutForCacheKey                        = _timeoutPrefixForCacheKey + _imageOriginalTest1
 
 	// Test1
 	_containers = []corev1.Container{
@@ -67,17 +64,17 @@ var (
 	_resourceCtxTest2 = tag2digest.NewResourceContext("default", []string{}, "")
 	_digestTest2      = "sha256:86a80e680602c613519a5af190219346230a3b02d98606727b9c8d47d8dc88ed"
 
-	_scanStatus = contracts.UnhealthyScan
-	_scanFindings = []*contracts.ScanFinding{{Patchable: true, Id: "1", Severity: "High"}}
+	_scanStatus                     = contracts.UnhealthyScan
+	_scanFindings                   = []*contracts.ScanFinding{{Patchable: true, Id: "1", Severity: "High"}}
 	_containerVulnerabilityScanInfo = &contracts.ContainerVulnerabilityScanInfo{
-		Name: _containers[0].Name,
-		Image: &contracts.Image{Name: _imageOriginalTest1, Digest: _digestTest1},
-		ScanStatus: _scanStatus,
+		Name:         _containers[0].Name,
+		Image:        &contracts.Image{Name: _imageOriginalTest1, Digest: _digestTest1},
+		ScanStatus:   _scanStatus,
 		ScanFindings: _scanFindings,
 	}
-	_expectedResultsTest1             = []*contracts.ContainerVulnerabilityScanInfo{_containerVulnerabilityScanInfo}
-	_expectedResultsStringTestScanned = "{\"containerVulnerabilityScanInfo\":[{\"name\":\"containerTest1\",\"image\":{\"name\":\"playground.azurecr.io/testrepo:1.0\",\"digest\":\"sha256:9f9ed5fe24766b31bcb64aabba73e96cc5b7c2da578f9cd2fca20846cf5d7557\"},\"scanStatus\":\"unhealthyScan\",\"scanFindings\":[{\"patchable\":true,\"id\":\"1\",\"severity\":\"High\"}]}],\"err\":\"\"}"
-	_expectedResultsStringTestUnscanned            = "{\"containerVulnerabilityScanInfo\":[{\"name\":\"containerTest1\",\"image\":{\"name\":\"playground.azurecr.io/testrepo:1.0\",\"digest\":\"sha256:9f9ed5fe24766b31bcb64aabba73e96cc5b7c2da578f9cd2fca20846cf5d7557\"},\"scanStatus\":\"unscanned\",\"scanFindings\":null}],\"err\":\"\"}"
+	_expectedResultsTest1               = []*contracts.ContainerVulnerabilityScanInfo{_containerVulnerabilityScanInfo}
+	_expectedResultsStringTestScanned   = "{\"containerVulnerabilityScanInfo\":[{\"name\":\"containerTest1\",\"image\":{\"name\":\"playground.azurecr.io/testrepo:1.0\",\"digest\":\"sha256:9f9ed5fe24766b31bcb64aabba73e96cc5b7c2da578f9cd2fca20846cf5d7557\"},\"scanStatus\":\"unhealthyScan\",\"scanFindings\":[{\"patchable\":true,\"id\":\"1\",\"severity\":\"High\"}]}],\"err\":\"\"}"
+	_expectedResultsStringTestUnscanned = "{\"containerVulnerabilityScanInfo\":[{\"name\":\"containerTest1\",\"image\":{\"name\":\"playground.azurecr.io/testrepo:1.0\",\"digest\":\"sha256:9f9ed5fe24766b31bcb64aabba73e96cc5b7c2da578f9cd2fca20846cf5d7557\"},\"scanStatus\":\"unscanned\",\"scanFindings\":null}],\"err\":\"\"}"
 
 	// Test2
 	info = &contracts.ContainerVulnerabilityScanInfo{
@@ -109,8 +106,6 @@ var (
 		},
 	}
 	_expectedResultsTest3 = []*contracts.ContainerVulnerabilityScanInfo{info3}
-
-
 )
 
 type AzdSecInfoProviderTestSuite struct {
@@ -118,7 +113,7 @@ type AzdSecInfoProviderTestSuite struct {
 	tag2DigestResolverMock *tag2DigestResolverMocks.ITag2DigestResolver
 	argDataProviderMock    *argDataProviderMocks.IARGDataProvider
 	azdSecInfoProvider     *AzdSecInfoProvider
-	cacheClientMock *mocks.IAzdSecInfoProviderCacheClient
+	cacheClientMock        *mocks.IAzdSecInfoProviderCacheClient
 }
 
 // This will run before each test in the suite
@@ -223,7 +218,7 @@ func (suite *AzdSecInfoProviderTestSuite) Test_getContainersVulnerabilityScanInf
 	suite.cacheClientMock.On("GetPodSpecCacheKey", &pod.Spec).Return(_imageOriginalTest1).Once()
 	suite.cacheClientMock.On("GetContainerVulnerabilityScanInfofromCache", _imageOriginalTest1).Return(nil, nil, new(cache.MissingKeyCacheError)).Once()
 	suite.cacheClientMock.On("GetTimeOutStatus", _imageOriginalTest1).Return(0, nil).Once()
-	suite.cacheClientMock.On("SetTimeOutStatusAfterEncounteredTimeout", _imageOriginalTest1, 1).Return( nil).Once()
+	suite.cacheClientMock.On("SetTimeOutStatusAfterEncounteredTimeout", _imageOriginalTest1, 1).Return(nil).Once()
 	suite.cacheClientMock.On("SetContainerVulnerabilityScanInfoInCache", _imageOriginalTest1, _expectedResultsTest1, nil).Return(nil).Maybe()
 
 	suite.tag2DigestResolverMock.On("Resolve", _imageRedTest1, _resourceCtxTest1).Return(_digestTest1, nil).Once()
@@ -245,7 +240,7 @@ func (suite *AzdSecInfoProviderTestSuite) Test_getContainersVulnerabilityScanInf
 	suite.cacheClientMock.On("GetPodSpecCacheKey", &pod.Spec).Return(_imageOriginalTest1).Once()
 	suite.cacheClientMock.On("GetContainerVulnerabilityScanInfofromCache", _imageOriginalTest1).Return(nil, nil, new(cache.MissingKeyCacheError)).Once()
 	suite.cacheClientMock.On("GetTimeOutStatus", _imageOriginalTest1).Return(1, nil).Once()
-	suite.cacheClientMock.On("SetTimeOutStatusAfterEncounteredTimeout", _imageOriginalTest1, 2).Return( nil).Once()
+	suite.cacheClientMock.On("SetTimeOutStatusAfterEncounteredTimeout", _imageOriginalTest1, 2).Return(nil).Once()
 	suite.cacheClientMock.On("SetContainerVulnerabilityScanInfoInCache", _imageOriginalTest1, _expectedResultsTest1, nil).Return(nil).Maybe()
 
 	suite.tag2DigestResolverMock.On("Resolve", _imageRedTest1, _resourceCtxTest1).Return(_digestTest1, nil).Once()
@@ -303,7 +298,6 @@ func (suite *AzdSecInfoProviderTestSuite) Test_getContainersVulnerabilityScanInf
 	suite.NotNil(err)
 	suite.AssertExpectation()
 }
-
 
 func (suite *AzdSecInfoProviderTestSuite) Test_GetContainersVulnerabilityScanInfo_Run_In_Parallel_AllContainersNil() {
 

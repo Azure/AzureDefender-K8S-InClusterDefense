@@ -86,10 +86,10 @@ func (provider *ARGDataProvider) GetImageVulnerabilityScanResults(registry strin
 
 	// Try to get results from cache. If a key doesn't exist or an error occurred - continue without cache
 	scanStatus, scanFindings, err := provider.cacheClient.GetResultsFromCache(digest)
-	if err != nil{ // Couldn't get ImageVulnerabilityScanResults from cache - skip and get results from provider
+	if err != nil { // Couldn't get ImageVulnerabilityScanResults from cache - skip and get results from provider
 		err = errors.Wrap(err, "Couldn't get ImageVulnerabilityScanResults from cache")
 		tracer.Error(err, "")
-	}else { //  Key exist in cache
+	} else { //  Key exist in cache
 		tracer.Info("got ImageVulnerabilityScanResults from cache")
 		return scanStatus, scanFindings, nil
 	}
@@ -235,4 +235,3 @@ func (provider *ARGDataProvider) getImageScanDataFromARGQueryScanResult(scanResu
 	provider.metricSubmitter.SendMetric(util.GetDurationMilliseconds(startTime), argmetric.NewArgDataProviderResponseLatencyMetricWithGetImageVulnerabilityScanResultsQuery(contracts.UnhealthyScan))
 	return contracts.UnhealthyScan, scanFindings, nil
 }
-
