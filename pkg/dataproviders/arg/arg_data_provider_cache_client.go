@@ -12,7 +12,23 @@ import (
 	"time"
 )
 
-// ARGDataProviderCacheClient is cache client designated for ARGDataProvider
+// IARGDataProviderCacheClient is a cache client designated for ARGDataProvider
+type IARGDataProviderCacheClient interface {
+
+	// GetResultsFromCache try to get ImageVulnerabilityScanResults from cache.
+	// The cache mapping digest to scan results or to known errors.
+	// If the digest exist in cache - return the value (scan results or error) and a flag _gotResultsFromCache
+	// If the digest dont exist in cache or any other unknown error occurred - return "", nil, nil and _didntGotResultsFromCache
+	GetResultsFromCache(digest string) (contracts.ScanStatus, []*contracts.ScanFinding, error)
+
+	// SetScanFindingsInCache map digest to scan results
+	SetScanFindingsInCache(scanFindings []*contracts.ScanFinding, scanStatus contracts.ScanStatus, digest string) error
+}
+
+// ARGDataProviderCacheClient implements IARGDataProviderCacheClient interface
+var _ IARGDataProviderCacheClient = (*ARGDataProviderCacheClient)(nil)
+
+// ARGDataProviderCacheClient is a cache client designated for ARGDataProvider
 // It wraps ICache client
 type ARGDataProviderCacheClient struct {
 	//tracerProvider is tracer provider of ARGDataProviderCacheClient
@@ -30,41 +46,41 @@ type ARGDataProviderCacheClient struct {
 // NewARGDataProviderCacheClient - ARGDataProviderCacheClient Ctor
 func NewARGDataProviderCacheClient(instrumentationProvider instrumentation.IInstrumentationProvider, cacheClient cache.ICacheClient, argDataProviderConfiguration *ARGDataProviderConfiguration) *ARGDataProviderCacheClient {
 	return &ARGDataProviderCacheClient{
-		tracerProvider:     instrumentationProvider.GetTracerProvider("ARGDataProviderCacheClient"),
-		metricSubmitter:    instrumentationProvider.GetMetricSubmitter(),
-		cacheClient: cacheClient,
+		tracerProvider:                      instrumentationProvider.GetTracerProvider("ARGDataProviderCacheClient"),
+		metricSubmitter:                     instrumentationProvider.GetMetricSubmitter(),
+		cacheClient:                         cacheClient,
 		cacheExpirationTimeUnscannedResults: utils.GetMinutes(argDataProviderConfiguration.CacheExpirationTimeUnscannedResults),
-		cacheExpirationTimeScannedResults: utils.GetHours(argDataProviderConfiguration.CacheExpirationTimeScannedResults),
+		cacheExpirationTimeScannedResults:   utils.GetHours(argDataProviderConfiguration.CacheExpirationTimeScannedResults),
 	}
 }
 
-// getResultsFromCache try to get ImageVulnerabilityScanResults from cache.
+// GetResultsFromCache try to get ImageVulnerabilityScanResults from cache.
 // The cache mapping digest to scan results or to known errors.
 // If the digest exist in cache - return the value (scan results or error) and a flag _gotResultsFromCache
 // If the digest dont exist in cache or any other unknown error occurred - return "", nil, nil and _didntGotResultsFromCache
-func (client *ARGDataProviderCacheClient) getResultsFromCache(digest string) (contracts.ScanStatus, []*contracts.ScanFinding, error){
-	tracer := client.tracerProvider.GetTracer("getResultsFromCache")
+func (client *ARGDataProviderCacheClient) GetResultsFromCache(digest string) (contracts.ScanStatus, []*contracts.ScanFinding, error) {
+	tracer := client.tracerProvider.GetTracer("GetResultsFromCache")
 
 	scanFindingsString, err := client.cacheClient.Get(digest)
 
 	// Nothing found in cache for digest as key
-	if err != nil{ // Error as a result of key doesn't exist or other error from the cache functionality are treated the same (skip cache)
+	if err != nil { // Error as a result of key doesn't exist or other error from the cache functionality are treated the same (skip cache)
 		_, isKeyNotFound := err.(*cache.MissingKeyCacheError)
-		if isKeyNotFound{
+		if isKeyNotFound {
 			tracer.Info("digest as key is not in cache", "digest", digest)
 			return "", nil, err
 		}
 		err = errors.Wrap(err, "scanFindings as value don't exist in cache or there is an error in cache functionality")
 		tracer.Error(err, "")
-		return  "", nil, err
+		return "", nil, err
 	}
 
 	// Key exist in cache
-	scanStatusFromCache, scanFindingsFromCache , unmarshalErr := client.parseScanFindingsFromCache(scanFindingsString)
-	if unmarshalErr != nil{ // json.unmarshall failed - trace the error and continue without cache
+	scanStatusFromCache, scanFindingsFromCache, unmarshalErr := client.parseScanFindingsFromCache(scanFindingsString)
+	if unmarshalErr != nil { // json.unmarshall failed - trace the error and continue without cache
 		unmarshalErr = errors.Wrap(unmarshalErr, "Failed on unmarshall scan results from cache")
 		tracer.Error(unmarshalErr, "")
-		return  "", nil, unmarshalErr
+		return "", nil, unmarshalErr
 	}
 
 	// results successfully extracted from cache - return the results
@@ -72,10 +88,9 @@ func (client *ARGDataProviderCacheClient) getResultsFromCache(digest string) (co
 	return scanStatusFromCache, scanFindingsFromCache, nil
 }
 
-
-// setScanFindingsInCache map digest to scan results
-func (client *ARGDataProviderCacheClient) setScanFindingsInCache(scanFindings []*contracts.ScanFinding, scanStatus contracts.ScanStatus, digest string) error {
-	tracer := client.tracerProvider.GetTracer("setScanFindingsInCache")
+// SetScanFindingsInCache map digest to scan results
+func (client *ARGDataProviderCacheClient) SetScanFindingsInCache(scanFindings []*contracts.ScanFinding, scanStatus contracts.ScanStatus, digest string) error {
+	tracer := client.tracerProvider.GetTracer("SetScanFindingsInCache")
 
 	// Convert results to string in order to set the results in the cache
 	scanFindingsWrapper := &ScanFindingsInCache{ScanStatus: scanStatus, ScanFindings: scanFindings}
@@ -89,19 +104,19 @@ func (client *ARGDataProviderCacheClient) setScanFindingsInCache(scanFindings []
 
 	// Set TTL. Different TTL for different scan status
 	expirationTime := client.cacheExpirationTimeScannedResults // Default
-	if scanStatus == contracts.Unscanned{
-		expirationTime =  client.cacheExpirationTimeUnscannedResults
+	if scanStatus == contracts.Unscanned {
+		expirationTime = client.cacheExpirationTimeUnscannedResults
 	}
 
 	// Set results in cache
 	err = client.cacheClient.Set(digest, scanFindingsString, expirationTime)
-	if err != nil{
+	if err != nil {
 		err = errors.Wrap(err, "Failed to set digest in cache")
 		tracer.Error(err, "")
 		return err
 	}
 
-	tracer.Info("set scanFindings in cache", "digest", digest)
+	tracer.Info("set scanFindings in cache successfully", "digest", digest)
 	return nil
 }
 
@@ -109,7 +124,7 @@ func (client *ARGDataProviderCacheClient) setScanFindingsInCache(scanFindings []
 func (client *ARGDataProviderCacheClient) parseScanFindingsFromCache(scanFindingsString string) (contracts.ScanStatus, []*contracts.ScanFinding, error) {
 	tracer := client.tracerProvider.GetTracer("parseScanFindingsFromCache")
 
-	scanFindingsFromCache :=  new(ScanFindingsInCache)
+	scanFindingsFromCache := new(ScanFindingsInCache)
 	unmarshalErr := json.Unmarshal([]byte(scanFindingsString), scanFindingsFromCache)
 	if unmarshalErr != nil {
 		unmarshalErr = errors.Wrap(unmarshalErr, "Failed on json.Unmarshal scanFindingsWrapper")
