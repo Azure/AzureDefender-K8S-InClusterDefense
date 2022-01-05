@@ -8,11 +8,46 @@ metadata:
 # Redis configuration file
 data:
   # No ':' is needed because Redis expect the file in this format.
-  # port 0 - No tls communication is allowed
-  # tls-port 6379 - Port for tls communication
   redis-config: |-
+    # port 0 - No tls communication is allowed
     port 0
+    # tls-port - Port for tls communication
     tls-port {{.Values.AzDProxy.cache.redis.port}}
-    tls-cert-file {{.Values.AzDProxy.cache.redis.secret.volume.mountPath}}/tls.crt
-    tls-key-file {{.Values.AzDProxy.cache.redis.secret.volume.mountPath}}/tls.key
-    tls-ca-cert-file {{.Values.AzDProxy.cache.redis.secret.volume.mountPath}}/ca.cert
+    tls-cert-file {{.Values.AzDProxy.cache.redis.volumes.volumeSecretTls.mountPath}}/tls.crt
+    tls-key-file {{.Values.AzDProxy.cache.redis.volumes.volumeSecretTls.mountPath}}/tls.key
+    tls-ca-cert-file {{.Values.AzDProxy.cache.redis.volumes.volumeSecretTls.mountPath}}/ca.cert
+
+    # Automatic rewrite of the append only file.
+    # Redis is able to automatically rewrite the log file implicitly calling
+    # BGREWRITEAOF when the AOF log size will growth by the specified percentage.
+    #
+    # This is how it works: Redis remembers the size of the AOF file after the
+    # latest rewrite (or if no rewrite happened since the restart, the size of
+    # the AOF at startup is used).
+    #
+    # This base size is compared to the current size. If the current size is
+    # bigger than the specified percentage, the rewrite is triggered. Also
+    # you need to specify a minimal size for the AOF file to be rewritten, this
+    # is useful to avoid rewriting the AOF file even if the percentage increase
+    # is reached but it is still pretty small.
+    #
+    # Specify a precentage of zero in order to disable the automatic AOF
+    # rewrite feature.
+    auto-aof-rewrite-percentage {{.Values.AzDProxy.cache.redis.redisConfig.autoAofRewritePercentage}}
+    auto-aof-rewrite-min-size {{.Values.AzDProxy.cache.redis.redisConfig.autoAofRewriteMinSize}}
+
+    # Save the DB on disk:
+    #
+    #   save <seconds> <changes>
+    #
+    #   Will save the DB if both the given number of seconds and the given
+    #   number of write operations against the DB occurred.
+    #
+    #   In the example below the behaviour will be to save:
+    #   after 900 sec (15 min) if at least 1 key changed
+    #   after 300 sec (5 min) if at least 10 keys changed
+    #   after 60 sec if at least 10000 keys changed
+    #
+    #   Note: you can disable saving at all commenting all the "save" lines.
+    appendonly {{.Values.AzDProxy.cache.redis.redisConfig.appendonly}}
+    save {{.Values.AzDProxy.cache.redis.redisConfig.save}}

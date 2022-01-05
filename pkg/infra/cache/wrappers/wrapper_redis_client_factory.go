@@ -18,7 +18,7 @@ type WrapperRedisClientFactory struct {
 }
 
 // NewWrapperRedisClientFactory constructor
-func NewWrapperRedisClientFactory (instrumentationProvider instrumentation.IInstrumentationProvider) *WrapperRedisClientFactory{
+func NewWrapperRedisClientFactory(instrumentationProvider instrumentation.IInstrumentationProvider) *WrapperRedisClientFactory {
 	return &WrapperRedisClientFactory{
 		tracerProvider:  instrumentationProvider.GetTracerProvider("WrapperRedisClientFactory"),
 		metricSubmitter: instrumentationProvider.GetMetricSubmitter(),
@@ -27,7 +27,7 @@ func NewWrapperRedisClientFactory (instrumentationProvider instrumentation.IInst
 
 // Create creates redis client by getting RedisCacheClientConfiguration and extracting the certificates and password.
 // TODO  use only CA bundle and Server DNS + Password to Authenticate
-func (factory *WrapperRedisClientFactory) Create(configuration *RedisCacheClientConfiguration) (*redis.Client, error){
+func (factory *WrapperRedisClientFactory) Create(configuration *RedisCacheClientConfiguration) (*redis.Client, error) {
 	tracer := factory.tracerProvider.GetTracer("Create")
 
 	// Get tlsConfig
@@ -40,7 +40,7 @@ func (factory *WrapperRedisClientFactory) Create(configuration *RedisCacheClient
 
 	// Get password
 	password, err := utils.GetPasswordFromFile(configuration.PasswordPath)
-	if err != nil{
+	if err != nil {
 		err = errors.Wrap(err, "Failed to get password from secret")
 		tracer.Error(err, "")
 		return nil, err
@@ -53,7 +53,7 @@ func (factory *WrapperRedisClientFactory) Create(configuration *RedisCacheClient
 		DB:              configuration.Table,
 		MaxRetries:      configuration.MaxRetries,
 		MinRetryBackoff: configuration.MinRetryBackoff,
-		TLSConfig: tlsConfig,
+		TLSConfig:       tlsConfig,
 	})
 
 	return redisClient, nil

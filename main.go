@@ -170,18 +170,28 @@ func main() {
 	freeCacheInMemCache := cachewrappers.NewFreeCacheInMem(tokensCacheConfiguration)
 	freeCacheInMemCacheClient := cache.NewFreeCacheInMemCacheClient(instrumentationProvider, freeCacheInMemCache)
 	//Redis
-	var redisCacheClient cache.ICacheClient
+	var persistentCacheClient cache.ICacheClient
 	// If this is local deployment - use in mem cache instead of redis
 	if deploymentInstance.IsLocalDevelopment() {
-		redisCacheClient = freeCacheInMemCacheClient
+		persistentCacheClient = freeCacheInMemCacheClient
 	} else {
+		// create Redis client
 		redisCacheBaseClientFactory := cachewrappers.NewWrapperRedisClientFactory(instrumentationProvider)
 		redisCacheBaseClient, err := redisCacheBaseClientFactory.Create(argDataProviderCacheConfiguration)
 		if err != nil {
 			log.Fatal("main.redisCacheBaseClientFactory.Create got invalid certificates or failed to load cert files or password file", err)
 		}
 		redisCacheRetryPolicy := retrypolicy.NewRetryPolicy(instrumentationProvider, redisCacheClientRetryPolicyConfiguration)
-		redisCacheClient = cache.NewRedisCacheClient(instrumentationProvider, redisCacheBaseClient, redisCacheRetryPolicy, _cacheContext)
+		redisCacheClient := cache.NewRedisCacheClient(instrumentationProvider, redisCacheBaseClient, redisCacheRetryPolicy, _cacheContext)
+
+		// Check connection
+		_, err = redisCacheClient.Ping()
+		if err != nil{
+			log.Fatal("Failed to connect to Redis server", err)
+		}
+		
+		// Export the client
+		persistentCacheClient = redisCacheClient
 	}
 
 	azureBearerAuthorizerTokenProvider := azureauth.NewBearerAuthorizerTokenProvider(azureBearerAuthorizer)
@@ -197,7 +207,7 @@ func main() {
 	craneWrapper := registrywrappers.NewCraneWrapper(instrumentationProvider, craneWrapperRetryPolicy)
 	// Registry Client
 	registryClient := crane.NewCraneRegistryClient(instrumentationProvider, craneWrapper, acrKeychainFactory, k8sKeychainFactory)
-	tag2digestResolver := tag2digest.NewTag2DigestResolver(instrumentationProvider, registryClient, redisCacheClient, tag2DigestResolverConfiguration)
+	tag2digestResolver := tag2digest.NewTag2DigestResolver(instrumentationProvider, registryClient, persistentCacheClient, tag2DigestResolverConfiguration)
 
 	// ARG
 
@@ -215,11 +225,11 @@ func main() {
 	if err != nil {
 		log.Fatal("main.CreateARGQueryGenerator", err)
 	}
-	argDataProviderCacheClient := arg.NewARGDataProviderCacheClient(instrumentationProvider, redisCacheClient, argDataProviderConfiguration)
+	argDataProviderCacheClient := arg.NewARGDataProviderCacheClient(instrumentationProvider, persistentCacheClient, argDataProviderConfiguration)
 	argDataProvider := arg.NewARGDataProvider(instrumentationProvider, argClient, argQueryGenerator, argDataProviderCacheClient, argDataProviderConfiguration)
 
 	// Handler and azdSecinfoProvider
-	azdSecInfoProviderCacheClient := azdsecinfo.NewAzdSecInfoProviderCacheClient(instrumentationProvider, redisCacheClient, azdSecInfoProviderConfiguration)
+	azdSecInfoProviderCacheClient := azdsecinfo.NewAzdSecInfoProviderCacheClient(instrumentationProvider, persistentCacheClient, azdSecInfoProviderConfiguration)
 	azdSecInfoProvider := azdsecinfo.NewAzdSecInfoProvider(instrumentationProvider, argDataProvider, tag2digestResolver, getContainersVulnerabilityScanInfoTimeoutDuration, azdSecInfoProviderCacheClient)
 	handler := webhook.NewHandler(azdSecInfoProvider, handlerConfiguration, instrumentationProvider)
 

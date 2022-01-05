@@ -101,10 +101,10 @@ data:
         address: "{{.Values.AzDProxy.cache.redis.host}}:{{.Values.AzDProxy.cache.redis.port}}"
         host: {{.Values.AzDProxy.cache.redis.host}}
         table: {{.Values.AzDProxy.cache.redis.table}}
-        tlsCrtPath: "{{.Values.AzDProxy.cache.redis.secret.volume.mountPath}}/tls.crt"
-        tlsKeyPath: "{{.Values.AzDProxy.cache.redis.secret.volume.mountPath}}/tls.key"
-        caCertPath: "{{.Values.AzDProxy.cache.redis.secret.volume.mountPath}}/ca.cert"
-        passwordPath: "{{.Values.AzDProxy.cache.redis.secretPass.volume.mountPath}}/REDIS_PASS"
+        tlsCrtPath: "{{.Values.AzDProxy.cache.redis.volumes.volumeSecretTls.mountPath}}/tls.crt"
+        tlsKeyPath: "{{.Values.AzDProxy.cache.redis.volumes.volumeSecretTls.mountPath}}/tls.key"
+        caCertPath: "{{.Values.AzDProxy.cache.redis.volumes.volumeSecretTls.mountPath}}/ca.cert"
+        passwordPath: "{{.Values.AzDProxy.cache.redis.volumes.volumeSecretPass.mountPath}}/REDIS_PASS"
 
       tokensCacheConfiguration:
         cacheSize: {{.Values.AzDProxy.cache.tokensCacheConfiguration.cacheSize}} # in Bytes

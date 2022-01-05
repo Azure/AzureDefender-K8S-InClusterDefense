@@ -153,11 +153,13 @@ AzDProxy:
 
   # Cache configuration
   cache:
+    pvc:
+      storage: 8Gi
     redis:
       # Image of redis containers
       image: azuredefendermcrdev.azurecr.io/public/azuredefender/dev/in-cluster-defense-redis
       # -- amount of replicas of redis
-      replicas: 1
+      replicas: 2
       # -- the port that redis cache will be listened.
       port: 6379
       # TODO Change this address to helm function
@@ -165,25 +167,71 @@ AzDProxy:
       host: "azure-defender-proxy-redis-service"
       # -- The table (Db) that the argDataProviderCache will save to data.
       table: 0
-      # -- The mount path of the redis config file in redis deployment.
-      mountPath: "/redis-master"
-      # The secret values of the tls secret
-      secret:
-        volume:
-          # name of secret volume in redis deployment and webhook deployment
-          name: "redis-tls"
-          # name of secret mountPath in redis deployment and webhook deployment
-          mountPath: /tls
       # cert expire duration
       certs:
         expireDuration: 365
-      # The secret values of the tls secret
-      secretPass:
-        volume:
+      redisConfig:
+        # Automatic rewrite of the append only file.
+        # Redis is able to automatically rewrite the log file implicitly calling
+        # BGREWRITEAOF when the AOF log size will growth by the specified percentage.
+        #
+        # This is how it works: Redis remembers the size of the AOF file after the
+        # latest rewrite (or if no rewrite happened since the restart, the size of
+        # the AOF at startup is used).
+        #
+        # This base size is compared to the current size. If the current size is
+        # bigger than the specified percentage, the rewrite is triggered. Also
+        # you need to specify a minimal size for the AOF file to be rewritten, this
+        # is useful to avoid rewriting the AOF file even if the percentage increase
+        # is reached but it is still pretty small.
+        #
+        # Specify a precentage of zero in order to disable the automatic AOF
+        # rewrite feature.
+        autoAofRewritePercentage: 1
+        autoAofRewriteMinSize: 1kb
+        # Save the DB on disk:
+        #
+        #   save <seconds> <changes>
+        #
+        #   Will save the DB if both the given number of seconds and the given
+        #   number of write operations against the DB occurred.
+        #
+        #   In the example below the behaviour will be to save:
+        #   after 900 sec (15 min) if at least 1 key changed
+        #   after 300 sec (5 min) if at least 10 keys changed
+        #   after 60 sec if at least 10000 keys changed
+        #
+        #   Note: you can disable saving at all commenting all the "save" lines.
+        appendonly: 'yes'
+        save: 1 1
+      volumes:
+        # The secret values of the tls secret
+        volumeSecretPass:
           # name of secret volume in redis deployment and webhook deployment
           name: "redis-pass"
           # name of secret mountPath in redis deployment and webhook deployment
           mountPath: /redis-pass
+        # The redis config file volume
+        volumeConfigFile:
+          # -- The mount path of the redis config file in redis deployment - Don't change this value!
+          mountPath: "/redis-master"
+          # -- Volume name for redis config file.
+          name: "config"
+        # The secret volume of the tls secret
+        volumeSecretTls:
+          # name of secret volume in redis deployment and webhook deployment
+          name: "redis-tls"
+          # name of secret mountPath in redis deployment and webhook deployment
+          mountPath: /tls
+        # The pvc volume
+        volumePVC:
+          # -- Volume name for redis pvc.
+          name: "redis-storage"
+      # -- The resources of the redis pod.
+      resources:
+        limits:
+          memory: "8Gi"
+          cpu: "500m"
 
       retryPolicyConfiguration:
         #  -- Number of retry attempts

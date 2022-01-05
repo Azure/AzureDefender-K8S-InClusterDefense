@@ -18,6 +18,11 @@ type IRedisBaseClientWrapper interface {
 
 	// Get Redis `GET key` command. It returns redis.Nil error when key does not exist.
 	Get(ctx context.Context, key string) *redis.StringCmd
+
+	// Ping Redis Ping command. it is used to test if a connection is still alive, or to measure latency.
+	// returns redis.Nil error if unsuccessfully received a pong from the server.
+	// returns ('PONG', nil) if successfully received a pong from the server
+	Ping(ctx context.Context) *redis.StatusCmd
 }
 
 // RedisCacheClientConfiguration redis cache client configuration
