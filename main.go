@@ -129,6 +129,7 @@ func main() {
 		log.Fatal("main.NewDeployment", err)
 	}
 	// Create Tivan's instrumentation
+	// TODO we need a way get the pod name (probably using kubectl).
 	tivanInstrumentationResult, err := tivan.NewTivanInstrumentationResult(tivanInstrumentationConfiguration)
 	if err != nil {
 		log.Fatal("main.NewTivanInstrumentationResult", err)
