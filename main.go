@@ -124,7 +124,8 @@ func main() {
 		log.Fatal(errMsg, utils.InvalidConfiguration)
 	}
 	// Create deployment singleton.
-	if _, err = utils.NewDeployment(deploymentConfiguration); err != nil {
+	deploymentInstance, err := utils.NewDeployment(deploymentConfiguration)
+	if err != nil {
 		log.Fatal("main.NewDeployment", err)
 	}
 	// Create Tivan's instrumentation
@@ -165,11 +166,23 @@ func main() {
 
 	}
 	//Cache clients
-	redisCacheBaseClient := cachewrappers.NewRedisBaseClientWrapper(argDataProviderCacheConfiguration)
-	redisCacheRetryPolicy := retrypolicy.NewRetryPolicy(instrumentationProvider, redisCacheClientRetryPolicyConfiguration)
-	redisCacheClient := cache.NewRedisCacheClient(instrumentationProvider, redisCacheBaseClient, redisCacheRetryPolicy, _cacheContext)
+	//In mem
 	freeCacheInMemCache := cachewrappers.NewFreeCacheInMem(tokensCacheConfiguration)
 	freeCacheInMemCacheClient := cache.NewFreeCacheInMemCacheClient(instrumentationProvider, freeCacheInMemCache)
+	//Redis
+	var redisCacheClient cache.ICacheClient
+	// If this is local deployment - use in mem cache instead of redis
+	if deploymentInstance.IsLocalDevelopment() {
+		redisCacheClient = freeCacheInMemCacheClient
+	} else {
+		redisCacheBaseClientFactory := cachewrappers.NewWrapperRedisClientFactory(instrumentationProvider)
+		redisCacheBaseClient, err := redisCacheBaseClientFactory.Create(argDataProviderCacheConfiguration)
+		if err != nil {
+			log.Fatal("main.redisCacheBaseClientFactory.Create got invalid certificates or failed to load cert files or password file", err)
+		}
+		redisCacheRetryPolicy := retrypolicy.NewRetryPolicy(instrumentationProvider, redisCacheClientRetryPolicyConfiguration)
+		redisCacheClient = cache.NewRedisCacheClient(instrumentationProvider, redisCacheBaseClient, redisCacheRetryPolicy, _cacheContext)
+	}
 
 	azureBearerAuthorizerTokenProvider := azureauth.NewBearerAuthorizerTokenProvider(azureBearerAuthorizer)
 
@@ -207,7 +220,7 @@ func main() {
 
 	// Handler and azdSecinfoProvider
 	azdSecInfoProviderCacheClient := azdsecinfo.NewAzdSecInfoProviderCacheClient(instrumentationProvider, redisCacheClient, azdSecInfoProviderConfiguration)
-	azdSecInfoProvider := azdsecinfo.NewAzdSecInfoProvider(instrumentationProvider, argDataProvider, tag2digestResolver, getContainersVulnerabilityScanInfoTimeoutDuration, azdSecInfoProviderCacheClient, azdSecInfoProviderConfiguration)
+	azdSecInfoProvider := azdsecinfo.NewAzdSecInfoProvider(instrumentationProvider, argDataProvider, tag2digestResolver, getContainersVulnerabilityScanInfoTimeoutDuration, azdSecInfoProviderCacheClient)
 	handler := webhook.NewHandler(azdSecInfoProvider, handlerConfiguration, instrumentationProvider)
 
 	// Manager and server

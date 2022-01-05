@@ -87,16 +87,21 @@ data:
     cache:
 
       redisClient:
-        replicas: {{.Values.AzDProxy.cache.redisClient.replicas}}
-        port: {{.Values.AzDProxy.cache.redisClient.port}}
-        targetport: {{.Values.AzDProxy.cache.redisClient.port}}
+        replicas: {{.Values.AzDProxy.cache.redis.replicas}}
+        port: {{.Values.AzDProxy.cache.redis.port}}
+        targetport: {{.Values.AzDProxy.cache.redis.port}}
         retryPolicyConfiguration:
-          retryAttempts: {{ .Values.AzDProxy.cache.redisClient.retryPolicyConfiguration.retryAttempts }}
-          retryDurationInMS: {{ .Values.AzDProxy.cache.redisClient.retryPolicyConfiguration.retryDurationInMS }}
+          retryAttempts: {{ .Values.AzDProxy.cache.redis.retryPolicyConfiguration.retryAttempts }}
+          retryDurationInMS: {{ .Values.AzDProxy.cache.redis.retryPolicyConfiguration.retryDurationInMS }}
 
       argDataProviderCacheConfiguration:
-        address: {{.Values.AzDProxy.cache.argDataProviderCacheConfiguration.address}}
-        table: {{.Values.AzDProxy.cache.argDataProviderCacheConfiguration.table}}
+        address: "{{.Values.AzDProxy.cache.redis.host}}:{{.Values.AzDProxy.cache.redis.port}}"
+        host: {{.Values.AzDProxy.cache.redis.host}}
+        table: {{.Values.AzDProxy.cache.redis.table}}
+        tlsCrtPath: "{{.Values.AzDProxy.cache.redis.secret.volume.mountPath}}/tls.crt"
+        tlsKeyPath: "{{.Values.AzDProxy.cache.redis.secret.volume.mountPath}}/tls.key"
+        caCertPath: "{{.Values.AzDProxy.cache.redis.secret.volume.mountPath}}/ca.cert"
+        passwordPath: "{{.Values.AzDProxy.cache.redis.secretPass.volume.mountPath}}/REDIS_PASS"
 
       tokensCacheConfiguration:
         cacheSize: {{.Values.AzDProxy.cache.tokensCacheConfiguration.cacheSize}} # in Bytes

@@ -23,10 +23,10 @@ import (
 const (
 	_expectedTestAddPatchOperation   = "add"
 	_expectedTestAnnotationPatchPath = "/metadata/annotations"
-	_url          = "https://localhost:8000/mutate"
-	_alpineDigest = "sha256:def822f9851ca422481ec6fee59a9966f12b351c62ccb9aca841526ffaa9f748"
-	_imageScanUnhealthyDigest = "sha256:f6a835256950f699175eecb9fd82e4a84684c9bab6ffb641b6fc23ff7b23e4b3"
-	_runtimeTestEnabledEnvKey = "RuntimeTestsEnabled"
+	_url                             = "https://localhost:8000/mutate"
+	_alpineDigest                    = "sha256:def822f9851ca422481ec6fee59a9966f12b351c62ccb9aca841526ffaa9f748"
+	_imageScanUnhealthyDigest        = "sha256:f6a835256950f699175eecb9fd82e4a84684c9bab6ffb641b6fc23ff7b23e4b3"
+	_runtimeTestEnabledEnvKey        = "RuntimeTestsEnabled"
 )
 
 var (
@@ -36,7 +36,7 @@ var (
 // in order to run against a proxy in cluster: 'kubectl port-forward service/azure-defender-proxy-service 8000:443 -n kube-system'
 type RuntimeTestSuite struct {
 	suite.Suite
-	req *http.Request
+	req    *http.Request
 	client *http.Client
 }
 
@@ -50,10 +50,9 @@ func (suite *RuntimeTestSuite) SetupSuite() {
 func (suite *RuntimeTestSuite) SetupTest() {
 	var err error
 	suite.req, err = http.NewRequest("Get", _url, nil)
-	suite.req.Header.Set("Content-Type",  "application/json")
+	suite.req.Header.Set("Content-Type", "application/json")
 	suite.NoError(err)
 }
-
 
 func (suite *RuntimeTestSuite) TestHappyPath() {
 	containers := []corev1.Container{
@@ -63,8 +62,8 @@ func (suite *RuntimeTestSuite) TestHappyPath() {
 		},
 	}
 	expected := []*contracts.ContainerVulnerabilityScanInfo{{Name: containers[0].Name,
-			Image: &contracts.Image{Name: containers[0].Image, Digest: _alpineDigest},
-			ScanStatus: contracts.HealthyScan, ScanFindings: []*contracts.ScanFinding{}}}
+		Image:      &contracts.Image{Name: containers[0].Image, Digest: _alpineDigest},
+		ScanStatus: contracts.HealthyScan, ScanFindings: []*contracts.ScanFinding{}}}
 
 	pod := createPodForTests(containers, nil)
 	reqA := suite.createRequestForTests(pod)
@@ -85,8 +84,8 @@ func (suite *RuntimeTestSuite) TestNonACR() {
 	}
 
 	expected := []*contracts.ContainerVulnerabilityScanInfo{{Name: containers[0].Name,
-			Image: &contracts.Image{Name: containers[0].Image, Digest: ""},
-			ScanStatus: contracts.Unscanned, ScanFindings: nil, AdditionalData: map[string]string{"UnscannedReason": string(contracts.ImageIsNotInACRRegistryUnscannedReason)}}}
+		Image:      &contracts.Image{Name: containers[0].Image, Digest: ""},
+		ScanStatus: contracts.Unscanned, ScanFindings: nil, AdditionalData: map[string]string{"UnscannedReason": string(contracts.ImageIsNotInACRRegistryUnscannedReason)}}}
 
 	pod := createPodForTests(containers, nil)
 	reqA := suite.createRequestForTests(pod)
@@ -107,9 +106,9 @@ func (suite *RuntimeTestSuite) TestACRDoesntExists() {
 		},
 	}
 
-	expected :=  []*contracts.ContainerVulnerabilityScanInfo{{Name: containers[0].Name,
-			Image: &contracts.Image{Name: containers[0].Image, Digest: ""},
-			ScanStatus: contracts.Unscanned, ScanFindings: nil, AdditionalData: map[string]string{"UnscannedReason": string(contracts.RegistryDoesNotExistUnscannedReason)}}}
+	expected := []*contracts.ContainerVulnerabilityScanInfo{{Name: containers[0].Name,
+		Image:      &contracts.Image{Name: containers[0].Image, Digest: ""},
+		ScanStatus: contracts.Unscanned, ScanFindings: nil, AdditionalData: map[string]string{"UnscannedReason": string(contracts.RegistryDoesNotExistUnscannedReason)}}}
 	pod := createPodForTests(containers, nil)
 	reqA := suite.createRequestForTests(pod)
 	postBody, err := json.Marshal(reqA)
@@ -130,8 +129,8 @@ func (suite *RuntimeTestSuite) TestImageDoesntExists() {
 	}
 
 	expected := []*contracts.ContainerVulnerabilityScanInfo{{Name: containers[0].Name,
-			Image: &contracts.Image{Name: containers[0].Image, Digest: ""},
-			ScanStatus: contracts.Unscanned, ScanFindings: nil, AdditionalData: map[string]string{"UnscannedReason": string(contracts.ImageDoesNotExistUnscannedReason)}}}
+		Image:      &contracts.Image{Name: containers[0].Image, Digest: ""},
+		ScanStatus: contracts.Unscanned, ScanFindings: nil, AdditionalData: map[string]string{"UnscannedReason": string(contracts.ImageDoesNotExistUnscannedReason)}}}
 
 	pod := createPodForTests(containers, nil)
 	reqA := suite.createRequestForTests(pod)
@@ -152,9 +151,9 @@ func (suite *RuntimeTestSuite) TestUnhealthy() {
 		},
 	}
 
-	expected :=  []*contracts.ContainerVulnerabilityScanInfo{{Name: containers[0].Name,
-			Image: &contracts.Image{Name: containers[0].Image, Digest: _imageScanUnhealthyDigest},
-			ScanStatus: contracts.UnhealthyScan, ScanFindings: []*contracts.ScanFinding{}}}
+	expected := []*contracts.ContainerVulnerabilityScanInfo{{Name: containers[0].Name,
+		Image:      &contracts.Image{Name: containers[0].Image, Digest: _imageScanUnhealthyDigest},
+		ScanStatus: contracts.UnhealthyScan, ScanFindings: []*contracts.ScanFinding{}}}
 
 	pod := createPodForTests(containers, nil)
 	reqA := suite.createRequestForTests(pod)
@@ -182,11 +181,11 @@ func (suite *RuntimeTestSuite) TestMultipleImages() {
 		},
 	}
 
-	expected :=  []*contracts.ContainerVulnerabilityScanInfo{
-			{Name: containers[0].Name, Image: &contracts.Image{Name: containers[0].Image, Digest: _alpineDigest},
+	expected := []*contracts.ContainerVulnerabilityScanInfo{
+		{Name: containers[0].Name, Image: &contracts.Image{Name: containers[0].Image, Digest: _alpineDigest},
 			ScanStatus: contracts.HealthyScan, ScanFindings: []*contracts.ScanFinding{}},
-			{Name: containers[1].Name, Image: &contracts.Image{Name: containers[1].Image, Digest: _imageScanUnhealthyDigest},
-				ScanStatus: contracts.UnhealthyScan, ScanFindings: nil}}
+		{Name: containers[1].Name, Image: &contracts.Image{Name: containers[1].Image, Digest: _imageScanUnhealthyDigest},
+			ScanStatus: contracts.UnhealthyScan, ScanFindings: nil}}
 
 	pod := createPodForTests(containers, nil)
 	reqA := suite.createRequestForTests(pod)
@@ -199,7 +198,7 @@ func (suite *RuntimeTestSuite) TestMultipleImages() {
 	suite.Equal(2, len(vulnInfo.Containers))
 	firstIndex := 0
 	secIndex := 1
-	if expected[0].Name == vulnInfo.Containers[1].Name{
+	if expected[0].Name == vulnInfo.Containers[1].Name {
 		firstIndex = 1
 		secIndex = 0
 	}
@@ -218,18 +217,18 @@ func (suite *RuntimeTestSuite) assertCommonAndExtractAdmissionRes(resp *http.Res
 	suite.NotNil(resp.Body)
 	payload, err := ioutil.ReadAll(resp.Body)
 	suite.NoError(err)
-	var admissionReview =  &v1.AdmissionReview{}
+	var admissionReview = &v1.AdmissionReview{}
 	err = json.Unmarshal(payload, admissionReview)
 	suite.NotNil(admissionReview.Response)
 	var patches []jsonpatch.JsonPatchOperation
 	err = json.Unmarshal(admissionReview.Response.Patch, &patches)
 	suite.NoError(err)
 	suite.True(admissionReview.Response.Allowed)
-	suite.Equal(int32(200),admissionReview.Response.Result.Code)
+	suite.Equal(int32(200), admissionReview.Response.Result.Code)
 	return &admission.Response{AdmissionResponse: *admissionReview.Response, Patches: patches}
 }
 
-func (suite *RuntimeTestSuite) assertAndExtractVulnInfoList(res *admission.Response) *contracts.ContainerVulnerabilityScanInfoList{
+func (suite *RuntimeTestSuite) assertAndExtractVulnInfoList(res *admission.Response) *contracts.ContainerVulnerabilityScanInfoList {
 	suite.NotNil(res)
 	var list = &contracts.ContainerVulnerabilityScanInfoList{}
 	suite.Equal(1, len(res.Patches))
@@ -239,30 +238,29 @@ func (suite *RuntimeTestSuite) assertAndExtractVulnInfoList(res *admission.Respo
 	suite.Equal(1, len(annotations))
 	err := json.Unmarshal([]byte(annotations["azuredefender.io/containers.vulnerability.scan.info"].(string)), list)
 	suite.NoError(err)
-	suite.True((time.Now().UTC().Sub(list.GeneratedTimestamp)) <= time.Second*2 )
+	suite.True((time.Now().UTC().Sub(list.GeneratedTimestamp)) <= time.Second*2)
 	suite.NotNil(list.Containers)
 	return list
 }
-
 
 func (suite *RuntimeTestSuite) createRequestForTests(pod *corev1.Pod) *v1.AdmissionReview {
 	raw, err := json.Marshal(pod)
 	suite.NoError(err)
 
-	return	&v1.AdmissionReview{
-		Request: 	&v1.AdmissionRequest{
-				Name:      "podTest",
-				Namespace: "default",
-				Operation: v1.Create,
-				Kind: metav1.GroupVersionKind{
-					Kind:    "Pod",
-					Group:   "",
-					Version: "v1",
-				},
-				Object: runtime.RawExtension{
-					Raw: raw,
-				},
+	return &v1.AdmissionReview{
+		Request: &v1.AdmissionRequest{
+			Name:      "podTest",
+			Namespace: "default",
+			Operation: v1.Create,
+			Kind: metav1.GroupVersionKind{
+				Kind:    "Pod",
+				Group:   "",
+				Version: "v1",
 			},
+			Object: runtime.RawExtension{
+				Raw: raw,
+			},
+		},
 	}
 }
 
@@ -307,14 +305,11 @@ func (suite *RuntimeTestSuite) checkPatch(expected []*contracts.ContainerVulnera
 	suite.Equal(expected, scanInfoList.Containers)
 }
 
-
-func TestRuntime(t *testing.T){
+func TestRuntime(t *testing.T) {
 	e, ok := os.LookupEnv(_runtimeTestEnabledEnvKey)
-	if !ok || strings.ToLower(e) != "true"{
+	if !ok || strings.ToLower(e) != "true" {
 		t.SkipNow() // set test env var _runtimeTestEnabledEnvKey to true
 	}
 
 	suite.Run(t, new(RuntimeTestSuite))
 }
-
-

@@ -2,7 +2,6 @@ package wrappers
 
 import (
 	"context"
-	"crypto/tls"
 	"github.com/go-redis/redis/v8"
 	"time"
 )
@@ -23,11 +22,19 @@ type IRedisBaseClientWrapper interface {
 
 // RedisCacheClientConfiguration redis cache client configuration
 type RedisCacheClientConfiguration struct {
-	// Address host:port address.
+	// Address is host:port address. For example azure-defender-proxy-redis-service:6379
 	Address string
+	// Host address
+	Host string
 	// Password Optional password. Must match the password specified in the
 	// requirement pass server configuration option.
-	Password string
+	PasswordPath string
+	// TlsCrt is the path to the tls.crt file
+	TlsCrtPath string
+	// TlsKey is the path to the tls.key file
+	TlsKeyPath string
+	// CaCert is the path to the ca.cert file
+	CaCertPath string
 	// Table is Database to be selected after connecting to the server.
 	Table int
 	// MaxRetries Maximum number of retries before giving up.
@@ -36,18 +43,4 @@ type RedisCacheClientConfiguration struct {
 	// MinRetryBackoff Minimum backoff between each retry.
 	// Default is 8 milliseconds; -1 disables backoff.
 	MinRetryBackoff time.Duration
-	// TLS Config to use. When set TLS will be negotiated.
-	TLSConfig *tls.Config
-}
-
-func NewRedisBaseClientWrapper(configuration *RedisCacheClientConfiguration) *redis.Client {
-	redisClient := redis.NewClient(&redis.Options{
-		Addr:            configuration.Address,
-		Password:        configuration.Password,
-		DB:              configuration.Table,
-		MaxRetries:      configuration.MaxRetries,
-		MinRetryBackoff: configuration.MinRetryBackoff,
-	})
-
-	return redisClient
 }

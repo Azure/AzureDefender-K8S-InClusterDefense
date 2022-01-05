@@ -31,6 +31,14 @@ spec:
             # The port on which the service will send requests to, so the webhook be listening on.
             - containerPort: {{ .Values.AzDProxy.service.targetPort }}
           volumeMounts:
+            # redis's tls secret
+            - mountPath: {{.Values.AzDProxy.cache.redis.secret.volume.mountPath}}
+              name: {{.Values.AzDProxy.cache.redis.secret.volume.name}}
+              readOnly: true
+            # redis's pass secret
+            - mountPath: {{.Values.AzDProxy.cache.redis.secretPass.volume.mountPath}}
+              name: {{.Values.AzDProxy.cache.redis.secretPass.volume.name}}
+              readOnly: true
             # App's secrets
             - mountPath: {{.Values.AzDProxy.webhook.volume.mountPath}}
               name: {{.Values.AzDProxy.webhook.volume.name}}
@@ -44,6 +52,12 @@ spec:
               name: azuredefender-log
           resources: {{- toYaml .Values.AzDProxy.webhook.resources | nindent 12 }}
       volumes:
+        - name: {{.Values.AzDProxy.cache.redis.secret.volume.name}}
+          secret:
+            secretName: {{.Values.AzDProxy.prefixResourceDeployment}}-redis-tls-certs
+        - name: {{.Values.AzDProxy.cache.redis.secretPass.volume.name}}
+          secret:
+            secretName: {{.Values.AzDProxy.prefixResourceDeployment}}-redis-pass
         - name: {{.Values.AzDProxy.webhook.volume.name}}
           secret:
             secretName: {{.Values.AzDProxy.prefixResourceDeployment}}-cert

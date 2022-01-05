@@ -50,8 +50,8 @@ func NewACRTokenProvider(instrumentationProvider instrumentation.IInstrumentatio
 		metricSubmitter:                    instrumentationProvider.GetMetricSubmitter(),
 		azureBearerAuthorizerTokenProvider: azureBearerAuthorizerTokenProvider,
 		tokenExchanger:                     tokenExchanger,
-		cacheClient: cacheClient,
-		acrTokenProviderConfiguration: acrTokenProviderConfiguration,
+		cacheClient:                        cacheClient,
+		acrTokenProviderConfiguration:      acrTokenProviderConfiguration,
 	}
 }
 
@@ -67,7 +67,7 @@ func (tokenProvider *ACRTokenProvider) GetACRRefreshToken(registry string) (stri
 	if err != nil { // Couldn't get token from cache - skip and get results from provider
 		err = errors.Wrap(err, "Couldn't get registryRefreshToken from cache")
 		tracer.Error(err, "")
-	}else { // If key exist - return token
+	} else { // If key exist - return token
 		tracer.Info("registryRefreshToken exist in cache", "registry", registry)
 		return registryRefreshToken, nil
 	}
@@ -89,12 +89,15 @@ func (tokenProvider *ACRTokenProvider) GetACRRefreshToken(registry string) (stri
 	}
 
 	// Save registryRefreshToken in cache
-	err = tokenProvider.cacheClient.Set(registry, registryRefreshToken, utils.GetMinutes(tokenProvider.acrTokenProviderConfiguration.RegistryRefreshTokenCacheExpirationTime))
-	if err != nil{
-		err = errors.Wrap(err, "Failed to set registryRefreshToken in cache")
-		tracer.Error(err, "")
-	}
-	tracer.Info("Set registryRefreshToken in cache", "registry", registry)
+	go func() {
+		err = tokenProvider.cacheClient.Set(registry, registryRefreshToken, utils.GetMinutes(tokenProvider.acrTokenProviderConfiguration.RegistryRefreshTokenCacheExpirationTime))
+		if err != nil {
+			err = errors.Wrap(err, "Failed to set registryRefreshToken in cache")
+			tracer.Error(err, "")
+		} else {
+			tracer.Info("Set registryRefreshToken in cache successfully", "registry", registry)
+		}
+	}()
 
 	return registryRefreshToken, nil
 }

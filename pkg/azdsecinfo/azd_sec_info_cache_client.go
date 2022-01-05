@@ -17,18 +17,48 @@ import (
 	"time"
 )
 
-const(
+const (
 	// _timeoutPrefixForCacheKey is a prefix for PodSpecCacheKey for timeout keys. The prefix is used to separate timeout keys with containerVulnerabilityScanInfo keys
 	_timeoutPrefixForCacheKey = "timeout"
 	// _containerVulnerabilityScanInfoPrefixForCacheKey is a prefix for PodSpecCacheKey for containerVulnerabilityScanInfo keys. The prefix is used to separate timeout keys with containerVulnerabilityScanInfo keys
 	_containerVulnerabilityScanInfoPrefixForCacheKey = "ContainerVulnerabilityScanInfo"
 )
-var(
+
+var (
 	// _resetTimeoutTTL is the TTL for reseting timeout status in cache (after reset timestatus to noTimeoutEncountered the value should be in cache only for short period)
 	_resetTimeoutTTL = time.Duration(1) // 1 nanosecond
 )
 
-// AzdSecInfoProviderCacheClient is cache client designated for AzdSecInfoProvider
+// IAzdSecInfoProviderCacheClient cache client designated for AzdSecInfoProvider
+type IAzdSecInfoProviderCacheClient interface {
+	// GetContainerVulnerabilityScanInfofromCache try to get ContainerVulnerabilityScanInfo from cache.
+	// It gets the results from the cache and parse it to containerVulnerabilityCacheResultsWrapper object.
+	// If there is an error with the cache or the value is invalid returns an error.
+	GetContainerVulnerabilityScanInfofromCache(podSpecCacheKey string) ([]*contracts.ContainerVulnerabilityScanInfo, error, error)
+
+	// SetContainerVulnerabilityScanInfoInCache set ContainerVulnerabilityScanInfo in cache
+	// No error is reported back, only tracing it
+	SetContainerVulnerabilityScanInfoInCache(podSpecCacheKey string, containerVulnerabilityScanInfo []*contracts.ContainerVulnerabilityScanInfo, err error) error
+
+	// GetTimeOutStatus gets the timeout status of the podSpec from cache - how many times timeout has occurred for this podSpec
+	GetTimeOutStatus(podSpecCacheKey string) (int, error)
+
+	// SetTimeOutStatusAfterEncounteredTimeout update the timeout status if already exist in cache or set for the first time timeout status
+	SetTimeOutStatusAfterEncounteredTimeout(podSpecCacheKey string, timeOutStatus int) error
+
+	// ResetTimeOutInCacheAfterGettingScanResults resets the timeout status in cache after scanResults was received.
+	// If scanResults was received the timeout is no longer relevant and needs to be reset.
+	// If no timeout occurred before, do nothing.
+	ResetTimeOutInCacheAfterGettingScanResults(podSpecCacheKey string) error
+
+	// GetPodSpecCacheKey get the cache key without the prefix of a given podSpec
+	GetPodSpecCacheKey(podSpec *corev1.PodSpec) string
+}
+
+// AzdSecInfoProviderCacheClient implements IAzdSecInfoProviderCacheClient interface
+var _ IAzdSecInfoProviderCacheClient = (*AzdSecInfoProviderCacheClient)(nil)
+
+// AzdSecInfoProviderCacheClient cache client designated for AzdSecInfoProvider
 // It wraps ICache client
 type AzdSecInfoProviderCacheClient struct {
 	//tracerProvider is tracer provider of AzdSecInfoProviderCacheClient
@@ -55,19 +85,19 @@ type containerVulnerabilityCacheResultsWrapper struct {
 // NewAzdSecInfoProviderCacheClient - AzdSecInfoProviderCacheClient Ctor
 func NewAzdSecInfoProviderCacheClient(instrumentationProvider instrumentation.IInstrumentationProvider, cacheClient cache.ICacheClient, azdSecInfoProviderConfiguration *AzdSecInfoProviderConfiguration) *AzdSecInfoProviderCacheClient {
 	return &AzdSecInfoProviderCacheClient{
-		tracerProvider:     instrumentationProvider.GetTracerProvider("AzdSecInfoProviderCacheClient"),
-		metricSubmitter:    instrumentationProvider.GetMetricSubmitter(),
-		cacheClient: cacheClient,
+		tracerProvider:             instrumentationProvider.GetTracerProvider("AzdSecInfoProviderCacheClient"),
+		metricSubmitter:            instrumentationProvider.GetMetricSubmitter(),
+		cacheClient:                cacheClient,
 		cacheExpirationTimeTimeout: utils.GetMinutes(azdSecInfoProviderConfiguration.CacheExpirationTimeTimeout),
 		cacheExpirationContainerVulnerabilityScanInfo: utils.GetSeconds(azdSecInfoProviderConfiguration.CacheExpirationContainerVulnerabilityScanInfo),
 	}
 }
 
-// getContainerVulnerabilityScanInfofromCache try to get ContainerVulnerabilityScanInfo from cache.
+// GetContainerVulnerabilityScanInfofromCache try to get ContainerVulnerabilityScanInfo from cache.
 // It gets the results from the cache and parse it to containerVulnerabilityCacheResultsWrapper object.
 // If there is an error with the cache or the value is invalid returns an error.
-func (client *AzdSecInfoProviderCacheClient) getContainerVulnerabilityScanInfofromCache(podSpecCacheKey string) ( []*contracts.ContainerVulnerabilityScanInfo, error, error) {
-	tracer := client.tracerProvider.GetTracer("getContainerVulnerabilityScanInfofromCache")
+func (client *AzdSecInfoProviderCacheClient) GetContainerVulnerabilityScanInfofromCache(podSpecCacheKey string) ([]*contracts.ContainerVulnerabilityScanInfo, error, error) {
+	tracer := client.tracerProvider.GetTracer("GetContainerVulnerabilityScanInfofromCache")
 	// Get the key
 	ContainerVulnerabilityScanInfoCacheKey := client.getContainerVulnerabilityScanInfoCacheKey(podSpecCacheKey)
 
@@ -76,7 +106,7 @@ func (client *AzdSecInfoProviderCacheClient) getContainerVulnerabilityScanInfofr
 	if err != nil { // Key don't exist in cache or error with cache functionality
 		// Check if the error is MissingKeyCacheError
 		_, isKeyNotFound := err.(*cache.MissingKeyCacheError)
-		if isKeyNotFound{ // The key not in the cache
+		if isKeyNotFound { // The key not in the cache
 			tracer.Info("ContainerVulnerabilityScanInfoCacheKey is not in cache", "ContainerVulnerabilityScanInfoCacheKey", ContainerVulnerabilityScanInfoCacheKey)
 			return nil, nil, err
 		}
@@ -89,10 +119,10 @@ func (client *AzdSecInfoProviderCacheClient) getContainerVulnerabilityScanInfofr
 	// Key exist in cache
 	// Parse the results
 	ContainersVulnerabilityScanInfoWrapperFromCache, err := client.unmarshalScanResults(scanInfoWrapperStringFromCache)
-	if err != nil{ // unmarshal failed
+	if err != nil { // unmarshal failed
 		err = errors.Wrap(err, "failed to unmarshalScanResults from cache")
 		tracer.Error(err, "")
-		return  nil, nil, err
+		return nil, nil, err
 	}
 
 	// Get error stored in cache from previous runs
@@ -108,13 +138,13 @@ func (client *AzdSecInfoProviderCacheClient) getContainerVulnerabilityScanInfofr
 	return ContainersVulnerabilityScanInfoWrapperFromCache.ContainerVulnerabilityScanInfo, nil, nil
 }
 
-// setContainerVulnerabilityScanInfoInCache set ContainerVulnerabilityScanInfo in cache
+// SetContainerVulnerabilityScanInfoInCache set ContainerVulnerabilityScanInfo in cache
 // No error is reported back, only tracing it
-func (client *AzdSecInfoProviderCacheClient) setContainerVulnerabilityScanInfoInCache(podSpecCacheKey string, containerVulnerabilityScanInfo []*contracts.ContainerVulnerabilityScanInfo, err error) error{
-	tracer := client.tracerProvider.GetTracer("setContainerVulnerabilityScanInfoInCache")
+func (client *AzdSecInfoProviderCacheClient) SetContainerVulnerabilityScanInfoInCache(podSpecCacheKey string, containerVulnerabilityScanInfo []*contracts.ContainerVulnerabilityScanInfo, err error) error {
+	tracer := client.tracerProvider.GetTracer("SetContainerVulnerabilityScanInfoInCache")
 	// Convert results to resultsString
 	resultsString, err := client.marshalScanResults(containerVulnerabilityScanInfo, err)
-	if err != nil{ // Marshal failed
+	if err != nil { // Marshal failed
 		err = errors.Wrap(err, "Failed to marshal ContainerVulnerabilityScanInfo")
 		tracer.Error(err, "")
 		return err
@@ -124,14 +154,15 @@ func (client *AzdSecInfoProviderCacheClient) setContainerVulnerabilityScanInfoIn
 		err = errors.Wrap(err, "error encountered while trying to set new timeout in cache.")
 		tracer.Error(err, "")
 		return err
+	} else {
+		tracer.Info("Set ContainerVulnerabilityScanInfo in cache successfully")
 	}
-	tracer.Info("Set ContainerVulnerabilityScanInfo in cache")
 	return nil
 }
 
-// getTimeOutStatus gets the timeout status of the podSpec from cache - how many times timeout has occurred for this podSpec
-func (client *AzdSecInfoProviderCacheClient) getTimeOutStatus(podSpecCacheKey string) (int, error) {
-	tracer := client.tracerProvider.GetTracer("getTimeOutStatus")
+// GetTimeOutStatus gets the timeout status of the podSpec from cache - how many times timeout has occurred for this podSpec
+func (client *AzdSecInfoProviderCacheClient) GetTimeOutStatus(podSpecCacheKey string) (int, error) {
+	tracer := client.tracerProvider.GetTracer("GetTimeOutStatus")
 
 	// Get key for cache
 	timeOutCacheKey := client.getTimeOutCacheKey(podSpecCacheKey)
@@ -141,7 +172,7 @@ func (client *AzdSecInfoProviderCacheClient) getTimeOutStatus(podSpecCacheKey st
 	if err != nil {
 		// Check if the error is MissingKeyCacheError
 		_, isKeyNotFound := err.(*cache.MissingKeyCacheError)
-		if isKeyNotFound{  // The key not in the cache
+		if isKeyNotFound { // The key not in the cache
 			tracer.Info("timeOutCacheKey is not in cache", "timeOutCacheKey", timeOutCacheKey)
 			return _noTimeOutEncountered, nil
 		}
@@ -153,7 +184,7 @@ func (client *AzdSecInfoProviderCacheClient) getTimeOutStatus(podSpecCacheKey st
 
 	// Make sure the string from the cache is a valid timeout status (int)
 	timeoutStatus, err := strconv.Atoi(timeoutStatusString)
-	if err != nil{
+	if err != nil {
 		err = errors.Wrapf(err, "Invalid value in cache for timeout status - should be valid int. got %s", timeoutStatusString)
 		tracer.Error(err, "")
 		return _unknownTimeOutStatus, err
@@ -163,10 +194,9 @@ func (client *AzdSecInfoProviderCacheClient) getTimeOutStatus(podSpecCacheKey st
 	return timeoutStatus, nil
 }
 
-// setTimeOutStatusAfterEncounteredTimeout update the timeout status if already exist in cache or set for the first time timeout status
-//
-func (client *AzdSecInfoProviderCacheClient) setTimeOutStatusAfterEncounteredTimeout(podSpecCacheKey string, timeOutStatus int) error{
-	tracer := client.tracerProvider.GetTracer("setTimeOutStatusAfterEncounteredTimeout")
+// SetTimeOutStatusAfterEncounteredTimeout update the timeout status if already exist in cache or set for the first time timeout status
+func (client *AzdSecInfoProviderCacheClient) SetTimeOutStatusAfterEncounteredTimeout(podSpecCacheKey string, timeOutStatus int) error {
+	tracer := client.tracerProvider.GetTracer("SetTimeOutStatusAfterEncounteredTimeout")
 	tracer.Info("Try to set timeOutStatus in cache", "timeOutStatus", timeOutStatus)
 	// TODO handle race condition and locks for redis
 	return client.setTimeOutStatus(podSpecCacheKey, timeOutStatus, client.cacheExpirationTimeTimeout)
@@ -188,17 +218,17 @@ func (client *AzdSecInfoProviderCacheClient) setTimeOutStatus(podSpecCacheKey st
 	return nil
 }
 
-// resetTimeOutInCacheAfterGettingScanResults resets the timeout status in cache after scanResults was received.
+// ResetTimeOutInCacheAfterGettingScanResults resets the timeout status in cache after scanResults was received.
 // If scanResults was received the timeout is no longer relevant and needs to be reset.
 // If no timeout occurred before, do nothing.
-func (client *AzdSecInfoProviderCacheClient) resetTimeOutInCacheAfterGettingScanResults(podSpecCacheKey string) error{
-	tracer := client.tracerProvider.GetTracer("resetTimeOutInCacheAfterGettingScanResults")
+func (client *AzdSecInfoProviderCacheClient) ResetTimeOutInCacheAfterGettingScanResults(podSpecCacheKey string) error {
+	tracer := client.tracerProvider.GetTracer("ResetTimeOutInCacheAfterGettingScanResults")
 
 	// Get key for cache
 	timeOutCacheKey := client.getTimeOutCacheKey(podSpecCacheKey)
 	// Check if the timeOutCacheKey is already in cache
 	timeoutEncounteredString, err := client.cacheClient.Get(timeOutCacheKey)
-	if err != nil{
+	if err != nil {
 		_, isKeyNotFound := err.(*cache.MissingKeyCacheError)
 		// If key not found err trace it and return nil
 		if isKeyNotFound {
@@ -213,7 +243,7 @@ func (client *AzdSecInfoProviderCacheClient) resetTimeOutInCacheAfterGettingScan
 
 	// Make sure the string from the cache is a valid timeout status (int)
 	timeoutEncountered, err := strconv.Atoi(timeoutEncounteredString)
-	if err != nil{
+	if err != nil {
 		err = errors.Wrapf(err, "Invalid value in cache for timeout status - should be valid int. got %s", timeoutEncounteredString)
 		tracer.Error(err, "")
 		return err
@@ -264,12 +294,21 @@ func (client *AzdSecInfoProviderCacheClient) marshalScanResults(containerVulnera
 	return ser, nil
 }
 
+// GetPodSpecCacheKey get the cache key without the prefix of a given podSpec
+func (client *AzdSecInfoProviderCacheClient) GetPodSpecCacheKey(podSpec *corev1.PodSpec) string {
+	images := utils.ExtractImagesFromPodSpec(podSpec)
+	// Sort the array - it is important for the cache to be sorted.
+	sort.Strings(images)
+	podSpecCacheKey := strings.Join(images, ",")
+	return podSpecCacheKey
+}
+
 // unmarshalScanResults convert the given ContainerVulnerabilityScanInfo and error to containerVulnerabilityCacheResultsWrapper and marshaling the new object to a string
 func (client *AzdSecInfoProviderCacheClient) unmarshalScanResults(ContainerVulnerabilityScanInfoString string) (*containerVulnerabilityCacheResultsWrapper, error) {
 	tracer := client.tracerProvider.GetTracer("unMarshalScanResults")
 
 	// Unmarshal object
-	containerVulnerabilityScanInfoWrapper :=  new(containerVulnerabilityCacheResultsWrapper)
+	containerVulnerabilityScanInfoWrapper := new(containerVulnerabilityCacheResultsWrapper)
 	unmarshalErr := json.Unmarshal([]byte(ContainerVulnerabilityScanInfoString), containerVulnerabilityScanInfoWrapper)
 	if unmarshalErr != nil {
 		unmarshalErr = errors.Wrap(unmarshalErr, "Failed on json.Unmarshal containerVulnerabilityScanInfoWrapper")
@@ -280,7 +319,7 @@ func (client *AzdSecInfoProviderCacheClient) unmarshalScanResults(ContainerVulne
 }
 
 // getPodSpecCacheKey get the cache key without the prefix of a given podSpec
-func (client *AzdSecInfoProviderCacheClient) getPodSpecCacheKey(podSpec *corev1.PodSpec) string{
+func (client *AzdSecInfoProviderCacheClient) getPodSpecCacheKey(podSpec *corev1.PodSpec) string {
 	images := utils.ExtractImagesFromPodSpec(podSpec)
 	// Sort the array - it is important for the cache to be sorted.
 	sort.Strings(images)
@@ -290,7 +329,7 @@ func (client *AzdSecInfoProviderCacheClient) getPodSpecCacheKey(podSpec *corev1.
 
 // getErrorStoredInCache check if the errorString is empty. If empty it means the error stored in cache is nil.
 // Otherwise the create a new error with error msg equal to errorString
-func (client *AzdSecInfoProviderCacheClient) getErrorStoredInCache(errorString string) error{
+func (client *AzdSecInfoProviderCacheClient) getErrorStoredInCache(errorString string) error {
 	// The error stored in cache is nil
 	if errorString == "" {
 		return nil
@@ -302,7 +341,7 @@ func (client *AzdSecInfoProviderCacheClient) getErrorStoredInCache(errorString s
 }
 
 // convertErrorToString check if the given error is nil. If nil returns the empty string Otherwise the error msg.
-func (client *AzdSecInfoProviderCacheClient) convertErrorToString(err error) string{
+func (client *AzdSecInfoProviderCacheClient) convertErrorToString(err error) string {
 	if err == nil {
 		return ""
 	}
@@ -310,11 +349,11 @@ func (client *AzdSecInfoProviderCacheClient) convertErrorToString(err error) str
 }
 
 // getTimeOutCacheKey returns the timeout cache key of a given podSpecCacheKey
-func (client *AzdSecInfoProviderCacheClient) getTimeOutCacheKey (podSpecCacheKey string) string {
+func (client *AzdSecInfoProviderCacheClient) getTimeOutCacheKey(podSpecCacheKey string) string {
 	return _timeoutPrefixForCacheKey + podSpecCacheKey
 }
 
 // getContainerVulnerabilityScanInfoCacheKey returns the ContainerVulnerabilityScanInfo cache key of a given podSpecCacheKey
-func (client *AzdSecInfoProviderCacheClient) getContainerVulnerabilityScanInfoCacheKey (podSpecCacheKey string) string {
+func (client *AzdSecInfoProviderCacheClient) getContainerVulnerabilityScanInfoCacheKey(podSpecCacheKey string) string {
 	return _containerVulnerabilityScanInfoPrefixForCacheKey + podSpecCacheKey
 }
