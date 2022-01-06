@@ -248,4 +248,4 @@ helm upgrade in-cluster-defense charts/azdproxy --install --wait `
                 --set "AzDProxy.arg.argClientConfiguration.subscriptions={$subscription}" `
                 --set AzDProxy.instrumentation.tivan.tivanInstrumentationConfiguration.region=$region `
                 --set AzDProxy.instrumentation.tivan.tivanInstrumentationConfiguration.azureResourceID=$azureResourceID `
-                --set AzDProxy.webhook.image.name=maayankblock.azurecr.io/azdproxy-image:9d71ce9-dirty                 # TODO Delete above line once helm chart is published to public repo.
+                --set AzDProxy.webhook.image.name=maayankblock.azurecr.io/azdproxy-image           # TODO Delete above line once helm chart is published to public repo.
