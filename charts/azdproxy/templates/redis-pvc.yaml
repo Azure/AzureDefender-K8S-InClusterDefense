@@ -4,6 +4,7 @@ metadata:
   namespace: '{{ .Release.Namespace }}'
   name: {{.Values.AzDProxy.prefixResourceDeployment}}-redis-pvc
 spec:
+  storageClassName: {{.Values.AzDProxy.cache.pvc.storageClassName}}
   accessModes:
     # ReadWriteMany the volume can be mounted as read-write by many nodes.
     - ReadWriteMany

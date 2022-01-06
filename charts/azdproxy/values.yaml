@@ -155,6 +155,8 @@ AzDProxy:
   cache:
     pvc:
       storage: 8Gi
+      # Default value is azurefile. For non-AKS users this value should be changed to storage class with readWriteMany support.
+      storageClassName: azurefile
     redis:
       # Image of redis containers
       image: azuredefendermcrdev.azurecr.io/public/azuredefender/dev/in-cluster-defense-redis
