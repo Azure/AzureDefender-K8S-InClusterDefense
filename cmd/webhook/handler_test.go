@@ -10,6 +10,7 @@ import (
 	azdsecinfoMocks "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/azdsecinfo/mocks"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/utils"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/suite"
 	"gomodules.xyz/jsonpatch/v2"
 	admissionv1 "k8s.io/api/admission/v1"
@@ -17,6 +18,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"log"
+	"net/http"
 	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 	"testing"
@@ -284,6 +286,38 @@ func (suite *TestSuite) Test_Handle_OneContainerOneInitContainer_ShouldPatchedTw
 	suite.Equal(1, len(resp.Patches))
 	patch := resp.Patches[0]
 	suite.checkPatch(expectedInfo, patch)
+	suite.azdSecProviderMock.AssertExpectations(suite.T())
+}
+
+func (suite *TestSuite) Test_Handle_Error_AllowedTrueWithError() {
+	// Setup
+	containers := []corev1.Container{_containers[0]}
+	pod := createPodForTests(nil, containers)
+	req := createRequestForTests(pod)
+
+	err := errors.New("MockError!!")
+	expectedResp := admission.Response{
+		AdmissionResponse: admissionv1.AdmissionResponse{
+			Allowed: true,
+			Result: &metav1.Status{
+				Code:    int32(http.StatusInternalServerError),
+				Message: err.Error(),
+			},
+		},
+	}
+	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", &pod.Spec, &pod.ObjectMeta, &pod.TypeMeta).Return(nil, err).Once()
+
+	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider())
+
+	// Act
+	resp := handler.Handle(context.Background(), *req)
+	// Test
+
+	suite.Equal(expectedResp, resp.AdmissionResponse)
+	// Super important
+	suite.True(expectedResp.Allowed)
+	suite.Equal(0, len(resp.Patches))
+	suite.Nil( resp.Patches)
 	suite.azdSecProviderMock.AssertExpectations(suite.T())
 }
 

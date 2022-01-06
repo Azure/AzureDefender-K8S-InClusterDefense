@@ -7,6 +7,7 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric/util"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/utils"
 	admissionv1 "k8s.io/api/admission/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"net/http"
 	"time"
 
@@ -90,17 +91,19 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 			if !ok {
 				err = errors.New(fmt.Sprint(r))
 			}
-			tracer.Error(err, "Handler handle Panic error")
+			tracer.Error(err, "Handler handle Panic error","resource:", req.Resource, req.Namespace, "operation:", req.Operation, "reqKind:", req.Kind, "uid:", req.UID)
 			// Re throw panic
 			panic(r)
 		}
 		// Repost response latency
+		tracer.Info("HandleLatency", "resource", req.Resource, "latencyinMS", util.GetDurationMilliseconds(startTime))
+
 		handler.metricSubmitter.SendMetric(util.GetDurationMilliseconds(startTime), webhookmetric.NewHandlerHandleLatencyMetric(req.Kind.Kind, response.Allowed, string(reason)))
 	}()
 
 	// Logs
 	tracer.Info("received ctx", "ctx", ctx)
-	tracer.Info("received request", "name", req.Name, "namespace", req.Namespace, "operation", req.Operation, "reqKind", req.Kind, "uid", req.UID)
+	tracer.Info("received request", "resource:", req.Resource,"namespace:", req.Namespace, "operation:", req.Operation, "reqKind:", req.Kind, "uid:", req.UID)
 
 	handler.metricSubmitter.SendMetric(1, webhookmetric.NewHandlerNewRequestMetric(req.Kind.Kind, req.Operation))
 
@@ -130,7 +133,7 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 	}
 
 	reason = _patchedReason
-	tracer.Info("Responded", "response", response)
+	tracer.Info("Handler Responded","Resource:", req.Resource, req.Namespace, "operation:", req.Operation, "reqKind:", req.Kind, "uid:", req.UID,"response:", response)
 	return response
 }
 
@@ -193,8 +196,16 @@ func (handler *Handler) getPodContainersVulnerabilityScanInfoAnnotationsOperatio
 func (handler *Handler) admissionErrorResponse(err error) admission.Response {
 	tracer := handler.tracerProvider.GetTracer("admissionErrorResponse")
 	tracer.Error(err, "")
-	response := admission.Errored(int32(http.StatusInternalServerError), err)
-	return response
+	return admission.Response{
+		AdmissionResponse: admissionv1.AdmissionResponse{
+			// mutating webhook error should not block deployment
+			Allowed: true,
+			Result: &metav1.Status{
+				Code:    int32(http.StatusInternalServerError),
+				Message: err.Error(),
+			},
+		},
+	}
 }
 
 // shouldRequestBeFiltered checks if the request should be filtered.
