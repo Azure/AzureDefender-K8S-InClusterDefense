@@ -232,7 +232,7 @@ AzDProxy:
       # -- The resources of the redis pod.
       resources:
         limits:
-          memory: "8Gi"
+          memory: "2Gi"
           cpu: "500m"
 
       retryPolicyConfiguration:
