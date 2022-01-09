@@ -296,15 +296,7 @@ func (suite *TestSuite) Test_Handle_Error_AllowedTrueWithError() {
 	req := createRequestForTests(pod)
 
 	err := errors.New("MockError!!")
-	expectedResp := admission.Response{
-		AdmissionResponse: admissionv1.AdmissionResponse{
-			Allowed: true,
-			Result: &metav1.Status{
-				Code:    int32(http.StatusInternalServerError),
-				Message: err.Error(),
-			},
-		},
-	}
+
 	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", &pod.Spec, &pod.ObjectMeta, &pod.TypeMeta).Return(nil, err).Once()
 
 	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider())
@@ -313,9 +305,13 @@ func (suite *TestSuite) Test_Handle_Error_AllowedTrueWithError() {
 	resp := handler.Handle(context.Background(), *req)
 	// Test
 
-	suite.Equal(expectedResp, resp.AdmissionResponse)
+
+
+	suite.Equal(int32(http.StatusInternalServerError), resp.Result.Code)
+	suite.NotEmpty(resp.Result.Message)
+	suite.Nil(resp.Patches)
 	// Super important
-	suite.True(expectedResp.Allowed)
+	suite.True(resp.Allowed)
 	suite.Equal(0, len(resp.Patches))
 	suite.Nil( resp.Patches)
 	suite.azdSecProviderMock.AssertExpectations(suite.T())
