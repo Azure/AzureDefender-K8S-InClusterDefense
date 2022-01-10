@@ -46,6 +46,9 @@ AzDProxy:
       limits:
         memory: "128Mi"
         cpu: "500m"
+      requests:
+        cpu: "100m"
+        memory: "64Mi"
 
   # Values of mutation-configuration.yaml file:
   webhook_configuration:
@@ -234,6 +237,9 @@ AzDProxy:
         limits:
           memory: "2Gi"
           cpu: "500m"
+        requests:
+          cpu: "100m"
+          memory: "512Mi"
 
       retryPolicyConfiguration:
         #  -- Number of retry attempts
