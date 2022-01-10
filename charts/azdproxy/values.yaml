@@ -159,7 +159,7 @@ AzDProxy:
       storageClassName: azurefile
     redis:
       # Image of redis containers
-      image: azuredefendermcrdev.azurecr.io/public/azuredefender/dev/in-cluster-defense-redis
+      image: azuredefendermcrdev.azurecr.io/public/azuredefender/dev/in-cluster-defense-redis:6
       # -- amount of replicas of redis
       replicas: 2
       # -- the port that redis cache will be listened.
