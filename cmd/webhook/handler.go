@@ -91,19 +91,19 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 			if !ok {
 				err = errors.New(fmt.Sprint(r))
 			}
-			tracer.Error(err, "Handler handle Panic error","resource:", req.Resource, req.Namespace, "operation:", req.Operation, "reqKind:", req.Kind, "uid:", req.UID)
+			tracer.Error(err, "Handler handle Panic error","resource:", req.Resource,"namespace:", req.Namespace,"Name", req.Name, "operation:", req.Operation, "reqKind:", req.Kind, "uid:", req.UID)
 			// Re throw panic
 			panic(r)
 		}
 		// Repost response latency
-		tracer.Info("HandleLatency", "resource", req.Resource, "latencyinMS", util.GetDurationMilliseconds(startTime))
+		tracer.Info("HandleLatency", "resource", req.Resource, "namespace:", req.Namespace,"Name", req.Name, "latencyinMS", util.GetDurationMilliseconds(startTime))
 
 		handler.metricSubmitter.SendMetric(util.GetDurationMilliseconds(startTime), webhookmetric.NewHandlerHandleLatencyMetric(req.Kind.Kind, response.Allowed, string(reason)))
 	}()
 
 	// Logs
 	tracer.Info("received ctx", "ctx", ctx)
-	tracer.Info("received request", "resource:", req.Resource,"namespace:", req.Namespace, "operation:", req.Operation, "reqKind:", req.Kind, "uid:", req.UID)
+	tracer.Info("received request", "resource:", req.Resource,"namespace:", req.Namespace,"Name", req.Name, "operation:", req.Operation, "reqKind:", req.Kind, "uid:", req.UID)
 
 	handler.metricSubmitter.SendMetric(1, webhookmetric.NewHandlerNewRequestMetric(req.Kind.Kind, req.Operation))
 
@@ -133,7 +133,7 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 	}
 
 	reason = _patchedReason
-	tracer.Info("Handler Responded","Resource:", req.Resource, req.Namespace, "operation:", req.Operation, "reqKind:", req.Kind, "uid:", req.UID,"response:", response)
+	tracer.Info("Handler Responded","resource:", req.Resource,"namespace:", req.Namespace,"Name", req.Name, "operation:", req.Operation, "reqKind:", req.Kind, "uid:", req.UID, "response:", response)
 	return response
 }
 
