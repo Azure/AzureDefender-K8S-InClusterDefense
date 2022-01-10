@@ -217,7 +217,7 @@ func (provider *AzdSecInfoProvider) getContainersVulnerabilityScanInfo(podSpec *
 		tracer.Error(wrappedError, "")
 		return nil, wrappedError
 	}
-
+	//TODO sort result according to original containers order
 	return vulnSecInfoContainers, nil
 }
 

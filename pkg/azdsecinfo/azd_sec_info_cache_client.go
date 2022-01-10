@@ -295,11 +295,13 @@ func (client *AzdSecInfoProviderCacheClient) marshalScanResults(containerVulnera
 }
 
 // GetPodSpecCacheKey get the cache key without the prefix of a given podSpec
+// The key is containerName:imageName as string seperate each containerName:imageName by comma.
+// For example - 'myName1:alpine,myName2:nginx'
 func (client *AzdSecInfoProviderCacheClient) GetPodSpecCacheKey(podSpec *corev1.PodSpec) string {
-	images := utils.ExtractImagesFromPodSpec(podSpec)
+	containers := utils.ExtractContainersFromPodSpecAsString(podSpec)
 	// Sort the array - it is important for the cache to be sorted.
-	sort.Strings(images)
-	podSpecCacheKey := strings.Join(images, ",")
+	sort.Strings(containers)
+	podSpecCacheKey := strings.Join(containers, ",")
 	return podSpecCacheKey
 }
 
@@ -316,15 +318,6 @@ func (client *AzdSecInfoProviderCacheClient) unmarshalScanResults(ContainerVulne
 		return nil, unmarshalErr
 	}
 	return containerVulnerabilityScanInfoWrapper, nil
-}
-
-// getPodSpecCacheKey get the cache key without the prefix of a given podSpec
-func (client *AzdSecInfoProviderCacheClient) getPodSpecCacheKey(podSpec *corev1.PodSpec) string {
-	images := utils.ExtractImagesFromPodSpec(podSpec)
-	// Sort the array - it is important for the cache to be sorted.
-	sort.Strings(images)
-	podSpecCacheKey := strings.Join(images, ",")
-	return podSpecCacheKey
 }
 
 // getErrorStoredInCache check if the errorString is empty. If empty it means the error stored in cache is nil.
