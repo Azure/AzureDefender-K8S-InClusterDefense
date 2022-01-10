@@ -72,7 +72,7 @@ func (client *FreeCacheInMemCacheClient) Get(key string) (string, error) {
 // Set
 func (client *FreeCacheInMemCacheClient) Set(key string, value string, expiration time.Duration) error {
 	tracer := client.tracerProvider.GetTracer("Set")
-	tracer.Info("Set new key", "Key", key, "Value", "Expiration", expiration)
+	tracer.Info("Set new key", "Key", key, "Expiration", expiration)
 
 	if expiration < 0 {
 		err := NewNegativeExpirationCacheError(expiration)
