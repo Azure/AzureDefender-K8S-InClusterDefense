@@ -143,6 +143,27 @@ func (suite *RuntimeTestSuite) TestImageDoesntExists() {
 	suite.Equal(expected, vulnInfo.Containers)
 }
 
+func (suite *RuntimeTestSuite) TestImageBadFormat_Allowed() {
+	containers := []corev1.Container{
+		{
+			Name:  "containerTest1",
+			Image: "tomerwdevops.azurecr.io / doesntexists:latest",
+		},
+	}
+
+	pod := createPodForTests(containers, nil)
+	reqA := suite.createRequestForTests(pod)
+	postBody, err := json.Marshal(reqA)
+	suite.req.Body = ioutil.NopCloser(bytes.NewReader(postBody))
+	resp, err := suite.client.Do(suite.req)
+	admissionResponse := suite.assertCommonAndExtractAdmissionResError(resp, err)
+	suite.NotNil(admissionResponse)
+	// Important to not fail allowed on error
+	suite.True(admissionResponse.Allowed)
+	suite.NotNil(admissionResponse.Result)
+	suite.Nil(admissionResponse.Patches)
+}
+
 func (suite *RuntimeTestSuite) TestUnhealthy() {
 	containers := []corev1.Container{
 		{
@@ -226,6 +247,23 @@ func (suite *RuntimeTestSuite) assertCommonAndExtractAdmissionRes(resp *http.Res
 	suite.True(admissionReview.Response.Allowed)
 	suite.Equal(int32(200), admissionReview.Response.Result.Code)
 	return &admission.Response{AdmissionResponse: *admissionReview.Response, Patches: patches}
+}
+
+func (suite *RuntimeTestSuite) assertCommonAndExtractAdmissionResError(resp *http.Response, err error) *admission.Response {
+	suite.NoError(err)
+	suite.NotNil(resp)
+	suite.Equal(http.StatusOK, resp.StatusCode)
+	suite.NotNil(resp.Body)
+	payload, err := ioutil.ReadAll(resp.Body)
+	suite.NoError(err)
+	var admissionReview = &v1.AdmissionReview{}
+	err = json.Unmarshal(payload, admissionReview)
+	suite.NotNil(admissionReview.Response)
+	suite.Nil(admissionReview.Response.Patch)
+	suite.NoError(err)
+	suite.True(admissionReview.Response.Allowed)
+	suite.Equal(int32(500), admissionReview.Response.Result.Code)
+	return &admission.Response{AdmissionResponse: *admissionReview.Response}
 }
 
 func (suite *RuntimeTestSuite) assertAndExtractVulnInfoList(res *admission.Response) *contracts.ContainerVulnerabilityScanInfoList {
