@@ -3,6 +3,7 @@ package wrappers
 import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric/util"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/utils"
 	"github.com/go-redis/redis/v8"
@@ -35,6 +36,7 @@ func (factory *WrapperRedisClientFactory) Create(configuration *RedisCacheClient
 	if err != nil {
 		err = errors.Wrap(err, "Failed to create tls config object")
 		tracer.Error(err, "")
+		factory.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "WrapperRedisClientFactory.Create"))
 		return nil, err
 	}
 
@@ -43,6 +45,7 @@ func (factory *WrapperRedisClientFactory) Create(configuration *RedisCacheClient
 	if err != nil {
 		err = errors.Wrap(err, "Failed to get password from secret")
 		tracer.Error(err, "")
+		factory.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "WrapperRedisClientFactory.Create"))
 		return nil, err
 	}
 

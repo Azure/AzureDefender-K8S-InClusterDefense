@@ -4,6 +4,7 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/cache"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric/util"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry"
 	registryerrors "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/errors"
@@ -62,6 +63,7 @@ func (resolver *Tag2DigestResolver) Resolve(imageReference registry.IImageRefere
 	if imageReference == nil || resourceCtx == nil {
 		err := errors.Wrap(utils.NilArgumentError, "Tag2DigestResolver.Resolve")
 		tracer.Error(err, "")
+		resolver.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "Tag2DigestResolver.Resolve"))
 		return "", err
 	}
 
@@ -80,6 +82,7 @@ func (resolver *Tag2DigestResolver) Resolve(imageReference registry.IImageRefere
 	if err != nil {
 		err = errors.Wrap(err, "Failed to get digest")
 		tracer.Error(err, "")
+		resolver.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "Tag2DigestResolver.Resolve"))
 		return "", err
 	}
 
@@ -89,6 +92,7 @@ func (resolver *Tag2DigestResolver) Resolve(imageReference registry.IImageRefere
 		if err != nil {
 			err = errors.Wrap(err, "Tag2DigestResolver.Resolve: Failed to set digest in cache")
 			tracer.Error(err, "")
+			resolver.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "Tag2DigestResolver.Resolve"))
 		} else {
 			tracer.Info("Set digest in cache successfully", "image", imageReference.Original(), "digest", digest)
 		}
@@ -193,6 +197,7 @@ func (resolver *Tag2DigestResolver) getDigest(imageReference registry.IImageRefe
 	if digest == "" {
 		err = errors.New("Empty digest received by registry client")
 		tracer.Error(err, "")
+		resolver.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "Tag2DigestResolver.getDigest"))
 		return "", err
 	}
 

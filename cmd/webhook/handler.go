@@ -118,6 +118,7 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 	if err != nil {
 		err = errors.Wrap(err, "Handler.Handle received error on handlePodRequest")
 		tracer.Error(err, "")
+		handler.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "Handle.handlePodRequest"))
 		reason = _notPatchedErrorReason
 		response = handler.admissionErrorResponse(errors.Wrap(err, string(reason)))
 		return response
@@ -147,6 +148,7 @@ func (handler *Handler) handlePodRequest(req *admission.Request) (admission.Resp
 	if err != nil {
 		err = errors.Wrap(err, "Handler.handlePodRequest failed to admisionrequest.UnmarshalPod req")
 		tracer.Error(err, "")
+		handler.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "handlePodRequest.UnmarshalPod"))
 		return admission.Response{}, err
 	}
 
@@ -154,6 +156,7 @@ func (handler *Handler) handlePodRequest(req *admission.Request) (admission.Resp
 	if err != nil {
 		err = errors.Wrap(err, "Handler.handlePodRequest Failed to getPodContainersVulnerabilityScanInfoAnnotationsOperation for Pod")
 		tracer.Error(err, "")
+		handler.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "handlePodRequest.getPodContainersVulnerabilityScanInfoAnnotationsOperation"))
 		return admission.Response{}, err
 	}
 
@@ -175,6 +178,7 @@ func (handler *Handler) getPodContainersVulnerabilityScanInfoAnnotationsOperatio
 	if err != nil {
 		wrappedError := errors.Wrap(err, "Handler failed to GetContainersVulnerabilityScanInfo")
 		tracer.Error(wrappedError, "Handler.AzdSecInfoProvider.GetContainersVulnerabilityScanInfo")
+		handler.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(wrappedError, "Handler.AzdSecInfoProvider.GetContainersVulnerabilityScanInfo"))
 		return nil, wrappedError
 	}
 
@@ -186,6 +190,7 @@ func (handler *Handler) getPodContainersVulnerabilityScanInfoAnnotationsOperatio
 	if err != nil {
 		wrappedError := errors.Wrap(err, "Handler failed to CreateContainersVulnerabilityScanAnnotationPatchAdd")
 		tracer.Error(wrappedError, "Handler.annotations.CreateContainersVulnerabilityScanAnnotationPatchAdd")
+		handler.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(wrappedError, "Handler.annotations.CreateContainersVulnerabilityScanAnnotationPatchAdd"))
 		return nil, wrappedError
 	}
 

@@ -70,6 +70,7 @@ func (client *RedisCacheClient) Get(key string) (string, error) {
 		if !errors.Is(err, redis.Nil) {
 			err = errors.Wrap(err, "unexpected error while trying to get item from cache")
 			tracer.Error(err, "", "key", key)
+			client.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "RedisCacheClient.Get"))
 			return "", err
 		}
 
@@ -141,6 +142,7 @@ func (client *RedisCacheClient) Ping() error {
 	}
 
 	// Ping succeed.
+	client.metricSubmitter.SendMetric(1, cachemetrics.NewCacheClientRedisPingMetric())
 	tracer.Info("Received pong from Redis server")
 	return nil
 }

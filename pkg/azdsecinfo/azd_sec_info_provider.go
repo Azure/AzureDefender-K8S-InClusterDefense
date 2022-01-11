@@ -5,6 +5,7 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/dataproviders/arg"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric/util"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
 	registryerrors "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/errors"
 	registryutils "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/utils"
@@ -102,6 +103,7 @@ func (provider *AzdSecInfoProvider) GetContainersVulnerabilityScanInfo(podSpec *
 	if podSpec == nil || resourceMetadata == nil || resourceKind == nil {
 		err := errors.Wrap(utils.NilArgumentError, "AzdSecInfoProvider.GetContainersVulnerabilityScanInfo")
 		tracer.Error(err, "")
+		provider.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "AzdSecInfoProvider.GetContainersVulnerabilityScanInfo"))
 		return nil, err
 	}
 
@@ -156,6 +158,7 @@ func (provider *AzdSecInfoProvider) getContainersVulnerabilityScanInfoSyncWrappe
 		if errFromCache != nil {
 			errFromCache = errors.Wrap(errFromCache, "Failed to set containerVulnerabilityScanInfo in cache")
 			tracer.Error(errFromCache, "")
+			provider.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "AzdSecInfoProvider.getContainersVulnerabilityScanInfoSyncWrapper failed to store results in cache"))
 		} else {
 			tracer.Info("Set containerVulnerabilityScanInfo in cache successfully")
 		}
@@ -173,6 +176,7 @@ func (provider *AzdSecInfoProvider) extractContainersVulnerabilityScanInfoFromCh
 	if channelDataWrapper == nil {
 		err := errors.Wrap(utils.NilArgumentError, "got nil channel data")
 		tracer.Error(err, "")
+		provider.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "AzdSecInfoProvider.extractContainersVulnerabilityScanInfoFromChannelData"))
 		return nil, err
 		// Check that the error of channel data is nil
 	}
@@ -181,6 +185,7 @@ func (provider *AzdSecInfoProvider) extractContainersVulnerabilityScanInfoFromCh
 	if err != nil {
 		err = errors.Wrap(err, "returned error from channel")
 		tracer.Error(err, "")
+		provider.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "AzdSecInfoProvider.extractContainersVulnerabilityScanInfoFromChannelData"))
 		return nil, err
 	}
 	// Try to cast.
@@ -188,6 +193,7 @@ func (provider *AzdSecInfoProvider) extractContainersVulnerabilityScanInfoFromCh
 	if !canConvert {
 		err = errors.Wrap(utils.CantConvertChannelDataWrapper, "failed to convert ChannelDataWrapper.DataWrapper to []*contracts.ContainerVulnerabilityScanInfo")
 		tracer.Error(err, "")
+		provider.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "AzdSecInfoProvider.extractContainersVulnerabilityScanInfoFromChannelData"))
 		return nil, err
 	}
 	// Successfully extract data from channel
@@ -215,6 +221,7 @@ func (provider *AzdSecInfoProvider) getContainersVulnerabilityScanInfo(podSpec *
 	if err != nil {
 		wrappedError := errors.Wrap(err, "Handler failed to getVulnSecInfoContainers")
 		tracer.Error(wrappedError, "")
+		provider.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(wrappedError, "AzdSecInfoProvider.getContainersVulnerabilityScanInfo"))
 		return nil, wrappedError
 	}
 	//TODO sort result according to original containers order
@@ -232,6 +239,7 @@ func (provider *AzdSecInfoProvider) getVulnSecInfoContainers(podSpec *corev1.Pod
 	if podSpec == nil {
 		err := errors.Wrap(utils.NilArgumentError, "failed in AzdSecInfoProvider.getVulnSecInfoContainers. Unexpected: pod.Spec is nil")
 		tracer.Error(err, "")
+		provider.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "AzdSecInfoProvider.getVulnSecInfoContainers"))
 		return nil, err
 	}
 
@@ -251,11 +259,13 @@ func (provider *AzdSecInfoProvider) getVulnSecInfoContainers(podSpec *corev1.Pod
 		if !isChannelOpen {
 			err := errors.Wrap(utils.ReadFromClosedChannelError, "failed in AzdSecInfoProvider.getVulnSecInfoContainers. Channel closed unexpectedly")
 			tracer.Error(err, "")
+			provider.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "AzdSecInfoProvider.getVulnSecInfoContainers"))
 			return nil, err
 		}
 		if vulnerabilitySecInfoWrapper == nil {
 			err := errors.Wrap(utils.NilArgumentError, "failed in getSingleContainerVulnerabilityScanInfoSync. Unexpected: vulnerabilitySecInfoWrapper is nil")
 			tracer.Error(err, "")
+			provider.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "AzdSecInfoProvider.getVulnSecInfoContainers"))
 			return nil, err
 		}
 		// Check if an error occurred during getSingleContainerVulnerabilityScanInfo
@@ -263,6 +273,7 @@ func (provider *AzdSecInfoProvider) getVulnSecInfoContainers(podSpec *corev1.Pod
 		if err != nil {
 			err = errors.Wrap(err, "failed in getSingleContainerVulnerabilityScanInfoSync.")
 			tracer.Error(err, "")
+			provider.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "AzdSecInfoProvider.getVulnSecInfoContainers"))
 			return nil, err
 		}
 		// Convert vulnerabilitySecInfoWrapper.DataWrapper to vulnerabilitySecInfo
@@ -270,6 +281,7 @@ func (provider *AzdSecInfoProvider) getVulnSecInfoContainers(podSpec *corev1.Pod
 		if !canConvert {
 			err := errors.Wrap(utils.CantConvertChannelDataWrapper, "failed to convert ChannelDataWrapper.DataWrapper to *contracts.ContainerVulnerabilityScanInfo")
 			tracer.Error(err, "")
+			provider.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "AzdSecInfoProvider.getVulnSecInfoContainers"))
 			return nil, err
 		}
 

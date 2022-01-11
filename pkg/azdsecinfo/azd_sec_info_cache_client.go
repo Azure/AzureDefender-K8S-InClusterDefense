@@ -113,6 +113,7 @@ func (client *AzdSecInfoProviderCacheClient) GetContainerVulnerabilityScanInfofr
 		// error with cache functionality
 		err = errors.Wrap(err, "falied to get ContainerVulnerabilityScanInfo from cache")
 		tracer.Error(err, "")
+		client.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "AzdSecInfoProviderCacheClient.GetContainerVulnerabilityScanInfofromCache"))
 		return nil, nil, err
 	}
 
@@ -122,6 +123,7 @@ func (client *AzdSecInfoProviderCacheClient) GetContainerVulnerabilityScanInfofr
 	if err != nil { // unmarshal failed
 		err = errors.Wrap(err, "failed to unmarshalScanResults from cache")
 		tracer.Error(err, "")
+		client.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "AzdSecInfoProviderCacheClient.GetContainerVulnerabilityScanInfofromCache"))
 		return nil, nil, err
 	}
 
@@ -147,12 +149,14 @@ func (client *AzdSecInfoProviderCacheClient) SetContainerVulnerabilityScanInfoIn
 	if err != nil { // Marshal failed
 		err = errors.Wrap(err, "Failed to marshal ContainerVulnerabilityScanInfo")
 		tracer.Error(err, "")
+		client.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "AzdSecInfoProviderCacheClient.SetContainerVulnerabilityScanInfoInCache"))
 		return err
 	}
 	// Try to set resultsString in cache
 	if err = client.cacheClient.Set(client.getContainerVulnerabilityScanInfoCacheKey(podSpecCacheKey), resultsString, client.cacheExpirationContainerVulnerabilityScanInfo); err != nil {
 		err = errors.Wrap(err, "error encountered while trying to set new timeout in cache.")
 		tracer.Error(err, "")
+		client.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "AzdSecInfoProviderCacheClient.SetContainerVulnerabilityScanInfoInCache"))
 		return err
 	} else {
 		tracer.Info("Set ContainerVulnerabilityScanInfo in cache successfully")
@@ -179,6 +183,7 @@ func (client *AzdSecInfoProviderCacheClient) GetTimeOutStatus(podSpecCacheKey st
 		// error with cache functionality - _unknownTimeOutStatus.
 		err = errors.Wrap(err, "Error while trying to get timeoutStatus from cache")
 		tracer.Error(err, "")
+		client.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "AzdSecInfoProviderCacheClient.GetTimeOutStatus"))
 		return _unknownTimeOutStatus, err
 	}
 
@@ -187,6 +192,7 @@ func (client *AzdSecInfoProviderCacheClient) GetTimeOutStatus(podSpecCacheKey st
 	if err != nil {
 		err = errors.Wrapf(err, "Invalid value in cache for timeout status - should be valid int. got %s", timeoutStatusString)
 		tracer.Error(err, "")
+		client.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "AzdSecInfoProviderCacheClient.GetTimeOutStatus"))
 		return _unknownTimeOutStatus, err
 	}
 	// Valid int
@@ -212,6 +218,7 @@ func (client *AzdSecInfoProviderCacheClient) setTimeOutStatus(podSpecCacheKey st
 	if err := client.cacheClient.Set(timeOutCacheKey, timeOutStatusString, expirationTime); err != nil {
 		err = errors.Wrap(err, "error encountered while trying to set new timeout in cache.")
 		tracer.Error(err, "")
+		client.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "AzdSecInfoProviderCacheClient.SetTimeOutStatusAfterEncounteredTimeout"))
 		return err
 	}
 	tracer.Info("Set timeout status in cache succeeded", "timeOutStatusString", timeOutStatusString)
@@ -238,6 +245,7 @@ func (client *AzdSecInfoProviderCacheClient) ResetTimeOutInCacheAfterGettingScan
 		// Error in cache functionality - return the error
 		err = errors.Wrap(err, "error encountered while trying to get timeout status from cache.")
 		tracer.Error(err, "")
+		client.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "AzdSecInfoProviderCacheClient.ResetTimeOutInCacheAfterGettingScanResults"))
 		return err
 	}
 
@@ -246,6 +254,7 @@ func (client *AzdSecInfoProviderCacheClient) ResetTimeOutInCacheAfterGettingScan
 	if err != nil {
 		err = errors.Wrapf(err, "Invalid value in cache for timeout status - should be valid int. got %s", timeoutEncounteredString)
 		tracer.Error(err, "")
+		client.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "AzdSecInfoProviderCacheClient.ResetTimeOutInCacheAfterGettingScanResults"))
 		return err
 	}
 
@@ -262,6 +271,7 @@ func (client *AzdSecInfoProviderCacheClient) ResetTimeOutInCacheAfterGettingScan
 		client.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, err.Error()))
 		err = errors.Wrap(err, "error encountered while trying to reset timeOut status in cache.")
 		tracer.Error(err, "")
+		client.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "AzdSecInfoProviderCacheClient.ResetTimeOutInCacheAfterGettingScanResults"))
 		return err
 	}
 	//Set in cache succeeded
@@ -285,6 +295,7 @@ func (client *AzdSecInfoProviderCacheClient) marshalScanResults(containerVulnera
 	if err != nil {
 		err = errors.Wrap(err, "Failed on json.Marshal containerVulnerabilityScanInfoWrapper")
 		tracer.Error(err, "")
+		client.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "AzdSecInfoProviderCacheClient.marshalScanResults"))
 		return "", err
 	}
 
@@ -315,6 +326,7 @@ func (client *AzdSecInfoProviderCacheClient) unmarshalScanResults(ContainerVulne
 	if unmarshalErr != nil {
 		unmarshalErr = errors.Wrap(unmarshalErr, "Failed on json.Unmarshal containerVulnerabilityScanInfoWrapper")
 		tracer.Error(unmarshalErr, "")
+		client.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(unmarshalErr, "AzdSecInfoProviderCacheClient.unmarshalScanResults"))
 		return nil, unmarshalErr
 	}
 	return containerVulnerabilityScanInfoWrapper, nil

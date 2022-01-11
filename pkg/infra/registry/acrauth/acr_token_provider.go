@@ -6,6 +6,7 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/cache"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric/util"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/utils"
 	"github.com/pkg/errors"
@@ -77,6 +78,7 @@ func (tokenProvider *ACRTokenProvider) GetACRRefreshToken(registry string) (stri
 	if err != nil {
 		err = errors.Wrap(err, "Failed to get armToken")
 		tracer.Error(err, "")
+		tokenProvider.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "ACRTokenProvider.GetACRRefreshToken"))
 		return "", err
 	}
 
@@ -85,6 +87,7 @@ func (tokenProvider *ACRTokenProvider) GetACRRefreshToken(registry string) (stri
 	if err != nil {
 		err = errors.Wrap(err, "Failed to exchange ACR access token")
 		tracer.Error(err, "")
+		tokenProvider.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "ACRTokenProvider.GetACRRefreshToken"))
 		return "", err
 	}
 
@@ -94,6 +97,7 @@ func (tokenProvider *ACRTokenProvider) GetACRRefreshToken(registry string) (stri
 		if err != nil {
 			err = errors.Wrap(err, "Failed to set registryRefreshToken in cache")
 			tracer.Error(err, "")
+			tokenProvider.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "ACRTokenProvider.GetACRRefreshToken"))
 		} else {
 			tracer.Info("Set registryRefreshToken in cache successfully", "registry", registry)
 		}

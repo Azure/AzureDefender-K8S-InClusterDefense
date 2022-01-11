@@ -99,6 +99,7 @@ func (provider *ARGDataProvider) GetImageVulnerabilityScanResults(registry strin
 	if err != nil {
 		err = errors.Wrap(err, "Failed to get get results from Arg")
 		tracer.Error(err, "")
+		provider.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "ARGDataProvider.GetImageVulnerabilityScanResults"))
 		return "", nil, err
 	}
 	tracer.Info("got results from Arg")
@@ -124,6 +125,7 @@ func (provider *ARGDataProvider) getResultsFromArg(registry string, repository s
 	if err != nil {
 		err = errors.Wrap(err, "Failed on argQueryGenerator.GenerateImageVulnerabilityScanQuery")
 		tracer.Error(err, "")
+		provider.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "ARGDataProvider.getResultsFromArg"))
 		return "", nil, err
 	}
 
@@ -134,6 +136,7 @@ func (provider *ARGDataProvider) getResultsFromArg(registry string, repository s
 	if err != nil {
 		err = errors.Wrap(err, "Failed on argClient.QueryResources")
 		tracer.Error(err, "")
+		provider.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "ARGDataProvider.getResultsFromArg"))
 		return "", nil, err
 	}
 
@@ -142,6 +145,7 @@ func (provider *ARGDataProvider) getResultsFromArg(registry string, repository s
 	if err != nil {
 		err = errors.Wrap(err, "Failed on parseARGImageScanResults")
 		tracer.Error(err, "")
+		provider.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "ARGDataProvider.getResultsFromArg"))
 		return "", nil, err
 	}
 	tracer.Info("scanResultsQueryResponseObjectList", "list", scanResultsQueryResponseObjectList)
@@ -151,6 +155,7 @@ func (provider *ARGDataProvider) getResultsFromArg(registry string, repository s
 	if err != nil {
 		err = errors.Wrap(err, "Failed on getImageScanDataFromARGQueryScanResult")
 		tracer.Error(err, "")
+		provider.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "ARGDataProvider.getResultsFromArg"))
 		return "", nil, err
 	}
 	return scanStatus, scanFindings, nil
@@ -163,6 +168,7 @@ func (provider *ARGDataProvider) parseARGImageScanResults(argImageScanResults []
 	if argImageScanResults == nil {
 		err := errors.Wrap(errors.New("Received results nil argument"), "ARGDataProvider.parseARGImageScanResults")
 		tracer.Error(err, "")
+		provider.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "ARGDataProvider.parseARGImageScanResults"))
 		return nil, err
 	}
 
@@ -171,6 +177,7 @@ func (provider *ARGDataProvider) parseARGImageScanResults(argImageScanResults []
 	if err != nil {
 		err = errors.Wrap(err, "Failed on json.Marshal results")
 		tracer.Error(err, "")
+		provider.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "ARGDataProvider.parseARGImageScanResults"))
 		return nil, err
 	}
 
@@ -180,6 +187,7 @@ func (provider *ARGDataProvider) parseARGImageScanResults(argImageScanResults []
 	if err != nil {
 		err = errors.Wrap(err, "Failed on json.Unmarshal results")
 		tracer.Error(err, "")
+		provider.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "ARGDataProvider.parseARGImageScanResults"))
 		return nil, err
 	}
 
@@ -198,6 +206,7 @@ func (provider *ARGDataProvider) getImageScanDataFromARGQueryScanResult(scanResu
 	if scanResultsQueryResponseObjectList == nil {
 		err := errors.Wrap(errors.New("Received results nil argument"), "ARGDataProvider.getImageScanDataFromARGQueryScanResult")
 		tracer.Error(err, "")
+		provider.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "ARGDataProvider.getImageScanDataFromARGQueryScanResult"))
 		return "", nil, err
 	}
 

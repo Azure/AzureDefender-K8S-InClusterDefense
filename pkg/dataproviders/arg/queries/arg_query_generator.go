@@ -3,6 +3,7 @@ package queries
 import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric/util"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/utils"
 	"strings"
@@ -55,6 +56,7 @@ func (generator *ARGQueryGenerator) GenerateImageVulnerabilityScanQuery(queryPar
 	tracer := generator.tracerProvider.GetTracer("GenerateImageVulnerabilityScanQuery")
 	if queryParameters == nil {
 		tracer.Error(utils.NilArgumentError, "queryParameters is nil")
+		generator.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(utils.NilArgumentError, "ARGQueryGenerator.GenerateImageVulnerabilityScanQuery"))
 		return "", utils.NilArgumentError
 	}
 	tracer.Info("Generate new query", "queryParameters", *queryParameters)
@@ -62,6 +64,7 @@ func (generator *ARGQueryGenerator) GenerateImageVulnerabilityScanQuery(queryPar
 	builder := new(strings.Builder)
 	err := generator.containerVulnerabilityScanResultsQueryTemplate.Execute(builder, queryParameters)
 	if err != nil {
+		generator.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "ARGQueryGenerator.GenerateImageVulnerabilityScanQuery"))
 		tracer.Error(err, "Template execution failed with parameters provided")
 		return "", err
 	}

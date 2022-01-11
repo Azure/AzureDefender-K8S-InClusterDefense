@@ -6,6 +6,7 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/cache"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric/util"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/utils"
 	"github.com/pkg/errors"
@@ -72,6 +73,7 @@ func (client *ARGDataProviderCacheClient) GetResultsFromCache(digest string) (co
 		}
 		err = errors.Wrap(err, "scanFindings as value don't exist in cache or there is an error in cache functionality")
 		tracer.Error(err, "")
+		client.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "ARGDataProviderCacheClient.GetResultsFromCache"))
 		return "", nil, err
 	}
 
@@ -80,6 +82,7 @@ func (client *ARGDataProviderCacheClient) GetResultsFromCache(digest string) (co
 	if unmarshalErr != nil { // json.unmarshall failed - trace the error and continue without cache
 		unmarshalErr = errors.Wrap(unmarshalErr, "Failed on unmarshall scan results from cache")
 		tracer.Error(unmarshalErr, "")
+		client.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(unmarshalErr, "ARGDataProviderCacheClient.GetResultsFromCache"))
 		return "", nil, unmarshalErr
 	}
 
@@ -98,6 +101,7 @@ func (client *ARGDataProviderCacheClient) SetScanFindingsInCache(scanFindings []
 	if err != nil {
 		err = errors.Wrap(err, "Failed on json.Marshal scanFindingsWrapper")
 		tracer.Error(err, "")
+		client.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "ARGDataProviderCacheClient.SetScanFindingsInCache"))
 		return err
 	}
 	scanFindingsString := string(scanFindingsBuffer)
@@ -113,6 +117,7 @@ func (client *ARGDataProviderCacheClient) SetScanFindingsInCache(scanFindings []
 	if err != nil {
 		err = errors.Wrap(err, "Failed to set digest in cache")
 		tracer.Error(err, "")
+		client.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "ARGDataProviderCacheClient.SetScanFindingsInCache"))
 		return err
 	}
 
@@ -129,6 +134,7 @@ func (client *ARGDataProviderCacheClient) parseScanFindingsFromCache(scanFinding
 	if unmarshalErr != nil {
 		unmarshalErr = errors.Wrap(unmarshalErr, "Failed on json.Unmarshal scanFindingsWrapper")
 		tracer.Error(unmarshalErr, "")
+		client.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(unmarshalErr, "ARGDataProviderCacheClient.parseScanFindingsFromCache"))
 		return "", nil, unmarshalErr
 	}
 	return scanFindingsFromCache.ScanStatus, scanFindingsFromCache.ScanFindings, nil

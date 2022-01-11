@@ -3,6 +3,7 @@ package wrappers
 import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric/util"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
 	registryerrors "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/errors"
 	craneerrors "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/wrappers/errors"
@@ -66,6 +67,7 @@ func (craneWrapper *CraneWrapper) Digest(imageReference string, opt ...crane.Opt
 	if err != nil {
 		err = errors.Wrapf(err, "failed to extract digest of image %v", imageReference)
 		tracer.Error(err, "")
+		craneWrapper.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "CraneWrapper.Digest"))
 		return "", err
 	}
 
@@ -86,6 +88,7 @@ func (craneWrapper *CraneWrapper) getDigest(ref string, opt ...crane.Option) (st
 		knownErr, ok := craneerrors.TryParseCraneErrToRegistryKnownErr(ref, err)
 		if !ok {
 			tracer.Error(err, "failed to parse crane error to known error")
+			craneWrapper.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "CraneWrapper.getDigest"))
 			return "", err
 		}
 		tracer.Info("Success to parse crane error to known error", "knownErr", knownErr)
@@ -94,6 +97,7 @@ func (craneWrapper *CraneWrapper) getDigest(ref string, opt ...crane.Option) (st
 	} else if digest == "" {
 		err = _emptyDigestErr
 		tracer.Error(err, "")
+		craneWrapper.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "CraneWrapper.getDigest"))
 		return "", err
 	}
 	tracer.Info("Crane Resolved digest", "image reference", ref, "options", opt, "digest", digest)
