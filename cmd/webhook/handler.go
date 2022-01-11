@@ -91,19 +91,19 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 			if !ok {
 				err = errors.New(fmt.Sprint(r))
 			}
-			tracer.Error(err, "Handler handle Panic error","resource:", req.Resource,"namespace:", req.Namespace,"Name", req.Name, "operation:", req.Operation, "reqKind:", req.Kind, "uid:", req.UID)
+			tracer.Error(err, "Handler handle Panic error","resource:", req.Resource,"namespace:", req.Namespace,"Name:", req.Name, "operation:", req.Operation, "reqKind:", req.Kind)
 			// Re throw panic
 			panic(r)
 		}
 		// Repost response latency
-		tracer.Info("HandleLatency", "resource", req.Resource, "namespace:", req.Namespace,"Name", req.Name, "latencyinMS", util.GetDurationMilliseconds(startTime))
+		tracer.Info("HandleLatency", "resource", req.Resource, "namespace:", req.Namespace,"Name:", req.Name, "latencyinMS", util.GetDurationMilliseconds(startTime))
 
 		handler.metricSubmitter.SendMetric(util.GetDurationMilliseconds(startTime), webhookmetric.NewHandlerHandleLatencyMetric(req.Kind.Kind, response.Allowed, string(reason)))
 	}()
 
 	// Logs
 	tracer.Info("received ctx", "ctx", ctx)
-	tracer.Info("received request", "resource:", req.Resource,"namespace:", req.Namespace,"Name", req.Name, "operation:", req.Operation, "reqKind:", req.Kind, "uid:", req.UID)
+	tracer.Info("received request", "resource:", req.Resource,"namespace:", req.Namespace,"Name:", req.Name, "operation:", req.Operation, "reqKind:", req.Kind)
 
 	handler.metricSubmitter.SendMetric(1, webhookmetric.NewHandlerNewRequestMetric(req.Kind.Kind, req.Operation))
 
@@ -133,7 +133,7 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 	}
 
 	reason = _patchedReason
-	tracer.Info("Handler Responded","resource:", req.Resource,"namespace:", req.Namespace,"Name", req.Name, "operation:", req.Operation, "reqKind:", req.Kind, "uid:", req.UID, "response:", response)
+	tracer.Info("Handler Responded","resource:", req.Resource,"namespace:", req.Namespace,"Name:", req.Name, "operation:", req.Operation, "reqKind:", req.Kind, "response:", response)
 	return response
 }
 
@@ -216,23 +216,23 @@ func (handler *Handler) shouldRequestBeFiltered(req admission.Request) (bool, re
 	tracer := handler.tracerProvider.GetTracer("shouldRequestBeFiltered")
 	// If it's the same namespace of the mutation webhook
 	if req.Namespace == utils.GetDeploymentInstance().GetNamespace() {
-		tracer.Info("Request filtered out due to it is in the same namespace as the handler.", "ReqUID", req.UID, "Namespace", req.Namespace)
+		tracer.Info("Request filtered out due to it is in the same namespace as the handler.", "Namespace", req.Namespace)
 		return true, _noSelfManagementReason
 	}
 
 	// Filter if the kind is not pod.
 	if req.Kind.Kind != admisionrequest.PodKind {
-		tracer.Info("Request filtered out due to the request is not supported kind.", "ReqUID", req.UID, "ReqKind", req.Kind.Kind)
+		tracer.Info("Request filtered out due to the request is not supported kind.", "ReqKind", req.Kind.Kind)
 		return true, _noMutationForKindReason
 	}
 
 	// Filter if the operation is not Create
 	if !isOperationAllowed(&req.Operation) {
-		tracer.Info("Request filtered out due to the request is not supported operation.", "ReqUID", req.UID, "ReqOperation", req.Operation)
+		tracer.Info("Request filtered out due to the request is not supported operation.", "ReqOperation", req.Operation)
 		return true, _noMutationForOperationReason
 	}
 
-	tracer.Info("Request shouldn't be filtered out.", "ReqUID", req.UID)
+	tracer.Info("Request shouldn't be filtered out.")
 	// Request shouldn't be filtered out.
 	return false, _patchedReason
 }

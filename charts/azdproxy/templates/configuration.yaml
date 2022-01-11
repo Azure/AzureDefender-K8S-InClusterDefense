@@ -105,6 +105,7 @@ data:
         tlsKeyPath: "{{.Values.AzDProxy.cache.redis.volumes.volumeSecretTls.mountPath}}/tls.key"
         caCertPath: "{{.Values.AzDProxy.cache.redis.volumes.volumeSecretTls.mountPath}}/ca.cert"
         passwordPath: "{{.Values.AzDProxy.cache.redis.volumes.volumeSecretPass.mountPath}}/REDIS_PASS"
+        heartbeatFrequency: {{.Values.AzDProxy.cache.redis.heartbeatFrequency}}
 
       tokensCacheConfiguration:
         cacheSize: {{.Values.AzDProxy.cache.tokensCacheConfiguration.cacheSize}} # in Bytes

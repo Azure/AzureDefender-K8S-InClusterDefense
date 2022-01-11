@@ -118,6 +118,7 @@ func main() {
 		&utils.PositiveIntValidationObject{VariableName: "argDataProviderConfiguration.CacheExpirationTimeUnscannedResults", Variable: argDataProviderConfiguration.CacheExpirationTimeUnscannedResults},
 		&utils.PositiveIntValidationObject{VariableName: "tag2DigestResolverConfiguration.CacheExpirationTimeForResults", Variable: tag2DigestResolverConfiguration.CacheExpirationTimeForResults},
 		&utils.PositiveIntValidationObject{VariableName: "acrTokenProviderConfiguration.RegistryRefreshTokenCacheExpirationTime", Variable: acrTokenProviderConfiguration.RegistryRefreshTokenCacheExpirationTime},
+		&utils.PositiveIntValidationObject{VariableName: "argDataProviderCacheConfiguration.HeartbeatFrequency", Variable: argDataProviderCacheConfiguration.HeartbeatFrequency},
 	)
 	if !isValidConfiguration {
 		errMsg := fmt.Sprintf("Got non-positive cache TTL. Only positive values are allowed. Configuration name: <%s>", configurationName)
@@ -184,12 +185,9 @@ func main() {
 		redisCacheRetryPolicy := retrypolicy.NewRetryPolicy(instrumentationProvider, redisCacheClientRetryPolicyConfiguration)
 		redisCacheClient := cache.NewRedisCacheClient(instrumentationProvider, redisCacheBaseClient, redisCacheRetryPolicy, _cacheContext)
 
-		// Check connection
-		_, err = redisCacheClient.Ping()
-		if err != nil{
-			log.Fatal("Failed to connect to Redis server", err)
-		}
-		
+		// Check connection every argDataProviderCacheConfiguration.HeartbeatFrequency in minutes
+		utils.RepeatEveryTick(utils.GetMinutes(argDataProviderCacheConfiguration.HeartbeatFrequency), redisCacheClient.Ping)
+
 		// Export the client
 		persistentCacheClient = redisCacheClient
 	}

@@ -32,3 +32,13 @@ func GetMinutes(durationInMinutes int) time.Duration {
 func GetHours(durationInHours int) time.Duration {
 	return time.Duration(durationInHours) * time.Hour
 }
+
+// RepeatEveryTick calls a given function repeatedly every duration.
+func RepeatEveryTick(duration time.Duration, f func() error){
+	ticker := time.NewTicker(duration)
+	go func() {
+		for range ticker.C{
+			f()
+		}
+	}()
+}

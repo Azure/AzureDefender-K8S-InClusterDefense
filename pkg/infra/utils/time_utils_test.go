@@ -9,11 +9,10 @@ import (
 
 var (
 	_configuration3Sec = TimeoutConfiguration{TimeDurationInMS: 5}
-	_nanoToMS = 1000000
-	_nanoToSecond = 1000000000
-	_nanoToMinute = 6*math.Pow10(10)
-	_nanoToHour = 3.6*math.Pow10(12)
-
+	_nanoToMS          = 1000000
+	_nanoToSecond      = 1000000000
+	_nanoToMinute      = 6 * math.Pow10(10)
+	_nanoToHour        = 3.6 * math.Pow10(12)
 )
 
 type TimeUtilsTestSuite struct {
@@ -55,7 +54,16 @@ func (suite *TimeUtilsTestSuite) Test_GetHours() {
 	result := GetHours(1)
 	expectedResult := time.Duration(_nanoToHour)
 	suite.Equal(result, expectedResult)
+}
 
+func (suite *TimeUtilsTestSuite) Test_Repeat() {
+	previousTime := time.Now()
+	RepeatEveryTick(time.Millisecond*2, func() error {
+		suite.True(time.Since(previousTime) >= time.Millisecond)
+		previousTime = time.Now()
+		return nil
+	})
+	time.Sleep(time.Millisecond * 50)
 }
 
 // We need this function to kick off the test suite, otherwise

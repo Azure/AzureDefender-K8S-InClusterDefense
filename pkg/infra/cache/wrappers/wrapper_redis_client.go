@@ -48,4 +48,6 @@ type RedisCacheClientConfiguration struct {
 	// MinRetryBackoff Minimum backoff between each retry.
 	// Default is 8 milliseconds; -1 disables backoff.
 	MinRetryBackoff time.Duration
+	// HeartbeatFrequency is the frequency **in minutes** for validating the redis connection
+	HeartbeatFrequency int
 }
