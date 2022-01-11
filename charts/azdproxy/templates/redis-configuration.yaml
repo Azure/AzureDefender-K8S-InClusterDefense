@@ -51,3 +51,6 @@ data:
     #   Note: you can disable saving at all commenting all the "save" lines.
     appendonly {{.Values.AzDProxy.cache.redis.redisConfig.appendonly}}
     save {{.Values.AzDProxy.cache.redis.redisConfig.save}}
+    maxmemory {{.Values.AzDProxy.cache.redis.redisConfig.maxmemory}}
+    #  Remove the key with the nearest expire time (minor TTL)
+    maxmemory-policy {{.Values.AzDProxy.cache.redis.redisConfig.maxmemoryPolicy}}

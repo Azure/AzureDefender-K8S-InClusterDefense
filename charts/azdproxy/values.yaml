@@ -175,6 +175,7 @@ AzDProxy:
       # cert expire duration
       certs:
         expireDuration: 365
+      heartbeatFrequency: 5
       redisConfig:
         # Automatic rewrite of the append only file.
         # Redis is able to automatically rewrite the log file implicitly calling
@@ -209,6 +210,12 @@ AzDProxy:
         #   Note: you can disable saving at all commenting all the "save" lines.
         appendonly: 'yes'
         save: 900 1
+        # Set a memory usage limit to the specified amount of bytes.
+        # When the memory limit is reached Redis will try to remove keys
+        # according to the eviction policy selected (see maxmemory-policy).
+        maxmemory: 1500mb
+        #  Remove the key with the nearest expire time (minor TTL)
+        maxmemoryPolicy: volatile-ttl
       volumes:
         # The secret values of the tls secret
         volumeSecretPass:

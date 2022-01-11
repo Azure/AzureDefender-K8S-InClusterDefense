@@ -7,6 +7,7 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/cache/wrappers"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric/util"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/retrypolicy"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/utils"
@@ -120,7 +121,7 @@ func (client *RedisCacheClient) Set(key string, value string, expiration time.Du
 	return nil
 }
 
-func (client *RedisCacheClient) Ping() (string, error) {
+func (client *RedisCacheClient) Ping() error {
 	tracer := client.tracerProvider.GetTracer("Ping")
 	tracer.Info("Ping executed")
 
@@ -134,11 +135,12 @@ func (client *RedisCacheClient) Ping() (string, error) {
 	)
 	// Check if there was an error
 	if err != nil || value != _expectedPingResult {
-		tracer.Error(err, "Pinging redis server has failed")
-		return "", err
+		tracer.Error(err, "Failed to connect to Redis server - Ping failed")
+		client.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "RedisCacheClient.Ping"))
+		return err
 	}
 
 	// Ping succeed.
-	tracer.Info("Received pong from server")
-	return value, nil
+	tracer.Info("Received pong from Redis server")
+	return nil
 }

@@ -55,7 +55,15 @@ func (suite *TimeUtilsTestSuite) Test_GetHours() {
 	result := GetHours(1)
 	expectedResult := time.Duration(_nanoToHour)
 	suite.Equal(result, expectedResult)
+}
 
+func (suite *TimeUtilsTestSuite) Test_Repeat() {
+	previousTime := time.Now()
+	RepeatEveryTick(time.Millisecond * 2, func() error {
+		suite.True(time.Since(previousTime) >= time.Millisecond)
+		previousTime = time.Now()
+	return nil})
+	time.Sleep(time.Millisecond * 50)
 }
 
 // We need this function to kick off the test suite, otherwise

@@ -184,12 +184,9 @@ func main() {
 		redisCacheRetryPolicy := retrypolicy.NewRetryPolicy(instrumentationProvider, redisCacheClientRetryPolicyConfiguration)
 		redisCacheClient := cache.NewRedisCacheClient(instrumentationProvider, redisCacheBaseClient, redisCacheRetryPolicy, _cacheContext)
 
-		// Check connection
-		_, err = redisCacheClient.Ping()
-		if err != nil{
-			log.Fatal("Failed to connect to Redis server", err)
-		}
-		
+		// Check connection every argDataProviderCacheConfiguration.HeartbeatFrequency in minutes
+		utils.RepeatEveryTick(utils.GetMinutes(argDataProviderCacheConfiguration.HeartbeatFrequency), redisCacheClient.Ping)
+
 		// Export the client
 		persistentCacheClient = redisCacheClient
 	}

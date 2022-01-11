@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
 	"github.com/go-logr/logr"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"go.uber.org/zap/zapcore"
 	"strings"
@@ -40,12 +41,14 @@ func (tracer *WrapperTivanTracer) Info(msg string, keysAndValues ...interface{})
 	if !tracer.level.Enabled(zapcore.InfoLevel) {
 		return
 	}
+
+	msgWithContext := tracer.concatenateContextToMsg(msg)
 	if len(keysAndValues)%2 == 1 {
-		tracer.entry.Error("Error: len of keysAndValues should be even")
+		tracer.entry.Info(msgWithContext)
+		tracer.entry.Error(tracer.concatenateContextToMsg("tivan.wrapper_tivan_tracer.info"), errors.New("Error: len of keysAndValues of trace info should be even"))
 		return
 	}
 
-	msgWithContext := tracer.concatenateContextToMsg(msg)
 	if keysAndValues != nil && len(keysAndValues) > 0 {
 		tracer.entry.Info(msgWithContext, keysAndValues)
 	} else {
@@ -59,12 +62,15 @@ func (tracer *WrapperTivanTracer) Error(err error, msg string, keysAndValues ...
 	if !tracer.level.Enabled(zapcore.ErrorLevel) {
 		return
 	}
+
+	msgWithContext := tracer.concatenateContextToMsg(msg)
+
 	if len(keysAndValues)%2 == 1 {
-		tracer.entry.Error("Error: len of keysAndValues should be even")
+		tracer.entry.Error(msgWithContext, err)
+		tracer.entry.Error(tracer.concatenateContextToMsg("tivan.wrapper_tivan_tracer.error"), errors.New("Error: len of keysAndValues of trace error should be even"))
 		return
 	}
 
-	msgWithContext := tracer.concatenateContextToMsg(msg)
 	if keysAndValues != nil && len(keysAndValues) > 0 {
 		tracer.entry.Error(msgWithContext, err, keysAndValues)
 	} else {

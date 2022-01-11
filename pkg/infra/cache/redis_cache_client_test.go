@@ -89,7 +89,7 @@ func (suite *TestSuiteRedisCache) Test_Ping_Pong() {
 	_redisMock.ExpectPing().SetVal(_expectedPingResult)
 
 	// Act
-	_, err := _client.Ping()
+	err := _client.Ping()
 	suite.Nil(err)
 }
 
@@ -98,7 +98,7 @@ func (suite *TestSuiteRedisCache) Test_Ping_NotPong() {
 	_redisMock.ExpectPing().RedisNil()
 
 	// Act
-	_, err := _client.Ping()
+	err := _client.Ping()
 	suite.IsType(redis.Nil, err)
 }
 
