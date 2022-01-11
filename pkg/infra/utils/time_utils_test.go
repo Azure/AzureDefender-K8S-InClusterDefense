@@ -57,7 +57,6 @@ func (suite *TimeUtilsTestSuite) Test_GetHours() {
 }
 
 func (suite *TimeUtilsTestSuite) Test_Repeat() {
-
 	previousTime := time.Now()
 	RepeatEveryTick(time.Millisecond*2, func() error {
 		suite.True(time.Since(previousTime) >= time.Millisecond)
