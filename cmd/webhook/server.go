@@ -3,6 +3,7 @@ package webhook
 import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric/util"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
 	"github.com/open-policy-agent/cert-controller/pkg/rotator"
 	"github.com/pkg/errors"
@@ -62,6 +63,7 @@ func (server *Server) Run() (err error) {
 	// Init cert controller - gets a channel of setting up the controller.
 	if err = server.initCertController(); err != nil {
 		tracer.Error(err, "initCertController")
+		server.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "Server.Run - failed to initialize cert controller"))
 		return errors.Wrap(err, "Server.Run - failed to initialize cert controller")
 	}
 
@@ -71,6 +73,7 @@ func (server *Server) Run() (err error) {
 	// Start all registered controllers - webhook mutation as https server and cert controller.
 	if err := server.manager.Start(signals.SetupSignalHandler()); err != nil {
 		tracer.Error(err, "manager Start")
+		server.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "Server.Run unable to start manager"))
 		return errors.Wrap(err, "Server.Run unable to start manager")
 	}
 	return nil

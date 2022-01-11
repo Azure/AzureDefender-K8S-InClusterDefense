@@ -6,6 +6,7 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/dataproviders/arg/wrappers"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric/util"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
 	arg "github.com/Azure/azure-sdk-for-go/services/resourcegraph/mgmt/2021-03-01/resourcegraph"
 	"github.com/pkg/errors"
@@ -72,6 +73,7 @@ func (client *ARGClient) QueryResources(query string) ([]interface{}, error) {
 	totalResults, err := client.fetchAllResults(&request)
 	if err != nil {
 		tracer.Error(err, "failed on fetchAllResults ")
+		client.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "ARGClient.QueryResources"))
 		return nil, err
 	}
 
@@ -79,6 +81,7 @@ func (client *ARGClient) QueryResources(query string) ([]interface{}, error) {
 	if totalResults == nil {
 		nilError := errors.New("nil error")
 		tracer.Error(nilError, "totalResults is nil - unknown behavior")
+		client.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(nilError, "ARGClient.QueryResources"))
 		return nil, nilError
 	}
 
@@ -105,6 +108,7 @@ func (client *ARGClient) fetchAllResults(request *arg.QueryRequest) ([]interface
 		if response.TotalRecords == nil || response.Data == nil {
 			err = fmt.Errorf("ARGClient.QueryResources received ARG query response with nil TotalRecords: %v or nil Data: %v", response.Count, response.Data)
 			tracer.Error(err, "")
+			client.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "ARGClient.fetchAllResults"))
 			return nil, err
 		}
 

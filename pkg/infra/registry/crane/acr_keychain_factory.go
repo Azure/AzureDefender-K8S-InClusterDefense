@@ -3,6 +3,7 @@ package crane
 import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric/util"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/acrauth"
 	registryutils "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/registry/utils"
@@ -53,6 +54,7 @@ func (factory *ACRKeychainFactory) Create(registry string) (authn.Keychain, erro
 	if err != nil {
 		err = errors.Wrap(err, "ACRKeychainFactory.Create: failed on GetACRRefreshToken")
 		tracer.Error(err, "")
+		factory.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "ACRKeychainFactory.Create"))
 		return nil, err
 	}
 
