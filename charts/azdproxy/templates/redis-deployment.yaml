@@ -20,6 +20,12 @@ spec:
         - name: {{.Values.AzDProxy.prefixResourceDeployment}}-redis
           image: {{.Values.AzDProxy.cache.redis.image}}
           imagePullPolicy: 'Always'
+          securityContext:
+            privileged: false
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - all
           # Configure Redis to use password
           # Configure Redis to save snapshots of its data in appendonly mode.
           # The parameters after the save are <time intervals>, <number of keys added>.
