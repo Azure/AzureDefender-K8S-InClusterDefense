@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	_redisClientType = "RedisCacheClient"
+	_redisClientType    = "RedisCacheClient"
 	_expectedPingResult = "PONG"
 )
 
