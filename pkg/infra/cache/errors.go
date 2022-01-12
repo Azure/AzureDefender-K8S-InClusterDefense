@@ -35,3 +35,8 @@ func (err *NegativeExpirationCacheError) Error() string {
 	msg := fmt.Sprintf("Invalid expiration, expiration should be non-negative. got <%v>", err.expiration)
 	return msg
 }
+
+func IsMissingKeyCacheError(err error) bool{
+	_, isKeyNotFound := err.(*MissingKeyCacheError)
+	return isKeyNotFound
+}

@@ -3,6 +3,7 @@ package azdsecinfo
 import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/azdsecinfo/contracts"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/dataproviders/arg"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/cache"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric/util"
@@ -117,8 +118,13 @@ func (provider *AzdSecInfoProvider) GetContainersVulnerabilityScanInfo(podSpec *
 	// 		2. The result is ContainerVulnerabilityScanInfo  -  no errors occurred in previous run. Return the results
 	ContainersVulnerabilityScanInfo, errorStoredInCache, err := provider.cacheClient.GetContainerVulnerabilityScanInfofromCache(podSpecCacheKey)
 	if err != nil { // failed to get results from cache - skip and get results from providers
-		err = errors.Wrap(err, "Couldn't get ContainersVulnerabilityScanInfo from cache")
-		tracer.Error(err, "")
+		if cache.IsMissingKeyCacheError(err){
+			tracer.Info("Missing key. Couldn't get ContainerVulnerabilityScanInfo from cache")
+		}else{
+			err = errors.Wrap(err, "Couldn't get ContainersVulnerabilityScanInfo from cache: error encountered")
+			tracer.Error(err, "")
+			provider.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "AzdSecInfoProvider.GetContainersVulnerabilityScanInfo"))
+		}
 	} else { // No error means that there are results from cache
 		// If an error was stored in cache (error from previous results) return the error in order to avoid multiple failed requests
 		if errorStoredInCache != nil {
@@ -428,8 +434,13 @@ func (provider *AzdSecInfoProvider) timeoutEncounteredGetContainersVulnerability
 	// If an error occurred while getting timeout status from cache return an error because we shouldn't block the pod request
 	if err != nil {
 		// TODO Add metric new error encountered
-		err = errors.Wrap(err, "Timeout encountered but couldn't get previous timeout status from cache.")
+		if cache.IsMissingKeyCacheError(err){
+			tracer.Info("First timeout. Missing key. Couldn't get TimeOutStatus from cache.")
+			return nil, err
+		}
+		err = errors.Wrap(err, "Timeout encountered but couldn't get previous timeout status from cache: error encountered")
 		tracer.Error(err, "")
+		provider.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "AzdSecInfoProvider.timeoutEncounteredGetContainersVulnerabilityScanInfo"))
 		return nil, err
 	}
 
@@ -470,6 +481,7 @@ func (provider *AzdSecInfoProvider) noTimeoutEncounteredGetContainersVulnerabili
 	if err != nil {
 		err = errors.Wrap(err, "failed to extract []*contracts.ContainerVulnerabilityScanInfo from channel data")
 		tracer.Error(err, "")
+		provider.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "AzdSecInfoProvider.noTimeoutEncounteredGetContainersVulnerabilityScanInfo"))
 		return nil, err
 	}
 
@@ -480,6 +492,7 @@ func (provider *AzdSecInfoProvider) noTimeoutEncounteredGetContainersVulnerabili
 		if err != nil {
 			err = errors.Wrap(err, "failed ResetTimeOutInCacheAfterGettingScanResults")
 			tracer.Error(err, "")
+			provider.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "AzdSecInfoProvider.noTimeoutEncounteredGetContainersVulnerabilityScanInfo"))
 		}
 	}()
 
