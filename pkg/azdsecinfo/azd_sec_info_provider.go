@@ -148,7 +148,7 @@ func (provider *AzdSecInfoProvider) GetContainersVulnerabilityScanInfo(podSpec *
 		return provider.noTimeoutEncounteredGetContainersVulnerabilityScanInfo(podSpec, chanTimeout, channelData, isChannelOpen, podSpecCacheKey)
 	// Timeout case:
 	case <-time.After(provider.getContainersVulnerabilityScanInfoTimeoutDuration):
-		return provider.timeoutEncounteredGetContainersVulnerabilityScanInfo(podSpecCacheKey)
+		return provider.timeoutEncounteredGetContainersVulnerabilityScanInfo(podSpec, podSpecCacheKey)
 	}
 }
 
@@ -402,22 +402,30 @@ func (provider *AzdSecInfoProvider) buildContainerVulnerabilityScanInfoUnScanned
 // got timeout (GetContainersVulnerabilityScanInfoTimeoutDuration) and returns list with one empty container with
 //unscanned status and contracts.GetContainersVulnerabilityScanInfoTimeoutUnscannedReason.
 // TODO In public preview, we should add timeout without empty container (bad UX) (should be changed also in the REGO).
-func (provider *AzdSecInfoProvider) buildListOfContainerVulnerabilityScanInfoWhenTimeout() ([]*contracts.ContainerVulnerabilityScanInfo, error) {
+func (provider *AzdSecInfoProvider) buildListOfContainerVulnerabilityScanInfoWhenTimeout(podSpec *corev1.PodSpec) ([]*contracts.ContainerVulnerabilityScanInfo, error) {
+	var containerVulnerabilityScanInfoList[] *contracts.ContainerVulnerabilityScanInfo
 
-	info := &contracts.ContainerVulnerabilityScanInfo{
-		Name: "",
-		Image: &contracts.Image{
-			Name:   "",
-			Digest: "",
-		},
-		ScanStatus:   contracts.Unscanned,
-		ScanFindings: nil,
-		AdditionalData: map[string]string{
-			contracts.UnscannedReasonAnnotationKey: string(contracts.GetContainersVulnerabilityScanInfoTimeoutUnscannedReason),
-		},
+	// Iterate over all podSpec containers
+	containers := append(podSpec.InitContainers, podSpec.Containers...)
+	for _, container := range containers{
+		// For each container create info object containing the container name and image name with unscanned status.
+		info := &contracts.ContainerVulnerabilityScanInfo{
+			Name: container.Name,
+			Image: &contracts.Image{
+				Name:   container.Image,
+				Digest: "",
+			},
+			ScanStatus:   contracts.Unscanned,
+			ScanFindings: nil,
+			AdditionalData: map[string]string{
+				contracts.UnscannedReasonAnnotationKey: string(contracts.GetContainersVulnerabilityScanInfoTimeoutUnscannedReason),
+			},
+		}
+
+		// Add info to list
+		containerVulnerabilityScanInfoList = append(containerVulnerabilityScanInfoList, info)
 	}
 
-	containerVulnerabilityScanInfoList := []*contracts.ContainerVulnerabilityScanInfo{info}
 	return containerVulnerabilityScanInfoList, nil
 }
 
@@ -426,7 +434,7 @@ func (provider *AzdSecInfoProvider) buildListOfContainerVulnerabilityScanInfoWhe
 // If it is the first or the second time, it adds the images to the cache and returns unscanned with metadata.
 // If it is the third time or there is an error in the communication with the cache, it returns an error.
 // TODO Add tests for this behavior.
-func (provider *AzdSecInfoProvider) timeoutEncounteredGetContainersVulnerabilityScanInfo(podSpecCacheKey string) ([]*contracts.ContainerVulnerabilityScanInfo, error) {
+func (provider *AzdSecInfoProvider) timeoutEncounteredGetContainersVulnerabilityScanInfo(podSpec *corev1.PodSpec, podSpecCacheKey string) ([]*contracts.ContainerVulnerabilityScanInfo, error) {
 	tracer := provider.tracerProvider.GetTracer("timeoutEncounteredGetContainersVulnerabilityScanInfo")
 
 	// Get the timeoutStatus from cache
@@ -463,7 +471,7 @@ func (provider *AzdSecInfoProvider) timeoutEncounteredGetContainersVulnerability
 	}
 
 	tracer.Info("GetContainersVulnerabilityScanInfo got timeout - returning unscanned", "timeDurationOfTimeout", provider.getContainersVulnerabilityScanInfoTimeoutDuration)
-	return provider.buildListOfContainerVulnerabilityScanInfoWhenTimeout()
+	return provider.buildListOfContainerVulnerabilityScanInfoWhenTimeout(podSpec)
 }
 
 // noTimeoutEncounteredGetContainersVulnerabilityScanInfo getting the scan results, set the results in the cache and reset timeout status
