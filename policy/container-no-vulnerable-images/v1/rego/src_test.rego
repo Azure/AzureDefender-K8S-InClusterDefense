@@ -303,14 +303,14 @@ input_review_unhealthy_2_containers_one_unscanned_and_one_high = {
 input_parameters_empty = {}
 
 input_parameters_tomerazurecr_image_excluded_severityHighTreshold_2 = {
-    "excluded_images_pattern": ["(tomer.azurecr.io).*"],
+    "excludedImages": ["(tomer.azurecr.io).*"],
     "severity" : {
         "High": 2,
     }
 }
 
 input_parameters_liorazurecr_image_excluded_severityHighTreshold_2 = {
-    "excluded_images_pattern": ["(lior.azurecr.io).*"],
+    "excludedImages": ["(lior.azurecr.io).*"],
     "severity" : {
         "High": 2,
     }

@@ -70,7 +70,7 @@ filterContaintersWithExcludedImages(containers) = out{
 }
 # Checks if the registry appers in the exclduded_registreis pattern
 isImageMatchExcludedImagesPattern(image_name){
-  image_pattern := input.parameters["excluded_images_pattern"][_]
+  image_pattern := input.parameters["excludedImages"][_]
   re_match(image_pattern, image_name)
 }
 # Filter ScanFindings
