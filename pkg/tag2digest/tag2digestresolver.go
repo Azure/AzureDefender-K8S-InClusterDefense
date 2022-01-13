@@ -185,11 +185,12 @@ func (resolver *Tag2DigestResolver) getDigest(imageReference registry.IImageRefe
 
 	tracer.Info("Tries DefaultAuth", "imageRef", imageReference)
 
-	// Fallback to DefaultAuth
+	// Last fallback (default)- if this fail we dont get digest
 	digest, err = resolver.registryClient.GetDigestUsingDefaultAuth(imageReference)
 	if err != nil {
 		err = errors.Wrap(err, "Failed to get digest on DefaultAuth")
 		tracer.Error(err, "")
+		resolver.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "Tag2DigestResolver.GetDigest.AllOptionsFailed"))
 		return "", err
 	}
 
