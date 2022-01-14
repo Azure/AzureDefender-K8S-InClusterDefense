@@ -175,8 +175,8 @@
       "then": {
         "effect": "[parameters('effect')]",
         "details": {
-          "constraintTemplate": "https://store.policy.core.windows.net/kubernetes/container-no-vulnerable-images/v1/template.yaml",
-          "constraint": "https://store.policy.core.windows.net/kubernetes/container-no-vulnerable-images/v1/constraint.yaml",
+          "constraintTemplate": "https://raw.githubusercontent.com/Azure/AzureDefender-K8S-InClusterDefense/master/policy/container-no-vulnerable-images/v1/template.yaml",
+          "constraint": "https://raw.githubusercontent.com/Azure/AzureDefender-K8S-InClusterDefense/master/policy/container-no-vulnerable-images/v1/constraint.yaml",
           "excludedNamespaces": "[parameters('excludedNamespaces')]",
           "namespaces": "[parameters('namespaces')]",
           "labelSelector": "[parameters('labelSelector')]",
