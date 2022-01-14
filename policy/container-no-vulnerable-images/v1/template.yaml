@@ -42,18 +42,18 @@ spec:
       rego: |
         package k8sazuredefenderblockvulnerableimages
         # This violation checks if there is a container with unscanned scanStatus.
-        violation[{"msg":msg, "details": details}] {
+        violation[{"msg":msg}] {
             # Extract containers
             containers := getApplicableContainersScanInfo(input.review)
             container := containers[_]
             # Check if the scan status of the container is unscanned.
             container["scanStatus"] == "unscanned"
             # Construct violation msg:
-            msg := sprintf("Unscanned image found in the container <%v>", [container.name])
-            details := container
+            additionalData := getAdditionalData(container)
+            msg := sprintf("Unscanned image found in the container <%v>, additionalData: <%v>", [container.name, additionalData])
         }
         # This violation checks if there is some container that it's sum of the severities of the scanFindings are exceed some thresholds.
-        violation[{"msg":msg, "details": details}] {
+        violation[{"msg":msg}] {
             # Extract containers
             containers := getApplicableContainersScanInfo(input.review)
             container := containers[_]
@@ -63,8 +63,8 @@ spec:
             scanFindings := filterScanFindings(container["scanFindings"])
             isSeverityAboveThreshold(scanFindings)
             # Construct violation msg
-            msg := sprintf("Found vulnerable container: <%v>", [container.name])
-            details := {"Container": container, "ScanFindings": scanFindings}
+            additionalData := getAdditionalData(container)
+            msg := sprintf("Found vulnerable container: <%v>, image name: <%v>, digest: <%v>, additionalData: <%v>", [container.name, container.image.name, container.image.digest, additionalData])
         }
         # Extract the containers from the review object.
         getApplicableContainersScanInfo(review) = containers{
@@ -104,12 +104,12 @@ spec:
           out = [containerVulnerabilityScanInfo | 	containerVulnerabilityScanInfo := containers[_]
           containerVulnerabilityScanInfo["scanStatus"] != "healthyScan"]
         }
-        # Filter containers that are appear in the excluded_images_pattern parameter.
+        # Filter containers that are appear in the excludedImages parameter.
         filterContaintersWithExcludedImages(containers) = out{
           out = [containerVulnerabilityScanInfo | 	containerVulnerabilityScanInfo := containers[_]
           not isImageMatchExcludedImagesPattern(containerVulnerabilityScanInfo["image"]["name"])]
         }
-        # Checks if the registry appers in the exclduded_registreis pattern
+        # Checks if the registry appears in the excludedImages pattern
         isImageMatchExcludedImagesPattern(image_name){
           image_pattern := input.parameters["excludedImages"][_]
           re_match(image_pattern, image_name)
@@ -161,7 +161,14 @@ spec:
         # Check if the total of all findings with severity level of severtyType (patchable and not patchable) is exceeding the threshold
         isSeverityTypeAboveThreshold(scanFindings, severityType){
           # Extract all scanFinding that have serverity level equal to severity type.
-          c := count([scanFinding | 	scanFinding := scanFindings[_]
+          c := count([scanFinding | scanFinding := scanFindings[_]
           scanFinding["severity"] == severityType])
           c > input.parameters.severity[severityType]
+        }
+        getAdditionalData(container) = additionalData{
+         not container.additionalData
+         additionalData = "None" # Default additionalData
+        }
+        getAdditionalData(container) = additionalData{
+         additionalData = container.additionalData	# Extract additionalData from the object
         }
