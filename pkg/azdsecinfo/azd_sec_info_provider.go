@@ -2,6 +2,7 @@ package azdsecinfo
 
 import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/azdsecinfo/contracts"
+	azdsecinfometrics "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/azdsecinfo/metric"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/dataproviders/arg"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
@@ -374,12 +375,16 @@ func (provider *AzdSecInfoProvider) buildContainerVulnerabilityScanInfoFromResul
 		ScanFindings:   scanFindigs,
 		AdditionalData: nil,
 	}
+
+	provider.metricSubmitter.SendMetric(1, azdsecinfometrics.NewContainerVulnScanInfoMetric(scanStatus))
+
 	return info
 }
 
 // buildContainerVulnerabilityScanInfoFromResult build the info object from data provided
 func (provider *AzdSecInfoProvider) buildContainerVulnerabilityScanInfoUnScannedWithReason(container *corev1.Container, reason contracts.UnscannedReason) *contracts.ContainerVulnerabilityScanInfo {
-	return &contracts.ContainerVulnerabilityScanInfo{
+
+	info := &contracts.ContainerVulnerabilityScanInfo{
 		Name: container.Name,
 		Image: &contracts.Image{
 			Name:   container.Image,
@@ -391,6 +396,9 @@ func (provider *AzdSecInfoProvider) buildContainerVulnerabilityScanInfoUnScanned
 			contracts.UnscannedReasonAnnotationKey: string(reason),
 		},
 	}
+
+	provider.metricSubmitter.SendMetric(1, azdsecinfometrics.NewContainerVulnScanInfoMetricWithUnscannedReason(contracts.Unscanned, reason))
+	return info
 }
 
 // buildListOfContainerVulnerabilityScanInfoWhenTimeout is method that is called when the GetContainerVulnerabilityScanInfo
@@ -413,6 +421,9 @@ func (provider *AzdSecInfoProvider) buildListOfContainerVulnerabilityScanInfoWhe
 	}
 
 	containerVulnerabilityScanInfoList := []*contracts.ContainerVulnerabilityScanInfo{info}
+
+	provider.metricSubmitter.SendMetric(1, azdsecinfometrics.NewContainerVulnScanInfoMetricWithUnscannedReason(contracts.Unscanned, contracts.GetContainersVulnerabilityScanInfoTimeoutUnscannedReason))
+
 	return containerVulnerabilityScanInfoList, nil
 }
 
