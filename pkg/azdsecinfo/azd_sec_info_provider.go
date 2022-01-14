@@ -109,6 +109,7 @@ func (provider *AzdSecInfoProvider) GetContainersVulnerabilityScanInfo(podSpec *
 
 	// The key to be set in cache for the pod spec (current request). Without prefix (timeout or ContainerVulnerabilityScanInfo)
 	podSpecCacheKey := provider.cacheClient.GetPodSpecCacheKey(podSpec)
+	tracer.Info("SpecCacheKey", "podSpecCacheKey", podSpecCacheKey)
 
 	// Try to get ContainersVulnerabilityScanInfo from cache
 	// If error is not nil - There are two options: 1. missing key 2. functionality error from cache. In both cases continue to fetch results from provider.

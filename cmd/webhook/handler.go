@@ -92,17 +92,27 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 				err = errors.New(fmt.Sprint(r))
 			}
 			tracer.Error(err, "Handler handle Panic error","resource:", req.Resource,"namespace:", req.Namespace,"Name:", req.Name, "operation:", req.Operation, "reqKind:", req.Kind)
+			handler.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "Handler.Handle.Panic"))
 			// Re throw panic
 			panic(r)
 		}
+
 		// Repost response latency
 		tracer.Info("HandleLatency", "resource", req.Resource, "namespace:", req.Namespace,"Name:", req.Name, "latencyinMS", util.GetDurationMilliseconds(startTime))
 
-		handler.metricSubmitter.SendMetric(util.GetDurationMilliseconds(startTime), webhookmetric.NewHandlerHandleLatencyMetric(req.Kind.Kind, response.Allowed, string(reason)))
+		// Extract response status
+		var responseCode int32
+		var responseResultReasonStr string
+		var patchCount int = len(response.Patches)
+		if response.Result != nil {
+			responseCode = response.Result.Code
+			responseResultReasonStr = string(response.Result.Reason)
+		}
+		tracer.Info("Handle.Response.Result", "resource", req.Resource, "namespace:", req.Namespace,"Name:", req.Name, "Allowed", response.Allowed, "ResultReason", responseResultReasonStr, "code", responseCode, "patchCount", patchCount)
+		handler.metricSubmitter.SendMetric(util.GetDurationMilliseconds(startTime), webhookmetric.NewHandlerHandleLatencyMetric(req.Kind.Kind, response.Allowed, responseResultReasonStr, responseCode))
 	}()
 
 	// Logs
-	tracer.Info("received ctx", "ctx", ctx)
 	tracer.Info("received request", "resource:", req.Resource,"namespace:", req.Namespace,"Name:", req.Name, "operation:", req.Operation, "reqKind:", req.Kind)
 
 	handler.metricSubmitter.SendMetric(1, webhookmetric.NewHandlerNewRequestMetric(req.Kind.Kind, req.Operation))
@@ -184,6 +194,7 @@ func (handler *Handler) getPodContainersVulnerabilityScanInfoAnnotationsOperatio
 
 	// Log result
 	tracer.Info("vulnSecInfoContainers", "vulnSecInfoContainers", vulnSecInfoContainers)
+
 
 	// Create the annotations add json patch operation
 	vulnerabilitySecAnnotationsPatch, err := annotations.CreateContainersVulnerabilityScanAnnotationPatchAdd(vulnSecInfoContainers, pod)
