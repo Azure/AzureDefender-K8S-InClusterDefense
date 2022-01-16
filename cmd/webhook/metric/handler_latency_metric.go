@@ -13,7 +13,7 @@ type HandlerHandleLatencyMetric struct {
 	requestKind string
 	responseAllowed bool
 	responseReason string
-	responseStatusCode int32
+	responseStatusCode int
 	patchCount int
 }
 
@@ -23,7 +23,7 @@ func NewHandlerHandleLatencyMetric(kind string, responseAllowed bool, responseRe
 		requestKind: kind,
 		responseAllowed: responseAllowed,
 		responseReason: responseReason,
-		responseStatusCode: responseStatusCode,
+		responseStatusCode: int(responseStatusCode),
 		patchCount: patchCount,
 	}
 }
@@ -37,7 +37,7 @@ func (m *HandlerHandleLatencyMetric) MetricDimension() []metric.Dimension {
 		{Key: "RequestKind", Value: m.requestKind},
 		{Key: "ResponseAllowed", Value: strconv.FormatBool(m.responseAllowed)},
 		{Key: "ResponseReason", Value: m.responseReason},
-		{Key: "ResponseReasonStatusCode", Value: string(m.responseStatusCode)},
-		{Key: "PatchCount", Value: string(m.patchCount)},
+		{Key: "ResponseReasonStatusCode", Value: strconv.Itoa(m.responseStatusCode)},
+		{Key: "PatchCount", Value: strconv.Itoa(m.patchCount)},
 	}
 }
