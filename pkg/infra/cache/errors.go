@@ -2,6 +2,7 @@ package cache
 
 import (
 	"fmt"
+	"github.com/pkg/errors"
 	"time"
 )
 
@@ -37,6 +38,6 @@ func (err *NegativeExpirationCacheError) Error() string {
 }
 
 func IsMissingKeyCacheError(err error) bool{
-	_, isKeyNotFound := err.(*MissingKeyCacheError)
+	_, isKeyNotFound := errors.Cause(err).(*MissingKeyCacheError)
 	return isKeyNotFound
 }
