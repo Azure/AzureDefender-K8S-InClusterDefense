@@ -11,7 +11,7 @@ AzDProxy:
     # Image values:
     image:
       # -- Official image.
-      name: "azdproxy-image"
+      name: "azuredefendermcrdev.azurecr.io/public/azuredefender/dev/in-cluster-defense:e6b287915b898c25c4d1353d022007dd2b4a87e0"
       # -- Default for always. in case that you want to use local registry, change to 'Never'.
       pullPolicy: "Always"
     # -- The path that the webhook handler will be listening on.
