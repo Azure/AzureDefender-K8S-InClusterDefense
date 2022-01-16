@@ -130,12 +130,12 @@ else
 	$deployment_name = "mdfc-incluster-$cluster_name-$region"
 
 	az deployment sub create --name  $deployment_name  --location $region `
-														--template-file .\deploy\azure-templates\AzureDefenderInClusterDefense.Dependecies.Template.json `
+														--template-file .\azure-templates\AzureDefenderInClusterDefense.Dependecies.Template.json `
 														--parameters `
 															resource_group=$node_resource_group `
 															location=$region `
                                                             managedIdentityName=$in_cluster_defense_identity_name
-															
+
 }
 
 
@@ -184,7 +184,7 @@ else
     # TODO Change the teamplate file to uri.
     $deployment_name = "mdfc-profile-$cluster_name-$region"
     az deployment sub create --name $deployment_name    --location "$region" `
-                                                        --template-file .\deploy\azure-templates\Tivan.Dependencies.Template.json `
+                                                        --template-file .\azure-templates\Tivan.Dependencies.Template.json `
                                                         --parameters `
                                                             subscriptionId=$subscription `
                                                             clusterName=$cluster_name `
@@ -241,11 +241,11 @@ $HELM_EXPERIMENTAL_OCI = 1
 
 # TODO Change to remote repo once helm chart is published to public repo.
 #helm upgrade --install microsoft-in-cluster-defense azuredefendermcrprod.azurecr.io/public/azuredefender/stable/in-cluster-defense-helm:$helm_chart_version `
-helm upgrade in-cluster-defense charts/azdproxy --install --wait `
+helm upgrade in-cluster-defense .\azdproxy.tar.gz --install --wait `
             -n kube-system `
                 --set AzDProxy.kubeletIdentity.envAzureAuthorizerConfiguration.mSIClientId=$kubelet_client_id `
                 --set AzDProxy.azdIdentity.envAzureAuthorizerConfiguration.mSIClientId=$in_cluster_defense_identity_client_id `
                 --set "AzDProxy.arg.argClientConfiguration.subscriptions={$subscription}" `
                 --set AzDProxy.instrumentation.tivan.tivanInstrumentationConfiguration.region=$region `
                 --set AzDProxy.instrumentation.tivan.tivanInstrumentationConfiguration.azureResourceID=$azureResourceID `
-                --set AzDProxy.webhook.image.name=azuredefendermcrdev.azurecr.io/public/azuredefender/dev/in-cluster-defense:1623fa8e69177df64364af0df9f065a52c80adcf # TODO Delete above line once helm chart is published to public repo.
+#                 --set AzDProxy.webhook.image.name=azuredefendermcrdev.azurecr.io/public/azuredefender/dev/in-cluster-defense:1623fa8e69177df64364af0df9f065a52c80adcf # TODO Delete above line once helm chart is published to public repo.
