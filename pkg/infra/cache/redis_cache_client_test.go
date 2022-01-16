@@ -6,6 +6,7 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/retrypolicy"
 	"github.com/go-redis/redis/v8"
 	"github.com/go-redis/redismock/v8"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/suite"
 	"testing"
 	"time"
@@ -24,7 +25,7 @@ const (
 )
 
 var (
-	_cacheContext = context.Background()
+	_cacheContext    = context.Background()
 	_retryPolicy     retrypolicy.IRetryPolicy
 	_client          *RedisCacheClient
 	_redisClientMock *redis.Client
@@ -100,6 +101,15 @@ func (suite *TestSuiteRedisCache) Test_Ping_NotPong() {
 	// Act
 	err := _client.Ping()
 	suite.IsType(redis.Nil, err)
+}
+
+func (suite *TestSuiteRedisCache) Test_IsMissingKeyError() {
+	err := NewMissingKeyCacheError("key")
+	suite.True(IsMissingKeyCacheError(err))
+	err = errors.Wrap(err, "wrap")
+	suite.True(IsMissingKeyCacheError(err))
+	err = errors.Wrap(err, "wrap2")
+	suite.True(IsMissingKeyCacheError(err))
 }
 
 func (suite *TestSuiteRedisCache) assertExpectationsMocks() {
