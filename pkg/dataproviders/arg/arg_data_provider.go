@@ -5,6 +5,7 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/azdsecinfo/contracts"
 	argmetric "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/dataproviders/arg/metric"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/dataproviders/arg/queries"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/cache"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric/util"
@@ -87,8 +88,13 @@ func (provider *ARGDataProvider) GetImageVulnerabilityScanResults(registry strin
 	// Try to get results from cache. If a key doesn't exist or an error occurred - continue without cache
 	scanStatus, scanFindings, err := provider.cacheClient.GetResultsFromCache(digest)
 	if err != nil { // Couldn't get ImageVulnerabilityScanResults from cache - skip and get results from provider
-		err = errors.Wrap(err, "Couldn't get ImageVulnerabilityScanResults from cache")
-		tracer.Error(err, "")
+		if cache.IsMissingKeyCacheError(err){
+			tracer.Info("Missin key. Couldn't get ImageVulnerabilityScanResults from cache: Digest not in cache", "digest", digest)
+		}else{
+			err = errors.Wrap(err, "Couldn't get ImageVulnerabilityScanResults from cache: error encountered")
+			tracer.Error(err, "")
+			provider.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "ARGDataProvider.GetImageVulnerabilityScanResults"))
+		}
 	} else { //  Key exist in cache
 		tracer.Info("got ImageVulnerabilityScanResults from cache")
 		return scanStatus, scanFindings, nil

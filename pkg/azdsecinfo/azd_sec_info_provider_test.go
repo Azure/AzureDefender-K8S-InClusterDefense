@@ -94,9 +94,9 @@ var (
 
 	// Test3
 	info3 = &contracts.ContainerVulnerabilityScanInfo{
-		Name: "",
+		Name: _containers[0].Name,
 		Image: &contracts.Image{
-			Name:   "",
+			Name:   _containers[0].Image,
 			Digest: "",
 		},
 		ScanStatus:   contracts.Unscanned,
