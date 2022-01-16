@@ -58,12 +58,21 @@ func (suite *TimeUtilsTestSuite) Test_GetHours() {
 
 func (suite *TimeUtilsTestSuite) Test_Repeat() {
 	previousTime := time.Now()
-	RepeatEveryTick(time.Millisecond*20, func() error {
-		suite.True(time.Since(previousTime) >= time.Millisecond)
+	called := false
+	calledInIf := false
+	RepeatEveryTick(time.Second, func() error {
+		if called {
+			diff := time.Now().Sub(previousTime)
+			suite.GreaterOrEqual(diff, time.Millisecond * time.Duration(500))
+			calledInIf = true
+		}
 		previousTime = time.Now()
+		called = true
 		return nil
 	})
-	time.Sleep(time.Millisecond * 100)
+	time.Sleep(time.Second * 3)
+	suite.True(called)
+	suite.True(calledInIf)
 }
 
 // We need this function to kick off the test suite, otherwise

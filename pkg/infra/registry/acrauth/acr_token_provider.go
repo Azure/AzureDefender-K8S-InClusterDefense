@@ -83,7 +83,6 @@ func (tokenProvider *ACRTokenProvider) GetACRRefreshToken(registry string) (stri
 	if err != nil {
 		err = errors.Wrap(err, "Failed to get armToken")
 		tracer.Error(err, "")
-		tokenProvider.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "ACRTokenProvider.GetACRRefreshToken"))
 		return "", err
 	}
 
@@ -92,7 +91,6 @@ func (tokenProvider *ACRTokenProvider) GetACRRefreshToken(registry string) (stri
 	if err != nil {
 		err = errors.Wrap(err, "Failed to exchange ACR access token")
 		tracer.Error(err, "")
-		tokenProvider.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "ACRTokenProvider.GetACRRefreshToken"))
 		return "", err
 	}
 

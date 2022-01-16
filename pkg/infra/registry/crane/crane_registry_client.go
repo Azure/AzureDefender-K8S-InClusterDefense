@@ -56,6 +56,7 @@ func (client *CraneRegistryClient) GetDigestUsingACRAttachAuth(imageReference re
 	if imageReference == nil {
 		err := errors.Wrap(utils.NilArgumentError, "CraneRegistryClient.GetDigestUsingACRAttachAuth")
 		tracer.Error(err, "")
+		client.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "CraneRegistryClient.GetDigestUsingK8SAuth"))
 		return "", err
 	}
 
@@ -64,7 +65,6 @@ func (client *CraneRegistryClient) GetDigestUsingACRAttachAuth(imageReference re
 	if err != nil {
 		err = errors.Wrap(err, "CraneRegistryClient.GetDigestUsingACRAttachAuth: could not create acrKeychain")
 		tracer.Error(err, "")
-		client.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "CraneRegistryClient.GetDigestUsingACRAttachAuth"))
 		return "", err
 	}
 
@@ -74,7 +74,6 @@ func (client *CraneRegistryClient) GetDigestUsingACRAttachAuth(imageReference re
 		// Report error
 		err = errors.Wrap(err, "Failed with client. getDigest:")
 		tracer.Error(err, "")
-		client.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "CraneRegistryClient.GetDigestUsingACRAttachAuth"))
 		return "", err
 	}
 
@@ -102,7 +101,6 @@ func (client *CraneRegistryClient) GetDigestUsingK8SAuth(imageReference registry
 	if err != nil {
 		err = errors.Wrap(err, "CraneRegistryClient.GetDigestUsingK8SAuth: could not create k8sKeychain")
 		tracer.Error(err, "")
-		client.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "CraneRegistryClient.GetDigestUsingK8SAuth"))
 		return "", err
 	}
 
@@ -112,7 +110,6 @@ func (client *CraneRegistryClient) GetDigestUsingK8SAuth(imageReference registry
 		// Report error
 		err = errors.Wrap(err, "Failed with client.getDigest:")
 		tracer.Error(err, "")
-		client.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "CraneRegistryClient.GetDigestUsingK8SAuth"))
 		return "", err
 	}
 
@@ -139,7 +136,6 @@ func (client *CraneRegistryClient) GetDigestUsingDefaultAuth(imageReference regi
 		// Report error
 		err = errors.Wrap(err, "Failed with client.getDigest")
 		tracer.Error(err, "")
-		client.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "CraneRegistryClient.GetDigestUsingDefaultAuth"))
 		return "", err
 	}
 
@@ -163,7 +159,6 @@ func (client *CraneRegistryClient) getDigest(imageReference registry.IImageRefer
 		// Report error
 		err = errors.Wrapf(err, "CraneRegistryClient.getDigest with receivedKeyChainType %v", receivedKeyChainType)
 		tracer.Error(err, "")
-		client.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "CraneRegistryClient.getDigest"))
 		return "", err
 	}
 
