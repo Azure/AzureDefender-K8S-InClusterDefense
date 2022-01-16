@@ -84,6 +84,9 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 	tracer := handler.tracerProvider.GetTracer("Handle")
 	response := admission.Response{}
 	reason := _notPatchedReason
+	podName  := ""
+	var podOwnerRefrences[] metav1.OwnerReference
+
 	var err error
 	defer func() {
 		if r := recover(); r != nil {
@@ -91,14 +94,13 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 			if !ok {
 				err = errors.New(fmt.Sprint(r))
 			}
-			tracer.Error(err, "Handler handle Panic error","resource:", req.Resource,"namespace:", req.Namespace,"Name:", req.Name, "operation:", req.Operation, "reqKind:", req.Kind)
+			tracer.Error(err, "Handler handle Panic error","resource:", req.Resource,"namespace:", req.Namespace,"Name:", req.Name,"podOwnerRefrences:",podOwnerRefrences, "PodName:", podName, "operation:", req.Operation, "reqKind:", req.Kind)
 			handler.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "Handler.Handle.Panic"))
 			// Re throw panic
 			panic(r)
 		}
-
 		// Repost response latency
-		tracer.Info("HandleLatency", "resource", req.Resource, "namespace:", req.Namespace,"Name:", req.Name, "latencyinMS", util.GetDurationMilliseconds(startTime))
+		tracer.Info("HandleLatency", "resource", req.Resource, "namespace:", req.Namespace,"Name:", req.Name,"podOwnerRefrences:",podOwnerRefrences, "PodName:", podName, "latencyinMS", util.GetDurationMilliseconds(startTime))
 
 		// Extract response status
 		var responseCode int32
@@ -109,7 +111,7 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 			responseResultReasonStr = string(response.Result.Reason)
 		}
 		tracer.Info("Handle.Response.Result", "resource", req.Resource, "namespace:", req.Namespace,"Name:", req.Name, "Allowed", response.Allowed, "ResultReason", responseResultReasonStr, "code", responseCode, "patchCount", patchCount)
-		handler.metricSubmitter.SendMetric(util.GetDurationMilliseconds(startTime), webhookmetric.NewHandlerHandleLatencyMetric(req.Kind.Kind, response.Allowed, responseResultReasonStr, responseCode))
+		handler.metricSubmitter.SendMetric(util.GetDurationMilliseconds(startTime), webhookmetric.NewHandlerHandleLatencyMetric(req.Kind.Kind, response.Allowed, responseResultReasonStr, responseCode, patchCount))
 	}()
 
 	// Logs
@@ -123,8 +125,20 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 		response = admission.Allowed(string(reason))
 		return response
 	}
+	pod, err := admisionrequest.UnmarshalPod(&req)
+	if err != nil {
+		err = errors.Wrap(err, "Handler.Handle received error on handlePodRequest")
+		tracer.Error(err, "")
+		handler.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "Handle.handlePodRequest"))
+		reason = _notPatchedErrorReason
+		response = handler.admissionErrorResponse(errors.Wrap(err, string(reason)))
+		return response
+	}
+	tracer.Info("Pod request unmarshall","resource:", req.Resource,"namespace:", req.Namespace,"podName:", pod.Name, "podOwnerRefrences:", podOwnerRefrences, "podOwners:", pod.OwnerReferences, "operation:", req.Operation, "reqKind:", req.Kind)
+	podName = pod.Name
+	podOwnerRefrences = pod.OwnerReferences
 
-	response, err = handler.handlePodRequest(&req)
+	response, err = handler.handlePodRequest(pod)
 	if err != nil {
 		err = errors.Wrap(err, "Handler.Handle received error on handlePodRequest")
 		tracer.Error(err, "")
@@ -149,18 +163,10 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 }
 
 // handlePodRequest gets request that should be handled and returned the response with the relevant patches.
-func (handler *Handler) handlePodRequest(req *admission.Request) (admission.Response, error) {
+func (handler *Handler) handlePodRequest(pod *corev1.Pod) (admission.Response, error) {
 	tracer := handler.tracerProvider.GetTracer("handlePodRequest")
 
 	patches := []jsonpatch.JsonPatchOperation{}
-
-	pod, err := admisionrequest.UnmarshalPod(req)
-	if err != nil {
-		err = errors.Wrap(err, "Handler.handlePodRequest failed to admisionrequest.UnmarshalPod req")
-		tracer.Error(err, "")
-		handler.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "handlePodRequest.UnmarshalPod"))
-		return admission.Response{}, err
-	}
 
 	vulnerabilitySecAnnotationsPatch, err := handler.getPodContainersVulnerabilityScanInfoAnnotationsOperation(pod)
 	if err != nil {
@@ -194,7 +200,6 @@ func (handler *Handler) getPodContainersVulnerabilityScanInfoAnnotationsOperatio
 
 	// Log result
 	tracer.Info("vulnSecInfoContainers", "vulnSecInfoContainers", vulnSecInfoContainers)
-
 
 	// Create the annotations add json patch operation
 	vulnerabilitySecAnnotationsPatch, err := annotations.CreateContainersVulnerabilityScanAnnotationPatchAdd(vulnSecInfoContainers, pod)

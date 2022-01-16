@@ -95,7 +95,10 @@ func NewAzdSecInfoProviderCacheClient(instrumentationProvider instrumentation.II
 
 // GetContainerVulnerabilityScanInfofromCache try to get ContainerVulnerabilityScanInfo from cache.
 // It gets the results from the cache and parse it to containerVulnerabilityCacheResultsWrapper object.
-// If there is an error with the cache or the value is invalid returns an error.
+// Returns:
+// []*contracts.ContainerVulnerabilityScanInfo - If scan results was STORED in cache as value from previous scans, otherwise nil
+// error - If error was STORED in cache as value from previous scans, otherwise nil
+//If there is an error with the cache or the value is invalid returns an error.
 func (client *AzdSecInfoProviderCacheClient) GetContainerVulnerabilityScanInfofromCache(podSpecCacheKey string) ([]*contracts.ContainerVulnerabilityScanInfo, error, error) {
 	tracer := client.tracerProvider.GetTracer("GetContainerVulnerabilityScanInfofromCache")
 	// Get the key
@@ -105,13 +108,12 @@ func (client *AzdSecInfoProviderCacheClient) GetContainerVulnerabilityScanInfofr
 	scanInfoWrapperStringFromCache, err := client.cacheClient.Get(ContainerVulnerabilityScanInfoCacheKey)
 	if err != nil { // Key don't exist in cache or error with cache functionality
 		// Check if the error is MissingKeyCacheError
-		_, isKeyNotFound := err.(*cache.MissingKeyCacheError)
-		if isKeyNotFound { // The key not in the cache
-			tracer.Info("ContainerVulnerabilityScanInfoCacheKey is not in cache", "ContainerVulnerabilityScanInfoCacheKey", ContainerVulnerabilityScanInfoCacheKey)
+		if cache.IsMissingKeyCacheError(err) { // The key not in the cache
+			tracer.Info("Missing key. ContainerVulnerabilityScanInfoCacheKey is not in cache", "ContainerVulnerabilityScanInfoCacheKey", ContainerVulnerabilityScanInfoCacheKey)
 			return nil, nil, err
 		}
 		// error with cache functionality
-		err = errors.Wrap(err, "falied to get ContainerVulnerabilityScanInfo from cache")
+		err = errors.Wrap(err, "Failed to get ContainerVulnerabilityScanInfo from cache")
 		tracer.Error(err, "")
 		client.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "AzdSecInfoProviderCacheClient.GetContainerVulnerabilityScanInfofromCache"))
 		return nil, nil, err
@@ -175,9 +177,8 @@ func (client *AzdSecInfoProviderCacheClient) GetTimeOutStatus(podSpecCacheKey st
 	// Key don't exist in cache or error with cache functionality
 	if err != nil {
 		// Check if the error is MissingKeyCacheError
-		_, isKeyNotFound := err.(*cache.MissingKeyCacheError)
-		if isKeyNotFound { // The key not in the cache
-			tracer.Info("timeOutCacheKey is not in cache", "timeOutCacheKey", timeOutCacheKey)
+		if cache.IsMissingKeyCacheError(err) { // The key not in the cache
+			tracer.Info("Missing key. TimeOutCacheKey not in cache", "timeOutCacheKey", timeOutCacheKey)
 			return _noTimeOutEncountered, nil
 		}
 		// error with cache functionality - _unknownTimeOutStatus.
@@ -236,10 +237,8 @@ func (client *AzdSecInfoProviderCacheClient) ResetTimeOutInCacheAfterGettingScan
 	// Check if the timeOutCacheKey is already in cache
 	timeoutEncounteredString, err := client.cacheClient.Get(timeOutCacheKey)
 	if err != nil {
-		_, isKeyNotFound := err.(*cache.MissingKeyCacheError)
-		// If key not found err trace it and return nil
-		if isKeyNotFound {
-			tracer.Info("timeOutCacheKey is not in cache", "timeOutCacheKey", timeOutCacheKey)
+		if 	cache.IsMissingKeyCacheError(err) {
+			tracer.Info("Missing key. TimeOutCacheKey is not in cache", "timeOutCacheKey", timeOutCacheKey)
 			return nil
 		}
 		// Error in cache functionality - return the error

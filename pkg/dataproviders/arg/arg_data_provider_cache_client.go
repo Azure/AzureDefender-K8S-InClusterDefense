@@ -66,9 +66,8 @@ func (client *ARGDataProviderCacheClient) GetResultsFromCache(digest string) (co
 
 	// Nothing found in cache for digest as key
 	if err != nil { // Error as a result of key doesn't exist or other error from the cache functionality are treated the same (skip cache)
-		_, isKeyNotFound := err.(*cache.MissingKeyCacheError)
-		if isKeyNotFound {
-			tracer.Info("digest as key is not in cache", "digest", digest)
+		if cache.IsMissingKeyCacheError(err) {
+			tracer.Info("Missing key. Digest as key not in cache", "digest", digest)
 			return "", nil, err
 		}
 		err = errors.Wrap(err, "scanFindings as value don't exist in cache or there is an error in cache functionality")
