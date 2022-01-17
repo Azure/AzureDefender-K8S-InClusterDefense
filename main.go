@@ -218,7 +218,9 @@ func main() {
 	if err != nil {
 		log.Fatal("main.NewArgBaseClientWrapper", err)
 	}
-	argClient := arg.NewARGClient(instrumentationProvider, argBaseClient, argClientConfiguration)
+
+	argClientRetryPolicy:= retrypolicy.NewRetryPolicy(instrumentationProvider, argBaseClientRetryPolicyConfiguration)
+	argClient := arg.NewARGClient(instrumentationProvider, argBaseClient, argClientConfiguration, argClientRetryPolicy)
 	argQueryGenerator, err := argqueries.CreateARGQueryGenerator(instrumentationProvider)
 	if err != nil {
 		log.Fatal("main.CreateARGQueryGenerator", err)

@@ -8,7 +8,8 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric/util"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
-	arg "github.com/Azure/azure-sdk-for-go/services/resourcegraph/mgmt/2021-03-01/resourcegraph"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/retrypolicy"
+	argsdk "github.com/Azure/azure-sdk-for-go/services/resourcegraph/mgmt/2021-03-01/resourcegraph"
 	"github.com/pkg/errors"
 )
 
@@ -17,6 +18,7 @@ const MAX_TOP_RESULTS_IN_PAGE_OF_ARG = 1000
 
 var (
 	_errArgQueryResponseIsNotAnObjectListFormat = fmt.Errorf("ARGClient.QueryResources ARG query response data is not an object list")
+	_errEmptyResultFromARG                      = fmt.Errorf("ARGClient.QueryResources ARG query response with no records")
 )
 
 // IARGClient is an interface for our arg client implementation
@@ -35,8 +37,10 @@ type ARGClient struct {
 	// argBaseClientWrapper is the wrapper for ARG base client for the Resources function.
 	argBaseClientWrapper wrappers.IARGBaseClientWrapper
 	//argQueryReqOptions is the options for query evaluation of the ARGClient
-	argQueryReqOptions *arg.QueryRequestOptions
+	argQueryReqOptions *argsdk.QueryRequestOptions
 	subscriptions      *[]string
+	//retryPolicy retry policy for communication with ARG.
+	retryPolicy retrypolicy.IRetryPolicy
 }
 
 type ARGClientConfiguration struct {
@@ -45,7 +49,7 @@ type ARGClientConfiguration struct {
 }
 
 // NewARGClient Constructor
-func NewARGClient(instrumentationProvider instrumentation.IInstrumentationProvider, argBaseClientWrapper wrappers.IARGBaseClientWrapper, configuration *ARGClientConfiguration) *ARGClient {
+func NewARGClient(instrumentationProvider instrumentation.IInstrumentationProvider, argBaseClientWrapper wrappers.IARGBaseClientWrapper, configuration *ARGClientConfiguration, retryPolicy retrypolicy.IRetryPolicy) *ARGClient {
 	// We need this var for unittests - in unittests we reduce it from 1000 to smaller number.
 	requestQueryTop := int32(MAX_TOP_RESULTS_IN_PAGE_OF_ARG)
 	subscriptions := &configuration.Subscriptions
@@ -59,8 +63,9 @@ func NewARGClient(instrumentationProvider instrumentation.IInstrumentationProvid
 		tracerProvider:       instrumentationProvider.GetTracerProvider("ARGClient"),
 		metricSubmitter:      instrumentationProvider.GetMetricSubmitter(),
 		argBaseClientWrapper: argBaseClientWrapper,
-		argQueryReqOptions:   &arg.QueryRequestOptions{ResultFormat: arg.ResultFormatObjectArray, Top: &requestQueryTop},
+		argQueryReqOptions:   &argsdk.QueryRequestOptions{ResultFormat: argsdk.ResultFormatObjectArray, Top: &requestQueryTop},
 		subscriptions:        subscriptions,
+		retryPolicy:          retryPolicy,
 	}
 }
 
@@ -69,9 +74,29 @@ func (client *ARGClient) QueryResources(query string) ([]interface{}, error) {
 	tracer := client.tracerProvider.GetTracer("QueryResources")
 	// Creates new request
 	request := client.initDefaultQueryRequest(query)
+	var totalResults []interface{}
+	var err error
 
-	totalResults, err := client.fetchAllResults(&request)
-	if err != nil {
+	// TODO add UT
+	err = client.retryPolicy.RetryAction(
+		// Action - set the values total result and err.
+		func() error {
+			totalResults, err = client.fetchAllResults(&request)
+			if err != nil {
+				return err
+			}
+			if len(totalResults) == 0 {
+				return _errEmptyResultFromARG
+			}
+			return nil
+		},
+		// HandleError - if the empty records, retry.
+		// TODO make sure all errors type/value compare are not wrapped + UT
+		func(err error) bool { return errors.Is(err, _errEmptyResultFromARG) },
+	)
+
+	// Err is not nil and also not empty retry error
+	if err != nil && !errors.Is(err, _errEmptyResultFromARG) {
 		tracer.Error(err, "failed on fetchAllResults ")
 		client.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "ARGClient.QueryResources"))
 		return nil, err
@@ -91,7 +116,7 @@ func (client *ARGClient) QueryResources(query string) ([]interface{}, error) {
 
 // fetchAllResults from ARG using pagination. the pagination based on the skiptoken that is returned in the
 // response of ARG.
-func (client *ARGClient) fetchAllResults(request *arg.QueryRequest) ([]interface{}, error) {
+func (client *ARGClient) fetchAllResults(request *argsdk.QueryRequest) ([]interface{}, error) {
 	tracer := client.tracerProvider.GetTracer("fetchAllResults")
 	// Create new totalResults array - default value is nil
 	var totalResults []interface{}
@@ -132,15 +157,15 @@ func (client *ARGClient) fetchAllResults(request *arg.QueryRequest) ([]interface
 }
 
 // initDefaultQueryRequest initialize default arg.QueryRequest.
-func (client *ARGClient) initDefaultQueryRequest(query string) arg.QueryRequest {
+func (client *ARGClient) initDefaultQueryRequest(query string) argsdk.QueryRequest {
 	// Create request options - result format should be array. extracting values from client.argQueryReqOptions for preventing case of overriding default values (e.g. SkipToken)
-	requestOptions := arg.QueryRequestOptions{
+	requestOptions := argsdk.QueryRequestOptions{
 		ResultFormat: client.argQueryReqOptions.ResultFormat,
 		Top:          client.argQueryReqOptions.Top,
 	}
 
 	// Create the query request
-	request := arg.QueryRequest{
+	request := argsdk.QueryRequest{
 		Query:         &query,
 		Options:       &requestOptions,
 		Subscriptions: client.subscriptions,
