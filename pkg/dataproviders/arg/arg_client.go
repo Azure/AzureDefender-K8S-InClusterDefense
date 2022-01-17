@@ -79,7 +79,7 @@ func (client *ARGClient) QueryResources(query string) ([]interface{}, error) {
 
 	// TODO add UT
 	err = client.retryPolicy.RetryAction(
-		// Action - set the values redis client.
+		// Action - set the values total result and err.
 		func() error {
 			totalResults, err = client.fetchAllResults(&request)
 			if err != nil {
