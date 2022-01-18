@@ -143,8 +143,7 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 		err = errors.Wrap(err, "Handler.Handle received error on handlePodRequest")
 		tracer.Error(err, "")
 		handler.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "Handle.handlePodRequest"))
-		reason = _notPatchedErrorReason
-		response = handler.admissionErrorResponse(errors.Wrap(err, string(reason)))
+		response := handler.getResponseWhenErrorEncountered(pod, err)
 		return response
 	}
 
@@ -181,6 +180,40 @@ func (handler *Handler) handlePodRequest(pod *corev1.Pod) (admission.Response, e
 
 	// Patch all patches operations
 	return admission.Patched(string(_patchedReason), patches...), nil
+}
+// getResponseWhenErrorEncountered returns a response in which it deletes previous ContainersVulnerabilityScan annotations.
+// If no such annotations exist it returns handler.admissionErrorResponse with the original error.
+func (handler *Handler) getResponseWhenErrorEncountered(pod *corev1.Pod, originalError error) admission.Response {
+	tracer := handler.tracerProvider.GetTracer("getResponseWhenErrorEncountered")
+
+	patches := []jsonpatch.JsonPatchOperation{}
+
+	patch, err := annotations.CreateAnnotationPatchToDeleteContainersVulnerabilityScanAnnotation(pod)
+
+	// if error encountered during CreateAnnotationPatchToDeleteContainersVulnerabilityScanAnnotation - response with the original error
+	if err != nil {
+		err = errors.Wrap(err, "Handler.getResponseWhenErrorEncountered Failed to CreateAnnotationPatchToDeleteContainersVulnerabilityScanAnnotation for Pod")
+		tracer.Error(err, "")
+		handler.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "Handler.getResponseWhenErrorEncountered"))
+		reason := _notPatchedErrorReason
+		response := handler.admissionErrorResponse(errors.Wrap(originalError, string(reason)))
+		return response
+	}
+
+	// patch is nil when the pod's annotations doesn't contain the webhook annotations so there is no need to delete them.
+	// response with the original error
+	if patch == nil{
+		tracer.Info("ContainersVulnerabilityScanAnnotation dont exist - no need to delete them ")
+		reason := _notPatchedErrorReason
+		response := handler.admissionErrorResponse(errors.Wrap(originalError, string(reason)))
+		return response
+	}
+
+	// Add to response patches
+	patches = append(patches, *patch)
+
+	// Patch all patches operations
+	return admission.Patched(string(_patchedReason), patches...)
 }
 
 // getPodContainersVulnerabilityScanInfoAnnotationsOperation receives a pod to generate a vuln scan annotation add operation
