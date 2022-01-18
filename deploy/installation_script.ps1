@@ -41,6 +41,26 @@ Function PrintNewSection($stepTitle)
     write-host "########################################## Step: $stepTitle ##########################################"
 }
 #######################################################################################################################
+PrintNewSection("Checking Prerequisite")
+
+write-host "Checking if azure-cli is installed"
+$temp = az --help
+if ($LASTEXITCODE -eq 0){
+    Write-Host "azure-cli is installed"
+}else{
+    Write-Host "Did not find azure-cli installed, please make sure you install it and add it to the PATH variables. For more information https://docs.microsoft.com/en-us/cli/azure/install-azure-cli"
+    exist 1
+}
+
+write-host "Checking if helm is installed"
+if ($LASTEXITCODE -eq 0){
+    Write-Host "Helm is installed"
+}else{
+    Write-Host "Did not find helm installed, please make sure you install it and add it to the PATH variables (recommended version: helm v3.6.3). For more information https://helm.sh/docs/intro/install/"
+    exist 1
+}
+
+#######################################################################################################################
 
 PrintNewSection("Setting account to subscription")
 # login with az login.
@@ -49,7 +69,7 @@ az account set -s $subscription
 if ($LASTEXITCODE -gt 0)
 {
     write-error "Subscription not exit or wrong permissions"
-    exit
+    exit 1
 }
 
 #                                   Extract used variables
