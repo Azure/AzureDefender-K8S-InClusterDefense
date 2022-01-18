@@ -28,6 +28,10 @@ import (
 const (
 	_expectedTestAddPatchOperation   = "add"
 	_expectedTestAnnotationPatchPath = "/metadata/annotations"
+	_annotationTestKeyOne = "cluster-autoscaler.kubernetes.io/safe-to-evict"
+	_annotationTestValueOne = "true"
+	_annotationTestKeyTwo = "container.seccomp.security.alpha.kubernetes.io/manager"
+	_annotationTestValueTwo = "runtime/default"
 )
 
 var (
@@ -48,6 +52,21 @@ var (
 
 	_firstContainerVulnerabilityScanInfo  = &contracts.ContainerVulnerabilityScanInfo{Name: "Lior"}
 	_secondContainerVulnerabilityScanInfo = &contracts.ContainerVulnerabilityScanInfo{Name: "Or"}
+
+	_expectedPatchForErrorEncountered1 = jsonpatch.Operation{
+		Operation: "add",
+		Path: _expectedTestAnnotationPatchPath,
+		Value: map[string]string{
+			_annotationTestKeyOne : _annotationTestValueOne,
+			_annotationTestKeyTwo : _annotationTestValueTwo,
+		},
+	}
+
+	_expectedPatchForErrorEncountered2 = jsonpatch.Operation{
+		Operation: "add",
+		Path: _expectedTestAnnotationPatchPath,
+		Value: map[string]string{},
+	}
 )
 
 type TestSuite struct {
@@ -289,7 +308,7 @@ func (suite *TestSuite) Test_Handle_OneContainerOneInitContainer_ShouldPatchedTw
 	suite.azdSecProviderMock.AssertExpectations(suite.T())
 }
 
-func (suite *TestSuite) Test_Handle_Error_AllowedTrueWithError() {
+func (suite *TestSuite) Test_Handle_Error_AllowedTrueWithError_PodNoAnnotations() {
 	// Setup
 	containers := []corev1.Container{_containers[0]}
 	pod := createPodForTests(nil, containers)
@@ -314,6 +333,84 @@ func (suite *TestSuite) Test_Handle_Error_AllowedTrueWithError() {
 	suite.True(resp.Allowed)
 	suite.Equal(0, len(resp.Patches))
 	suite.Nil( resp.Patches)
+	suite.azdSecProviderMock.AssertExpectations(suite.T())
+}
+
+func (suite *TestSuite) Test_Handle_Error_AllowedTrueWithError_PodWithAnnotations() {
+	// Setup
+	containers := []corev1.Container{_containers[0]}
+	pod := createPodForTestsWithAnnotations(nil, containers)
+	req := createRequestForTests(pod)
+
+	err := errors.New("MockError!!")
+
+	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", &pod.Spec, &pod.ObjectMeta, &pod.TypeMeta).Return(nil, err).Once()
+
+	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider())
+
+	// Act
+	resp := handler.Handle(context.Background(), *req)
+	// Test
+
+
+
+	suite.Equal(int32(http.StatusInternalServerError), resp.Result.Code)
+	suite.NotEmpty(resp.Result.Message)
+	suite.Nil(resp.Patches)
+	// Super important
+	suite.True(resp.Allowed)
+	suite.Equal(0, len(resp.Patches))
+	suite.Nil( resp.Patches)
+	suite.azdSecProviderMock.AssertExpectations(suite.T())
+}
+
+func (suite *TestSuite) Test_Handle_Error_AllowedTrueWithError_PodWithAzdAnnotations() {
+	// Setup
+	containers := []corev1.Container{_containers[0]}
+	pod := createPodForTestsWithAzdAnnotations(nil, containers)
+	req := createRequestForTests(pod)
+
+	err := errors.New("MockError!!")
+
+	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", &pod.Spec, &pod.ObjectMeta, &pod.TypeMeta).Return(nil, err).Once()
+
+	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider())
+
+	// Act
+	resp := handler.Handle(context.Background(), *req)
+	// Test
+
+
+
+	suite.Equal(admission.Allowed(string(_patchedReason)).AdmissionResponse, resp.AdmissionResponse)
+	suite.Equal(1, len(resp.Patches))
+	patch := resp.Patches[0]
+	suite.Equal(_expectedPatchForErrorEncountered1, patch)
+	suite.azdSecProviderMock.AssertExpectations(suite.T())
+}
+
+func (suite *TestSuite) Test_Handle_Error_AllowedTrueWithError_PodWithOnlyAzdAnnotations() {
+	// Setup
+	containers := []corev1.Container{_containers[0]}
+	pod := createPodForTestsWithOnlyAzdAnnotations(nil, containers)
+	req := createRequestForTests(pod)
+
+	err := errors.New("MockError!!")
+
+	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", &pod.Spec, &pod.ObjectMeta, &pod.TypeMeta).Return(nil, err).Once()
+
+	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider())
+
+	// Act
+	resp := handler.Handle(context.Background(), *req)
+	// Test
+
+
+
+	suite.Equal(admission.Allowed(string(_patchedReason)).AdmissionResponse, resp.AdmissionResponse)
+	suite.Equal(1, len(resp.Patches))
+	patch := resp.Patches[0]
+	suite.Equal(_expectedPatchForErrorEncountered2, patch)
 	suite.azdSecProviderMock.AssertExpectations(suite.T())
 }
 
@@ -376,6 +473,60 @@ func createPodForTests(containers []corev1.Container, initContainers []corev1.Co
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "podTest",
 			Namespace: "default",
+		},
+		TypeMeta: metav1.TypeMeta{},
+		Spec: corev1.PodSpec{
+			Containers:     containers,
+			InitContainers: initContainers,
+		},
+	}
+}
+
+func createPodForTestsWithAnnotations(containers []corev1.Container, initContainers []corev1.Container) *corev1.Pod {
+	return &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "podTest",
+			Namespace: "default",
+			Annotations: map[string]string{
+				_annotationTestKeyOne : _annotationTestValueOne,
+				_annotationTestKeyTwo : _annotationTestValueTwo,
+			},
+		},
+		TypeMeta: metav1.TypeMeta{},
+		Spec: corev1.PodSpec{
+			Containers:     containers,
+			InitContainers: initContainers,
+		},
+	}
+}
+
+func createPodForTestsWithAzdAnnotations(containers []corev1.Container, initContainers []corev1.Container) *corev1.Pod {
+	return &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "podTest",
+			Namespace: "default",
+			Annotations: map[string]string{
+				_annotationTestKeyOne : _annotationTestValueOne,
+				_annotationTestKeyTwo : _annotationTestValueTwo,
+				contracts.ContainersVulnerabilityScanInfoAnnotationName: "some value",
+			},
+		},
+		TypeMeta: metav1.TypeMeta{},
+		Spec: corev1.PodSpec{
+			Containers:     containers,
+			InitContainers: initContainers,
+		},
+	}
+}
+
+func createPodForTestsWithOnlyAzdAnnotations(containers []corev1.Container, initContainers []corev1.Container) *corev1.Pod {
+	return &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "podTest",
+			Namespace: "default",
+			Annotations: map[string]string{
+				contracts.ContainersVulnerabilityScanInfoAnnotationName: "some value",
+			},
 		},
 		TypeMeta: metav1.TypeMeta{},
 		Spec: corev1.PodSpec{
