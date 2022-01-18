@@ -382,7 +382,7 @@ func (suite *TestSuite) Test_Handle_Error_AllowedTrueWithError_PodWithAzdAnnotat
 
 
 
-	suite.Equal(admission.Allowed(string(_patchedReason)).AdmissionResponse, resp.AdmissionResponse)
+	suite.Equal(int32(http.StatusInternalServerError), resp.Result.Code)
 	suite.Equal(1, len(resp.Patches))
 	patch := resp.Patches[0]
 	suite.Equal(_expectedPatchForErrorEncountered1, patch)
@@ -406,8 +406,7 @@ func (suite *TestSuite) Test_Handle_Error_AllowedTrueWithError_PodWithOnlyAzdAnn
 	// Test
 
 
-
-	suite.Equal(admission.Allowed(string(_patchedReason)).AdmissionResponse, resp.AdmissionResponse)
+	suite.Equal(int32(http.StatusInternalServerError), resp.Result.Code)
 	suite.Equal(1, len(resp.Patches))
 	patch := resp.Patches[0]
 	suite.Equal(_expectedPatchForErrorEncountered2, patch)

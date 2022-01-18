@@ -31,6 +31,8 @@ type responseReason string
 const (
 	// _patchedReason in case that the handler patched to the webhook.
 	_patchedReason responseReason = "Patched"
+	//_patchedDeleteAnnotationsReason in case that error occurred and old annotations exist.
+	_patchedDeleteAnnotationsReason = "PatchedDeleteAnnotations"
 	// _notPatchedReason not patched response reason.
 	_notPatchedReason responseReason = "NotPatched"
 	// _notPatchedErrorReason not patched due to error response reason.
@@ -144,6 +146,7 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 		tracer.Error(err, "")
 		handler.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "Handle.handlePodRequest"))
 		response := handler.getResponseWhenErrorEncountered(pod, err)
+		tracer.Info("Handler Responded","resource:", req.Resource,"namespace:", req.Namespace,"Name:", req.Name, "operation:", req.Operation, "reqKind:", req.Kind, "response:", response)
 		return response
 	}
 
@@ -213,7 +216,7 @@ func (handler *Handler) getResponseWhenErrorEncountered(pod *corev1.Pod, origina
 	patches = append(patches, *patch)
 
 	// Patch all patches operations
-	return admission.Patched(string(_patchedReason), patches...)
+	return handler.admissionErrorResponseWithAnnotationsDelete(originalError,patches)
 }
 
 // getPodContainersVulnerabilityScanInfoAnnotationsOperation receives a pod to generate a vuln scan annotation add operation
@@ -260,6 +263,15 @@ func (handler *Handler) admissionErrorResponse(err error) admission.Response {
 			},
 		},
 	}
+}
+
+// admissionErrorResponseWithAnnotationsDelete generates an admission response error in case of handler failing to process request and delete ContainersVulnerabilityScanInfo annotation.
+func (handler *Handler) admissionErrorResponseWithAnnotationsDelete(err error, patches []jsonpatch.JsonPatchOperation) admission.Response {
+	tracer := handler.tracerProvider.GetTracer("admissionErrorResponseWithAnnotationsDelete")
+	tracer.Error(err, "")
+	response := handler.admissionErrorResponse(errors.Wrap(err, string(_patchedDeleteAnnotationsReason)))
+	response.Patches = patches
+	return response
 }
 
 // shouldRequestBeFiltered checks if the request should be filtered.
