@@ -450,7 +450,6 @@ func (provider *AzdSecInfoProvider) timeoutEncounteredGetContainersVulnerability
 	timeoutStatus, err := provider.cacheClient.GetTimeOutStatus(podSpecCacheKey)
 	// If an error occurred while getting timeout status from cache return an error because we shouldn't block the pod request
 	if err != nil {
-		// TODO Add metric new error encountered
 		if cache.IsMissingKeyCacheError(err){
 			tracer.Info("First timeout. Missing key. Couldn't get TimeOutStatus from cache.")
 			return nil, err
@@ -473,7 +472,6 @@ func (provider *AzdSecInfoProvider) timeoutEncounteredGetContainersVulnerability
 	// If this is the first or second time there is a timeout - set new timeout status in cache and return unscanned and timeout.
 	// If an error occurred while setting timeout status in cache return an error because if we can't update timeout status we shouldn't block the pod request.
 	if err := provider.cacheClient.SetTimeOutStatusAfterEncounteredTimeout(podSpecCacheKey, timeoutStatus); err != nil {
-		// TODO Add metric new error encountered
 		err = errors.Wrap(err, "error encountered while trying to set new timeout in cache.")
 		tracer.Error(err, "")
 		return nil, err

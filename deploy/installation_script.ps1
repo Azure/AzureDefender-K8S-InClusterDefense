@@ -17,7 +17,7 @@ Param (
     [string]$cluster_name,
 
     [Parameter()]
-    [string]$helm_chart_version = "1.0.0",
+    [string]$helm_chart_version = "0.0.2",
 
     [Parameter()]
     [bool]$should_install_azure_addon_policy = $true,
@@ -32,7 +32,7 @@ Param (
     [bool]$should_install_inclusterdefense_vmss_assign_identities = $true
 )
 
-write-host "Params that were entered:`r`nresource group : $resource_group `r`ncluster name : $cluster_name `r`nsubscription: $subscription"
+write-host "Params that were entered:`r`nsubscription: $subscription `r`nresource group : $resource_group `r`ncluster name : $cluster_name"
 #######################################################################################################################
 # Function for printing new section.
 
@@ -41,6 +41,17 @@ Function PrintNewSection($stepTitle)
     write-host "########################################## Step: $stepTitle ##########################################"
 }
 #######################################################################################################################
+
+PrintNewSection("Setting account to subscription")
+# login with az login.
+
+az account set -s $subscription
+if ($LASTEXITCODE -gt 0)
+{
+    write-error "Subscription not exit or wrong permissions"
+    exit
+}
+
 #                                   Extract used variables
 # Extract the region of the cluster
 $region = az aks show --resource-group $resource_group --name $cluster_name --query location -o tsv
@@ -74,12 +85,8 @@ if ($LASTEXITCODE -eq 3 -or $vmss_list.Length -eq 0)
     write-error "Failed to get the list of VMSS in the node resource group"
     exit $LASTEXITCODE
 }
-#######################################################################################################################
 
-PrintNewSection("Setting account to subscription")
-# login with az login.
-az account set -s $subscription
-
+write-host "Set account to subscription successfully"
 
 #######################################################################################################################
 # Step 2: Install azure addon policy in the cluster if not exists
@@ -107,7 +114,7 @@ else
     az provider register --namespace Microsoft.PolicyInsights
 
     # Enable azure policy addon:
-    az aks enable-addons --addons azure-policy --name $cluster_name --resource-group $resource_group
+    $_ = az aks enable-addons --addons azure-policy --name $cluster_name --resource-group $resource_group
 
     if ($LAStEXITCODE -eq 3)
     {
@@ -117,39 +124,46 @@ else
 }
 
 #######################################################################################################################
+PrintNewSection("AzureDefenderInClusterDefense Dependencies")
+# deployment_name must be shorter than 62 letters
+$deployment_name = "mdfc-incluster-$cluster_name-$region"
+# To get deployment_sub_list we query the node resource group dependencies because node_resource_group contains the resource group, cluster name and region
+# (deployment_name doesn't contain the resource group and as a result 2 clusters under the same subscription with the same name but under different resource groups
+# will get the same deployment name but will have different node resource group name).
+$deployment_sub_list = [array](az deployment sub list --query "[?properties.dependencies[0].dependsOn[0].resourceGroup=='$node_resource_group']" --filter "provisioningState eq 'Succeeded'")
 if ($should_install_inclusterdefense_dependencies -eq $false)
 {
-   write-host "Skipping installation of InClusterDefense Depe - should_install_azure_addon_policy param is false"
+   write-host "Skipping installation of InClusterDefense Dependencies - should_install_inclusterdefense_dependencies param is false"
+}
+# if no deployment found, deployment_sub_list contains the empty array and as a result its length is 1.
+# if deployment found, deployment_sub_list length is >= 3 (contains '[', ']' and all the results as string entries)
+elseif ($deployment_sub_list.Length -gt 1)
+{
+    write-host "Skipping installation of InClusterDefense Dependencies - already exist"
 }
 else
 {
-	
-	PrintNewSection("AzureDefenderInClusterDefense Dependencies")
-
 	# TODO Change the teamplate file to uri.
-	$deployment_name = "mdfc-incluster-$cluster_name-$region"
-
-	az deployment sub create --name  $deployment_name  --location $region `
+	$_ = az deployment sub create --name  $deployment_name  --location $region `
 														--template-file .\azure-templates\AzureDefenderInClusterDefense.Dependecies.Template.json `
 														--parameters `
 															resource_group=$node_resource_group `
 															location=$region `
                                                             managedIdentityName=$in_cluster_defense_identity_name
-
+    if ($LASTEXITCODE -eq 3)
+    {
+        write-error "Failed to create AzureDefenderInClusterDefense dependencies"
+        exit $LASTEXITCODE
+    }
+    write-host "Created AzureDefenderInClusterDefense dependencies successfully"
 }
 
-
-if ($LASTEXITCODE -eq 3)
-{
-    write-error "Failed to create AzureDefenderInClusterDefense dependencies"
-    exit $LASTEXITCODE
-}
 # #####################################################################################################################
 PrintNewSection("azure-defender-k8s-security-profile Dependencies")
 
 if ($should_enable_aks_security_profile -eq $false)
 {
-    write-host "Skipping on enabling azure-defender-k8s-security-profile - should_install_enable_aks_security_profile param is false"
+    write-host "Skipping on enabling azure-defender-k8s-security-profile - should_enable_aks_security_profile param is false"
 }
 elseif ((az aks show --resource-group $resource_group --name $cluster_name --query securityProfile.azureDefender.enabled) -eq $true)
 {
@@ -183,7 +197,7 @@ else
     # Deploy arm template - containts the dependencies of azure-defender-k8s-security-profile
     # TODO Change the teamplate file to uri.
     $deployment_name = "mdfc-profile-$cluster_name-$region"
-    az deployment sub create --name $deployment_name    --location "$region" `
+    $_ = az deployment sub create --name $deployment_name    --location "$region" `
                                                         --template-file .\azure-templates\Tivan.Dependencies.Template.json `
                                                         --parameters `
                                                             subscriptionId=$subscription `
@@ -196,6 +210,7 @@ else
         write-error "Failed to create azure-defender-k8s-security-profile dependencies"
         exit $LASTEXITCODE
     }
+    write-host "created azure-defender-k8s-security-profile dependencies successfully"
 }
 #######################################################################################################################
 PrintNewSection("Attach identity to VMSS on node resource group")
@@ -207,7 +222,7 @@ else
 {
 	For($i = 0; $i -lt $vmss_list.Length; $i++){
 		write-host "Assigning identity to vmss <$vmss_list[$i]>"
-		az vmss identity assign --resource-group $node_resource_group --name $vmss_list[$i] --identities $in_cluster_defense_identity_name
+		$_ = az vmss identity assign --resource-group $node_resource_group --name $vmss_list[$i] --identities $in_cluster_defense_identity_name
 	
 		if ($LASTEXITCODE -eq 3)
 		{
@@ -215,7 +230,7 @@ else
 			exit $LASTEXITCODE
 		}
 	}
-	
+    write-host "Attached identity to VMSS on node resource group successfully"
 }
 
 #######################################################################################################################
@@ -235,17 +250,12 @@ if ($LASTEXITCODE -eq 3 -or $in_cluster_defense_identity_client_id -eq "")
 kubectl config use-context $cluster_name
 
 # Install helm chart
-$HELM_EXPERIMENTAL_OCI = 1
-
+$env:HELM_EXPERIMENTAL_OCI=1
 # Install helm chart from mcr repo on kube-system namespace and pass subscription and client id's params.
-
-# TODO Change to remote repo once helm chart is published to public repo.
-#helm upgrade --install microsoft-in-cluster-defense azuredefendermcrprod.azurecr.io/public/azuredefender/stable/in-cluster-defense-helm:$helm_chart_version `
-helm upgrade in-cluster-defense .\azdproxy.tar.gz --install --wait `
+helm upgrade in-cluster-defense oci://mcr.microsoft.com/azuredefender/stable/in-cluster-defense-helm --version $helm_chart_version --install --wait `
             -n kube-system `
                 --set AzDProxy.kubeletIdentity.envAzureAuthorizerConfiguration.mSIClientId=$kubelet_client_id `
                 --set AzDProxy.azdIdentity.envAzureAuthorizerConfiguration.mSIClientId=$in_cluster_defense_identity_client_id `
                 --set "AzDProxy.arg.argClientConfiguration.subscriptions={$subscription}" `
                 --set AzDProxy.instrumentation.tivan.tivanInstrumentationConfiguration.region=$region `
-                --set AzDProxy.instrumentation.tivan.tivanInstrumentationConfiguration.azureResourceID=$azureResourceID `
-#                 --set AzDProxy.webhook.image.name=azuredefendermcrdev.azurecr.io/public/azuredefender/dev/in-cluster-defense:1623fa8e69177df64364af0df9f065a52c80adcf # TODO Delete above line once helm chart is published to public repo.
+                --set AzDProxy.instrumentation.tivan.tivanInstrumentationConfiguration.azureResourceID=$azureResourceID
