@@ -1,10 +1,7 @@
 package test
 
 import (
-	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/utils"
 	"github.com/stretchr/testify/suite"
-	"os"
-	"path/filepath"
 	"testing"
 )
 
@@ -17,19 +14,6 @@ type TestSuite struct {
 
 // This will run before each test in the suite
 func (suite *TestSuite) SetupTest() {
-}
-
-func (suite *TestSuite) Test_AreValuesFilesOfHelmHaveTheSameKeys() {
-	// Setup
-	pwd, _ := os.Getwd()
-	parentPwd := filepath.Dir(pwd)
-	valuesPathFile := filepath.Join(parentPwd, "charts", "azdproxy", "values.yaml")
-	valuesDevPathFile := filepath.Join(parentPwd, "charts", "azdproxy", "values-dev.yaml")
-	// Act
-	areEqual, err := utils.CheckIfTwoYamlsHaveTheSameKeys(valuesPathFile, valuesDevPathFile)
-	//Test
-	suite.Nil(err)
-	suite.True(areEqual)
 }
 
 func (suite *TestSuite) Test_AreConfigurationFilesHaveTheSameKeys() {
