@@ -40,24 +40,28 @@ Function PrintNewSection($stepTitle)
 {
     write-host "########################################## Step: $stepTitle ##########################################"
 }
+
+# Function for checking if an extension exists.
+function Check-Command($extensionName)
+{
+    return [bool](Get-Command -Name $extensionName)
+}
 #######################################################################################################################
 PrintNewSection("Checking Prerequisite")
 
 write-host "Checking if azure-cli is installed"
-$temp = az --help
-if ($LASTEXITCODE -eq 0){
+if (Check-Command -extensionName 'az'){
     Write-Host "azure-cli is installed"
 }else{
-    Write-Host "Did not find azure-cli installed, please make sure you install it and add it to the PATH variables. For more information https://docs.microsoft.com/en-us/cli/azure/install-azure-cli"
+    Write-error "Did not find azure-cli installed, please make sure you install it and add it to the PATH variables. For more information https://docs.microsoft.com/en-us/cli/azure/install-azure-cli"
     exit 1
 }
 
 write-host "Checking if helm is installed"
-$temp = helm --help
-if ($LASTEXITCODE -eq 0){
+if (Check-Command -extensionName 'helm'){
     Write-Host "Helm is installed"
 }else{
-    Write-Host "Did not find helm installed, please make sure you install it and add it to the PATH variables (recommended version: helm v3.6.3). For more information https://helm.sh/docs/intro/install/"
+    Write-error "Did not find helm installed, please make sure you install it and add it to the PATH variables (recommended version: helm v3.6.3). For more information https://helm.sh/docs/intro/install/"
     exit 1
 }
 
@@ -69,7 +73,7 @@ PrintNewSection("Setting account to subscription")
 az account set -s $subscription
 if ($LASTEXITCODE -gt 0)
 {
-    write-error "Subscription not exit or wrong permissions"
+    write-error "Subscription doesn't exit or wrong permissions"
     exit 1
 }
 
