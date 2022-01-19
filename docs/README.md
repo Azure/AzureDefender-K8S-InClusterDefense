@@ -17,6 +17,6 @@ install Gatekeeper manually. \
 
 ```powershell
 # Install Azure Defender in your cluster
-.\deploy\installation_script.ps1 -resource_group <resource_group> -cluster_name <cluster_name>
+.\installation_script.ps1 -subscription <subscription_id> -resource_group <resource_group> -cluster_name <cluster_name>
 #>
 ```
