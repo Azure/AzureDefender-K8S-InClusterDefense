@@ -73,7 +73,7 @@ PrintNewSection("Setting account to subscription")
 az account set -s $subscription
 if ($LASTEXITCODE -gt 0)
 {
-    write-error "Subscription doesn't exit or wrong permissions"
+    write-error "Subscription doesn't exit or wrong permissions. Try 'az login --use-device-code' and rerun the script"
     exit 1
 }
 
