@@ -53,6 +53,7 @@ if ($LASTEXITCODE -eq 0){
 }
 
 write-host "Checking if helm is installed"
+$temp = helm --help
 if ($LASTEXITCODE -eq 0){
     Write-Host "Helm is installed"
 }else{
