@@ -17,7 +17,7 @@ Param (
     [string]$cluster_name,
 
     [Parameter()]
-    [string]$helm_chart_version = "0.0.2",
+    [string]$helm_chart_version = "0.1.0",
 
     [Parameter()]
     [bool]$should_install_azure_addon_policy = $true,
