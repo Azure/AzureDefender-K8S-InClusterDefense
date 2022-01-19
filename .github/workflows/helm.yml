@@ -1,6 +1,6 @@
 # This is a basic workflow to help you get started with Actions
 
-name: CI
+name: Helm release
 
 # Controls when the workflow will run
 on:
@@ -8,8 +8,6 @@ on:
   workflow_dispatch:
 env:
   HELM_EXPERIMENTAL_OCI: 1
-  ACR_NAME: acrdemoutkarsh
-  ACR_REPO_NAME: helmdemo/vote-app
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
