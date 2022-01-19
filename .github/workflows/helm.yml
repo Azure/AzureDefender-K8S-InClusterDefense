@@ -31,6 +31,5 @@ jobs:
           version: 'latest'
           
       - name: login to acr using helm
-         run:|
-            echo ${{ secrets.DEV_REGISTRY_PASSWORD }} | helm registry login azuredefendermcrdev.azurecr.io --username ${{ secrets.DEV_REGISTRY_USERNAME }} --password-stdin
+        run: echo ${{ secrets.DEV_REGISTRY_PASSWORD }} | helm registry login azuredefendermcrdev.azurecr.io --username ${{ secrets.DEV_REGISTRY_USERNAME }} --password-stdin
 
