@@ -48,18 +48,21 @@ func CreateContainersVulnerabilityScanAnnotationPatchAdd(containersScanInfoList 
 	return &patch, nil
 }
 
-// CreateAnnotationPatchToDeleteContainersVulnerabilityScanAnnotation create a patch to delete ContainersVulnerabilityScanAnnotation if the pod's annotations contain ContainersVulnerabilityScanAnnotation.
-// Otherwise, return nil
-func CreateAnnotationPatchToDeleteContainersVulnerabilityScanAnnotation(pod *corev1.Pod) (*jsonpatch.JsonPatchOperation, error) {
-	// Create annotations map after deleting contracts.ContainersVulnerabilityScanInfoAnnotationName
-	annotations, err := deleteAzdAnnotations(pod, contracts.ContainersVulnerabilityScanInfoAnnotationName)
-	if err != nil {
-		return nil, errors.Wrap(err, "AzdAnnotationsPatchGenerator failed to delete annotations")
+// CreateAnnotationPatchToDeleteContainersVulnerabilityScanAnnotationIfNeeded create a patch to delete ContainersVulnerabilityScanAnnotation (stale annotations) if the pod's annotations contain ContainersVulnerabilityScanAnnotation.
+// Otherwise, no deletion is needed - return nil.
+func CreateAnnotationPatchToDeleteContainersVulnerabilityScanAnnotationIfNeeded(pod *corev1.Pod) (*jsonpatch.JsonPatchOperation, error) {
+	if pod == nil {
+		return nil, errors.Wrap(utils.NilArgumentError, "CreateAnnotationPatchToDeleteContainersVulnerabilityScanAnnotationIfNeeded got nil pod")
 	}
-	// if annotations is nil, there is no need to delete ContainersVulnerabilityScanInfoAnnotation (pod's annotations are nil or contracts.ContainersVulnerabilityScanInfoAnnotationName don't exist)
-	if annotations == nil {
+
+	// there is no need to delete ContainersVulnerabilityScanInfoAnnotation (pod's annotations are nil or contracts.ContainersVulnerabilityScanInfoAnnotationName don't exist)
+	if !isDeleteStaleAzdAnnotationsNeeded(pod){
 		return nil, nil
 	}
+
+	// Create annotations map after deleting contracts.ContainersVulnerabilityScanInfoAnnotationName
+	annotations := deleteAzdAnnotations(pod)
+
 	// Create an add operation to annotations to add
 	patch := jsonpatch.NewOperation(_addPatchOperation, _annotationPatchPath, annotations)
 	return &patch, nil
@@ -94,21 +97,24 @@ func updateAnnotations(pod *corev1.Pod, key string, value string) (map[string]st
 	return annotations, nil
 }
 
-// deleteAzdAnnotations return the pod's annotations after deleting contracts.ContainersVulnerabilityScanInfoAnnotationName if exists otherwise returns nil.
-func deleteAzdAnnotations(pod *corev1.Pod, key string) (map[string]string, error){
-	if pod == nil {
-		return nil, errors.Wrap(utils.NilArgumentError, "updateAnnotations got nil pod")
-	}
+// isDeleteStaleAzdAnnotationsNeeded returns true if delete stale Azd annotations is needed, otherwise false.
+func isDeleteStaleAzdAnnotationsNeeded(pod *corev1.Pod) bool{
 	annotations := pod.GetAnnotations()
 	// no annotations - no need to delete
 	if annotations == nil {
-		return nil, nil
+		return false
 	}
 	// key don't exist - no need to delete
-	if _, ok := annotations[key]; !ok{
-		return nil, nil
+	if _, ok := annotations[contracts.ContainersVulnerabilityScanInfoAnnotationName]; !ok{
+		return false
 	}
-	// key exist - delete the key
-	delete(annotations, key)
-	return annotations, nil
+	// key exist - need to delete
+	return true
+}
+
+// deleteAzdAnnotations return the pod's annotations after deleting contracts.ContainersVulnerabilityScanInfoAnnotationName.
+func deleteAzdAnnotations(pod *corev1.Pod) map[string]string{
+	annotations := pod.GetAnnotations()
+	delete(annotations, contracts.ContainersVulnerabilityScanInfoAnnotationName)
+	return annotations
 }
