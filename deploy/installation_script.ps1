@@ -49,7 +49,7 @@ if ($LASTEXITCODE -eq 0){
     Write-Host "azure-cli is installed"
 }else{
     Write-Host "Did not find azure-cli installed, please make sure you install it and add it to the PATH variables. For more information https://docs.microsoft.com/en-us/cli/azure/install-azure-cli"
-    exist 1
+    exit 1
 }
 
 write-host "Checking if helm is installed"
@@ -58,7 +58,7 @@ if ($LASTEXITCODE -eq 0){
     Write-Host "Helm is installed"
 }else{
     Write-Host "Did not find helm installed, please make sure you install it and add it to the PATH variables (recommended version: helm v3.6.3). For more information https://helm.sh/docs/intro/install/"
-    exist 1
+    exit 1
 }
 
 #######################################################################################################################
