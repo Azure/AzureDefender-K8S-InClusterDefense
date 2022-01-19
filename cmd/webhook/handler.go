@@ -31,6 +31,8 @@ type responseReason string
 const (
 	// _patchedReason in case that the handler patched to the webhook.
 	_patchedReason responseReason = "Patched"
+	//_patchedDeleteStaleContainersVulnerabilityScanInfoAnnotationsReason in case that error occurred and old annotations exist.
+	_patchedDeleteStaleContainersVulnerabilityScanInfoAnnotationsReason = "PatchedDeleteStaleContainersVulnerabilityScanInfoAnnotations"
 	// _notPatchedReason not patched response reason.
 	_notPatchedReason responseReason = "NotPatched"
 	// _notPatchedErrorReason not patched due to error response reason.
@@ -143,8 +145,8 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 		err = errors.Wrap(err, "Handler.Handle received error on handlePodRequest")
 		tracer.Error(err, "")
 		handler.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "Handle.handlePodRequest"))
-		reason = _notPatchedErrorReason
-		response = handler.admissionErrorResponse(errors.Wrap(err, string(reason)))
+		response := handler.getResponseWhenErrorEncountered(pod, err)
+		tracer.Info("Handler Responded","resource:", req.Resource,"namespace:", req.Namespace,"Name:", req.Name, "operation:", req.Operation, "reqKind:", req.Kind, "response:", response)
 		return response
 	}
 
@@ -181,6 +183,41 @@ func (handler *Handler) handlePodRequest(pod *corev1.Pod) (admission.Response, e
 
 	// Patch all patches operations
 	return admission.Patched(string(_patchedReason), patches...), nil
+}
+// getResponseWhenErrorEncountered returns a response in which it deletes previous ContainersVulnerabilityScan annotations.
+// If no such annotations exist it returns handler.admissionErrorResponse with the original error.
+func (handler *Handler) getResponseWhenErrorEncountered(pod *corev1.Pod, originalError error) admission.Response {
+	tracer := handler.tracerProvider.GetTracer("getResponseWhenErrorEncountered")
+
+	patches := []jsonpatch.JsonPatchOperation{}
+
+	// returns nil if no deletion is needed.
+	patch, err := annotations.CreateAnnotationPatchToDeleteContainersVulnerabilityScanAnnotationIfNeeded(pod)
+
+	// if error encountered during CreateAnnotationPatchToDeleteContainersVulnerabilityScanAnnotationIfNeeded - response with the original error
+	if err != nil {
+		err = errors.Wrap(err, "Handler.getResponseWhenErrorEncountered Failed to CreateAnnotationPatchToDeleteContainersVulnerabilityScanAnnotationIfNeeded for Pod")
+		tracer.Error(err, "")
+		handler.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "Handler.getResponseWhenErrorEncountered"))
+		reason := _notPatchedErrorReason
+		response := handler.admissionErrorResponse(errors.Wrap(originalError, string(reason)))
+		return response
+	}
+
+	// patch is nil when the pod's annotations doesn't contain the webhook annotations so there is no need to delete them.
+	// response with the original error
+	if patch == nil{
+		tracer.Info("ContainersVulnerabilityScanAnnotation dont exist - no need to delete them ")
+		reason := _notPatchedErrorReason
+		response := handler.admissionErrorResponse(errors.Wrap(originalError, string(reason)))
+		return response
+	}
+
+	// Add to response patches
+	patches = append(patches, *patch)
+
+	// Patch all patches operations
+	return handler.admissionErrorResponseWithAnnotationsDelete(originalError,patches)
 }
 
 // getPodContainersVulnerabilityScanInfoAnnotationsOperation receives a pod to generate a vuln scan annotation add operation
@@ -227,6 +264,16 @@ func (handler *Handler) admissionErrorResponse(err error) admission.Response {
 			},
 		},
 	}
+}
+
+// admissionErrorResponseWithAnnotationsDelete generates an admission response error in case of handler failing to process request and delete ContainersVulnerabilityScanInfo annotation.
+func (handler *Handler) admissionErrorResponseWithAnnotationsDelete(err error, patches []jsonpatch.JsonPatchOperation) admission.Response {
+	tracer := handler.tracerProvider.GetTracer("admissionErrorResponseWithAnnotationsDelete")
+	tracer.Error(err, "")
+	// If status code is not 200-OK (500 for example), but there is still non nil patch, the mutation applied successfully on api-server as status admission review is not verified on mutating webhooks.
+	response := handler.admissionErrorResponse(errors.Wrap(err, string(_patchedDeleteStaleContainersVulnerabilityScanInfoAnnotationsReason)))
+	response.Patches = patches
+	return response
 }
 
 // shouldRequestBeFiltered checks if the request should be filtered.
