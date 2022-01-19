@@ -1,0 +1,36 @@
+# This is a basic workflow to help you get started with Actions
+
+name: CI
+
+# Controls when the workflow will run
+on:
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+env:
+  HELM_EXPERIMENTAL_OCI: 1
+  ACR_NAME: acrdemoutkarsh
+  ACR_REPO_NAME: helmdemo/vote-app
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  build:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v2
+
+      # Runs a single command using the runners shell
+      - name: Helm tool installer
+        uses: Azure/setup-helm@v1
+        with:
+          # Version of helm
+          version: 'latest'
+          
+      - name: login to acr using helm
+         run:|
+            echo ${{ secrets.DEV_REGISTRY_PASSWORD }} | helm registry login azuredefendermcrdev.azurecr.io --username ${{ secrets.DEV_REGISTRY_USERNAME }} --password-stdin
+
