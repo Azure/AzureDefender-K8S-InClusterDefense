@@ -474,6 +474,7 @@ func (provider *AzdSecInfoProvider) timeoutEncounteredGetContainersVulnerability
 	if err := provider.cacheClient.SetTimeOutStatusAfterEncounteredTimeout(podSpecCacheKey, timeoutStatus); err != nil {
 		err = errors.Wrap(err, "error encountered while trying to set new timeout in cache.")
 		tracer.Error(err, "")
+		provider.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "AzdSecInfoProvider.timeoutEncounteredGetContainersVulnerabilityScanInfo"))
 		return nil, err
 	}
 
