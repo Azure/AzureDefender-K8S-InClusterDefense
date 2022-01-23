@@ -65,6 +65,14 @@ if (Check-Command -extensionName 'helm'){
     exit 1
 }
 
+write-host "Checking if kubectl is installed"
+if (Check-Command -extensionName 'kubectl'){
+    Write-Host "kubectl is installed"
+}else{
+    Write-error "Did not find kubectl installed, please make sure you install it and add it to the PATH variables. For more information https://kubernetes.io/docs/tasks/tools/#kubectl"
+    exit 1
+}
+
 #######################################################################################################################
 
 PrintNewSection("Setting account to subscription")
@@ -271,7 +279,8 @@ if ($LASTEXITCODE -eq 3 -or $in_cluster_defense_identity_client_id -eq "")
     exit $LASTEXITCODE
 }
 
-# Switch to current context
+# Get Cluster's creds and switch to current context
+az aks get-credentials --resource-group $resource_group --name $cluster_name
 kubectl config use-context $cluster_name
 
 # Install helm chart
