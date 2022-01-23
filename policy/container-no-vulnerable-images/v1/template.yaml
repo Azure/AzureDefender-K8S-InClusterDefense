@@ -12,12 +12,14 @@ spec:
         # Schema for the `parameters` field
         openAPIV3Schema:
           properties:
+            # A list of RegEx rules used to exclude container images from policy evaluation. For example: exclude all images from the repo microsoft-defender-in-cluster-defense-repo in the blockreg ACR -  [\"(blockreg.azurecr.io/microsoft-defender-in-cluster-defense-repo).*\"]. Use an empty list to apply this policy to all container images.
             excludedImages:
               type: array
               items:
                 # Regex
                 type: string
-
+            
+            # Specify the maximum severity for exempting vulnerabilities without a patch. For example, specify Medium to ignore Low and Medium vulnerabilities without a patch.
             severityThresholdForExcludingNotPatchableFindings:
               type: string
 
@@ -25,7 +27,8 @@ spec:
               type: array
               items:
                 type: string
-
+            
+            # The number of allowed findings per severity for an image. e.g. \"{\"High\":0,\"Medium\":3,\"Low\":10}\"
             severity:
               type: object
               properties:
