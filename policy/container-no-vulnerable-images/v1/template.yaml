@@ -43,7 +43,7 @@ spec:
   targets:
     - target: admission.k8s.gatekeeper.sh
       rego: |
-        package k8sazuredefenderblockvulnerableimagess
+        package k8sazuredefenderblockvulnerableimages
         # This violation checks if there is a container with unscanned scanStatus.
         violation[{"msg":msg}] {
             # Extract containers
@@ -73,8 +73,6 @@ spec:
         getApplicableContainersScanInfo(review) = containers{
           # Extract ContainerVulnerabilityScanInfoList
           containerVulnerabilityScanInfoList := getContainerVulnerabilityScanInfoList(review)
-          # Check the the anotatins are new (if not, don't throw any violation)
-          not areTheAnnotationsStale(containerVulnerabilityScanInfoList)
           # Filter containers from containerVulnerabilityScanInfoList
           containers := filterContainers(containerVulnerabilityScanInfoList["containers"])
         }
@@ -84,18 +82,6 @@ spec:
         getContainerVulnerabilityScanInfoList(review) = containerVulnerabilityScanInfoList{
           scanResults := review.object.metadata.annotations["azuredefender.io/containers.vulnerability.scan.info"]
           containerVulnerabilityScanInfoList := json.unmarshal(scanResults)
-        }
-        # Check if the annotations are stale - we use the time in the "managedFields" field.
-        areTheAnnotationsStale(containerVulnerabilityScanInfoList){
-            # Extract enrichment timestamp.
-            timestamp := containerVulnerabilityScanInfoList["generatedTimestamp"]
-            enrichmentTimestamp := time.parse_rfc3339_ns(timestamp)
-            # Extract creation timestamp
-            operationTimestamp := time.parse_rfc3339_ns(input.review.object.metadata["managedFields"][_]["time"])
-            # Convert duration param to time object
-            # TODO Should we define diff time than 20 seconds?
-            dur := time.parse_duration_ns("20s")
-            abs(enrichmentTimestamp - operationTimestamp) > dur
         }
         # Filter containers.
         filterContainers(containers) = containers{
