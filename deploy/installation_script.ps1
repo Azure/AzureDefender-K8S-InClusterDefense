@@ -85,7 +85,7 @@ if ($LASTEXITCODE -gt 0)
     exit 1
 }
 
-#                                   Extract used variables
+# Extract used variables
 # Extract the region of the cluster
 $region = az aks show --resource-group $resource_group --name $cluster_name --query location -o tsv
 $azureResourceID = az aks show --resource-group $resource_group --name $cluster_name --query id -o tsv
@@ -164,13 +164,19 @@ $deployment_name = "mdfc-incluster-$cluster_name-$region"
 # (deployment_name doesn't contain the resource group and as a result 2 clusters under the same subscription with the same name but under different resource groups
 # will get the same deployment name but will have different node resource group name).
 $deployment_sub_list = [array](az deployment sub list --query "[?properties.dependencies[0].dependsOn[0].resourceGroup=='$node_resource_group']" --filter "provisioningState eq 'Succeeded'")
+$is_in_cluster_defense_identity_exists = $in_cluster_defense_identity_name -in $(az identity list -g $node_resource_group --query [*].name -o json | ConvertFrom-Json)
+if ($LASTEXITCODE -eq 3)
+{
+	$is_in_cluster_defense_identity_exists=$false
+}
+
 if ($should_install_inclusterdefense_dependencies -eq $false)
 {
    write-host "Skipping installation of InClusterDefense Dependencies - should_install_inclusterdefense_dependencies param is false"
 }
 # if no deployment found, deployment_sub_list contains the empty array and as a result its length is 1.
 # if deployment found, deployment_sub_list length is >= 3 (contains '[', ']' and all the results as string entries)
-elseif ($deployment_sub_list.Length -gt 1)
+elseif ($deployment_sub_list.Length -gt 1 -and $is_in_cluster_defense_identity_exists)
 {
     write-host "Skipping installation of InClusterDefense Dependencies - already exist"
 }
