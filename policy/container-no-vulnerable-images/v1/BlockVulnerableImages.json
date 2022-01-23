@@ -106,7 +106,7 @@
         "type": "Array",
         "metadata": {
           "displayName": "Excluded images regex",
-          "description": "A list of RegEx rules used to exclude container images from policy evaluation. For example: exclude all images from the repo azure-defender-in-cluster-defense-repo in the blockreg ACR -  [\\\"(blockreg.azurecr.io/azure-defender-in-cluster-defense-repo).*\\\"]. Use an empty list to apply this policy to all container images."
+          "description": "A list of RegEx rules used to exclude container images from policy evaluation. For example: exclude all images from the repo microsoft-defender-in-cluster-defense-repo in the blockreg ACR -  [\"(blockreg.azurecr.io/microsoft-defender-in-cluster-defense-repo).*\"]. Use an empty list to apply this policy to all container images."
         },
         "defaultValue": []
       },
