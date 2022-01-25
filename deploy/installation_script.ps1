@@ -106,9 +106,9 @@ if ($LASTEXITCODE -eq 3)
 $in_cluster_defense_identity_name = "AzureDefenderInClusterDefense-$cluster_name"
 # Extract kubelet identity
 $kubelet_client_id = az aks show --resource-group $resource_group --name $cluster_name --query identityProfile.kubeletidentity.clientId
-if ($LASTEXITCODE -eq 3)
+if ($LASTEXITCODE -eq 3 -or $kubelet_client_id -eq $null)
 {
-    write-error "Failed to get the kubelet client id of the cluster"
+    write-error "Failed to get the kubelet client id of the cluster, currently only MSI cluster identity is supported and not SPN"
     exit $LASTEXITCODE
 }
 # VMSS names list - we should explicity convert to array beacause if one vmss is returened, then it is returned as string.
