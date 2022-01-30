@@ -1,18 +1,18 @@
 package k8sazuredefendervulnerableimages
 
 # This violation checks if there is a container with unscanned scanStatus.
-violation[{"msg":msg, "details": details}] {
+violation[{"msg":msg}] {
     # Extract containers
     containers := getApplicableContainersScanInfo(input.review)
     container := containers[_]
     # Check if the scan status of the container is unscanned.
     container["scanStatus"] == "unscanned"
     # Construct violation msg:
-    msg := sprintf("Unscanned image found in the container %v", [container.name])
-    details := container
+    additionalData := getAdditionalData(container)
+    msg := sprintf("Image <%v> under container <%v> must be scanned for vulnerabilities by Defender for Cloud before deployment, additionalData: <%v>", [container.image.name, container.name, additionalData])
 }
 # This violation checks if there is some container that it's sum of the severities of the scanFindings are exceed some thresholds.
-violation[{"msg":msg, "details": details}] {
+violation[{"msg":msg}] {
     # Extract containers
     containers := getApplicableContainersScanInfo(input.review)
     container := containers[_]
@@ -22,15 +22,13 @@ violation[{"msg":msg, "details": details}] {
     scanFindings := filterScanFindings(container["scanFindings"])
     isSeverityAboveThreshold(scanFindings)
     # Construct violation msg
-    msg := sprintf("Found vulnerable container: %v", [container.name])
-    details := {"Container": container, "ScanFindings": scanFindings}
+    additionalData := getAdditionalData(container)
+    msg := sprintf("Image <%v> under container <%v> with digest <%v>, has vulnerabilities that must be remediated before deployment. Refer to Defender for Cloud to view vulnerability data for your image.", [container.image.name, container.name, container.image.digest])
 }
 # Extract the containers from the review object.
 getApplicableContainersScanInfo(review) = containers{
   # Extract ContainerVulnerabilityScanInfoList
   containerVulnerabilityScanInfoList := getContainerVulnerabilityScanInfoList(review)
-  # Verify that the uid request that appears in containerVulnerabilityScanInfoList is match to the uid request of the request.
-  not isStaleAnnotations(containerVulnerabilityScanInfoList)
   # Filter containers from containerVulnerabilityScanInfoList
   containers := filterContainers(containerVulnerabilityScanInfoList["containers"])
 }
@@ -40,18 +38,6 @@ getApplicableContainersScanInfo(review) = containers{
 getContainerVulnerabilityScanInfoList(review) = containerVulnerabilityScanInfoList{
   scanResults := review.object.metadata.annotations["azuredefender.io/containers.vulnerability.scan.info"]
   containerVulnerabilityScanInfoList := json.unmarshal(scanResults)
-}
-# Check if the annotations are stale - we check it because in case continue with evaluation only if the annotations are not stale.
-isStaleAnnotations(containerVulnerabilityScanInfoList){
-    # Extract enrichment timestamp.
-    timestamp := containerVulnerabilityScanInfoList["generatedTimestamp"]
-    enrichmentTimestamp := time.parse_rfc3339_ns(timestamp)
-    # Extract creation timestamp
-    operationTimestamp := time.parse_rfc3339_ns(input.review.object.metadata["managedFields"][_]["time"])
-    # Convert duration param to time object
-    # TODO Should we define diff time than 20 seconds?
-    dur := time.parse_duration_ns("20s")
-    abs(enrichmentTimestamp - operationTimestamp) > dur
 }
 # Filter containers.
 filterContainers(containers) = containers{
@@ -63,12 +49,12 @@ filterContainersWithHealthyScanStatus(containers) = out{
   out = [containerVulnerabilityScanInfo | 	containerVulnerabilityScanInfo := containers[_]
   containerVulnerabilityScanInfo["scanStatus"] != "healthyScan"]
 }
-# Filter containers that are appear in the excluded_images_pattern parameter.
+# Filter containers that are appear in the excludedImages parameter.
 filterContaintersWithExcludedImages(containers) = out{
   out = [containerVulnerabilityScanInfo | 	containerVulnerabilityScanInfo := containers[_]
   not isImageMatchExcludedImagesPattern(containerVulnerabilityScanInfo["image"]["name"])]
 }
-# Checks if the registry appers in the exclduded_registreis pattern
+# Checks if the registry appears in the excludedImages pattern
 isImageMatchExcludedImagesPattern(image_name){
   image_pattern := input.parameters["excludedImages"][_]
   re_match(image_pattern, image_name)
@@ -81,12 +67,12 @@ filterScanFindings(scanFindings) = out{
 # Filter all scanfindings that appear in the excludeFindingIDsList.
 filterScanFindingsExcludedFindings(scanFindings) = out{
   out = [scanFinding | 	scanFinding := scanFindings[_]
-  not isScanFindingAppearsInExlcudeFindingIDsList(scanFinding)]
+  not isScanFindingAppearsInexcludeFindingIDsList(scanFinding)]
 }
 # Checks if the scanFinding appers in the list of the excluded findings id:
-isScanFindingAppearsInExlcudeFindingIDsList(scanFinding){
+isScanFindingAppearsInexcludeFindingIDsList(scanFinding){
   scanFindingID := scanFinding["id"]
-  excludedScanFinding := input.parameters.exlcudeFindingIDs[_]
+  excludedScanFinding := input.parameters.excludeFindingIDs[_]
   scanFindingID == excludedScanFinding
 }
 # Filter all scanfindings that are not patchable and their severity is below severityThresholdForExcludingNotPatchableFindings.
@@ -120,7 +106,14 @@ isSeverityAboveThreshold(scanFindings){
 # Check if the total of all findings with severity level of severtyType (patchable and not patchable) is exceeding the threshold
 isSeverityTypeAboveThreshold(scanFindings, severityType){
   # Extract all scanFinding that have serverity level equal to severity type.
-  c := count([scanFinding | 	scanFinding := scanFindings[_]
+  c := count([scanFinding | scanFinding := scanFindings[_]
   scanFinding["severity"] == severityType])
   c > input.parameters.severity[severityType]
+}
+getAdditionalData(container) = additionalData{
+ not container.additionalData
+ additionalData = "None" # Default additionalData
+}
+getAdditionalData(container) = additionalData{
+ additionalData = container.additionalData	# Extract additionalData from the object
 }

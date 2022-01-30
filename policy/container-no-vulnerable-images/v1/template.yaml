@@ -50,7 +50,7 @@ spec:
             container["scanStatus"] == "unscanned"
             # Construct violation msg:
             additionalData := getAdditionalData(container)
-            msg := sprintf("Unscanned image found in the container <%v>, additionalData: <%v>", [container.name, additionalData])
+            msg := sprintf("Image <%v> under container <%v> must be scanned for vulnerabilities by Defender for Cloud before deployment, additionalData: <%v>", [container.image.name, container.name, additionalData])
         }
         # This violation checks if there is some container that it's sum of the severities of the scanFindings are exceed some thresholds.
         violation[{"msg":msg}] {
@@ -64,14 +64,12 @@ spec:
             isSeverityAboveThreshold(scanFindings)
             # Construct violation msg
             additionalData := getAdditionalData(container)
-            msg := sprintf("Found vulnerable container: <%v>, image name: <%v>, digest: <%v>, additionalData: <%v>", [container.name, container.image.name, container.image.digest, additionalData])
+            msg := sprintf("Image <%v> under container <%v> with digest <%v>, has vulnerabilities that must be remediated before deployment. Refer to Defender for Cloud to view vulnerability data for your image.", [container.image.name, container.name, container.image.digest])
         }
         # Extract the containers from the review object.
         getApplicableContainersScanInfo(review) = containers{
           # Extract ContainerVulnerabilityScanInfoList
           containerVulnerabilityScanInfoList := getContainerVulnerabilityScanInfoList(review)
-          # Check the the anotatins are new (if not, don't throw any violation)
-          not areTheAnnotationsStale(containerVulnerabilityScanInfoList)
           # Filter containers from containerVulnerabilityScanInfoList
           containers := filterContainers(containerVulnerabilityScanInfoList["containers"])
         }
@@ -81,18 +79,6 @@ spec:
         getContainerVulnerabilityScanInfoList(review) = containerVulnerabilityScanInfoList{
           scanResults := review.object.metadata.annotations["azuredefender.io/containers.vulnerability.scan.info"]
           containerVulnerabilityScanInfoList := json.unmarshal(scanResults)
-        }
-        # Check if the annotations are stale - we use the time in the "managedFields" field.
-        areTheAnnotationsStale(containerVulnerabilityScanInfoList){
-            # Extract enrichment timestamp.
-            timestamp := containerVulnerabilityScanInfoList["generatedTimestamp"]
-            enrichmentTimestamp := time.parse_rfc3339_ns(timestamp)
-            # Extract creation timestamp
-            operationTimestamp := time.parse_rfc3339_ns(input.review.object.metadata["managedFields"][_]["time"])
-            # Convert duration param to time object
-            # TODO Should we define diff time than 20 seconds?
-            dur := time.parse_duration_ns("20s")
-            abs(enrichmentTimestamp - operationTimestamp) > dur
         }
         # Filter containers.
         filterContainers(containers) = containers{
