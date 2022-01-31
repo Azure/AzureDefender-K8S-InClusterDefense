@@ -1,34 +1,20 @@
-package k8sazuredefendervulnerableimages
+package k8sazuredefenderblockvulnerableimages
 
-# Check that if the annotations are empty then there is no violation.
+# Check that the annotations is empty there is no violation.
 test_input_no_annotations {
     input := { "review": input_review_no_annotations, "parameters": input_parameters_empty}
     results := violation with input as input
     count(results) == 0
 }
 
-# Check that if the annotations are old  (i.e. the uid request that appears in the annotations is different from the uid of the review) then there is no violoation.
-test_input_stale_annotations_zero_violations {
-    input := { "review": input_review_violation_with_stale_annotations, "parameters": input_parameters_high_0_severityThresholdForExcludingNotPatchableFindings_None}
-    results := violation with input as input
-    count(results) == 0
-}
-
-# Check that if the annotations are old  (i.e. the uid request that appears in the annotations is different from the uid of the review) then there is no violoation.
-test_input_not_stale_annotations_1_violation {
-    input := { "review": input_review_violation_with_not_stale_annotations, "parameters": input_parameters_high_0_severityThresholdForExcludingNotPatchableFindings_None}
-    results := violation with input as input
-    count(results) == 1
-}
-
-# Checks that if there is unscanned image that is appers in the excluded images regex list, then there is no violation.
+# Checks that if there is unscanned image that is part of the excluded images regex list, then there is no violation.
 test_input_unscanned_image_that_appears_in_excluded_images_0_violation {
     input := { "review": input_review_creation_time_ok_scan_status_unscanned, "parameters": input_parameters_tomerazurecr_image_excluded_severityHighTreshold_2}
     results := violation with input as input
     count(results) == 0
 }
 
-# Checks that if there is unscanned image that is appers in the excluded images regex list, then there no violation.
+# Checks that if there is unscanned image that is part of the excluded images regex list, then there no violation.
 test_input_unscanned_image_that_isnt_appears_in_excluded_images_1_violation {
     input := { "review": input_review_creation_time_ok_scan_status_unscanned, "parameters": input_parameters_liorazurecr_image_excluded_severityHighTreshold_2}
     results := violation with input as input
@@ -52,47 +38,47 @@ test_input_unhealthy_image_that_isnt_appears_in_excluded_images_1_violation {
 # Checks that if there is unscanned image, then there is 1 violtation.
 test_input_creation_time_ok_scan_status_unscanned {
     input := { "review": input_review_creation_time_ok_scan_status_unscanned, "parameters": input_parameters_empty}
-    results := violation with input as input    
+    results := violation with input as input
     count(results) == 1
 }
 
-# Checks that if there is one container that is complainet (high severity) and one that isn't then we get only 1 violation.
-test_input_review_unhealthy_one_container_above_highSeverity_1_violotation {
+# Checks that if there is one container that is compliant (high severity) and one that isn't then we get only 1 violation.
+test_input_review_unhealthy_one_container_above_highSeverity_1_violation {
     input := { "review": input_review_unhealthy_2_containers_with_diff_severities, "parameters": input_parameters_severityHighTreshold_2}
     results := violation with input as input
     count(results) == 1
 }
 
 # Checks that if there are 2 conatiners with higher Highseverity than the treshold then we get 2 viloations.
-test_input_review_unhealthy_two_containers_above_highSeverity_2_violotation {
+test_input_review_unhealthy_two_containers_above_highSeverity_2_violation {
     input := { "review": input_review_unhealthy_2_containers_with_diff_severities, "parameters": input_parameters_severityHighTreshold_1}
     results := violation with input as input
     count(results) == 2
 }
 
 # Checks that if there is one container with higher MediumSeverity than the threshold, then we get violation
-test_input_review_unhealthy_one_container_above_mediumSeverity_one_violotation {
+test_input_review_unhealthy_one_container_above_mediumSeverity_one_violation {
     input := { "review": input_review_unhealthy_2_containers_with_diff_severities, "parameters": input_parameters_severityMediumTreshold_0}
     results := violation with input as input
     count(results) == 1
 }
 
 # Checks that if there is one container with higher LowSeverity than the threshold, then we get violation
-test_input_review_unhealthy_one_container_above_lowSeverity_one_violotation {
+test_input_review_unhealthy_one_container_above_lowSeverity_one_violation {
     input := { "review": input_review_unhealthy_2_containers_with_diff_severities, "parameters": input_parameters_severityLowTreshold_0}
     results := violation with input as input
     count(results) == 1
 }
 
-# Checks that if there altough there is scanFinding with high seveirty and its exceeed the threshold, if the ID is exist in exlcudeFindingIDs, then we won't get violation.
-test_input_review_unhealthy_cotainer_with_1_high_finding_that_is_appears_in_exlcudeFindingIDs_zero_violoations {
+# Checks that if there altough there is scanFinding with high seveirty and its exceeed the threshold, if the ID is exist in excludeFindingIDs, then we won't get violation.
+test_input_review_unhealthy_cotainer_with_1_high_finding_that_is_appears_in_excludeFindingIDs_zero_violoations {
     input := { "review": input_review_unhealthy_container_with_not_patchable_finding, "parameters": input_parameters_high_0_excluded_finding_id_125}
     results := violation with input as input
     count(results) == 0
 }
 
-# Checks that if there altough there is scanFinding with high seveirty and its exceeed the threshold, if the ID isn't exist in exlcudeFindingIDs, then we get violation.
-test_input_review_unhealthy_cotainer_with_1_high_finding_that_isnt_appears_in_exlcudeFindingIDs_one_violations {
+# Checks that if there altough there is scanFinding with high seveirty and its exceeed the threshold, if the ID isn't exist in excludeFindingIDs, then we get violation.
+test_input_review_unhealthy_cotainer_with_1_high_finding_that_isnt_appears_in_excludeFindingIDs_one_violations {
     input := { "review": input_review_unhealthy_container_with_patchable_finding, "parameters": input_parameters_high_0_excluded_finding_id_126}
     results := violation with input as input
     count(results) == 1
@@ -189,6 +175,22 @@ test_input_review_unhealthy_2_container_1_high_1_unscanned {
     count(results) == 2
 }
 
+# Checks that additionalData is missed, then the default is added.
+test_input_review_unscanned_without_additionalData {
+    input := { "review": input_review_creation_time_ok_scan_status_unscanned, "parameters": input_parameters_high_0_severityThresholdForExcludingNotPatchableFindings_None}
+    results := violation with input as input
+    count(results) == 1
+    contains(results[_].msg, "None")
+}
+
+# Checks that additionalData is exist, and verify that is returned from the violation.
+test_input_review_unscanned_with_additionalData {
+    input := { "review": input_review_creation_time_ok_scan_status_unscanned_with_unscanned_reason, "parameters": input_parameters_high_0_severityThresholdForExcludingNotPatchableFindings_None}
+    results := violation with input as input
+    count(results) == 1
+    contains(results[_].msg, "GetContainersVulnerabilityScanInfoGotTimeout")
+}
+
 input_review_no_annotations = {
     "object": {
         "metadata": {
@@ -197,47 +199,31 @@ input_review_no_annotations = {
     }
 }
 
-input_review_creation_time_ok_scan_status_unscanned = {
-    "uid": "123",
+input_review_creation_time_ok_scan_status_unscanned_with_unscanned_reason = {
     "object": {
         "metadata": {
             "annotations": {
-                "azuredefender.io/containers.vulnerability.scan.info": "{\"generatedTimestamp\":\"2021-05-04T23:53:20Z\",\"uidRequest\":\"123\",\"containers\":[{\"name\":\"testContainer\",\"image\":{\"name\":\"tomer.azurecr.io/core/app:4.6\",\"digest\":\"sha256:4a1c4b21597c1b4415bdbecb28a3296c6b5e23ca4f9feeb599860a1dac6a0108\"},\"scanStatus\":\"unscanned\",\"scanFindings\":[{\"patchable\":true,\"id\":\"123\",\"severity\":\"High\"}]}]}"
+                "azuredefender.io/containers.vulnerability.scan.info": "{\"generatedTimestamp\":\"2021-05-04T23:53:20Z\",\"containers\":[{\"name\":\"testContainer\",\"image\":{\"name\":\"tomer.azurecr.io/core/app:4.6\",\"digest\":\"sha256:4a1c4b21597c1b4415bdbecb28a3296c6b5e23ca4f9feeb599860a1dac6a0108\"},\"scanStatus\":\"unscanned\",\"additionalData\":{\"UnscannedReason\":\"GetContainersVulnerabilityScanInfoGotTimeout\"},\"scanFindings\":[{\"patchable\":true,\"id\":\"123\",\"severity\":\"High\"}]}]}"
             }
         }
     }
 }
 
-input_review_violation_with_stale_annotations = {
-    "uid": "124",
+input_review_creation_time_ok_scan_status_unscanned = {
     "object": {
         "metadata": {
             "annotations": {
-                "azuredefender.io/containers.vulnerability.scan.info": "{\"generatedTimestamp\":\"2021-03-04T23:53:20Z\",\"uidRequest\":\"123\",\"containers\":[{\"name\":\"testContainer\",\"image\":{\"name\":\"tomer.azurecr.io/core/app:4.6\",\"digest\":\"sha256:4a1c4b21597c1b4415bdbecb28a3296c6b5e23ca4f9feeb599860a1dac6a0108\"},\"scanStatus\":\"unscanned\",\"scanFindings\":[{\"patchable\":true,\"id\":\"123\",\"severity\":\"High\"}]}]}"
-            },
-        "managedFields":[{"time": "2021-05-04T23:53:20Z"}]
-        }
-    }
-}
-
-input_review_violation_with_not_stale_annotations = {
-    "uid": "124",
-    "object": {
-        "metadata": {
-            "annotations": {
-                "azuredefender.io/containers.vulnerability.scan.info": "{\"generatedTimestamp\":\"2021-03-04T23:53:20Z\",\"uidRequest\":\"123\",\"containers\":[{\"name\":\"testContainer\",\"image\":{\"name\":\"tomer.azurecr.io/core/app:4.6\",\"digest\":\"sha256:4a1c4b21597c1b4415bdbecb28a3296c6b5e23ca4f9feeb599860a1dac6a0108\"},\"scanStatus\":\"unscanned\",\"scanFindings\":[{\"patchable\":true,\"id\":\"123\",\"severity\":\"High\"}]}]}"
-            },
-        "managedFields":[{"time": "2021-03-04T23:53:20Z"}]
+                "azuredefender.io/containers.vulnerability.scan.info": "{\"generatedTimestamp\":\"2021-05-04T23:53:20Z\",\"containers\":[{\"name\":\"testContainer\",\"image\":{\"name\":\"tomer.azurecr.io/core/app:4.6\",\"digest\":\"sha256:4a1c4b21597c1b4415bdbecb28a3296c6b5e23ca4f9feeb599860a1dac6a0108\"},\"scanStatus\":\"unscanned\",\"scanFindings\":[{\"patchable\":true,\"id\":\"123\",\"severity\":\"High\"}]}]}"
+            }
         }
     }
 }
 
 input_review_unhealthy_2_containers_with_diff_severities = {
-    "uid": "123",
     "object": {
         "metadata": {
             "annotations": {
-                "azuredefender.io/containers.vulnerability.scan.info": "{\"generatedTimestamp\":\"2021-05-04T23:53:20Z\",\"uidRequest\":\"123\",\"containers\":[{\"name\":\"testContainer\",\"image\":{\"name\":\"tomer.azurecr.io/core/app:4.6\",\"digest\":\"sha256:4a\"},\"scanStatus\":\"unhealthyScan\",\"scanFindings\":[{\"patchable\":true,\"id\":\"123\",\"severity\":\"High\"},{\"patchable\":true,\"id\":\"124\",\"severity\":\"High\"},{\"patchable\":true,\"id\":\"125\",\"severity\":\"High\"}]},{\"name\":\"testContainer2\",\"image\":{\"name\":\"tomer.azurecr.io/core/app:4.6\",\"digest\":\"sha256:4a\"},\"scanStatus\":\"unhealthyScan\",\"scanFindings\":[{\"patchable\":true,\"id\":\"124\",\"severity\":\"Low\"},{\"patchable\":true,\"id\":\"124\",\"severity\":\"Medium\"},{\"patchable\":true,\"id\":\"124\",\"severity\":\"High\"},{\"patchable\":true,\"id\":\"125\",\"severity\":\"High\"}]}]}"
+                "azuredefender.io/containers.vulnerability.scan.info": "{\"generatedTimestamp\":\"2021-05-04T23:53:20Z\",\"containers\":[{\"name\":\"testContainer\",\"image\":{\"name\":\"tomer.azurecr.io/core/app:4.6\",\"digest\":\"sha256:4a\"},\"scanStatus\":\"unhealthyScan\",\"scanFindings\":[{\"patchable\":true,\"id\":\"123\",\"severity\":\"High\"},{\"patchable\":true,\"id\":\"124\",\"severity\":\"High\"},{\"patchable\":true,\"id\":\"125\",\"severity\":\"High\"}]},{\"name\":\"testContainer2\",\"image\":{\"name\":\"tomer.azurecr.io/core/app:4.6\",\"digest\":\"sha256:4a\"},\"scanStatus\":\"unhealthyScan\",\"scanFindings\":[{\"patchable\":true,\"id\":\"124\",\"severity\":\"Low\"},{\"patchable\":true,\"id\":\"124\",\"severity\":\"Medium\"},{\"patchable\":true,\"id\":\"124\",\"severity\":\"High\"},{\"patchable\":true,\"id\":\"125\",\"severity\":\"High\"}]}]}"
             }
         }
     }
@@ -245,11 +231,10 @@ input_review_unhealthy_2_containers_with_diff_severities = {
 
 
 input_review_unhealthy_container_with_patchable_finding = {
-    "uid": "123",
     "object": {
         "metadata": {
             "annotations": {
-                "azuredefender.io/containers.vulnerability.scan.info": "{\"generatedTimestamp\":\"2021-05-04T23:53:20Z\",\"uidRequest\":\"123\",\"containers\":[{\"name\":\"testContainer2\",\"image\":{\"name\":\"tomer.azurecr.io/core/app:4.6\",\"digest\":\"sha256:4a\"},\"scanStatus\":\"unhealthyScan\",\"scanFindings\":[{\"patchable\":true,\"id\":\"125\",\"severity\":\"High\"}]}]}"
+                "azuredefender.io/containers.vulnerability.scan.info": "{\"generatedTimestamp\":\"2021-05-04T23:53:20Z\",\"containers\":[{\"name\":\"testContainer2\",\"image\":{\"name\":\"tomer.azurecr.io/core/app:4.6\",\"digest\":\"sha256:4a\"},\"scanStatus\":\"unhealthyScan\",\"scanFindings\":[{\"patchable\":true,\"id\":\"125\",\"severity\":\"High\"}]}]}"
             }
         }
     }
@@ -257,44 +242,40 @@ input_review_unhealthy_container_with_patchable_finding = {
 
 
 input_review_unhealthy_container_with_not_patchable_finding = {
-    "uid": "123",
     "object": {
         "metadata": {
             "annotations": {
-                "azuredefender.io/containers.vulnerability.scan.info": "{\"generatedTimestamp\":\"2021-05-04T23:53:20Z\",\"uidRequest\":\"123\",\"containers\":[{\"name\":\"testContainer2\",\"image\":{\"name\":\"tomer.azurecr.io/core/app:4.6\",\"digest\":\"sha256:4a\"},\"scanStatus\":\"unhealthyScan\",\"scanFindings\":[{\"patchable\":false,\"id\":\"125\",\"severity\":\"High\"}]}]}"
+                "azuredefender.io/containers.vulnerability.scan.info": "{\"generatedTimestamp\":\"2021-05-04T23:53:20Z\",\"containers\":[{\"name\":\"testContainer2\",\"image\":{\"name\":\"tomer.azurecr.io/core/app:4.6\",\"digest\":\"sha256:4a\"},\"scanStatus\":\"unhealthyScan\",\"scanFindings\":[{\"patchable\":false,\"id\":\"125\",\"severity\":\"High\"}]}]}"
             }
         }
     }
 }
 
 input_review_unhealthy_container_with_not_patchable_severities = {
-    "uid": "123",
     "object": {
         "metadata": {
             "annotations": {
-                "azuredefender.io/containers.vulnerability.scan.info": "{\"generatedTimestamp\":\"2021-05-04T23:53:20Z\",\"uidRequest\":\"123\",\"containers\":[{\"name\":\"testContainer\",\"image\":{\"name\":\"tomer.azurecr.io/core/app:4.6\",\"digest\":\"sha256:4a\"},\"scanStatus\":\"unhealthyScan\",\"scanFindings\":[{\"patchable\":false,\"id\":\"125\",\"severity\":\"Low\"},{\"patchable\":false,\"id\":\"126\",\"severity\":\"Medium\"},{\"patchable\":false,\"id\":\"127\",\"severity\":\"High\"}]}]}"
+                "azuredefender.io/containers.vulnerability.scan.info": "{\"generatedTimestamp\":\"2021-05-04T23:53:20Z\",\"containers\":[{\"name\":\"testContainer\",\"image\":{\"name\":\"tomer.azurecr.io/core/app:4.6\",\"digest\":\"sha256:4a\"},\"scanStatus\":\"unhealthyScan\",\"scanFindings\":[{\"patchable\":false,\"id\":\"125\",\"severity\":\"Low\"},{\"patchable\":false,\"id\":\"126\",\"severity\":\"Medium\"},{\"patchable\":false,\"id\":\"127\",\"severity\":\"High\"}]}]}"
             }
         }
     }
 }
 
 input_review_unhealthy_container_with_one_finding_patchable_low_severity = {
-    "uid": "123",
     "object": {
         "metadata": {
             "annotations": {
-                "azuredefender.io/containers.vulnerability.scan.info": "{\"generatedTimestamp\":\"2021-05-04T23:53:20Z\",\"uidRequest\":\"123\",\"containers\":[{\"name\":\"testContainer2\",\"image\":{\"name\":\"tomer.azurecr.io/core/app:4.6\",\"digest\":\"sha256:4a\"},\"scanStatus\":\"unhealthyScan\",\"scanFindings\":[{\"patchable\":true,\"id\":\"125\",\"severity\":\"Low\"}]}]}"
+                "azuredefender.io/containers.vulnerability.scan.info": "{\"generatedTimestamp\":\"2021-05-04T23:53:20Z\",\"containers\":[{\"name\":\"testContainer2\",\"image\":{\"name\":\"tomer.azurecr.io/core/app:4.6\",\"digest\":\"sha256:4a\"},\"scanStatus\":\"unhealthyScan\",\"scanFindings\":[{\"patchable\":true,\"id\":\"125\",\"severity\":\"Low\"}]}]}"
             }
         }
     }
 }
 
 input_review_unhealthy_2_containers_one_unscanned_and_one_high = {
-    "uid": "123",
     "object": {
         "metadata": {
             "annotations": {
-                "azuredefender.io/containers.vulnerability.scan.info": "{\"generatedTimestamp\":\"2021-05-04T23:53:20Z\",\"uidRequest\":\"123\",\"containers\":[{\"name\":\"testContainer\",\"image\":{\"name\":\"tomer.azurecr.io/core/app:4.6\",\"digest\":\"sha256:4a\"},\"scanStatus\":\"unhealthyScan\",\"scanFindings\":[{\"patchable\":false,\"id\":\"125\",\"severity\":\"High\"}]},{\"name\":\"testContainer2\",\"image\":{\"name\":\"tomer.azurecr.io/core/app:4.6\",\"digest\":\"sha256:4a\"},\"scanStatus\":\"unscanned\",\"scanFindings\":[]}]}"
+                "azuredefender.io/containers.vulnerability.scan.info": "{\"generatedTimestamp\":\"2021-05-04T23:53:20Z\",\"containers\":[{\"name\":\"testContainer\",\"image\":{\"name\":\"tomer.azurecr.io/core/app:4.6\",\"digest\":\"sha256:4a\"},\"scanStatus\":\"unhealthyScan\",\"scanFindings\":[{\"patchable\":false,\"id\":\"125\",\"severity\":\"High\"}]},{\"name\":\"testContainer2\",\"image\":{\"name\":\"tomer.azurecr.io/core/app:4.6\",\"digest\":\"sha256:4a\"},\"scanStatus\":\"unscanned\",\"scanFindings\":[]}]}"
             }
         }
     }
@@ -335,14 +316,14 @@ input_parameters_severityMediumTreshold_0 = {
 }
 
 input_parameters_high_0_excluded_finding_id_125 = {
-    "exlcudeFindingIDs" : ["125"],
+    "excludeFindingIDs" : ["125"],
     "severity" : {
         "High": 0
     }
 }
 
 input_parameters_high_0_excluded_finding_id_126 = {
-    "exlcudeFindingIDs" : ["126"],
+    "excludeFindingIDs" : ["126"],
     "severity" : {
         "High": 0
     }
