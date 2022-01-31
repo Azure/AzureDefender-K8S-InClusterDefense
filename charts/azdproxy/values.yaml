@@ -80,7 +80,7 @@ AzDProxy:
       tivanInstrumentationConfiguration:
         azureResourceID: "Unknown"
         region: "Unknown"
-        componentName: "ClusterStateCollector" # TODO Change it to InCLusterDefense once the publisher will be deployed to AKS
+        componentName: "InClusterDefense"
         clusterDistribution: "AKS" # TODO we should do it generic for ARC
         releaseTrain: "Unknown"
         nodeName: "Unknown"

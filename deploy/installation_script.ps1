@@ -85,19 +85,19 @@ if ($LASTEXITCODE -gt 0)
     exit 1
 }
 
-#                                   Extract used variables
+# Extract used variables
 # Extract the region of the cluster
 $region = az aks show --resource-group $resource_group --name $cluster_name --query location -o tsv
 $azureResourceID = az aks show --resource-group $resource_group --name $cluster_name --query id -o tsv
 
-if ($LASTEXITCODE -eq 3)
+if ($LASTEXITCODE -ge 1)
 {
     write-error "Failed to get the region of the cluster"
     exit $LASTEXITCODE
 }
 # Create node resource group variable - MC_<RESOURCE_GROUP>_<CLUSTER_NAME>_<REGION>
 $node_resource_group = az aks show --resource-group $resource_group --name $cluster_name --query nodeResourceGroup -o tsv
-if ($LASTEXITCODE -eq 3)
+if ($LASTEXITCODE -ge 1)
 {
     write-error "Failed to get the node resource group of the cluster"
     exit $LASTEXITCODE
@@ -106,14 +106,14 @@ if ($LASTEXITCODE -eq 3)
 $in_cluster_defense_identity_name = "AzureDefenderInClusterDefense-$cluster_name"
 # Extract kubelet identity
 $kubelet_client_id = az aks show --resource-group $resource_group --name $cluster_name --query identityProfile.kubeletidentity.clientId
-if ($LASTEXITCODE -eq 3 -or $kubelet_client_id -eq $null)
+if ($LASTEXITCODE -ge 1 -or $kubelet_client_id -eq $null)
 {
     write-error "Failed to get the kubelet client id of the cluster, currently only MSI cluster identity is supported and not SPN"
     exit $LASTEXITCODE
 }
 # VMSS names list - we should explicity convert to array beacause if one vmss is returened, then it is returned as string.
 $vmss_list = [array](az vmss list --resource-group $node_resource_group --query '[].name' -o tsv)
-if ($LASTEXITCODE -eq 3 -or $vmss_list.Length -eq 0)
+if ($LASTEXITCODE -ge 1 -or $vmss_list.Length -eq 0)
 {
     write-error "Failed to get the list of VMSS in the node resource group"
     exit $LASTEXITCODE
@@ -149,7 +149,7 @@ else
     # Enable azure policy addon:
     $_ = az aks enable-addons --addons azure-policy --name $cluster_name --resource-group $resource_group
 
-    if ($LAStEXITCODE -eq 3)
+    if ($LASTEXITCODE -ge 1)
     {
         write-error "Failed to enable azure policy addon on cluster"
         exit $LASTEXITCODE
@@ -160,19 +160,27 @@ else
 PrintNewSection("AzureDefenderInClusterDefense Dependencies")
 # deployment_name must be shorter than 62 letters
 $deployment_name = "mdfc-incluster-$cluster_name-$region"
-# To get deployment_sub_list we query the node resource group dependencies because node_resource_group contains the resource group, cluster name and region
-# (deployment_name doesn't contain the resource group and as a result 2 clusters under the same subscription with the same name but under different resource groups
-# will get the same deployment name but will have different node resource group name).
-$deployment_sub_list = [array](az deployment sub list --query "[?properties.dependencies[0].dependsOn[0].resourceGroup=='$node_resource_group']" --filter "provisioningState eq 'Succeeded'")
-if ($should_install_inclusterdefense_dependencies -eq $false)
+
+$isDepExists = $false
+if ($should_install_inclusterdefense_dependencies -ne $false)
 {
-   write-host "Skipping installation of InClusterDefense Dependencies - should_install_inclusterdefense_dependencies param is false"
+    # will get the same deployment name but will have different node resource group name).
+    $is_in_cluster_defense_identity_exists = $in_cluster_defense_identity_name -in $(az identity list -g $node_resource_group --query [*].name -o json | ConvertFrom-Json)
+    if (($LASTEXITCODE -eq 0) -and ($is_in_cluster_defense_identity_exists))
+    {
+        $objectId = az identity show -g $node_resource_group -n $in_cluster_defense_identity_name --query principalId -o tsv
+        $assignmentExist = $((az role assignment list --assignee $objectId --query "[?roleDefinitionName=='Reader' && scope=='/subscriptions/$subscription']" -o json | ConvertFrom-Json).Length -ge 1)
+        if ($assignmentExist)
+        {
+            write-host "Skipping installation of InClusterDefense Dependencies - already exist, setting 'isDepExists' to false"
+            $isDepExists = $true
+        }
+    }
 }
-# if no deployment found, deployment_sub_list contains the empty array and as a result its length is 1.
-# if deployment found, deployment_sub_list length is >= 3 (contains '[', ']' and all the results as string entries)
-elseif ($deployment_sub_list.Length -gt 1)
+
+if (($should_install_inclusterdefense_dependencies -eq $false) -or ($isDepExists -eq $true))
 {
-    write-host "Skipping installation of InClusterDefense Dependencies - already exist"
+   write-host "Skipping installation of InClusterDefense Dependencies - should_install_inclusterdefense_dependencies param is false or role assignment exist"
 }
 else
 {
@@ -183,7 +191,7 @@ else
 															resource_group=$node_resource_group `
 															location=$region `
                                                             managedIdentityName=$in_cluster_defense_identity_name
-    if ($LASTEXITCODE -eq 3)
+    if ($LASTEXITCODE -ge 1)
     {
         write-error "Failed to create AzureDefenderInClusterDefense dependencies"
         exit $LASTEXITCODE
@@ -210,7 +218,7 @@ else
     $url = "https://management.azure.com/subscriptions/$subscription/providers/Microsoft.Features/providers/Microsoft.ContainerService/features/AKS-AzureDefender/register?api-version=2015-12-01";
     $token = (az account get-access-token --query "accessToken" -o tsv)
 
-    if ($LASTEXITCODE -eq 3 -or $token -eq "")
+    if ($LASTEXITCODE -ge 1 -or $token -eq "")
     {
         write-error "Failed to get access token"
         exit $LASTEXITCODE
@@ -221,7 +229,7 @@ else
     }
     $response = Invoke-WebRequest -Method POST -Uri $url -Headers $authorization_header -UseBasicParsing
 
-    if ($LASTEXITCODE -eq 3 -or $response.StatusCode -ne 200)
+    if ($LASTEXITCODE -ge 1 -or $response.StatusCode -ne 200)
     {
         write-error "Failed to enable AKS-AzureDefender feature flag"
         exit $LASTEXITCODE
@@ -238,7 +246,7 @@ else
                                                             clusterResourceGroup=$resource_group `
                                                             resourceLocation=$region
 
-    if ($LASTEXITCODE -eq 3)
+    if ($LASTEXITCODE -ge 1)
     {
         write-error "Failed to create azure-defender-k8s-security-profile dependencies"
         exit $LASTEXITCODE
@@ -257,7 +265,7 @@ else
 		write-host "Assigning identity to vmss <$vmss_list[$i]>"
 		$_ = az vmss identity assign --resource-group $node_resource_group --name $vmss_list[$i] --identities $in_cluster_defense_identity_name
 	
-		if ($LASTEXITCODE -eq 3)
+		if ($LASTEXITCODE -ge 1)
 		{
 			write-error "Failed to attach identity to vmss <$vmss_list[$i]>"
 			exit $LASTEXITCODE
@@ -273,7 +281,7 @@ PrintNewSection("Installing Helm Chart")
 
 $in_cluster_defense_identity_client_id = az identity show -n $in_cluster_defense_identity_name -g $node_resource_group --query clientId
 
-if ($LASTEXITCODE -eq 3 -or $in_cluster_defense_identity_client_id -eq "")
+if ($LASTEXITCODE -ge 1 -or $in_cluster_defense_identity_client_id -eq "")
 {
     write-error "Failed to get client id of in-cluster-defense identity"
     exit $LASTEXITCODE
@@ -292,4 +300,5 @@ helm upgrade in-cluster-defense oci://mcr.microsoft.com/azuredefender/stable/in-
                 --set AzDProxy.azdIdentity.envAzureAuthorizerConfiguration.mSIClientId=$in_cluster_defense_identity_client_id `
                 --set "AzDProxy.arg.argClientConfiguration.subscriptions={$subscription}" `
                 --set AzDProxy.instrumentation.tivan.tivanInstrumentationConfiguration.region=$region `
-                --set AzDProxy.instrumentation.tivan.tivanInstrumentationConfiguration.azureResourceID=$azureResourceID
+                --set AzDProxy.instrumentation.tivan.tivanInstrumentationConfiguration.azureResourceID=$azureResourceID `
+                --set AzDProxy.instrumentation.tivan.tivanInstrumentationConfiguration.componentName="InClusterDefense"
