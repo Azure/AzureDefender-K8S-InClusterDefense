@@ -14,6 +14,7 @@ require (
 	github.com/go-logr/logr v0.4.0
 	github.com/go-redis/redis/v8 v8.11.3
 	github.com/go-redis/redismock/v8 v8.0.6
+	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/go-containerregistry v0.7.0
 	github.com/google/go-containerregistry/pkg/authn/k8schain v0.0.0-20210823224117-e92a648af1b6
 	github.com/open-policy-agent/cert-controller v0.2.0
@@ -23,6 +24,7 @@ require (
 	go.uber.org/zap v1.17.0
 	golang.org/x/net v0.0.0-20211111160137-58aab5ef257a
 	gomodules.xyz/jsonpatch/v2 v2.2.0
+	google.golang.org/protobuf v1.27.1 // indirect
 	k8s.io/api v0.21.1
 	k8s.io/apimachinery v0.21.1
 	k8s.io/client-go v0.21.1

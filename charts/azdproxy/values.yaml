@@ -7,7 +7,7 @@ AzDProxy:
   # Webhook values
   webhook:
     # -- Amount of replicas of azdproxy.
-    replicas: 3
+    replicas: 1
     # Image values:
     image:
       # -- Official image.

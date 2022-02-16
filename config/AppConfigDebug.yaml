@@ -9,7 +9,7 @@ webhook:
     certDir: "/certs"
     namespace: "kube-system"
   managerConfiguration:
-    port: 8000
+    port: "8000"
     certDir: "/certs"
   serverConfiguration:
     path: "/mutate"
