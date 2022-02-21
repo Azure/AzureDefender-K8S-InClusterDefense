@@ -3,6 +3,7 @@ package webhook
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/cmd/webhook/admisionrequest"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
@@ -82,10 +83,10 @@ func NewHandler(azdSecInfoProvider azdsecinfo.IAzdSecInfoProvider, configuration
 func (handler *Handler) Handle(ctx context.Context, req admission.Request) admission.Response {
 	startTime := time.Now().UTC()
 	tracer := handler.tracerProvider.GetTracer("Handle")
-	//marshal,errrr := json.Marshal(&req)
-	//if errrr==nil{
-	//}
-	//tracer.Info("req","nicole-req", string(marshal))
+	marshal,errrr := json.Marshal(&req)
+	if errrr==nil{
+	}
+	tracer.Info("req","nicole-req", string(marshal))
 	response := admission.Response{}
 	reason := _notPatchedReason
 	podName  := ""
@@ -128,7 +129,7 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 		response = admission.Allowed(string(reason))
 		return response
 	}
-	workloadResource, err := admisionrequest.GetWorkloadResourceFromAdmissionRequest(req)
+	workloadResource, err := admisionrequest.GetWorkloadResourceFromAdmissionRequest(&req)
 	if err != nil {
 		err = errors.Wrap(err, "Handler.Handle received error on handleRequest")
 		tracer.Error(err, "")
