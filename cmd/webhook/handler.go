@@ -164,7 +164,7 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 }
 
 // handlePodRequest gets request that should be handled and returned the response with the relevant patches.
-func (handler *Handler) handlePodRequest(workloadResource *admisionrequest.WorkloadResource) (admission.Response, error) {
+func (handler *Handler) handlePodRequest(workloadResource *admisionrequest.ResourceWorkLoad) (admission.Response, error) {
 	tracer := handler.tracerProvider.GetTracer("handleWorkloadResourceRequest")
 	patches := []jsonpatch.JsonPatchOperation{}
 	vulnerabilitySecAnnotationsPatch, err := handler.getPodContainersVulnerabilityScanInfoAnnotationsOperation(workloadResource)
@@ -219,12 +219,12 @@ func (handler *Handler) getResponseWhenErrorEncountered(workloadResource *admisi
 
 // getPodContainersVulnerabilityScanInfoAnnotationsOperation receives a pod to generate a vuln scan annotation add operation
 // Get vuln scan infor from azdSecInfo provider, then create a json annotation for it on pods custom annotations of azd vuln scan info
-func (handler *Handler) getPodContainersVulnerabilityScanInfoAnnotationsOperation(workloadResource *admisionrequest.WorkloadResource) (*jsonpatch.JsonPatchOperation, error) {
+func (handler *Handler) getPodContainersVulnerabilityScanInfoAnnotationsOperation(workloadResource *admisionrequest.ResourceWorkLoad) (*jsonpatch.JsonPatchOperation, error) {
 	tracer := handler.tracerProvider.GetTracer("getPodContainersVulnerabilityScanInfoAnnotationsOperation")
-	handler.metricSubmitter.SendMetric(len(workloadResource.PodSpec.Containers)+len(workloadResource.PodSpec.InitContainers), webhookmetric.NewHandlerNumOfContainersPerPodMetric())
+	handler.metricSubmitter.SendMetric(len(workloadResource.Spec.Containers)+len(workloadResource.Spec.InitContainers), webhookmetric.NewHandlerNumOfContainersPerPodMetric())
 
 	// Get pod's containers vulnerability scan info
-	vulnSecInfoContainers, err := handler.azdSecInfoProvider.GetContainersVulnerabilityScanInfo(&workloadResource.PodSpec, &workloadResource.ResourceMetadata)
+	vulnSecInfoContainers, err := handler.azdSecInfoProvider.GetContainersVulnerabilityScanInfo(&workloadResource.Spec, &workloadResource.Metadata)
 	if err != nil {
 		wrappedError := errors.Wrap(err, "Handler failed to GetContainersVulnerabilityScanInfo")
 		tracer.Error(wrappedError, "Handler.AzdSecInfoProvider.GetContainersVulnerabilityScanInfo")

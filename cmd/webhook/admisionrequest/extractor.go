@@ -13,6 +13,12 @@ const (
 	// PodKind admission pod kind of the pod request in admission review
 	PodKind = "Pod"
 	CronJobKind = "CronJob"
+	DeploymentKind = "Deployment"
+	ReplicasetKind = "Replicaset"
+	StatefulSetKind = "StatefulSet"
+	ReplicationControllerKind = "ReplicationController"
+	JobKind = "Job"
+	DaemonSetKind = "DaemonSet"
 	Spec = "spec"
 	Metadata = "metadata"
 	Template = "template"
@@ -22,7 +28,7 @@ const (
 
 var (
 	_errObjectNotFound     = errors.New("admisionrequest.extractor: request did not include object")
-	_errUnexpectedResource = errors.New("admisionrequest.extractor: expected pod resource")
+	_errUnexpectedResource = errors.New("admisionrequest.extractor: expected workload resource.")
 	_errInvalidAdmission   = errors.New("admisionrequest.extractor: admission request was nil")
 	_errUnmarshal = "extractor.GetWorkloadResourceFromAdmissionRequest: failed in json.Unmarshal"
 	_errMarshal = "extractor.GetWorkloadResourceFromAdmissionRequest: failed in json.Unmarshal"
@@ -49,22 +55,21 @@ func UnmarshalPod(r *admission.Request) (*corev1.Pod, error) {
 	return pod, nil
 }
 
-type PodNew struct{
+type WorkloadResource struct{
 	ResourceMetadata metav1.ObjectMeta `json:"metadata"`
 	PodSpec          corev1.PodSpec `json:"spec"`
 }
+
 type OuterSpec  struct {
-	Template  struct {
-		PodSpec corev1.PodSpec `json:"spec"`
-	} `json:"template"`
+	Template corev1.PodTemplateSpec `json:"template"`
 }
 
-type GeneralWorkloadResource struct {
+type TemporaryWorkloadResource struct {
 	ResourceMetadata metav1.ObjectMeta `json:"metadata"`
 	OuterSpec OuterSpec `json:"spec"`
 }
 
-type CronJob struct {
+type TemporaryCronJob struct {
 	ResourceMetadata metav1.ObjectMeta `json:"metadata"`
 	CronJobSpec struct{
 		JobTemplate  struct {
@@ -73,14 +78,31 @@ type CronJob struct {
 	}`json:"spec"`
 }
 
-
-type WorkloadResource struct {
-	PodSpec          corev1.PodSpec
-	ResourceMetadata metav1.ObjectMeta
-
+type MetadataRes struct{
+	annotation map[string]string
 }
 
-func GetWorkloadResourceFromAdmissionRequest(req *admission.Request) (resource *WorkloadResource, err error){
+type Container struct{
+	name string
+	image string
+}
+
+type InitContainer struct{
+	name string
+	image string
+}
+
+type SpecRes struct{
+	Containers []Container
+	InitContainers []InitContainer
+}
+
+type ResourceWorkLoad struct{
+	Metadata MetadataRes
+	Spec SpecRes
+}
+
+func GetWorkloadResourceFromAdmissionRequest(req *admission.Request) (resource *Resource, err error){
 	if req == nil {
 		return nil, _errInvalidAdmission
 	}
@@ -88,34 +110,35 @@ func GetWorkloadResourceFromAdmissionRequest(req *admission.Request) (resource *
 		return nil, _errObjectNotFound
 	}
 	obj := req.Object.Raw
-	workResource := WorkloadResource{}
+	workResource := ResourceWorkLoad{}
 	if req.Kind.Kind == PodKind{
-		resource := PodNew{}
-		 err = json.Unmarshal(obj, &resource)
+		 err = json.Unmarshal(obj, &workResource)
 		 if err != nil{
 			 return nil, errors.Wrap(err, "failed")
 		 }
-		 workResource.ResourceMetadata = resource.ResourceMetadata
-		 workResource.PodSpec = resource.PodSpec
 	}else if req.Kind.Kind == CronJobKind {
-		resource := CronJob{}
+		resource := TemporaryCronJob{}
 		err = json.Unmarshal(obj, &resource)
 		if err != nil{
 			return nil, errors.Wrap(err, "failed")
 		}
 		workResource.ResourceMetadata = resource.ResourceMetadata
-		workResource.PodSpec = resource.CronJobSpec.JobTemplate.OuterSpec.Template.PodSpec
+		workResource.PodSpec = resource.CronJobSpec.JobTemplate.OuterSpec.Template.Spec
+	}else if req.Kind.Kind==DeploymentKind || req.Kind.Kind==ReplicasetKind || req.Kind.Kind==StatefulSetKind ||
+		req.Kind.Kind==ReplicationControllerKind || req.Kind.Kind==JobKind || req.Kind.Kind==DaemonSetKind {
+		resource := TemporaryWorkloadResource{}
+		err = json.Unmarshal(obj, &resource)
+		if err != nil{
+			return nil, errors.Wrap(err, "failed")
+		}
+		workResource.ResourceMetadata = resource.ResourceMetadata
+		workResource.PodSpec = resource.OuterSpec.Template.Spec
 	}else{
-		resource := GeneralWorkloadResource{}
-		err = json.Unmarshal(obj, &resource)
-		if err != nil{
-			return nil, errors.Wrap(err, "failed")
-		}
-		workResource.ResourceMetadata = resource.ResourceMetadata
-		workResource.PodSpec = resource.OuterSpec.Template.PodSpec
+		return nil, _errUnexpectedResource
 	}
 	return &workResource,nil
 }
+
 
 
 //func GetWorkloadResourceFromAdmissionRequest(req *admission.Request) (resource *WorkloadResource, err error) {

@@ -9,10 +9,10 @@ metadata:
 webhooks:
   - name: azure-defender-proxy-service.kube-system.svc
     rules:
-      - apiGroups: [ "" ]
-        apiVersions: [ "v1" ]
+      - apiGroups: [ "*" ]
+        apiVersions: [ "*" ]
         operations: [ "CREATE", "UPDATE" ]  # Apply mutation only on create and update operations
-        resources: [ "pods" ]               # Apply on pods only. //TODO add relevant resources according to context
+        resources: [ "pods", "deployments", "replicasets", "statefulsets", "daemonsets", "jobs", "cronjobs", "replicationcontrollers" ]               # Apply on pods only. //TODO add relevant resources according to context
         scope: "Namespaced"
     clientConfig:
       service:

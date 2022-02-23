@@ -1,6 +1,7 @@
 package azdsecinfo
 
 import (
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/cmd/webhook/admisionrequest"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/azdsecinfo/contracts"
 	azdsecinfometrics "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/azdsecinfo/metric"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/dataproviders/arg"
@@ -32,7 +33,7 @@ const (
 // IAzdSecInfoProvider represents interface for providing azure defender security information
 type IAzdSecInfoProvider interface {
 	// GetContainersVulnerabilityScanInfo receives pod template spec containing containers list, and returns their fetched ContainersVulnerabilityScanInfo
-	GetContainersVulnerabilityScanInfo(podSpec *corev1.PodSpec, resourceMetadata *metav1.ObjectMeta) ([]*contracts.ContainerVulnerabilityScanInfo, error)
+	GetContainersVulnerabilityScanInfo(podSpec *admisionrequest.SpecRes, resourceMetadata *admisionrequest.MetadataRes) ([]*contracts.ContainerVulnerabilityScanInfo, error)
 }
 
 // AzdSecInfoProvider implements IAzdSecInfoProvider interface
@@ -154,7 +155,7 @@ func (provider *AzdSecInfoProvider) GetContainersVulnerabilityScanInfo(podSpec *
 }
 
 // getContainersVulnerabilityScanInfoSyncWrapper runs getContainersVulnerabilityScanInfo and insert the result into the channel.
-func (provider *AzdSecInfoProvider) getContainersVulnerabilityScanInfoSyncWrapper(podSpec *corev1.PodSpec, resourceMetadata *metav1.ObjectMeta, chanTimeout chan *utils.ChannelDataWrapper, podSpecCacheKey string) {
+func (provider *AzdSecInfoProvider) getContainersVulnerabilityScanInfoSyncWrapper(podSpec *admisionrequest.SpecRes, resourceMetadata *admisionrequest.MetadataRes, chanTimeout chan *utils.ChannelDataWrapper, podSpecCacheKey string) {
 	tracer := provider.tracerProvider.GetTracer("getContainersVulnerabilityScanInfoSyncWrapper")
 	containerVulnerabilityScanInfo, err := provider.getContainersVulnerabilityScanInfo(podSpec, resourceMetadata)
 
@@ -209,7 +210,7 @@ func (provider *AzdSecInfoProvider) extractContainersVulnerabilityScanInfoFromCh
 }
 
 // getContainersVulnerabilityScanInfo try to get containers vulnerabilities scan info
-func (provider *AzdSecInfoProvider) getContainersVulnerabilityScanInfo(podSpec *corev1.PodSpec, resourceMetadata *metav1.ObjectMeta) ([]*contracts.ContainerVulnerabilityScanInfo, error) {
+func (provider *AzdSecInfoProvider) getContainersVulnerabilityScanInfo(podSpec *admisionrequest.SpecRes, resourceMetadata *admisionrequest.SpecRes) ([]*contracts.ContainerVulnerabilityScanInfo, error) {
 	tracer := provider.tracerProvider.GetTracer("getContainersVulnerabilityScanInfo")
 
 	// Convert pull secrets from reference object to strings

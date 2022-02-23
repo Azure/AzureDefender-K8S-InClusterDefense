@@ -11,7 +11,7 @@ webhooks:
     rules:
       - apiGroups: [ "*" ]
         apiVersions: [ "*" ]
-        operations: [ "CREATE", "UPDATE" ]  # Apply mutation only on create and update operations
+        operations: [ "CREATE", "UPDATE" ]  # Apply mutation only on create and update operations daemonsets
         resources: [ "pods", "deployments", "replicasets", "statefulsets", "daemonsets", "jobs", "cronjobs", "replicationcontrollers"]               # Apply on pods only. TODO add relevant resources according to context
         scope: "Namespaced"
     clientConfig:
