@@ -139,11 +139,11 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 		return response
 	}
 	tracer.Info("Pod request unmarshall","resource:", req.Resource,"namespace:", req.Namespace, "podOwnerRefrences:", podOwnerRefrences,  "operation:", req.Operation, "reqKind:", req.Kind)
-	response, err = handler.handlePodRequest(workloadResource)
+	response, err = handler.handleWorkLoadResourceRequest(workloadResource)
 	if err != nil {
-		err = errors.Wrap(err, "Handler.Handle received error on handlePodRequest")
+		err = errors.Wrap(err, "Handler.Handle received error on handleWorkLoadResourceRequest")
 		tracer.Error(err, "")
-		handler.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "Handle.handlePodRequest"))
+		handler.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "Handle.handleWorkLoadResourceRequest"))
 		response := handler.getResponseWhenErrorEncountered(workloadResource, err)
 		tracer.Info("Handler Responded","resource:", req.Resource,"namespace:", req.Namespace,"Name:", req.Name, "operation:", req.Operation, "reqKind:", req.Kind, "response:", response)
 		return response
@@ -151,7 +151,7 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 
 	// In case of dryrun=true:  reset all patch operations
 	if handler.configuration.DryRun {
-		tracer.Info("Handler.handlePodRequest not mutating resource, because handler is on dryrun mode.", "ResponseInCaseOfNotDryRun", response)
+		tracer.Info("Handler.handleWorkLoadResourceRequest not mutating resource, because handler is on dryrun mode.", "ResponseInCaseOfNotDryRun", response)
 		reason = _notPatchedHandlerDryRunReason
 		// Override response with clean response.
 		response = admission.Allowed(string(reason))
@@ -163,15 +163,15 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 	return response
 }
 
-// handlePodRequest gets request that should be handled and returned the response with the relevant patches.
-func (handler *Handler) handlePodRequest(workloadResource *admisionrequest.ResourceWorkLoad) (admission.Response, error) {
+// handleWorkLoadResourceRequest gets request that should be handled and returned the response with the relevant patches.
+func (handler *Handler) handleWorkLoadResourceRequest(workloadResource *admisionrequest.ResourceWorkLoad) (admission.Response, error) {
 	tracer := handler.tracerProvider.GetTracer("handleWorkloadResourceRequest")
 	patches := []jsonpatch.JsonPatchOperation{}
 	vulnerabilitySecAnnotationsPatch, err := handler.getPodContainersVulnerabilityScanInfoAnnotationsOperation(workloadResource)
 	if err != nil {
-		err = errors.Wrap(err, "Handler.handlePodRequest Failed to getPodContainersVulnerabilityScanInfoAnnotationsOperation for Pod")
+		err = errors.Wrap(err, "Handler.handleWorkLoadResourceRequest Failed to getPodContainersVulnerabilityScanInfoAnnotationsOperation for Pod")
 		tracer.Error(err, "")
-		handler.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "handlePodRequest.getPodContainersVulnerabilityScanInfoAnnotationsOperation"))
+		handler.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "handleWorkLoadResourceRequest.getPodContainersVulnerabilityScanInfoAnnotationsOperation"))
 		return admission.Response{}, err
 	}
 
@@ -183,13 +183,13 @@ func (handler *Handler) handlePodRequest(workloadResource *admisionrequest.Resou
 }
 // getResponseWhenErrorEncountered returns a response in which it deletes previous ContainersVulnerabilityScan annotations.
 // If no such annotations exist it returns handler.admissionErrorResponse with the original error.
-func (handler *Handler) getResponseWhenErrorEncountered(workloadResource *admisionrequest.WorkloadResource, originalError error) admission.Response {
+func (handler *Handler) getResponseWhenErrorEncountered(workloadResource *admisionrequest.ResourceWorkLoad, originalError error) admission.Response {
 	tracer := handler.tracerProvider.GetTracer("getResponseWhenErrorEncountered")
 
 	patches := []jsonpatch.JsonPatchOperation{}
 
 	// returns nil if no deletion is needed.
-	patch, err := annotations.CreateAnnotationPatchToDeleteContainersVulnerabilityScanAnnotationIfNeeded(&workloadResource.ResourceMetadata)
+	patch, err := annotations.CreateAnnotationPatchToDeleteContainersVulnerabilityScanAnnotationIfNeeded(&workloadResource.Metadata)
 
 	// if error encountered during CreateAnnotationPatchToDeleteContainersVulnerabilityScanAnnotationIfNeeded - response with the original error
 	if err != nil {

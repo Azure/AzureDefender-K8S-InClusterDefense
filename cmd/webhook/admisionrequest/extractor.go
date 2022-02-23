@@ -7,6 +7,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
+	yaml "sigs.k8s.io/kustomize/kyaml/yaml"
 )
 
 const (
@@ -79,22 +80,25 @@ type TemporaryCronJob struct {
 }
 
 type MetadataRes struct{
-	annotation map[string]string
+	Namespace string
+	Annotation map[string]string
 }
 
 type Container struct{
-	name string
-	image string
+	Name string
+	Image string
 }
 
-type InitContainer struct{
-	name string
-	image string
-}
+//type InitContainer struct{
+//	Name string
+//	Image string
+//}
 
 type SpecRes struct{
 	Containers []Container
-	InitContainers []InitContainer
+	InitContainers []Container
+	ImagePullSecrets []corev1.LocalObjectReference
+	ServiceAccountName string
 }
 
 type ResourceWorkLoad struct{
@@ -102,43 +106,67 @@ type ResourceWorkLoad struct{
 	Spec SpecRes
 }
 
-func GetWorkloadResourceFromAdmissionRequest(req *admission.Request) (resource *Resource, err error){
+//func GetWorkloadResourceFromAdmissionRequest(req *admission.Request) (resource *ResourceWorkLoad, err error){
+//	if req == nil {
+//		return nil, _errInvalidAdmission
+//	}
+//	if len(req.Object.Raw) == 0 {
+//		return nil, _errObjectNotFound
+//	}
+//	obj := req.Object.Raw
+//	workResource := ResourceWorkLoad{}
+//	if req.Kind.Kind == PodKind{
+//		 err = json.Unmarshal(obj, &workResource)
+//		 if err != nil{
+//			 return nil, errors.Wrap(err, "failed")
+//		 }
+//	}else if req.Kind.Kind == CronJobKind {
+//		resource := TemporaryCronJob{}
+//		err = json.Unmarshal(obj, &resource)
+//		if err != nil{
+//			return nil, errors.Wrap(err, "failed")
+//		}
+//		workResource.ResourceMetadata = resource.ResourceMetadata
+//		workResource.PodSpec = resource.CronJobSpec.JobTemplate.OuterSpec.Template.Spec
+//	}else if req.Kind.Kind==DeploymentKind || req.Kind.Kind==ReplicasetKind || req.Kind.Kind==StatefulSetKind ||
+//		req.Kind.Kind==ReplicationControllerKind || req.Kind.Kind==JobKind || req.Kind.Kind==DaemonSetKind {
+//		resource := TemporaryWorkloadResource{}
+//		err = json.Unmarshal(obj, &resource)
+//		if err != nil{
+//			return nil, errors.Wrap(err, "failed")
+//		}
+//		workResource.ResourceMetadata = resource.ResourceMetadata
+//		workResource.PodSpec = resource.OuterSpec.Template.Spec
+//	}else{
+//		return nil, _errUnexpectedResource
+//	}
+//	return &workResource,nil
+//}
+
+func GetWorkloadResourceFromAdmissionRequest(req *admission.Request) (resource *ResourceWorkLoad, err error){
 	if req == nil {
 		return nil, _errInvalidAdmission
 	}
 	if len(req.Object.Raw) == 0 {
 		return nil, _errObjectNotFound
 	}
-	obj := req.Object.Raw
+	y, _ := yaml.ConvertJSONToYamlNode(string(req.Object.Raw))
 	workResource := ResourceWorkLoad{}
-	if req.Kind.Kind == PodKind{
-		 err = json.Unmarshal(obj, &workResource)
-		 if err != nil{
-			 return nil, errors.Wrap(err, "failed")
-		 }
-	}else if req.Kind.Kind == CronJobKind {
-		resource := TemporaryCronJob{}
-		err = json.Unmarshal(obj, &resource)
-		if err != nil{
-			return nil, errors.Wrap(err, "failed")
-		}
-		workResource.ResourceMetadata = resource.ResourceMetadata
-		workResource.PodSpec = resource.CronJobSpec.JobTemplate.OuterSpec.Template.Spec
-	}else if req.Kind.Kind==DeploymentKind || req.Kind.Kind==ReplicasetKind || req.Kind.Kind==StatefulSetKind ||
-		req.Kind.Kind==ReplicationControllerKind || req.Kind.Kind==JobKind || req.Kind.Kind==DaemonSetKind {
-		resource := TemporaryWorkloadResource{}
-		err = json.Unmarshal(obj, &resource)
-		if err != nil{
-			return nil, errors.Wrap(err, "failed")
-		}
-		workResource.ResourceMetadata = resource.ResourceMetadata
-		workResource.PodSpec = resource.OuterSpec.Template.Spec
-	}else{
-		return nil, _errUnexpectedResource
-	}
+	//metadata := MetadataRes{}
+	//v , _ := y.Pipe(yaml.Lookup("spec", "containers"))
+	serviceAccountParent , _ := y.Pipe(yaml.Lookup("spec","serviceAccountName"))
+	serviceAccountName:= serviceAccountParent.Document().Value
+	AnnotationParent , _ := y.Pipe(yaml.Lookup("spec","annotation"))
+	Annotation := AnnotationParent.Document().Value
+	fmt.Printf(serviceAccountName,Annotation)
+	//var arrName []string
+	//var arrImage []string
+	//for _, n := range serviceAccount.Content() {
+	//	arrName =append(arrName, n.Value)
+	//	arrImage =append(arrImage, n.Value)
+	//}
 	return &workResource,nil
 }
-
 
 
 //func GetWorkloadResourceFromAdmissionRequest(req *admission.Request) (resource *WorkloadResource, err error) {
@@ -148,7 +176,7 @@ func GetWorkloadResourceFromAdmissionRequest(req *admission.Request) (resource *
 //	if len(req.Object.Raw) == 0 {
 //		return nil, _errObjectNotFound
 //	}
-//	unstructuredObject := &unstructured.Unstructured{}
+//	unstructuredObbject := &unstructured.Unstructured{}
 //	er := json.Unmarshal(req.Object.Raw, unstructuredObject)
 //	if er != nil {
 //		return nil, errors.Wrap(er, _errUnmarshal)
