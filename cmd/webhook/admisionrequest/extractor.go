@@ -89,11 +89,6 @@ type Container struct{
 	Image string
 }
 
-//type InitContainer struct{
-//	Name string
-//	Image string
-//}
-
 type SpecRes struct{
 	Containers []Container
 	InitContainers []Container
@@ -101,10 +96,112 @@ type SpecRes struct{
 	ServiceAccountName string
 }
 
+
 type ResourceWorkLoad struct{
 	Metadata MetadataRes
 	Spec SpecRes
 }
+
+
+func GetContainers(yamlFile *yaml.RNode,ContainersType string) (containers []Container,err error) {
+	conParent, err := yamlFile.Pipe(yaml.Lookup("spec", ContainersType))
+	if err!=nil {
+		return nil,errors.Wrap(err, "fail")
+	}
+	if conParent==nil{
+		if ContainersType=="containers"{
+			return nil, errors.New("fail")
+		}else{
+			return nil,nil
+		}
+	}
+	if conParent.Content()==nil || len(conParent.Content())==0{
+		return nil, errors.Wrap(err, "fail")
+	}
+	containersList := make([]Container, len(conParent.Content()))
+	for i := 0; i < len(conParent.Content()); i += 1 {
+		containersList[i] = Container{}
+		inner := conParent.Content()[i].Content
+		if len(inner)!=4{
+			return nil,errors.Wrap(err, "fail")
+		}
+		if inner[0].Value == "name" && inner[2].Value == "image" {
+			containersList[i].Name = inner[1].Value
+			containersList[i].Image = inner[3].Value
+		} else if inner[2].Value == "name" && inner[0].Value == "image" {
+			containersList[i].Name = inner[3].Value
+			containersList[i].Image = inner[1].Value
+		} else {
+			return nil,errors.Wrap(err, "fail")
+		}
+	}
+	return containersList,nil
+}
+
+func GetAnnotation(yamlFile *yaml.RNode) (annotation map[string]string, err error){
+	AnnotationParent , err := yamlFile.Pipe(yaml.Lookup("metadata","annotations"))
+	if err!=nil{
+		return nil,errors.Wrap(err, "fail")
+	}
+	if AnnotationParent==nil{
+		return nil,nil
+	}
+	if len(AnnotationParent.Content())==0 || len(AnnotationParent.Content())/2!=0{
+		return nil,errors.New("failed")
+	}
+	annotationMap := make(map[string] string)
+	for i := 0; i < len(AnnotationParent.Content()); i +=2 {
+		annotationMap[AnnotationParent.Content()[i].Value] = AnnotationParent.Content()[i+1].Value
+	}
+	return annotationMap,nil
+}
+func GetValue(yamlFile *yaml.RNode,path ...string) (value string,err error){
+	valueParent , err := yamlFile.Pipe(yaml.Lookup(path ...))
+	if err!=nil{
+		return "",errors.Wrap(err, "fail")
+	}
+	val := yaml.GetValue(valueParent)
+	return val,nil
+}
+
+func GetWorkloadResourceFromAdmissionRequest(req *admission.Request) (resource *ResourceWorkLoad, err error){
+	if req == nil {
+		return nil, _errInvalidAdmission
+	}
+	if len(req.Object.Raw) == 0 {
+		return nil, _errObjectNotFound
+	}
+	yamlFile, _ := yaml.ConvertJSONToYamlNode(string(req.Object.Raw))
+	workResource := ResourceWorkLoad{}
+	//imagePullSecrets , _ := yamlFile.Pipe(yaml.Lookup("spec","imagePullSecrets"))
+	//fmt.Print(imagePullSecrets)
+	annotations  := yamlFile.GetAnnotations()
+	if len(annotations)==0{
+		workResource.Metadata.Annotation = nil
+	}
+	workResource.Metadata.Annotation = a
+	if err!=nil{
+		return nil,errors.Wrap(err, "fail")
+	}
+	workResource.Spec.Containers, err =GetContainers(yamlFile,"containers")
+	if err!=nil{
+		return nil,errors.Wrap(err, "fail")
+	}
+	workResource.Spec.InitContainers, err =GetContainers(yamlFile,"initContainers")
+	if err!=nil{
+		return nil,errors.Wrap(err, "fail")
+	}
+	workResource.Spec.ServiceAccountName , err = GetValue(yamlFile,"spec","serviceAccountName")
+	if err!=nil{
+		return nil,errors.Wrap(err, "fail")
+	}
+	workResource.Metadata.Namespace,err = GetValue(yamlFile,"metadata","namespace")
+	if err!=nil{
+		return nil,errors.Wrap(err, "fail")
+	}
+	return &workResource,nil
+}
+
 
 //func GetWorkloadResourceFromAdmissionRequest(req *admission.Request) (resource *ResourceWorkLoad, err error){
 //	if req == nil {
@@ -142,31 +239,6 @@ type ResourceWorkLoad struct{
 //	}
 //	return &workResource,nil
 //}
-
-func GetWorkloadResourceFromAdmissionRequest(req *admission.Request) (resource *ResourceWorkLoad, err error){
-	if req == nil {
-		return nil, _errInvalidAdmission
-	}
-	if len(req.Object.Raw) == 0 {
-		return nil, _errObjectNotFound
-	}
-	y, _ := yaml.ConvertJSONToYamlNode(string(req.Object.Raw))
-	workResource := ResourceWorkLoad{}
-	//metadata := MetadataRes{}
-	//v , _ := y.Pipe(yaml.Lookup("spec", "containers"))
-	serviceAccountParent , _ := y.Pipe(yaml.Lookup("spec","serviceAccountName"))
-	serviceAccountName:= serviceAccountParent.Document().Value
-	AnnotationParent , _ := y.Pipe(yaml.Lookup("spec","annotation"))
-	Annotation := AnnotationParent.Document().Value
-	fmt.Printf(serviceAccountName,Annotation)
-	//var arrName []string
-	//var arrImage []string
-	//for _, n := range serviceAccount.Content() {
-	//	arrName =append(arrName, n.Value)
-	//	arrImage =append(arrImage, n.Value)
-	//}
-	return &workResource,nil
-}
 
 
 //func GetWorkloadResourceFromAdmissionRequest(req *admission.Request) (resource *WorkloadResource, err error) {
