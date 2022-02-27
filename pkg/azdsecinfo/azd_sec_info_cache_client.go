@@ -53,7 +53,7 @@ type IAzdSecInfoProviderCacheClient interface {
 	ResetTimeOutInCacheAfterGettingScanResults(podSpecCacheKey string) error
 
 	// GetPodSpecCacheKey get the cache key without the prefix of a given podSpec
-	GetPodSpecCacheKey(podSpec *admisionrequest.SpecRes) string
+	GetPodSpecCacheKey(podSpec *admisionrequest.PodSpec) string
 }
 
 // AzdSecInfoProviderCacheClient implements IAzdSecInfoProviderCacheClient interface
@@ -308,7 +308,7 @@ func (client *AzdSecInfoProviderCacheClient) marshalScanResults(containerVulnera
 // GetPodSpecCacheKey get the cache key without the prefix of a given podSpec
 // The key is containerName:imageName as string seperate each containerName:imageName by comma.
 // For example - 'myName1:alpine,myName2:nginx'
-func (client *AzdSecInfoProviderCacheClient) GetPodSpecCacheKey(podSpec *admisionrequest.SpecRes) string {
+func (client *AzdSecInfoProviderCacheClient) GetPodSpecCacheKey(podSpec *admisionrequest.PodSpec) string {
 	containers := utils.ExtractContainersFromPodSpecAsString(podSpec)
 	// Sort the array - it is important for the cache to be sorted.
 	sort.Strings(containers)

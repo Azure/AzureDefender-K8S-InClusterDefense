@@ -24,7 +24,7 @@ const (
 // Contracts.ContainersVulnerabilityScanInfoAnnotationName (azuredefender.io/containers.vulnerability.scan.info)
 // If the annotations map doesn't exist, it creates a new map and add the key value before setting it as the json patch value.
 // As a result, the annotations are updated with no override of the existing values.
-func CreateContainersVulnerabilityScanAnnotationPatchAdd(containersScanInfoList []*contracts.ContainerVulnerabilityScanInfo, workloadResource *admisionrequest.ResourceWorkLoad) (*jsonpatch.JsonPatchOperation, error) {
+func CreateContainersVulnerabilityScanAnnotationPatchAdd(containersScanInfoList []*contracts.ContainerVulnerabilityScanInfo, workloadResource *admisionrequest.WorkLoadResource) (*jsonpatch.JsonPatchOperation, error) {
 	scanInfoList := &contracts.ContainerVulnerabilityScanInfoList{
 		GeneratedTimestamp: time.Now().UTC(),
 		Containers:         containersScanInfoList,
@@ -50,7 +50,7 @@ func CreateContainersVulnerabilityScanAnnotationPatchAdd(containersScanInfoList 
 
 // CreateAnnotationPatchToDeleteContainersVulnerabilityScanAnnotationIfNeeded create a patch to delete ContainersVulnerabilityScanAnnotation (stale annotations) if the pod's annotations contain ContainersVulnerabilityScanAnnotation.
 // Otherwise, no deletion is needed - return nil.
-func CreateAnnotationPatchToDeleteContainersVulnerabilityScanAnnotationIfNeeded(resourceMetadata *admisionrequest.MetadataRes) (*jsonpatch.JsonPatchOperation, error) {
+func CreateAnnotationPatchToDeleteContainersVulnerabilityScanAnnotationIfNeeded(resourceMetadata *admisionrequest.ObjectMetadata) (*jsonpatch.JsonPatchOperation, error) {
 	if resourceMetadata == nil {
 		return nil, errors.Wrap(utils.NilArgumentError, "CreateAnnotationPatchToDeleteContainersVulnerabilityScanAnnotationIfNeeded got nil pod")
 	}
@@ -84,7 +84,7 @@ func marshalAnnotationInnerObject(object interface{}) (string, error) {
 // updateAnnotations update the annotations of a given pod with the given key and value.
 // If annotations map not exist - create a new map and add the key.
 // Return the annotations map
-func updateAnnotations(workloadResource *admisionrequest.ResourceWorkLoad, key string, value string) (map[string]string, error){
+func updateAnnotations(workloadResource *admisionrequest.WorkLoadResource, key string, value string) (map[string]string, error){
 	if workloadResource == nil {
 		return nil, errors.Wrap(utils.NilArgumentError, "updateAnnotations got nil pod")
 	}
@@ -98,7 +98,7 @@ func updateAnnotations(workloadResource *admisionrequest.ResourceWorkLoad, key s
 }
 
 // isDeleteStaleAzdAnnotationsNeeded returns true if delete stale Azd annotations is needed, otherwise false.
-func isDeleteStaleAzdAnnotationsNeeded(resourceMetadata *admisionrequest.MetadataRes) bool{
+func isDeleteStaleAzdAnnotationsNeeded(resourceMetadata *admisionrequest.ObjectMetadata) bool{
 	annotations := resourceMetadata.Annotation
 	// no annotations - no need to delete
 	if annotations == nil {
@@ -113,7 +113,7 @@ func isDeleteStaleAzdAnnotationsNeeded(resourceMetadata *admisionrequest.Metadat
 }
 
 // deleteAzdAnnotations return the pod's annotations after deleting contracts.ContainersVulnerabilityScanInfoAnnotationName.
-func deleteAzdAnnotations(resourceMetadata *admisionrequest.MetadataRes) map[string]string{
+func deleteAzdAnnotations(resourceMetadata *admisionrequest.ObjectMetadata) map[string]string{
 	annotations := resourceMetadata.Annotation
 	delete(annotations, contracts.ContainersVulnerabilityScanInfoAnnotationName)
 	return annotations

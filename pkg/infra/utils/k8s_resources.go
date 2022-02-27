@@ -26,7 +26,7 @@ func ExtractImagesFromPodSpec(podSpec *corev1.PodSpec) []string {
 
 // ExtractContainersFromPodSpecAsString gets pod spec and returns all containers as containerName:image used by the pod as String.
 // For example appContainer:alpine
-func ExtractContainersFromPodSpecAsString(podSpec *admisionrequest.SpecRes) []string {
+func ExtractContainersFromPodSpecAsString(podSpec *admisionrequest.PodSpec) []string {
 	containers := []string{}
 	if podSpec == nil {
 		return containers
