@@ -78,7 +78,7 @@ func (suite *TestSuite) Test_CreateContainersVulnerabilityScanAnnotationPatchAdd
 }
 
 func (suite *TestSuite) Test_DeleteContainersVulnerabilityScanAnnotationPatch_PodWithAzdAnnotations_AnnotationsGeneratedAsExpected() {
-	result, err := CreateAnnotationPatchToDeleteContainersVulnerabilityScanAnnotationIfNeeded(&createPodWithAzdAnnotationsForTest().ResourceMetadata)
+	result, err := CreateAnnotationPatchToDeleteContainersVulnerabilityScanAnnotationIfNeeded(&createPodWithAzdAnnotationsForTest().Metadata)
 	suite.Nil(err)
 	mapAnnotations, ok := result.Value.(map[string]string)
 	suite.True(ok)
@@ -93,14 +93,14 @@ func (suite *TestSuite) Test_DeleteContainersVulnerabilityScanAnnotationPatch_Po
 
 func (suite *TestSuite) Test_DeleteContainersVulnerabilityScanAnnotationPatch_PodWithoutAnnotations_AnnotationsGeneratedAsExpected() {
 
-	result, err := CreateAnnotationPatchToDeleteContainersVulnerabilityScanAnnotationIfNeeded(&createPodWithoutAnnotationsForTest().ResourceMetadata)
+	result, err := CreateAnnotationPatchToDeleteContainersVulnerabilityScanAnnotationIfNeeded(&createPodWithoutAnnotationsForTest().Metadata)
 	suite.Nil(err)
 	suite.Nil(result)
 }
 
 func (suite *TestSuite) Test_DeleteContainersVulnerabilityScanAnnotationPatch_PodWithAnnotations_AnnotationsGeneratedAsExpected() {
 
-	result, err := CreateAnnotationPatchToDeleteContainersVulnerabilityScanAnnotationIfNeeded(&createPodWithAnnotationsForTest().ResourceMetadata)
+	result, err := CreateAnnotationPatchToDeleteContainersVulnerabilityScanAnnotationIfNeeded(&createPodWithAnnotationsForTest().Metadata)
 	suite.Nil(err)
 	suite.Nil(result)
 }
@@ -149,7 +149,7 @@ func createPodWithAnnotationsForTest() *admisionrequest.WorkloadResource {
 				_annotationTestKeyTwo : _annotationTestValueTwo,
 			},
 		}
-	workloadResource.ResourceMetadata = metadata
+	workloadResource.Metadata = admisionrequest.ObjectMetadata{Namespace: metadata.Namespace,Annotation: metadata.Annotations, OwnerReferences: metadata.OwnerReferences}
 	return &workloadResource
 }
 
@@ -163,7 +163,7 @@ func createPodWithAzdAnnotationsForTest() *admisionrequest.WorkloadResource {
 			contracts.ContainersVulnerabilityScanInfoAnnotationName: "some value",
 		},
 	}
-	workloadResource.ResourceMetadata = metadata
+	workloadResource.Metadata = admisionrequest.ObjectMetadata{Namespace: metadata.Namespace,Annotation: metadata.Annotations, OwnerReferences: metadata.OwnerReferences}
 	return &workloadResource
 }
 
@@ -172,7 +172,7 @@ func createPodWithoutAnnotationsForTest() *admisionrequest.WorkloadResource {
 	metadata := metav1.ObjectMeta{
 		Name: "podTest",
 	}
-	workloadResource.ResourceMetadata = metadata
+	workloadResource.Metadata = admisionrequest.ObjectMetadata{Namespace: metadata.Namespace,Annotation: metadata.Annotations, OwnerReferences: metadata.OwnerReferences}
 	return &workloadResource
 }
 

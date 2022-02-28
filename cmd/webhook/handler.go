@@ -164,7 +164,7 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 }
 
 // handleWorkLoadResourceRequest gets request that should be handled and returned the response with the relevant patches.
-func (handler *Handler) handleWorkLoadResourceRequest(workloadResource *admisionrequest.WorkLoadResource) (admission.Response, error) {
+func (handler *Handler) handleWorkLoadResourceRequest(workloadResource *admisionrequest.WorkloadResource) (admission.Response, error) {
 	tracer := handler.tracerProvider.GetTracer("handleWorkloadResourceRequest")
 	patches := []jsonpatch.JsonPatchOperation{}
 	vulnerabilitySecAnnotationsPatch, err := handler.getPodContainersVulnerabilityScanInfoAnnotationsOperation(workloadResource)
@@ -183,7 +183,7 @@ func (handler *Handler) handleWorkLoadResourceRequest(workloadResource *admision
 }
 // getResponseWhenErrorEncountered returns a response in which it deletes previous ContainersVulnerabilityScan annotations.
 // If no such annotations exist it returns handler.admissionErrorResponse with the original error.
-func (handler *Handler) getResponseWhenErrorEncountered(workloadResource *admisionrequest.WorkLoadResource, originalError error) admission.Response {
+func (handler *Handler) getResponseWhenErrorEncountered(workloadResource *admisionrequest.WorkloadResource, originalError error) admission.Response {
 	tracer := handler.tracerProvider.GetTracer("getResponseWhenErrorEncountered")
 
 	patches := []jsonpatch.JsonPatchOperation{}
@@ -219,7 +219,7 @@ func (handler *Handler) getResponseWhenErrorEncountered(workloadResource *admisi
 
 // getPodContainersVulnerabilityScanInfoAnnotationsOperation receives a pod to generate a vuln scan annotation add operation
 // Get vuln scan infor from azdSecInfo provider, then create a json annotation for it on pods custom annotations of azd vuln scan info
-func (handler *Handler) getPodContainersVulnerabilityScanInfoAnnotationsOperation(workloadResource *admisionrequest.WorkLoadResource) (*jsonpatch.JsonPatchOperation, error) {
+func (handler *Handler) getPodContainersVulnerabilityScanInfoAnnotationsOperation(workloadResource *admisionrequest.WorkloadResource) (*jsonpatch.JsonPatchOperation, error) {
 	tracer := handler.tracerProvider.GetTracer("getPodContainersVulnerabilityScanInfoAnnotationsOperation")
 	handler.metricSubmitter.SendMetric(len(workloadResource.Spec.Containers)+len(workloadResource.Spec.InitContainers), webhookmetric.NewHandlerNumOfContainersPerPodMetric())
 

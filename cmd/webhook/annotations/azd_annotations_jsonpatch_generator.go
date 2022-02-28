@@ -24,7 +24,7 @@ const (
 // Contracts.ContainersVulnerabilityScanInfoAnnotationName (azuredefender.io/containers.vulnerability.scan.info)
 // If the annotations map doesn't exist, it creates a new map and add the key value before setting it as the json patch value.
 // As a result, the annotations are updated with no override of the existing values.
-func CreateContainersVulnerabilityScanAnnotationPatchAdd(containersScanInfoList []*contracts.ContainerVulnerabilityScanInfo, workloadResource *admisionrequest.WorkLoadResource) (*jsonpatch.JsonPatchOperation, error) {
+func CreateContainersVulnerabilityScanAnnotationPatchAdd(containersScanInfoList []*contracts.ContainerVulnerabilityScanInfo, workloadResource *admisionrequest.WorkloadResource) (*jsonpatch.JsonPatchOperation, error) {
 	scanInfoList := &contracts.ContainerVulnerabilityScanInfoList{
 		GeneratedTimestamp: time.Now().UTC(),
 		Containers:         containersScanInfoList,
@@ -84,7 +84,7 @@ func marshalAnnotationInnerObject(object interface{}) (string, error) {
 // updateAnnotations update the annotations of a given pod with the given key and value.
 // If annotations map not exist - create a new map and add the key.
 // Return the annotations map
-func updateAnnotations(workloadResource *admisionrequest.WorkLoadResource, key string, value string) (map[string]string, error){
+func updateAnnotations(workloadResource *admisionrequest.WorkloadResource, key string, value string) (map[string]string, error){
 	if workloadResource == nil {
 		return nil, errors.Wrap(utils.NilArgumentError, "updateAnnotations got nil pod")
 	}

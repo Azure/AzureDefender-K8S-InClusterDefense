@@ -102,20 +102,20 @@ func getOwnerReference(yamlNode *yaml.RNode) (ownerReferences []metav1.OwnerRefe
 	return ownerReferences, nil
 }
 
-// NewWorkLoadResource initialize WorkLoadResource object.
+// NewWorkLoadResource initialize WorkloadResource object.
 func newWorkLoadResource(namespace string, annotation map[string]string, ownerReferences []metav1.OwnerReference,
 	containers []Container, initContainers []Container,imagePullSecrets []corev1.LocalObjectReference,
-	serviceAccountName string) (workLoadResource *WorkLoadResource){
+	serviceAccountName string) (workLoadResource *WorkloadResource){
 	spec := PodSpec{Containers: containers, InitContainers: initContainers,
 		ImagePullSecrets: imagePullSecrets, ServiceAccountName: serviceAccountName}
 	metadata := ObjectMetadata{Namespace: namespace, Annotation: annotation, OwnerReferences: ownerReferences}
-	resource := WorkLoadResource{Metadata:metadata, Spec:spec}
+	resource := WorkloadResource{Metadata: metadata, Spec:spec}
 	return &resource
 }
 
-// GetWorkloadResourceFromAdmissionRequest return WorkLoadResource object according
+// GetWorkloadResourceFromAdmissionRequest return WorkloadResource object according
 // to the information in admission.Request.
-func GetWorkloadResourceFromAdmissionRequest(req *admission.Request) (resource *WorkLoadResource, err error) {
+func GetWorkloadResourceFromAdmissionRequest(req *admission.Request) (resource *WorkloadResource, err error) {
 	if req == nil {
 		return nil, errors.New(_errMsgInvalidAdmission)
 	}
@@ -130,7 +130,7 @@ func GetWorkloadResourceFromAdmissionRequest(req *admission.Request) (resource *
 
 	namespace := yamlFile.GetNamespace()
 	annotation := yamlFile.GetAnnotations()
-	// return the node of the Rnode's podspec.
+	// return podspec yaml rNode.
 	specNode, err := yaml.LookupFirstMatch(ConventionalPodSpecPaths).Filter(yamlFile)
 	if err != nil {
 		return nil, errors.Wrap(err, _errMsgInvalidPath)
