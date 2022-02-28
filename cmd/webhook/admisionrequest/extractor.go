@@ -26,8 +26,8 @@ var (
 		{"spec"}}
 )
 
-// GoToDestNode returns the *Rnode of the given path.
-func GoToDestNode(yamlFile *yaml.RNode, path ...string) (destNode *yaml.RNode, err error) {
+// goToDestNode returns the *Rnode of the given path.
+func goToDestNode(yamlFile *yaml.RNode, path ...string) (destNode *yaml.RNode, err error) {
 	DestNode, err := yamlFile.Pipe(yaml.Lookup(path...))
 	if err != nil {
 		return nil, errors.Wrap(err, _errMsgInvalidPath)
@@ -35,9 +35,9 @@ func GoToDestNode(yamlFile *yaml.RNode, path ...string) (destNode *yaml.RNode, e
 	return DestNode, err
 }
 
-// GetValue returns a string value that the given path contains, can be empty.
-func GetValue(yamlFile *yaml.RNode, path ...string) (value string, err error) {
-	DestNode, pathErr := GoToDestNode(yamlFile, path...)
+// getValue returns a string value that the given path contains, can be empty.
+func getValue(yamlFile *yaml.RNode, path ...string) (value string, err error) {
+	DestNode, pathErr := goToDestNode(yamlFile, path...)
 	if err != nil {
 		return "", pathErr
 	}
@@ -45,9 +45,9 @@ func GetValue(yamlFile *yaml.RNode, path ...string) (value string, err error) {
 	return val, nil
 }
 
-// GetContainers returns workload kubernetes resource's containers or initContainers(according to
+// getContainers returns workload kubernetes resource's containers or initContainers(according to
 // ContainersType).
-func GetContainers(specNode *yaml.RNode, ContainersType string) (containers []Container, err error) {
+func getContainers(specNode *yaml.RNode, ContainersType string) (containers []Container, err error) {
 	con, err := specNode.GetSlice(ContainersType)
 	if err != nil {
 		return nil, nil
@@ -64,8 +64,8 @@ func GetContainers(specNode *yaml.RNode, ContainersType string) (containers []Co
 	return list, nil
 }
 
-// GetImagePullSecrets returns workload kubernetes resource's image pull secrets.
-func GetImagePullSecrets(specNode *yaml.RNode) (secrets []corev1.LocalObjectReference, err error) {
+// getImagePullSecrets returns workload kubernetes resource's image pull secrets.
+func getImagePullSecrets(specNode *yaml.RNode) (secrets []corev1.LocalObjectReference, err error) {
 	sliceImagePullSecrets, err := specNode.GetSlice("imagePullSecrets")
 	if err != nil {
 		return nil, nil
@@ -82,8 +82,8 @@ func GetImagePullSecrets(specNode *yaml.RNode) (secrets []corev1.LocalObjectRefe
 }
 
 // GetOwnerReference returns workload kubernetes resource's owner reference.
-func GetOwnerReference(yamlNode *yaml.RNode) (ownerReferences []metav1.OwnerReference, err error) {
-	metaNode, pathErr := GoToDestNode(yamlNode, "metadata")
+func getOwnerReference(yamlNode *yaml.RNode) (ownerReferences []metav1.OwnerReference, err error) {
+	metaNode, pathErr := goToDestNode(yamlNode, "metadata")
 	if err != nil {
 		return nil, pathErr
 	}
@@ -125,35 +125,35 @@ func GetWorkloadResourceFromAdmissionRequest(req *admission.Request) (resource *
 		return nil, errors.Wrap(err, _errMsgInvalidPath)
 	}
 
-	containers, err := GetContainers(specNode, "containers")
+	containers, err := getContainers(specNode, "containers")
 	if err != nil {
 		return nil, err
 	}
 
-	initContainers, err := GetContainers(specNode, "initContainers")
+	initContainers, err := getContainers(specNode, "initContainers")
 	if err != nil {
 		return nil, err
 	}
 
-	imagePullSecrets, err := GetImagePullSecrets(specNode)
+	imagePullSecrets, err := getImagePullSecrets(specNode)
 	if err != nil {
 		return nil, err
 	}
 
-	serviceAccountName, err := GetValue(yamlFile, "spec", "serviceAccountName")
+	serviceAccountName, err := getValue(yamlFile, "spec", "serviceAccountName")
 	if err != nil {
 		return nil, err
 	}
 
-	ownerReferences, err := GetOwnerReference(yamlFile)
+	ownerReferences, err := getOwnerReference(yamlFile)
 	if err != nil {
 		return nil, err
 	}
 
 	// initialize WorkLoadResource object.
-	spec := PodSpec{containers, initContainers,
-		imagePullSecrets, serviceAccountName}
-	metadata := ObjectMetadata{namespace, annotation, ownerReferences}
-	workResource := WorkLoadResource{metadata, spec}
+	spec := PodSpec{Containers: containers, InitContainers: initContainers,
+		ImagePullSecrets: imagePullSecrets, ServiceAccountName: serviceAccountName}
+	metadata := ObjectMetadata{Namespace: namespace, Annotation: annotation, OwnerReferences: ownerReferences}
+	workResource := WorkLoadResource{Metadata: metadata, Spec: spec}
 	return &workResource, nil
 }

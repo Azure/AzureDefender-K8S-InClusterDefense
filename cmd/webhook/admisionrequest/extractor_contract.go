@@ -32,3 +32,4 @@ type WorkLoadResource struct{
 	Metadata ObjectMetadata
 	Spec     PodSpec
 }
+
