@@ -16,6 +16,7 @@ const (
 	_errMsgMarshal                  = "admisionrequest.extractor: failed in json.Unmarshal"
 	_errMsgJsonToYamlConversionFail = "admisionrequest.extractor: failed to convert json to yaml node."
 	_errMsgInvalidPath              = "admisionrequest.extractor: failed to access the given path ."
+	_errMsgUnexpectedResource       = "admisionrequest.extractor: expected pod workload resource."
 )
 
 var (

@@ -17,7 +17,7 @@ type: application
 version: "0.1.0"
 # This is the version number of the application being deployed. This version number should be
 # incremented each time you make changes to the application.
-appVersion: "0.1.1"
+appVersion: "c0fc345696ffdf08744113ad33207dce22bbc264"
 # The URL of this projects home page
 home: https://github.com/Azure/AzureDefender-K8S-InClusterDefense
 # A list of URLs to source code for this project

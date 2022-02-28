@@ -2,6 +2,7 @@ package admisionrequest
 //
 //import (
 //	"encoding/json"
+//	"github.com/pkg/errors"
 //	log "github.com/sirupsen/logrus"
 //	"github.com/stretchr/testify/suite"
 //	admissionv1 "k8s.io/api/admission/v1"
@@ -27,30 +28,20 @@ package admisionrequest
 ////		},
 ////	},
 ////}
-//func createWorkloadResourceForTests(){
-//	workloadResource := WorkloadResource{
-//		Metadata: ObjectMetadata{
-//			Namespace: "default",
-//			Annotation: map[string]string{
-//				"key1" : "value1",
-//				"key2" : "value2"},
-//			OwnerReferences: nil,
-//		},
-//		Spec: PodSpec{
-//			Containers: []Container{
-//				{
-//					Name:  "containerTest",
-//					Image: "image.com",
-//				},
-//			},
-//			InitContainers: []Container{
-//				{
 //
-//				},
-//			},
-//		},
 //
+//func PodToWorkloadResourceForTest(pod *corev1.Pod)(workloadResource * WorkloadResource){
+//	listContainers :=make([]Container,len(pod.Spec.Containers))
+//	for i:=0;i<len(pod.Spec.Containers);i++{
+//		listContainers[i] = Container{Name: pod.Spec.Containers[i].Name,Image: pod.Spec.Containers[i].Image}
 //	}
+//	listInitContainers :=make([]Container,len(pod.Spec.InitContainers))
+//	for i:=0;i<len(pod.Spec.Containers);i++{
+//		listInitContainers[i] = Container{Name: pod.Spec.InitContainers[i].Name,Image: pod.Spec.InitContainers[i].Image}
+//	}
+//	spec := PodSpec{Containers: listContainers, InitContainers: listInitContainers, ImagePullSecrets: pod.Spec.ImagePullSecrets, ServiceAccountName: pod.Spec.ServiceAccountName}
+//	metadata := ObjectMetadata{Namespace: pod.Namespace,Annotation: pod.Annotations,OwnerReferences: pod.OwnerReferences}
+//	return &WorkloadResource{Metadata: metadata,Spec: spec}
 //}
 //
 //type TestSuite struct {
@@ -111,10 +102,6 @@ package admisionrequest
 //func (suite *TestSuite) Test_GetWorkloadResourceFromAdmissionRequest_PodAdmissionReqWithMatchingObject_AsExpected() {
 //
 //	workLoadResource, err := GetWorkloadResourceFromAdmissionRequest(suite.req)
-//	podResource :=WorkloadResource{}
-//	containerList
-//	podResource.Spec = PodSpec{Containers: suite.pod.Spec.Containers[0], InitContainers: suite.pod.Spec.InitContainers,ImagePullSecrets: suite.pod.Spec.ImagePullSecrets,ServiceAccountName: suite.pod.Spec.ServiceAccountName}
-//	podResource.Metadata = ObjectMetadata{Namespace: suite.pod.Namespace, Annotation: suite.pod.Annotations, OwnerReferences: suite.pod.GetOwnerReferences()}
 //	suite.Nil(err)
 //	reflect.DeepEqual(podResource, workLoadResource)
 //}
@@ -130,21 +117,21 @@ package admisionrequest
 //func (suite *TestSuite) Test_GetWorkloadResourceFromAdmissionRequest_RequestNull_Error() {
 //	workLoadResource, err := GetWorkloadResourceFromAdmissionRequest(nil)
 //	suite.Nil(workLoadResource)
-//	suite.Equal(_errInvalidAdmission, err)
+//	suite.Equal(errors.New(_errMsgInvalidAdmission), err)
 //}
 //
 //func (suite *TestSuite) Test_GetWorkloadResourceFromAdmissionRequest_EmptyRawObject_Error() {
 //	suite.req.Object.Raw = []byte{}
 //	workLoadResource, err := GetWorkloadResourceFromAdmissionRequest(suite.req)
 //	suite.Nil(workLoadResource)
-//	suite.Equal(_errObjectNotFound, err)
+//	suite.Equal(errors.New(_errMsgObjectNotFound), err)
 //}
 //
 //func (suite *TestSuite) Test_GetWorkloadResourceFromAdmissionRequest_NotWorkloadResourceKindRequest_Error() {
 //	suite.req.Kind.Kind = "NotWorkloadResource"
 //	workLoadResource, err := GetWorkloadResourceFromAdmissionRequest(suite.req)
 //	suite.Nil(workLoadResource)
-//	suite.Equal(_errUnexpectedResource, err)
+//	suite.Equal(errors.New(_errMsgUnexpectedResource), err)
 //}
 //
 //
