@@ -102,6 +102,17 @@ func getOwnerReference(yamlNode *yaml.RNode) (ownerReferences []metav1.OwnerRefe
 	return ownerReferences, nil
 }
 
+// NewWorkLoadResource initialize WorkLoadResource object.
+func newWorkLoadResource(namespace string, annotation map[string]string, ownerReferences []metav1.OwnerReference,
+	containers []Container, initContainers []Container,imagePullSecrets []corev1.LocalObjectReference,
+	serviceAccountName string) (workLoadResource *WorkLoadResource){
+	spec := PodSpec{Containers: containers, InitContainers: initContainers,
+		ImagePullSecrets: imagePullSecrets, ServiceAccountName: serviceAccountName}
+	metadata := ObjectMetadata{Namespace: namespace, Annotation: annotation, OwnerReferences: ownerReferences}
+	resource := WorkLoadResource{Metadata:metadata, Spec:spec}
+	return &resource
+}
+
 // GetWorkloadResourceFromAdmissionRequest return WorkLoadResource object according
 // to the information in admission.Request.
 func GetWorkloadResourceFromAdmissionRequest(req *admission.Request) (resource *WorkLoadResource, err error) {
@@ -149,11 +160,5 @@ func GetWorkloadResourceFromAdmissionRequest(req *admission.Request) (resource *
 	if err != nil {
 		return nil, err
 	}
-
-	// initialize WorkLoadResource object.
-	spec := PodSpec{Containers: containers, InitContainers: initContainers,
-		ImagePullSecrets: imagePullSecrets, ServiceAccountName: serviceAccountName}
-	metadata := ObjectMetadata{Namespace: namespace, Annotation: annotation, OwnerReferences: ownerReferences}
-	workResource := WorkLoadResource{Metadata: metadata, Spec: spec}
-	return &workResource, nil
+	return newWorkLoadResource(namespace, annotation, ownerReferences, containers, initContainers, imagePullSecrets, serviceAccountName), nil
 }
