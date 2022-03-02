@@ -9,10 +9,10 @@ webhooks:
   # e.g.: azure-defender-proxy-service.kube-system.svc
   - name: {{.Values.AzDProxy.prefixResourceDeployment}}-service.{{ .Release.Namespace }}.svc
     rules:
-      - apiGroups: [ "*" ] #TODO apply only on relevant apiGroups.
-        apiVersions: [ "*" ]  #TODO apply only on relevant apiVersions.
-        operations: [ "CREATE", "UPDATE" ]  # Apply mutation only on create and update operations daemonsets
-        resources: [ "pods", "deployments", "replicasets", "statefulsets", "daemonsets", "jobs", "cronjobs", "replicationcontrollers"]
+      - apiGroups: [ "*" ] #TODO [t-ngandelman] apply only on relevant apiGroups.
+        apiVersions: [ "*" ]  #TODO [t-ngandelman] apply only on relevant apiVersions.
+        operations: [ "CREATE", "UPDATE" ]  # Apply mutation only on create and update operations
+        resources: [ "pods", "deployments", "replicasets", "statefulsets", "daemonsets", "jobs", "cronjobs", "replicationcontrollers"] #https://kubernetes.io/docs/concepts/workloads/
         scope: "Namespaced"
     clientConfig:
       service:

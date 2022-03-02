@@ -21,9 +21,9 @@ const (
 
 type TestSuite struct {
 	suite.Suite
-	containersScanInfo []*contracts.ContainerVulnerabilityScanInfo
-	podNoAnnotations *admisionrequest.WorkloadResource
-	podWithAnnotations *admisionrequest.WorkloadResource
+	containersScanInfo            []*contracts.ContainerVulnerabilityScanInfo
+	workloadResourceNoAnnotations   *admisionrequest.WorkloadResource
+	workloadResourceWithAnnotations *admisionrequest.WorkloadResource
 }
 
 func (suite *TestSuite) SetupSuite() {
@@ -59,18 +59,18 @@ func (suite *TestSuite) SetupSuite() {
 			},
 		},
 	}
-	suite.podNoAnnotations = &admisionrequest.WorkloadResource{}
-	suite.podWithAnnotations = createPodWithAnnotationsForTest()
+	suite.workloadResourceNoAnnotations = &admisionrequest.WorkloadResource{}
+	suite.workloadResourceWithAnnotations = createPodWithAnnotationsForTest()
 }
 
 func (suite *TestSuite) Test_CreateContainersVulnerabilityScanAnnotationPatchAdd_TwoContainersScanInfo_AnnotationsGeneratedAsExpected() {
-	suite.checkContainersVulnerabilityScanAnnotation(1, suite.podNoAnnotations)
+	suite.checkContainersVulnerabilityScanAnnotation(1, suite.workloadResourceNoAnnotations)
 }
 
 func (suite *TestSuite) Test_CreateContainersVulnerabilityScanAnnotationPatchAdd_PodWithAnnotations_AnnotationsGeneratedAsExpected() {
 
 	// check containers vulnerability scan annotations
-	mapAnnotations := suite.checkContainersVulnerabilityScanAnnotation(3, suite.podWithAnnotations)
+	mapAnnotations := suite.checkContainersVulnerabilityScanAnnotation(3, suite.workloadResourceWithAnnotations)
 
 	// check no override of existing annotations
 	suite.checkNoOverrideOfExistingAnnotations(mapAnnotations, _annotationTestKeyOne, _annotationTestValueOne)
@@ -149,7 +149,7 @@ func createPodWithAnnotationsForTest() *admisionrequest.WorkloadResource {
 				_annotationTestKeyTwo : _annotationTestValueTwo,
 			},
 		}
-	workloadResource.Metadata = admisionrequest.ObjectMetadata{Namespace: metadata.Namespace,Annotation: metadata.Annotations, OwnerReferences: metadata.OwnerReferences}
+	workloadResource.Metadata = admisionrequest.ObjectMetadata{Namespace: metadata.Namespace, Annotations: metadata.Annotations, OwnerReferences: metadata.OwnerReferences}
 	return &workloadResource
 }
 
@@ -163,7 +163,7 @@ func createPodWithAzdAnnotationsForTest() *admisionrequest.WorkloadResource {
 			contracts.ContainersVulnerabilityScanInfoAnnotationName: "some value",
 		},
 	}
-	workloadResource.Metadata = admisionrequest.ObjectMetadata{Namespace: metadata.Namespace,Annotation: metadata.Annotations, OwnerReferences: metadata.OwnerReferences}
+	workloadResource.Metadata = admisionrequest.ObjectMetadata{Namespace: metadata.Namespace, Annotations: metadata.Annotations, OwnerReferences: metadata.OwnerReferences}
 	return &workloadResource
 }
 
@@ -172,7 +172,7 @@ func createPodWithoutAnnotationsForTest() *admisionrequest.WorkloadResource {
 	metadata := metav1.ObjectMeta{
 		Name: "podTest",
 	}
-	workloadResource.Metadata = admisionrequest.ObjectMetadata{Namespace: metadata.Namespace,Annotation: metadata.Annotations, OwnerReferences: metadata.OwnerReferences}
+	workloadResource.Metadata = admisionrequest.ObjectMetadata{Namespace: metadata.Namespace, Annotations: metadata.Annotations, OwnerReferences: metadata.OwnerReferences}
 	return &workloadResource
 }
 

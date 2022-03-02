@@ -4,10 +4,14 @@ import (
 	"fmt"
 	"github.com/pkg/errors"
 	"io/ioutil"
-	"sigs.k8s.io/yaml"
+	"sigs.k8s.io/kustomize/kyaml/yaml"
+	//"sigs.k8s.io/yaml"
 	"strings"
 )
 
+const (
+	_errMsgInvalidPath = "admisionrequest.extractor: failed to access the given path"
+)
 /*
 CheckIfTwoYamlsHaveTheSameKeys Checks if 2 yaml's files have the same keys.
 returns ...
@@ -64,3 +68,23 @@ func CreateMapFromPathOfYaml(path string) (map[string]interface{}, error) {
 	}
 	return valuesMap, err
 }
+
+// GoToDestNode returns the *Rnode of the given path.
+func GoToDestNode(yamlFile *yaml.RNode, path ...string) (destNode *yaml.RNode, err error) {
+	DestNode, err := yamlFile.Pipe(yaml.Lookup(path...))
+	if err != nil {
+		return nil, errors.Wrap(err, _errMsgInvalidPath)
+	}
+	return DestNode, err
+}
+
+// GetValue returns a string value that the given path contains, can be empty.
+func GetValue(yamlFile *yaml.RNode, path ...string) (value string, err error) {
+	DestNode, pathErr := GoToDestNode(yamlFile, path...)
+	if err != nil {
+		return "", pathErr
+	}
+	val := yaml.GetValue(DestNode)
+	return val, nil
+}
+

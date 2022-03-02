@@ -2,6 +2,7 @@ package admisionrequest
 
 import (
 	"encoding/json"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/utils"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -13,48 +14,44 @@ const (
 	_errMsgObjectNotFound           = "admisionrequest.extractor: request did not include object"
 	_errMsgInvalidAdmission         = "admisionrequest.extractor: admission request was nil"
 	_errMsgUnmarshal                = "admisionrequest.extractor: failed in json.Unmarshal"
-	_errMsgMarshal                  = "admisionrequest.extractor: failed in json.Unmarshal"
-	_errMsgJsonToYamlConversionFail = "admisionrequest.extractor: failed to convert json to yaml node."
-	_errMsgInvalidPath              = "admisionrequest.extractor: failed to access the given path ."
-	_errMsgUnexpectedResource       = "admisionrequest.extractor: expected pod workload resource."
+	_errMsgMarshal                  = "admisionrequest.extractor: failed in json.Marshal"
+	_errMsgJsonToYamlConversionFail = "admisionrequest.extractor: failed to convert json to yaml node"
+	_errMsgInvalidPath              = "admisionrequest.extractor: failed to access the given path"
+	_errMsgUnexpectedResource       = "admisionrequest.extractor: expected workload resource"
+	imagePullSecretsConst           = "imagePullSecrets"
+	metadataConst                   = "metadata"
+	ownerReferencesConst            = "ownerReferences"
+	containersConst                 = "containers"
+	initContainersConst             = "initContainers"
+	specConst                       = "spec"
+	serviceAccountNameConst         = "serviceAccountName"
 )
 
 var (
-	ConventionalPodSpecPaths = [][]string{
+	conventionalPodSpecPaths = [][]string{
 		{"spec", "jobTemplate", "spec", "template", "spec"},
 		{"spec", "template", "spec"},
 		{"template", "spec"},
-		{"spec"}}
+		{"spec"}} //from yaml.ConventionalContainersPaths, without containers(the last string in paths).
+	kubernetesWorkloadResources =[]string {"Pod", "Deployment", "ReplicaSet", "StatefulSet", "DaemonSet",
+		"Job", "CronJob", "ReplicationController"} //https://kubernetes.io/docs/concepts/workloads/
+	_errInvalidAdmission = errors.New(_errMsgInvalidAdmission)
+	_errObjectNotFound = errors.New(_errMsgObjectNotFound)
+	_errUnexpectedResource = errors.New(_errMsgUnexpectedResource)
 )
 
-// goToDestNode returns the *Rnode of the given path.
-func goToDestNode(yamlFile *yaml.RNode, path ...string) (destNode *yaml.RNode, err error) {
-	DestNode, err := yamlFile.Pipe(yaml.Lookup(path...))
-	if err != nil {
-		return nil, errors.Wrap(err, _errMsgInvalidPath)
-	}
-	return DestNode, err
-}
-
-// getValue returns a string value that the given path contains, can be empty.
-func getValue(yamlFile *yaml.RNode, path ...string) (value string, err error) {
-	DestNode, pathErr := goToDestNode(yamlFile, path...)
-	if err != nil {
-		return "", pathErr
-	}
-	val := yaml.GetValue(DestNode)
-	return val, nil
-}
 
 // getContainers returns workload kubernetes resource's containers or initContainers(according to
 // ContainersType).
-func getContainers(specNode *yaml.RNode, ContainersType string) (containers []Container, err error) {
-	con, err := specNode.GetSlice(ContainersType)
-	if err != nil {
+func getContainers(specNode *yaml.RNode, containerType containersType) (containers []Container, err error) {
+	containersInterface, pathErr := specNode.GetSlice(string(containerType))
+	// if pathErr != nil it means that containerType is an empty field in admission request
+	if pathErr != nil {
 		return nil, nil
 	}
+
 	var list []Container
-	bytes, err := json.Marshal(con)
+	bytes, err := json.Marshal(containersInterface)
 	if err != nil {
 		return nil, errors.Wrap(err, _errMsgMarshal)
 	}
@@ -67,11 +64,13 @@ func getContainers(specNode *yaml.RNode, ContainersType string) (containers []Co
 
 // getImagePullSecrets returns workload kubernetes resource's image pull secrets.
 func getImagePullSecrets(specNode *yaml.RNode) (secrets []corev1.LocalObjectReference, err error) {
-	sliceImagePullSecrets, err := specNode.GetSlice("imagePullSecrets")
-	if err != nil {
+	imagePullSecretsInterface, pathErr := specNode.GetSlice(imagePullSecretsConst)
+	// if pathErr != nil it means that "imagePullSecrets" is an empty field in admission request
+	if pathErr != nil {
 		return nil, nil
 	}
-	bytes, err := json.Marshal(sliceImagePullSecrets)
+
+	bytes, err := json.Marshal(imagePullSecretsInterface)
 	if err != nil {
 		return nil, errors.Wrap(err, _errMsgMarshal)
 	}
@@ -84,11 +83,13 @@ func getImagePullSecrets(specNode *yaml.RNode) (secrets []corev1.LocalObjectRefe
 
 // GetOwnerReference returns workload kubernetes resource's owner reference.
 func getOwnerReference(yamlNode *yaml.RNode) (ownerReferences []metav1.OwnerReference, err error) {
-	metaNode, pathErr := goToDestNode(yamlNode, "metadata")
-	if err != nil {
-		return nil, pathErr
+	metaNode, pathErr := utils.GoToDestNode(yamlNode, metadataConst)
+	// if err != nil it means that "ownerReferences" is an empty field in admission request
+	if pathErr != nil {
+		return nil, nil
 	}
-	sliceOwnerReferences, err := metaNode.GetSlice("ownerReferences")
+
+	sliceOwnerReferences, err := metaNode.GetSlice(ownerReferencesConst)
 	if err != nil {
 		return nil, nil
 	}
@@ -103,46 +104,49 @@ func getOwnerReference(yamlNode *yaml.RNode) (ownerReferences []metav1.OwnerRefe
 	return ownerReferences, nil
 }
 
-// NewWorkLoadResource initialize WorkloadResource object.
-func newWorkLoadResource(namespace string, annotation map[string]string, ownerReferences []metav1.OwnerReference,
-	containers []Container, initContainers []Container,imagePullSecrets []corev1.LocalObjectReference,
-	serviceAccountName string) (workLoadResource *WorkloadResource){
-	spec := PodSpec{Containers: containers, InitContainers: initContainers,
-		ImagePullSecrets: imagePullSecrets, ServiceAccountName: serviceAccountName}
-	metadata := ObjectMetadata{Namespace: namespace, Annotation: annotation, OwnerReferences: ownerReferences}
-	resource := WorkloadResource{Metadata: metadata, Spec:spec}
-	return &resource
+// stringInSlice return true if list contain str,false otherwise.
+func stringInSlice(str string, list []string) bool {
+	for _, listValue := range list {
+		if listValue == str {
+			return true
+		}
+	}
+	return false
 }
 
-// GetWorkloadResourceFromAdmissionRequest return WorkloadResource object according
+// ExtractWorkloadResourceFromAdmissionRequest return WorkloadResource object according
 // to the information in admission.Request.
-func GetWorkloadResourceFromAdmissionRequest(req *admission.Request) (resource *WorkloadResource, err error) {
+func (extractor *Extractor) ExtractWorkloadResourceFromAdmissionRequest(req *admission.Request) (resource *WorkloadResource, err error) {
+	//Sanity checks of the application admission request
 	if req == nil {
-		return nil, errors.New(_errMsgInvalidAdmission)
+		return nil, _errInvalidAdmission
 	}
 	if len(req.Object.Raw) == 0 {
-		return nil, errors.New(_errMsgObjectNotFound)
+		return nil, _errObjectNotFound
+	}
+	if !stringInSlice(req.Kind.Kind, kubernetesWorkloadResources){
+		return nil, _errUnexpectedResource
 	}
 
 	yamlFile, err := yaml.ConvertJSONToYamlNode(string(req.Object.Raw))
 	if err != nil {
 		return nil, errors.Wrap(err, _errMsgJsonToYamlConversionFail)
 	}
-
-	namespace := yamlFile.GetNamespace()
-	annotation := yamlFile.GetAnnotations()
 	// return podspec yaml rNode.
-	specNode, err := yaml.LookupFirstMatch(ConventionalPodSpecPaths).Filter(yamlFile)
+	specNode, err := yaml.LookupFirstMatch(conventionalPodSpecPaths).Filter(yamlFile)
 	if err != nil {
 		return nil, errors.Wrap(err, _errMsgInvalidPath)
 	}
 
-	containers, err := getContainers(specNode, "containers")
+	// extract fields from admission request for WorkloadResource
+	namespace := yamlFile.GetNamespace()
+	annotation := yamlFile.GetAnnotations()
+	containers, err := getContainers(specNode, containersConst)
 	if err != nil {
 		return nil, err
 	}
 
-	initContainers, err := getContainers(specNode, "initContainers")
+	initContainers, err := getContainers(specNode, initContainersConst)
 	if err != nil {
 		return nil, err
 	}
@@ -152,7 +156,7 @@ func GetWorkloadResourceFromAdmissionRequest(req *admission.Request) (resource *
 		return nil, err
 	}
 
-	serviceAccountName, err := getValue(yamlFile, "spec", "serviceAccountName")
+	serviceAccountName, err := utils.GetValue(yamlFile, specConst, serviceAccountNameConst)
 	if err != nil {
 		return nil, err
 	}
@@ -161,5 +165,6 @@ func GetWorkloadResourceFromAdmissionRequest(req *admission.Request) (resource *
 	if err != nil {
 		return nil, err
 	}
-	return newWorkLoadResource(namespace, annotation, ownerReferences, containers, initContainers, imagePullSecrets, serviceAccountName), nil
+	return newWorkLoadResource(newObjectMetadata(namespace,annotation,ownerReferences),
+		newSpec(containers,initContainers,imagePullSecrets,serviceAccountName)), nil
 }

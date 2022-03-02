@@ -11,7 +11,6 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/utils"
 	"github.com/pkg/errors"
-	//corev1 "k8s.io/api/core/v1"
 	"sort"
 	"strconv"
 	"strings"
