@@ -3,7 +3,6 @@ package admisionrequest
 import (
 	"encoding/json"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/suite"
 	admissionv1 "k8s.io/api/admission/v1"
@@ -198,24 +197,24 @@ func (suite *TestSuite) Test_GetWorkloadResourceFromAdmissionRequest_BadFormat_E
 func (suite *TestSuite) Test_GetWorkloadResourceFromAdmissionRequest_RequestNull_Error() {
 	workLoadResource, err := suite.extractor.ExtractWorkloadResourceFromAdmissionRequest(nil)
 	suite.Nil(workLoadResource)
-	suite.Equal(errors.New(_errMsgInvalidAdmission), err)
+	suite.Equal(_errInvalidAdmission, err)
 }
 
 func (suite *TestSuite) Test_GetWorkloadResourceFromAdmissionRequest_EmptyRawObject_Error() {
 	suite.podReq.Object.Raw = []byte{}
 	workLoadResource, err := suite.extractor.ExtractWorkloadResourceFromAdmissionRequest(suite.podReq)
 	suite.Nil(workLoadResource)
-	suite.Equal(errors.New(_errMsgObjectNotFound), err)
+	suite.Equal(_errObjectNotFound, err)
 }
 
 func (suite *TestSuite) Test_GetWorkloadResourceFromAdmissionRequest_NotWorkloadResourceKindRequest_Error() {
 	suite.podReq.Kind.Kind = "NotWorkloadResource"
 	workLoadResource, err := suite.extractor.ExtractWorkloadResourceFromAdmissionRequest(suite.podReq)
 	suite.Nil(workLoadResource)
-	suite.Equal(errors.New(_errMsgUnexpectedResource), err)
+	suite.Equal(_errUnexpectedResource, err)
 }
 
-func TestUnmarshalPod(t *testing.T) {
+func TestExtractWorkloadResourceFromAdmissionRequest(t *testing.T) {
 	suite.Run(t, new(TestSuite))
 }
 

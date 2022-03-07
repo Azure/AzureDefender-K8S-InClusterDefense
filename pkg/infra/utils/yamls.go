@@ -68,22 +68,4 @@ func CreateMapFromPathOfYaml(path string) (map[string]interface{}, error) {
 	return valuesMap, err
 }
 
-// GoToDestNode returns the *Rnode of the given path.
-func GoToDestNode(yamlFile *yaml.RNode, path ...string) (destNode *yaml.RNode, err error) {
-	DestNode, err := yamlFile.Pipe(yaml.Lookup(path...))
-	if err != nil {
-		return nil, errors.Wrap(err, _errMsgInvalidPath)
-	}
-	return DestNode, err
-}
-
-// GetValue returns a string value that the given path contains, can be empty.
-func GetValue(yamlFile *yaml.RNode, path ...string) (value string, err error) {
-	DestNode, pathErr := GoToDestNode(yamlFile, path...)
-	if err != nil {
-		return "", pathErr
-	}
-	val := yaml.GetValue(DestNode)
-	return val, nil
-}
 

@@ -14,12 +14,12 @@ type IAzdSecInfoProvider struct {
 }
 
 // GetContainersVulnerabilityScanInfo provides a mock function with given fields: podSpec, resourceMetadata, resourceKind
-func (_m *IAzdSecInfoProvider) GetContainersVulnerabilityScanInfo(podSpec *admisionrequest.PodSpec, resourceMetadata *admisionrequest.ObjectMetadata) ([]*contracts.ContainerVulnerabilityScanInfo, error) {
-	ret := _m.Called(podSpec, resourceMetadata)
+func (_m *IAzdSecInfoProvider) GetContainersVulnerabilityScanInfo(workloadResource *admisionrequest.WorkloadResource) ([]*contracts.ContainerVulnerabilityScanInfo, error) {
+	ret := _m.Called(workloadResource)
 
 	var r0 []*contracts.ContainerVulnerabilityScanInfo
-	if rf, ok := ret.Get(0).(func(*admisionrequest.PodSpec, *admisionrequest.ObjectMetadata) []*contracts.ContainerVulnerabilityScanInfo); ok {
-		r0 = rf(podSpec, resourceMetadata)
+	if rf, ok := ret.Get(0).(func(workloadResource *admisionrequest.WorkloadResource) []*contracts.ContainerVulnerabilityScanInfo); ok {
+		r0 = rf(workloadResource)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]*contracts.ContainerVulnerabilityScanInfo)
@@ -27,8 +27,8 @@ func (_m *IAzdSecInfoProvider) GetContainersVulnerabilityScanInfo(podSpec *admis
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(*admisionrequest.PodSpec, *admisionrequest.ObjectMetadata) error); ok {
-		r1 = rf(podSpec, resourceMetadata)
+	if rf, ok := ret.Get(1).(func(workloadResource *admisionrequest.WorkloadResource) error); ok {
+		r1 = rf(workloadResource)
 	} else {
 		r1 = ret.Error(1)
 	}

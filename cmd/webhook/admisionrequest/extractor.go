@@ -10,8 +10,6 @@ import (
 const (
 	_errMsgObjectNotFound           = "admisionrequest.extractor: request did not include object"
 	_errMsgInvalidAdmission         = "admisionrequest.extractor: admission request was nil"
-	_errMsgUnmarshal                = "admisionrequest.extractor: failed in json.Unmarshal"
-	_errMsgMarshal                  = "admisionrequest.extractor: failed in json.Marshal"
 	_errMsgJsonToYamlConversionFail = "admisionrequest.extractor: failed to convert json to yaml node"
 	_errMsgInvalidPath              = "admisionrequest.extractor: failed to access the given path"
 	_errMsgUnexpectedResource       = "admisionrequest.extractor: expected workload resource"
@@ -20,8 +18,10 @@ const (
 	ownerReferencesConst            = "ownerReferences"
 	containersConst                 = "containers"
 	initContainersConst             = "initContainers"
-	specConst                       = "spec"
 	serviceAccountNameConst         = "serviceAccountName"
+	NameConst                       = "name"
+	KindConst                       = "kind"
+    ApiVersionConst                 = "apiVersion"
 )
 
 var (
@@ -38,16 +38,6 @@ var (
 	_errUnexpectedResource = errors.New(_errMsgUnexpectedResource)
 )
 
-// GoToDestNode returns the *Rnode of the given path.
-func (extractor *Extractor) GoToDestNode(yamlFile *yaml.RNode, path ...string) (destNode *yaml.RNode, err error) {
-	tracer := extractor.tracerProvider.GetTracer("ExtractWorkloadResourceFromAdmissionRequest")
-	DestNode, err := yamlFile.Pipe(yaml.Lookup(path...))
-	if err != nil {
-		tracer.Error(err, _errMsgInvalidPath)
-		return nil, errors.Wrap(err, _errMsgInvalidPath)
-	}
-	return DestNode, err
-}
 
 func getContainers(specNode *yaml.RNode) (containers []Container, initContainers []Container, err error) {
 	allContainers := make([][]Container,2)
@@ -78,20 +68,20 @@ func getContainers(specNode *yaml.RNode) (containers []Container, initContainers
 }
 
 // getImagePullSecrets returns workload kubernetes resource's image pull secrets.
-func getImagePullSecrets(specNode *yaml.RNode) (secrets []corev1.LocalObjectReference, err error) {
-	imagePullSecretsInterface, pathErr := specNode.GetSlice(imagePullSecretsConst)
+func getImagePullSecrets(specRoot *yaml.RNode) (secrets []corev1.LocalObjectReference, err error) {
+	imagePullSecretsInterface, pathErr := specRoot.GetSlice(imagePullSecretsConst)
 	// if pathErr != nil it means that "imagePullSecrets" is an empty field in admission request
 	if pathErr != nil {
 		return nil, nil
 	}
 
 	secrets = make([]corev1.LocalObjectReference, len(imagePullSecretsInterface))
-	for i, sercet := range imagePullSecretsInterface {
-		v, ok := sercet.(map[string]interface{})
+	for i, secret := range imagePullSecretsInterface {
+		v, ok := secret.(map[string]interface{})
 		if ok == false {
 			return nil, err
 		}
-		secrets[i].Name, ok = (v["name"]).(string)
+		secrets[i].Name, ok = (v[NameConst]).(string)
 		if ok == false {
 			return nil, err
 		}
@@ -100,8 +90,8 @@ func getImagePullSecrets(specNode *yaml.RNode) (secrets []corev1.LocalObjectRefe
 }
 
 // GetOwnerReference returns workload kubernetes resource's owner reference.
-func (extractor *Extractor) getOwnerReference(yamlNode *yaml.RNode) (ownerReferences []OwnerReference, err error) {
-	metaNode, pathErr := extractor.GoToDestNode(yamlNode, metadataConst)
+func (extractor *Extractor) getOwnerReference(root *yaml.RNode) (ownerReferences []OwnerReference, err error) {
+	metaNode, pathErr := goToDestNode(root, metadataConst)
 	// if err != nil it means that "ownerReferences" is an empty field in admission request
 	if pathErr != nil {
 		return nil, nil
@@ -117,15 +107,15 @@ func (extractor *Extractor) getOwnerReference(yamlNode *yaml.RNode) (ownerRefere
 		if ok == false {
 			return nil, err
 		}
-		ownerReferences[i].APIVersion,ok = mapReference["apiVersion"].(string)
+		ownerReferences[i].APIVersion,ok = mapReference[ApiVersionConst].(string)
 		if ok == false {
 			return nil, err
 		}
-		ownerReferences[i].Kind,ok = mapReference["kind"].(string)
+		ownerReferences[i].Kind,ok = mapReference[KindConst].(string)
 		if ok == false {
 			return nil, err
 		}
-		ownerReferences[i].Name,ok = mapReference["name"].(string)
+		ownerReferences[i].Name,ok = mapReference[NameConst].(string)
 		if ok == false {
 			return nil, err
 		}
@@ -134,15 +124,6 @@ func (extractor *Extractor) getOwnerReference(yamlNode *yaml.RNode) (ownerRefere
 	return ownerReferences, nil
 }
 
-// stringInSlice return true if list contain str,false otherwise.
-func stringInSlice(str string, list []string) bool {
-	for _, listValue := range list {
-		if listValue == str {
-			return true
-		}
-	}
-	return false
-}
 
 //Basics checks of the application admission request.
 func reqBasicChecks(req *admission.Request) (err error) {
@@ -160,12 +141,15 @@ func reqBasicChecks(req *admission.Request) (err error) {
 
 // ExtractMetadataFromAdmissionRequest return *ObjectMetadata object according
 //// to the information in yamlFile.
-func (extractor *Extractor) ExtractMetadataFromAdmissionRequest(yamlFile *yaml.RNode) (*ObjectMetadata, error) {
+func (extractor *Extractor) ExtractMetadataFromAdmissionRequest(root *yaml.RNode) (metadata *ObjectMetadata,err error) {
 	tracer := extractor.tracerProvider.GetTracer("ExtractMetadataFromAdmissionRequest")
-	name := yamlFile.GetName()
-	namespace := yamlFile.GetNamespace()
-	annotation := yamlFile.GetAnnotations()
-	ownerReferences, err := extractor.getOwnerReference(yamlFile)
+	name := root.GetName()
+	namespace := root.GetNamespace()
+	annotation := root.GetAnnotations()
+	if len(annotation)==0{
+		annotation = nil
+	}
+	ownerReferences, err := extractor.getOwnerReference(root)
 	if err != nil {
 		tracer.Error(err, "")
 		return nil, err
@@ -176,13 +160,14 @@ func (extractor *Extractor) ExtractMetadataFromAdmissionRequest(yamlFile *yaml.R
 
 // ExtractSpecFromAdmissionRequest return *PodSpec object according
 //// to the information in yamlFile.
-func (extractor *Extractor) ExtractSpecFromAdmissionRequest(yamlFile *yaml.RNode) (*PodSpec, error) {
+func (extractor *Extractor) ExtractSpecFromAdmissionRequest(root *yaml.RNode) (spec *PodSpec,err error) {
 	tracer := extractor.tracerProvider.GetTracer("ExtractSpecFromAdmissionRequest")
 	// return podspec yaml rNode.
-	specNode, err := yaml.LookupFirstMatch(conventionalPodSpecPaths).Filter(yamlFile)
-	if err != nil {
-		tracer.Error(errors.Wrap(err, _errMsgInvalidPath), "")
-		return nil, errors.Wrap(err, _errMsgInvalidPath)
+	specNode, err := yaml.LookupFirstMatch(conventionalPodSpecPaths).Filter(root)
+	if err != nil{
+		// spec is optional
+		podSpec := newSpec(nil, nil, nil, "")
+		return &podSpec,nil
 	}
 	containerList, initContainerList, err := getContainers(specNode)
 	if err != nil {
@@ -199,8 +184,8 @@ func (extractor *Extractor) ExtractSpecFromAdmissionRequest(yamlFile *yaml.RNode
 	// be assigned to empty string.
 	serviceAccountName, err := specNode.GetString(serviceAccountNameConst)
 
-	spec := newSpec(containerList, initContainerList, imagePullSecrets, serviceAccountName)
-	return &spec, nil
+	podSpec := newSpec(containerList, initContainerList, imagePullSecrets, serviceAccountName)
+	return &podSpec, nil
 }
 
 // ExtractWorkloadResourceFromAdmissionRequest return WorkloadResource object according

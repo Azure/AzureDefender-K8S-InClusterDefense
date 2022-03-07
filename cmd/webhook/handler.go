@@ -85,7 +85,7 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 	response := admission.Response{}
 	reason := _notPatchedReason
 	workLoadResourceName := ""
-	var workLoadResourceOwnerRefrences [] metav1.OwnerReference
+	var workLoadResourceOwnerRefrences [] admisionrequest.OwnerReference
 
 	var err error
 	defer func() {
