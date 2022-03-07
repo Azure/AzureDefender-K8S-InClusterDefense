@@ -5,7 +5,6 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // Declare containersType enum.
@@ -30,8 +29,22 @@ func NewExtractor(instrumentationProvider instrumentation.IInstrumentationProvid
 	}
 }
 
+// OwnerReference contains information to let you identify an owning
+// object. An owning object must be in the same namespace as the dependent, or
+// be cluster-scoped, so there is no namespace field.
+type OwnerReference struct{
+	// API version of the referent.
+	APIVersion string
+	// Kind of the referent.
+	Kind string
+	// Name of the referent.
+	Name string
+}
+
 // ObjectMetadata represents the metadata of WorkloadResource object.
 type ObjectMetadata struct{
+	Name string
+
 	// Namespace defines the space within which each name must be unique. An empty namespace is
 	// equivalent to the "default" namespace, but "default" is the canonical representation.
 	// Not all objects are required to be scoped to a namespace - the value of this field for
@@ -47,13 +60,13 @@ type ObjectMetadata struct{
 	// been deleted, this object will be garbage collected. If this object is managed by a controller,
 	// then an entry in this list will point to this controller, with the controller field set to true.
 	// There cannot be more than one managing controller.
-	OwnerReferences []metav1.OwnerReference
+	OwnerReferences []OwnerReference
 }
 
 // newObjectMetadata initialize ObjectMetadata object.
-func newObjectMetadata(namespace string, annotation map[string]string,
-	ownerReferences []metav1.OwnerReference)(metadata ObjectMetadata)  {
-	return ObjectMetadata{Namespace: namespace, Annotations: annotation,OwnerReferences: ownerReferences}
+func newObjectMetadata(name string, namespace string, annotation map[string]string,
+	ownerReferences []OwnerReference)(metadata ObjectMetadata)  {
+	return ObjectMetadata{Name: name,Namespace: namespace, Annotations: annotation,OwnerReferences: ownerReferences}
 
 }
 

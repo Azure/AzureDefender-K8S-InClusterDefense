@@ -50,18 +50,18 @@ func CreateContainersVulnerabilityScanAnnotationPatchAdd(containersScanInfoList 
 
 // CreateAnnotationPatchToDeleteContainersVulnerabilityScanAnnotationIfNeeded create a patch to delete ContainersVulnerabilityScanAnnotation (stale annotations) if the WorkloadResource's annotations contain ContainersVulnerabilityScanAnnotation.
 // Otherwise, no deletion is needed - return nil.
-func CreateAnnotationPatchToDeleteContainersVulnerabilityScanAnnotationIfNeeded(resourceMetadata *admisionrequest.ObjectMetadata) (*jsonpatch.JsonPatchOperation, error) {
-	if resourceMetadata == nil {
+func CreateAnnotationPatchToDeleteContainersVulnerabilityScanAnnotationIfNeeded(workloadResource *admisionrequest.WorkloadResource) (*jsonpatch.JsonPatchOperation, error) {
+	if workloadResource == nil{
 		return nil, errors.Wrap(utils.NilArgumentError, "CreateAnnotationPatchToDeleteContainersVulnerabilityScanAnnotationIfNeeded got nil WorkloadResource")
 	}
 
 	// there is no need to delete ContainersVulnerabilityScanInfoAnnotation (WorkloadResource's annotations are nil or contracts.ContainersVulnerabilityScanInfoAnnotationName don't exist)
-	if !isDeleteStaleAzdAnnotationsNeeded(resourceMetadata){
+	if !isDeleteStaleAzdAnnotationsNeeded(workloadResource.Metadata.Annotations){
 		return nil, nil
 	}
 
 	// Create annotations map after deleting contracts.ContainersVulnerabilityScanInfoAnnotationName
-	annotations := deleteAzdAnnotations(resourceMetadata)
+	annotations := deleteAzdAnnotations(workloadResource.Metadata.Annotations)
 
 	// Create an add operation to annotations to add
 	patch := jsonpatch.NewOperation(_addPatchOperation, _annotationPatchPath, annotations)
@@ -98,8 +98,7 @@ func updateAnnotations(workloadResource *admisionrequest.WorkloadResource, key s
 }
 
 // isDeleteStaleAzdAnnotationsNeeded returns true if delete stale Azd annotations is needed, otherwise false.
-func isDeleteStaleAzdAnnotationsNeeded(resourceMetadata *admisionrequest.ObjectMetadata) bool{
-	annotations := resourceMetadata.Annotations
+func isDeleteStaleAzdAnnotationsNeeded(annotations map[string]string) bool{
 	// no annotations - no need to delete
 	if annotations == nil {
 		return false
@@ -113,8 +112,7 @@ func isDeleteStaleAzdAnnotationsNeeded(resourceMetadata *admisionrequest.ObjectM
 }
 
 // deleteAzdAnnotations return the WorkloadResource's annotations after deleting contracts.ContainersVulnerabilityScanInfoAnnotationName.
-func deleteAzdAnnotations(resourceMetadata *admisionrequest.ObjectMetadata) map[string]string{
-	annotations := resourceMetadata.Annotations
+func deleteAzdAnnotations(annotations map[string]string) map[string]string{
 	delete(annotations, contracts.ContainersVulnerabilityScanInfoAnnotationName)
 	return annotations
 }

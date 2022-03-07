@@ -78,7 +78,7 @@ func (suite *TestSuite) Test_CreateContainersVulnerabilityScanAnnotationPatchAdd
 }
 
 func (suite *TestSuite) Test_DeleteContainersVulnerabilityScanAnnotationPatch_PodWithAzdAnnotations_AnnotationsGeneratedAsExpected() {
-	result, err := CreateAnnotationPatchToDeleteContainersVulnerabilityScanAnnotationIfNeeded(&createPodWithAzdAnnotationsForTest().Metadata)
+	result, err := CreateAnnotationPatchToDeleteContainersVulnerabilityScanAnnotationIfNeeded(createPodWithAzdAnnotationsForTest())
 	suite.Nil(err)
 	mapAnnotations, ok := result.Value.(map[string]string)
 	suite.True(ok)
@@ -93,14 +93,14 @@ func (suite *TestSuite) Test_DeleteContainersVulnerabilityScanAnnotationPatch_Po
 
 func (suite *TestSuite) Test_DeleteContainersVulnerabilityScanAnnotationPatch_PodWithoutAnnotations_AnnotationsGeneratedAsExpected() {
 
-	result, err := CreateAnnotationPatchToDeleteContainersVulnerabilityScanAnnotationIfNeeded(&createPodWithoutAnnotationsForTest().Metadata)
+	result, err := CreateAnnotationPatchToDeleteContainersVulnerabilityScanAnnotationIfNeeded(createPodWithoutAnnotationsForTest())
 	suite.Nil(err)
 	suite.Nil(result)
 }
 
 func (suite *TestSuite) Test_DeleteContainersVulnerabilityScanAnnotationPatch_PodWithAnnotations_AnnotationsGeneratedAsExpected() {
 
-	result, err := CreateAnnotationPatchToDeleteContainersVulnerabilityScanAnnotationIfNeeded(&createPodWithAnnotationsForTest().Metadata)
+	result, err := CreateAnnotationPatchToDeleteContainersVulnerabilityScanAnnotationIfNeeded(createPodWithAnnotationsForTest())
 	suite.Nil(err)
 	suite.Nil(result)
 }

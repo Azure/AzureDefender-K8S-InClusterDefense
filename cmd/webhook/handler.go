@@ -134,7 +134,9 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 		response = handler.admissionErrorResponse(errors.Wrap(err, string(reason)))
 		return response
 	}
-	tracer.Info("WorkLoadResource request unmarshall","resource:", req.Resource,"namespace:", req.Namespace, "WorkLoadResourceOwnerRefrences:", WorkLoadResource.OwnerRefrences,  "operation:", req.Operation, "reqKind:", req.Kind)
+	tracer.Info("WorkLoadResource request unmarshall","resource:", req.Resource,"namespace:", req.Namespace, "WorkLoadResourceOwnerRefrences:", workLoadResourceOwnerRefrences,  "operation:", req.Operation, "reqKind:", req.Kind)
+	workLoadResourceName = workloadResource.Metadata.Name
+	workLoadResourceOwnerRefrences = workloadResource.Metadata.OwnerReferences
 	response, err = handler.handleWorkLoadResourceRequest(workloadResource)
 	if err != nil {
 		err = errors.Wrap(err, "Handler.Handle received error on handleWorkLoadResourceRequest")
@@ -185,7 +187,7 @@ func (handler *Handler) getResponseWhenErrorEncountered(workloadResource *admisi
 	patches := []jsonpatch.JsonPatchOperation{}
 
 	// returns nil if no deletion is needed.
-	patch, err := annotations.CreateAnnotationPatchToDeleteContainersVulnerabilityScanAnnotationIfNeeded(&workloadResource.Metadata)
+	patch, err := annotations.CreateAnnotationPatchToDeleteContainersVulnerabilityScanAnnotationIfNeeded(workloadResource)
 
 	// if error encountered during CreateAnnotationPatchToDeleteContainersVulnerabilityScanAnnotationIfNeeded - response with the original error
 	if err != nil {
@@ -220,7 +222,7 @@ func (handler *Handler) getWorkLoadResourceContainersVulnerabilityScanInfoAnnota
 	handler.metricSubmitter.SendMetric(len(workloadResource.Spec.Containers)+len(workloadResource.Spec.InitContainers), webhookmetric.NewHandlerNumOfContainersPerworkLoadResourceMetric())
 
 	// Get workLoadResource's containers vulnerability scan info
-	vulnSecInfoContainers, err := handler.azdSecInfoProvider.GetContainersVulnerabilityScanInfo(&workloadResource.Spec, &workloadResource.Metadata)
+	vulnSecInfoContainers, err := handler.azdSecInfoProvider.GetContainersVulnerabilityScanInfo(workloadResource)
 	if err != nil {
 		wrappedError := errors.Wrap(err, "Handler failed to GetContainersVulnerabilityScanInfo")
 		tracer.Error(wrappedError, "Handler.AzdSecInfoProvider.GetContainersVulnerabilityScanInfo")

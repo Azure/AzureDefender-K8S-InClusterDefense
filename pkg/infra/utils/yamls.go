@@ -5,7 +5,6 @@ import (
 	"github.com/pkg/errors"
 	"io/ioutil"
 	"sigs.k8s.io/kustomize/kyaml/yaml"
-	//"sigs.k8s.io/yaml"
 	"strings"
 )
 
