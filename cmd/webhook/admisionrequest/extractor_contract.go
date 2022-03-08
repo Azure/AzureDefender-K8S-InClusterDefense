@@ -9,10 +9,7 @@ import (
 
 // Declare containersType enum.
 type containersType string
-const (
-	containers    containersType ="containers"
-	initContainer  containersType = "initContainers"
-)
+
 
 type Extractor struct {
 	// tracerProvider of the handler

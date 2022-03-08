@@ -1,13 +1,13 @@
 package azdsecinfo
 
 import (
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/cmd/webhook/admisionrequest"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/cache"
 	cachemock "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/cache/mocks"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/utils"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
-	corev1 "k8s.io/api/core/v1"
 	"testing"
 	"time"
 )
@@ -202,15 +202,15 @@ func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_resetTimeOutInCacheAft
 }
 
 func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_GetPodSpecCacheKey_Containers() {
-	containers := []corev1.Container{_containers[0], _containers[1]}
-	pod := createPodForTests(containers, nil)
+	containers := []admisionrequest.Container{_containers[0], _containers[1]}
+	pod := createWorkloadResourceForTests(containers, nil)
 	result := suite.azdSecInfoProviderCacheClient.GetPodSpecCacheKey(&pod.Spec)
 	suite.Equal(_podSpecCacheKeyTest, result)
 }
 
 func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_GetPodSpecCacheKey_InitContainers() {
-	containers := []corev1.Container{_containers[0], _containers[1]}
-	pod := createPodForTests(nil, containers)
+	containers := []admisionrequest.Container{_containers[0], _containers[1]}
+	pod := createWorkloadResourceForTests(nil, containers)
 	result := suite.azdSecInfoProviderCacheClient.GetPodSpecCacheKey(&pod.Spec)
 	suite.Equal(_podSpecCacheKeyTest, result)
 }

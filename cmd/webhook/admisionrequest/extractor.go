@@ -26,11 +26,11 @@ const (
 
 var (
 	//from yaml.ConventionalContainersPaths, without containers(the last string in paths).
+	// Order matters to yaml.LookupFirstMatch function, that returns the first path that match in yaml file.
 	conventionalPodSpecPaths = [][]string{
-		{"spec", "jobTemplate", "spec", "template", "spec"},
-		{"spec", "template", "spec"},
-		{"template", "spec"},
-		{"spec"}}
+		{"spec", "jobTemplate", "spec", "template", "spec"}, // CronJob
+		{"spec", "template", "spec"},// Deployment, ReplicaSet, StatefulSet, DaemonSet,Job, ReplicationController
+		{"spec"}} // Pod
 	kubernetesWorkloadResources = []string{"Pod", "Deployment", "ReplicaSet", "StatefulSet", "DaemonSet",
 		"Job", "CronJob", "ReplicationController"} //https://kubernetes.io/docs/concepts/workloads/
 	_errInvalidAdmission   = errors.New(_errMsgInvalidAdmission)
@@ -38,11 +38,41 @@ var (
 	_errUnexpectedResource = errors.New(_errMsgUnexpectedResource)
 )
 
+// ExtractWorkloadResourceFromAdmissionRequest return WorkloadResource object according
+// to the information in admission.Request.
+func (extractor *Extractor) ExtractWorkloadResourceFromAdmissionRequest(req *admission.Request) (resource *WorkloadResource, err error) {
+	tracer := extractor.tracerProvider.GetTracer("ExtractWorkloadResourceFromAdmissionRequest")
+	tracer.Info("ExtractWorkloadResourceFromAdmissionRequest Enter", "admission request", req)
 
-func getContainers(specNode *yaml.RNode) (containers []Container, initContainers []Container, err error) {
+	err = reqBasicChecks(req)
+	if err != nil {
+		tracer.Error(err, "")
+		return nil, err
+	}
+	yamlFile, err := yaml.ConvertJSONToYamlNode(string(req.Object.Raw))
+	if err != nil {
+		tracer.Error(errors.Wrap(err, _errMsgJsonToYamlConversionFail), "")
+		return nil, errors.Wrap(err, _errMsgJsonToYamlConversionFail)
+	}
+
+	metadata, err := extractor.extractMetadataFromAdmissionRequest(yamlFile)
+	if err != nil {
+		return nil, err
+	}
+
+	spec, err := extractor.extractSpecFromAdmissionRequest(yamlFile)
+	if err != nil {
+		return nil, err
+	}
+
+	return newWorkLoadResource(*metadata, *spec), nil
+}
+
+// getContainers returns workload kubernetes resource's containers and initContainers.
+func getContainers(specRoot *yaml.RNode) (containers []Container, initContainers []Container, err error) {
 	allContainers := make([][]Container,2)
 	for pathIndex, containerPath := range []string{containersConst, initContainersConst} {
-		containersInterface, err := specNode.GetSlice(containerPath)
+		containersInterface, err := specRoot.GetSlice(containerPath)
 		// if err != nil it means that containerType is an empty field in admission request
 		if err != nil {
 			allContainers[pathIndex] = nil
@@ -139,10 +169,10 @@ func reqBasicChecks(req *admission.Request) (err error) {
 	return nil
 }
 
-// ExtractMetadataFromAdmissionRequest return *ObjectMetadata object according
+// extractMetadataFromAdmissionRequest return *ObjectMetadata object according
 //// to the information in yamlFile.
-func (extractor *Extractor) ExtractMetadataFromAdmissionRequest(root *yaml.RNode) (metadata *ObjectMetadata,err error) {
-	tracer := extractor.tracerProvider.GetTracer("ExtractMetadataFromAdmissionRequest")
+func (extractor *Extractor) extractMetadataFromAdmissionRequest(root *yaml.RNode) (metadata *ObjectMetadata,err error) {
+	tracer := extractor.tracerProvider.GetTracer("extractMetadataFromAdmissionRequest")
 	name := root.GetName()
 	namespace := root.GetNamespace()
 	annotation := root.GetAnnotations()
@@ -158,10 +188,10 @@ func (extractor *Extractor) ExtractMetadataFromAdmissionRequest(root *yaml.RNode
 	return &meta, nil
 }
 
-// ExtractSpecFromAdmissionRequest return *PodSpec object according
+// extractSpecFromAdmissionRequest return *PodSpec object according
 //// to the information in yamlFile.
-func (extractor *Extractor) ExtractSpecFromAdmissionRequest(root *yaml.RNode) (spec *PodSpec,err error) {
-	tracer := extractor.tracerProvider.GetTracer("ExtractSpecFromAdmissionRequest")
+func (extractor *Extractor) extractSpecFromAdmissionRequest(root *yaml.RNode) (spec *PodSpec,err error) {
+	tracer := extractor.tracerProvider.GetTracer("extractSpecFromAdmissionRequest")
 	// return podspec yaml rNode.
 	specNode, err := yaml.LookupFirstMatch(conventionalPodSpecPaths).Filter(root)
 	if err != nil{
@@ -188,32 +218,3 @@ func (extractor *Extractor) ExtractSpecFromAdmissionRequest(root *yaml.RNode) (s
 	return &podSpec, nil
 }
 
-// ExtractWorkloadResourceFromAdmissionRequest return WorkloadResource object according
-// to the information in admission.Request.
-func (extractor *Extractor) ExtractWorkloadResourceFromAdmissionRequest(req *admission.Request) (resource *WorkloadResource, err error) {
-	tracer := extractor.tracerProvider.GetTracer("ExtractWorkloadResourceFromAdmissionRequest")
-	tracer.Info("ExtractWorkloadResourceFromAdmissionRequest Enter", "admission request", req)
-
-	err = reqBasicChecks(req)
-	if err != nil {
-		tracer.Error(err, "")
-		return nil, err
-	}
-	yamlFile, err := yaml.ConvertJSONToYamlNode(string(req.Object.Raw))
-	if err != nil {
-		tracer.Error(errors.Wrap(err, _errMsgJsonToYamlConversionFail), "")
-		return nil, errors.Wrap(err, _errMsgJsonToYamlConversionFail)
-	}
-
-	metadata, err := extractor.ExtractMetadataFromAdmissionRequest(yamlFile)
-	if err != nil {
-		return nil, err
-	}
-
-	spec, err := extractor.ExtractSpecFromAdmissionRequest(yamlFile)
-	if err != nil {
-		return nil, err
-	}
-
-	return newWorkLoadResource(*metadata, *spec), nil
-}

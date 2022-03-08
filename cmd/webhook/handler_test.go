@@ -118,14 +118,14 @@ package webhook
 //
 //func (suite *TestSuite) Test_Handle_DryRunFalse_ShouldPatched() {
 //	// Setup
-//	containers := []corev1.Container{_containers[0]}
-//	pod := createPodForTests(containers, nil)
+//	pod := createPodForTests([]corev1.Container{_containers[0]}, nil)
+//	resource := createWorkloadResourceForTests([]admisionrequest.Container{_containersAdmision[0]}, nil)
 //	req := createRequestForTests(pod)
 //	expected := []*contracts.ContainerVulnerabilityScanInfo{
 //		_firstContainerVulnerabilityScanInfo,
 //	}
 //
-//	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", pod).Return(expected, nil).Once()
+//	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", resource).Return(expected, nil).Once()
 //
 //	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider())
 //	// Act
@@ -188,38 +188,38 @@ package webhook
 //	suite.azdSecProviderMock.AssertExpectations(suite.T())
 //}
 //
-////func (suite *TestSuite) Test_Handle_RequestUpdateOperation_ShouldPatched() {
-////	// Setup
-////	containers := []corev1.Container{_containers[0]}
-////	pod := createPodForTests(containers, nil)
-////	req := createRequestForTests(pod)
-////	req.Operation = admissionv1.Update
-////	expected := []*contracts.ContainerVulnerabilityScanInfo{
-////		_firstContainerVulnerabilityScanInfo,
-////	}
-////
-////	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", &pod.Spec, &pod.ObjectMeta, &pod.TypeMeta).Return(expected, nil).Once()
-////
-////	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider())
-////	// Act
-////	resp := handler.Handle(context.Background(), *req)
-////	// Test
-////	suite.Equal(admission.Allowed(string(_patchedReason)).AdmissionResponse, resp.AdmissionResponse)
-////	suite.Equal(metav1.StatusReason(_patchedReason), resp.Result.Reason)
-////	suite.Equal(1, len(resp.Patches))
-////	patch := resp.Patches[0]
-////
-////	suite.checkPatch(expected, patch)
-////	suite.azdSecProviderMock.AssertExpectations(suite.T())
-////}
+//func (suite *TestSuite) Test_Handle_RequestUpdateOperation_ShouldPatched() {
+//	// Setup
+//	pod := createPodForTests([]corev1.Container{_containers[0]}, nil)
+//	resource := createWorkloadResourceForTests([]admisionrequest.Container{_containersAdmision[0]}, nil)
+//	req := createRequestForTests(pod)
+//	req.Operation = admissionv1.Update
+//	expected := []*contracts.ContainerVulnerabilityScanInfo{
+//		_firstContainerVulnerabilityScanInfo,
+//	}
+//
+//	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", resource).Return(expected, nil).Once()
+//
+//	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider())
+//	// Act
+//	resp := handler.Handle(context.Background(), *req)
+//	// Test
+//	suite.Equal(admission.Allowed(string(_patchedReason)).AdmissionResponse, resp.AdmissionResponse)
+//	suite.Equal(metav1.StatusReason(_patchedReason), resp.Result.Reason)
+//	suite.Equal(1, len(resp.Patches))
+//	patch := resp.Patches[0]
+//
+//	suite.checkPatch(expected, patch)
+//	suite.azdSecProviderMock.AssertExpectations(suite.T())
+//}
 //
 //func (suite *TestSuite) Test_Handle_OneContainerZeroInitContainer_ShouldPatchedOne() {
 //	// Setup
-//	containers := []corev1.Container{_containers[0]}
-//	pod := createPodForTests(containers, nil)
+//	pod := createPodForTests([]corev1.Container{_containers[0]}, nil)
+//	resource := createWorkloadResourceForTests([]admisionrequest.Container{_containersAdmision[0]},nil)
 //	req := createRequestForTests(pod)
 //	expectedInfo := []*contracts.ContainerVulnerabilityScanInfo{_firstContainerVulnerabilityScanInfo}
-//	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", pod).Return(expectedInfo, nil).Once()
+//	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", resource).Return(expectedInfo, nil).Once()
 //
 //	expected := []*contracts.ContainerVulnerabilityScanInfo{
 //		_firstContainerVulnerabilityScanInfo,
@@ -241,11 +241,11 @@ package webhook
 //
 //func (suite *TestSuite) Test_Handle_TwoContainerZeroInitContainer_ShouldPatchedTwo() {
 //	// Setup
-//	containers := []corev1.Container{_containers[0], _containers[1]}
-//	pod := createPodForTests(containers, nil)
+//	pod := createPodForTests([]corev1.Container{_containers[0], _containers[1]}, nil)
+//	resource := createWorkloadResourceForTests([]admisionrequest.Container{_containersAdmision[0], _containersAdmision[1]}, nil)
 //	req := createRequestForTests(pod)
 //	expectedInfo := []*contracts.ContainerVulnerabilityScanInfo{_firstContainerVulnerabilityScanInfo, _secondContainerVulnerabilityScanInfo}
-//	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", pod).Return(expectedInfo, nil).Once()
+//	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", resource).Return(expectedInfo, nil).Once()
 //
 //	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider())
 //
@@ -261,12 +261,12 @@ package webhook
 //
 //func (suite *TestSuite) Test_Handle_ZeroContainerOneInitContainer_ShouldPatchedOne() {
 //	// Setup
-//	containers := []corev1.Container{_containers[0]}
-//	pod := createPodForTests(nil, containers)
+//	pod := createPodForTests(nil, []corev1.Container{_containers[0]})
+//	resource := createWorkloadResourceForTests(nil, []admisionrequest.Container{_containersAdmision[0]})
 //	req := createRequestForTests(pod)
 //
 //	expectedInfo := []*contracts.ContainerVulnerabilityScanInfo{_firstContainerVulnerabilityScanInfo}
-//	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", pod).Return(expectedInfo, nil).Once()
+//	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", resource).Return(expectedInfo, nil).Once()
 //
 //	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider())
 //
@@ -283,12 +283,12 @@ package webhook
 //
 //func (suite *TestSuite) Test_Handle_ZeroContainerTwoInitContainer_ShouldPatchedTwo() {
 //	// Setup
-//	containers := []corev1.Container{_containers[0], _containers[1]}
-//	pod := createPodForTests(nil, containers)
+//	pod := createPodForTests(nil, []corev1.Container{_containers[0], _containers[1]})
+//	resource := createWorkloadResourceForTests(nil, []admisionrequest.Container{_containersAdmision[0], _containersAdmision[1]})
 //	req := createRequestForTests(pod)
 //
 //	expectedInfo := []*contracts.ContainerVulnerabilityScanInfo{_firstContainerVulnerabilityScanInfo, _secondContainerVulnerabilityScanInfo}
-//	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", pod).Return(expectedInfo, nil).Once()
+//	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", resource).Return(expectedInfo, nil).Once()
 //
 //	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider())
 //
@@ -306,12 +306,12 @@ package webhook
 //
 //func (suite *TestSuite) Test_Handle_OneContainerOneInitContainer_ShouldPatchedTwo() {
 //	// Setup
-//	containers := []corev1.Container{_containers[0], _containers[1]}
-//	pod := createPodForTests(nil, containers)
+//	pod := createPodForTests(nil, []corev1.Container{_containers[0], _containers[1]})
+//	resource := createWorkloadResourceForTests(nil,[]admisionrequest.Container{_containersAdmision[0], _containersAdmision[1]})
 //	req := createRequestForTests(pod)
 //
 //	expectedInfo := []*contracts.ContainerVulnerabilityScanInfo{_firstContainerVulnerabilityScanInfo, _secondContainerVulnerabilityScanInfo}
-//	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", pod).Return(expectedInfo, nil).Once()
+//	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", resource).Return(expectedInfo, nil).Once()
 //
 //	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider())
 //
@@ -327,13 +327,13 @@ package webhook
 //
 //func (suite *TestSuite) Test_Handle_Error_AllowedTrueWithError_PodNoAnnotations() {
 //	// Setup
-//	containers := []corev1.Container{_containers[0]}
-//	pod := createPodForTests(nil, containers)
+//	pod := createPodForTests(nil, []corev1.Container{_containers[0]})
+//	resource := createWorkloadResourceForTests(nil, []admisionrequest.Container{_containersAdmision[0]})
 //	req := createRequestForTests(pod)
 //
 //	err := errors.New("MockError!!")
 //
-//	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", pod).Return(nil, err).Once()
+//	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", resource).Return(nil, err).Once()
 //
 //	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider())
 //
@@ -355,13 +355,13 @@ package webhook
 //
 //func (suite *TestSuite) Test_Handle_Error_AllowedTrueWithError_PodWithAnnotations() {
 //	// Setup
-//	containers := []corev1.Container{_containers[0]}
-//	pod := createPodForTestsWithAnnotations(nil, containers)
+//	pod := createPodForTestsWithAnnotations(nil, []corev1.Container{_containers[0]})
+//	resource := createWorkloadResourceForTestsWithAnnotations(nil, []admisionrequest.Container{_containersAdmision[0]})
 //	req := createRequestForTests(pod)
 //
 //	err := errors.New("MockError!!")
 //
-//	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", pod).Return(nil, err).Once()
+//	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", resource).Return(nil, err).Once()
 //
 //	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider())
 //
@@ -383,13 +383,13 @@ package webhook
 //
 //func (suite *TestSuite) Test_Handle_Error_AllowedTrueWithError_PodWithAzdAnnotations() {
 //	// Setup
-//	containers := []corev1.Container{_containers[0]}
-//	pod := createPodForTestsWithAzdAnnotations(nil, containers)
+//	pod := createPodForTestsWithAzdAnnotations(nil, []corev1.Container{_containers[0]})
+//	resource := createWorkloadResourceForTestsWithAzdAnnotations(nil, []admisionrequest.Container{_containersAdmision[0]})
 //	req := createRequestForTests(pod)
 //
 //	err := errors.New("MockError!!")
 //
-//	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", pod).Return(nil, err).Once()
+//	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", resource).Return(nil, err).Once()
 //
 //	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider())
 //
@@ -408,13 +408,13 @@ package webhook
 //
 //func (suite *TestSuite) Test_Handle_Error_AllowedTrueWithError_PodWithOnlyAzdAnnotations() {
 //	// Setup
-//	containers := []corev1.Container{_containers[0]}
-//	pod := createPodForTestsWithOnlyAzdAnnotations(nil, containers)
+//	pod := createPodForTestsWithOnlyAzdAnnotations(nil, []corev1.Container{_containers[0]})
+//	resource := createWorkloadResourceForTestsWithOnlyAzdAnnotations(nil, []admisionrequest.Container{_containersAdmision[0]})
 //	req := createRequestForTests(pod)
 //
 //	err := errors.New("MockError!!")
 //
-//	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", pod).Return(nil, err).Once()
+//	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", resource).Return(nil, err).Once()
 //
 //	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider())
 //

@@ -5,18 +5,18 @@ metadata:
 build:
   artifacts:
     # Dev Image:
-    - image: blockregistrydev.azurecr.io/nicole
+    - image: azuredefendermcrdev.azurecr.io/public/azuredefender/dev/in-cluster-defense
       context: ./
-#      sync:
-#        infer:
-##          - '**/*'
+      sync:
+        infer:
+          - '**/*'
       docker:
         dockerfile: build/Dockerfile
 profiles:
   # Dev Profile
   - name: azureDefnder-in-cluster-defense-dev
     deploy:
-      kubeContext: Block-InClusterDefense-Dev
+      kubeContext: cluster-dev
       # Deploy with helm chart
       helm:
         releases:
@@ -27,17 +27,11 @@ profiles:
             namespace: kube-system
             # Overrides the image in the helm chart with the image that was built in the build section.
             artifactOverrides:
-              AzDProxy.webhook.image.name: blockregistrydev.azurecr.io/nicole
+              AzDProxy.webhook.image.name: azuredefendermcrdev.azurecr.io/public/azuredefender/dev/in-cluster-defense
             setValues:
-              AzDProxy.arg.argClientConfiguration.subscriptions: "4009f3ee-43c4-4f19-97e4-32b6f2285a68"
-              AzDProxy.kubeletIdentity.envAzureAuthorizerConfiguration.mSIClientId: "c47511a0-225d-4001-a94c-2b283d8d921d"
-              AzDProxy.azdIdentity.envAzureAuthorizerConfiguration.mSIClientId: "a709c74f-f350-4702-8ef5-cd5e95399458"
+              AzDProxy.arg.argClientConfiguration.subscriptions: ""
+              AzDProxy.kubeletIdentity.envAzureAuthorizerConfiguration.mSIClientId: ""
+              AzDProxy.azdIdentity.envAzureAuthorizerConfiguration.mSIClientId: ""
             # Path to dev values:
             valuesFiles:
-              - ./charts/azdproxy/values.yaml
-#portForward:
-#  - resourceType: deployment
-#    resourceName: azure-defender-proxy-deployment
-#    namespace: kube-system
-#    port: 8000
-#    localPort: 8000 # *Optional*
+              - ./charts/azdproxy/values-dev.yaml
