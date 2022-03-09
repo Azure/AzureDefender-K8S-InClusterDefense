@@ -19,6 +19,7 @@ const (
 	containersConst                 = "containers"
 	initContainersConst             = "initContainers"
 	serviceAccountNameConst         = "serviceAccountName"
+	ImageConst                      = "image"
 	NameConst                       = "name"
 	KindConst                       = "kind"
     ApiVersionConst                 = "apiVersion"
@@ -31,7 +32,7 @@ var (
 		{"spec", "jobTemplate", "spec", "template", "spec"}, // CronJob
 		{"spec", "template", "spec"},// Deployment, ReplicaSet, StatefulSet, DaemonSet,Job, ReplicationController
 		{"spec"}} // Pod
-	kubernetesWorkloadResources = []string{"Pod", "Deployment", "ReplicaSet", "StatefulSet", "DaemonSet",
+	KubernetesWorkloadResources = []string{"Pod", "Deployment", "ReplicaSet", "StatefulSet", "DaemonSet",
 		"Job", "CronJob", "ReplicationController"} //https://kubernetes.io/docs/concepts/workloads/
 	_errInvalidAdmission   = errors.New(_errMsgInvalidAdmission)
 	_errObjectNotFound     = errors.New(_errMsgObjectNotFound)
@@ -76,7 +77,7 @@ func getContainers(specRoot *yaml.RNode) (containers []Container, initContainers
 		// if err != nil it means that containerType is an empty field in admission request
 		if err != nil {
 			allContainers[pathIndex] = nil
-			break
+			continue
 		}
 		allContainers[pathIndex] = make([]Container, len(containersInterface))
 		for i, containerObj := range containersInterface {
@@ -84,11 +85,11 @@ func getContainers(specRoot *yaml.RNode) (containers []Container, initContainers
 			if ok == false {
 				return nil, nil, err
 			}
-			allContainers[pathIndex][i].Image, ok = (v["image"]).(string)
+			allContainers[pathIndex][i].Image, ok = (v[ImageConst]).(string)
 			if ok == false {
 				return nil, nil, err
 			}
-			allContainers[pathIndex][i].Name, ok = (v["name"]).(string)
+			allContainers[pathIndex][i].Name, ok = (v[NameConst]).(string)
 			if ok == false {
 				return nil, nil, err
 			}
@@ -163,7 +164,7 @@ func reqBasicChecks(req *admission.Request) (err error) {
 	if len(req.Object.Raw) == 0 {
 		return _errObjectNotFound
 	}
-	if !stringInSlice(req.Kind.Kind, kubernetesWorkloadResources) {
+	if !StringInSlice(req.Kind.Kind, KubernetesWorkloadResources) {
 		return _errUnexpectedResource
 	}
 	return nil
@@ -195,7 +196,8 @@ func (extractor *Extractor) extractSpecFromAdmissionRequest(root *yaml.RNode) (s
 	// return podspec yaml rNode.
 	specNode, err := yaml.LookupFirstMatch(conventionalPodSpecPaths).Filter(root)
 	if err != nil{
-		// spec is optional
+		// spec.containers is mandatory, api server will block the request.
+		// todo log and metric to deal with possible error with the spec path.
 		podSpec := newSpec(nil, nil, nil, "")
 		return &podSpec,nil
 	}

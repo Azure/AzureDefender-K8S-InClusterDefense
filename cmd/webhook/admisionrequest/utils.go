@@ -5,8 +5,8 @@ import (
 	"sigs.k8s.io/kustomize/kyaml/yaml"
 )
 
-// stringInSlice return true if list contain str,false otherwise.
-func stringInSlice(str string, list []string) bool {
+// StringInSlice return true if list contain str,false otherwise.
+func StringInSlice(str string, list []string) bool {
 	for _, listValue := range list {
 		if listValue == str {
 			return true

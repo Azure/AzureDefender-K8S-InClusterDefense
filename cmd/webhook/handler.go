@@ -280,7 +280,13 @@ func (handler *Handler) shouldRequestBeFiltered(req admission.Request) (bool, re
 	// If it's the same namespace of the mutation webhook
 	if req.Namespace == utils.GetDeploymentInstance().GetNamespace() {
 		tracer.Info("Request filtered out due to it is in the same namespace as the handler.", "Namespace", req.Namespace)
-		return true, _noSelfManagementReason
+	return true, _noSelfManagementReason
+	}
+
+	// Filter if the kind is not workload resource
+	if !admisionrequest.StringInSlice(req.Kind.Kind, admisionrequest.KubernetesWorkloadResources) {
+		tracer.Info("Request filtered out due to the request is not supported kind.", "ReqKind", req.Kind.Kind)
+		return true, _noMutationForKindReason
 	}
 
 	// Filter if the operation is not Create or update

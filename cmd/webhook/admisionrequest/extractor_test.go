@@ -60,6 +60,13 @@ var (
 			Name:       "",
 		},
 	}
+	ownerReferencesOriginal = []metav1.OwnerReference{
+		{
+			APIVersion: "",
+			Kind:       "",
+			Name:       "",
+		},
+	}
 )
 
 
@@ -75,6 +82,7 @@ type TestSuite struct {
 	cronJob *batch1.CronJob
 	workloadResource *WorkloadResource
 	emptyPod *corev1.Pod
+	podWithEmptyProperties *corev1.Pod
 	emptyWorkloadResource *WorkloadResource
 
 	podReq *admission.Request
@@ -86,6 +94,7 @@ type TestSuite struct {
 	daemonSetReq *admission.Request
 	jobReq *admission.Request
 	cronJobReq *admission.Request
+	podWithEmptyPropertiesReq *admission.Request
 
 	extractor Extractor
 
@@ -106,6 +115,7 @@ func (suite *TestSuite) SetupTest() {
 	suite.replicationController = createFullReplicationControllerForTests()
 	suite.job = createFullJobForTests()
 	suite.cronJob = createFullCronJobForTests()
+	suite.podWithEmptyProperties = createPodWithEmptyPropertiesForTests()
 
 	suite.podReq = createReq(suite.pod,"Pod")
 	suite.emptyPodReq = createReq(suite.emptyPodReq,"Pod")
@@ -114,8 +124,9 @@ func (suite *TestSuite) SetupTest() {
 	suite.statefulSetReq = createReq(suite.statefulSet,"StatefulSet")
 	suite.replicationControllerReq = createReq(suite.replicationController,"ReplicationController")
 	suite.daemonSetReq = createReq(suite.daemonSet,"DaemonSet")
-	suite.jobReq = createReq(suite.jobReq,"Job")
-	suite.cronJobReq = createReq(suite.cronJobReq,"CronJob")
+	suite.jobReq = createReq(suite.job,"Job")
+	suite.cronJobReq = createReq(suite.cronJob,"CronJob")
+	suite.podWithEmptyPropertiesReq = createReq(suite.podWithEmptyProperties,"Pod")
 
 	suite.extractor = *NewExtractor(instrumentation.NewNoOpInstrumentationProvider())
 
@@ -127,63 +138,70 @@ func (suite *TestSuite) Test_ExtractWorkloadResourceFromAdmissionRequest_PodAdmi
 
 	workLoadResource, err := suite.extractor.ExtractWorkloadResourceFromAdmissionRequest(suite.podReq)
 	suite.Nil(err)
-	reflect.DeepEqual(suite.workloadResource, workLoadResource)
+	suite.True(reflect.DeepEqual(suite.workloadResource, workLoadResource))
 }
 
 func (suite *TestSuite) Test_ExtractWorkloadResourceFromAdmissionRequest_DeploymentAdmissionReqWithMatchingObject_AsExpected() {
 
 	workLoadResource, err := suite.extractor.ExtractWorkloadResourceFromAdmissionRequest(suite.deploymentReq)
 	suite.Nil(err)
-	reflect.DeepEqual(suite.workloadResource, workLoadResource)
+	suite.True(reflect.DeepEqual(suite.workloadResource, workLoadResource))
 }
 
 func (suite *TestSuite) Test_ExtractWorkloadResourceFromAdmissionRequest_ReplicaSetAdmissionReqWithMatchingObject_AsExpected() {
 
 	workLoadResource, err := suite.extractor.ExtractWorkloadResourceFromAdmissionRequest(suite.replicaSetReq)
 	suite.Nil(err)
-	reflect.DeepEqual(suite.workloadResource, workLoadResource)
+	suite.True(reflect.DeepEqual(suite.workloadResource, workLoadResource))
 }
 
 func (suite *TestSuite) Test_ExtractWorkloadResourceFromAdmissionRequest_ReplicationControllerAdmissionReqWithMatchingObject_AsExpected() {
 
 	workLoadResource, err := suite.extractor.ExtractWorkloadResourceFromAdmissionRequest(suite.replicationControllerReq)
 	suite.Nil(err)
-	reflect.DeepEqual(suite.workloadResource, workLoadResource)
+	suite.True(reflect.DeepEqual(suite.workloadResource, workLoadResource))
 }
 
 func (suite *TestSuite) Test_ExtractWorkloadResourceFromAdmissionRequest_StatefulSetAdmissionReqWithMatchingObject_AsExpected() {
 
 	workLoadResource, err := suite.extractor.ExtractWorkloadResourceFromAdmissionRequest(suite.statefulSetReq)
 	suite.Nil(err)
-	reflect.DeepEqual(suite.workloadResource, workLoadResource)
+	suite.True(reflect.DeepEqual(suite.workloadResource, workLoadResource))
 }
 
 func (suite *TestSuite) Test_ExtractWorkloadResourceFromAdmissionRequest_DaemonSetAdmissionReqWithMatchingObject_AsExpected() {
 
 	workLoadResource, err := suite.extractor.ExtractWorkloadResourceFromAdmissionRequest(suite.daemonSetReq)
 	suite.Nil(err)
-	reflect.DeepEqual(suite.workloadResource, workLoadResource)
+	suite.True(reflect.DeepEqual(suite.workloadResource, workLoadResource))
 }
 
 func (suite *TestSuite) Test_ExtractWorkloadResourceFromAdmissionRequest_JobAdmissionReqWithMatchingObject_AsExpected() {
 
 	workLoadResource, err := suite.extractor.ExtractWorkloadResourceFromAdmissionRequest(suite.jobReq)
 	suite.Nil(err)
-	reflect.DeepEqual(suite.workloadResource, workLoadResource)
+	suite.True(reflect.DeepEqual(suite.workloadResource, workLoadResource))
 }
 
 func (suite *TestSuite) Test_ExtractWorkloadResourceFromAdmissionRequest_CronJobAdmissionReqWithMatchingObject_AsExpected() {
 
 	workLoadResource, err := suite.extractor.ExtractWorkloadResourceFromAdmissionRequest(suite.jobReq)
 	suite.Nil(err)
-	reflect.DeepEqual(suite.workloadResource, workLoadResource)
+	suite.True(reflect.DeepEqual(suite.workloadResource, workLoadResource))
 }
 
 func (suite *TestSuite) Test_ExtractWorkloadResourceFromAdmissionRequest_EmptyPodAdmissionReqWithMatchingObject_AsExpected() {
 
 	workLoadResource, err := suite.extractor.ExtractWorkloadResourceFromAdmissionRequest(suite.emptyPodReq)
 	suite.Nil(err)
-	reflect.DeepEqual(suite.emptyWorkloadResource, workLoadResource)
+	suite.True(reflect.DeepEqual(suite.emptyWorkloadResource, workLoadResource))
+}
+
+func (suite *TestSuite) Test_ExtractWorkloadResourceFromAdmissionRequest_PodWithEmptyPropertiesAdmissionReqWithMatchingObject_AsExpected() {
+
+	workLoadResource, err := suite.extractor.ExtractWorkloadResourceFromAdmissionRequest(suite.podWithEmptyPropertiesReq)
+	suite.Nil(err)
+	suite.True(reflect.DeepEqual(suite.emptyWorkloadResource, workLoadResource))
 }
 
 func (suite *TestSuite) Test_GetWorkloadResourceFromAdmissionRequest_BadFormat_Error() {
@@ -232,6 +250,7 @@ func createMetadata() metav1.ObjectMeta {
 		Name:        name,
 		Namespace:   namespace,
 		Annotations: annotation,
+		OwnerReferences: ownerReferencesOriginal,
 	}
 }
 
@@ -330,6 +349,13 @@ func createFullWorkloadResourceForTests() *WorkloadResource {
 }
 func createEmptyPodForTests() *corev1.Pod {
 	return &corev1.Pod{}
+}
+
+func createPodWithEmptyPropertiesForTests() *corev1.Pod {
+	return &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{},
+		Spec:corev1.PodSpec{},
+	}
 }
 
 
