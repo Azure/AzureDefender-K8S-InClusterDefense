@@ -102,6 +102,10 @@ func newSpec(containers []Container, initContainers []Container,imagePullSecrets
 		ImagePullSecrets: imagePullSecrets, ServiceAccountName: serviceAccountName}
 }
 
+func newEmptySpec()(spec PodSpec){
+	return newSpec(nil, nil, nil, "")
+}
+
 
 // WorkloadResource represents an abstraction of a kubernetes workload resources such as:
 // Pod, Deployments, ReplicaSet, StatefulSets, DaemonSet, Jobs, CronJob and ReplicationController.

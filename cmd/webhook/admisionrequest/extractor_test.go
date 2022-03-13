@@ -16,8 +16,7 @@ import (
 	"testing"
 )
 
-var (
-	containersOriginal = []corev1.Container{
+var (containersOriginal = []corev1.Container{
 		{
 			Name:  "containerTest",
 			Image: "image.com",
@@ -84,7 +83,6 @@ type TestSuite struct {
 	emptyPod *corev1.Pod
 	podWithEmptyProperties *corev1.Pod
 	emptyWorkloadResource *WorkloadResource
-
 	podReq *admission.Request
 	emptyPodReq *admission.Request
 	deploymentReq *admission.Request
@@ -95,12 +93,7 @@ type TestSuite struct {
 	jobReq *admission.Request
 	cronJobReq *admission.Request
 	podWithEmptyPropertiesReq *admission.Request
-
 	extractor Extractor
-
-
-
-
 }
 
 func (suite *TestSuite) SetupTest() {
@@ -118,7 +111,7 @@ func (suite *TestSuite) SetupTest() {
 	suite.podWithEmptyProperties = createPodWithEmptyPropertiesForTests()
 
 	suite.podReq = createReq(suite.pod,"Pod")
-	suite.emptyPodReq = createReq(suite.emptyPodReq,"Pod")
+	suite.emptyPodReq = createReq(suite.emptyPod,"Pod")
 	suite.deploymentReq = createReq(suite.deployment,"Deployment")
 	suite.replicaSetReq = createReq(suite.replicaSet,"ReplicaSet")
 	suite.statefulSetReq = createReq(suite.statefulSet,"StatefulSet")
@@ -361,7 +354,7 @@ func createPodWithEmptyPropertiesForTests() *corev1.Pod {
 
 func createEmptyWorkloadResourceForTests() *WorkloadResource {
 	return newWorkLoadResource(newObjectMetadata("", "", nil, nil),
-		newSpec(nil, nil, nil, ""))
+		newEmptySpec())
 }
 
 func createReq(resource interface{},kind string) *admission.Request{

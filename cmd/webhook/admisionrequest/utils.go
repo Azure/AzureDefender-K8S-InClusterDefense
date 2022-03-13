@@ -17,9 +17,12 @@ func StringInSlice(str string, list []string) bool {
 
 // goToDestNode returns the *Rnode of the given path.
 func goToDestNode(yamlFile *yaml.RNode, path ...string) (destNode *yaml.RNode, err error) {
-	DestNode, err := yamlFile.Pipe(yaml.Lookup(path...))
+	// Return filters of the given path strings.
+	pathFilters := yaml.Lookup(path...)
+	// gets the rNode of the given pathFilters.
+	DestNode, err := yamlFile.Pipe(pathFilters)
 	if err != nil {
 		return nil, errors.Wrap(err, _errMsgInvalidPath)
 	}
-	return DestNode, err
+	return DestNode, nil
 }

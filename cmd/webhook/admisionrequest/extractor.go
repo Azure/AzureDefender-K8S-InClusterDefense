@@ -8,35 +8,32 @@ import (
 )
 
 const (
-	_errMsgObjectNotFound           = "admisionrequest.extractor: request did not include object"
-	_errMsgInvalidAdmission         = "admisionrequest.extractor: admission request was nil"
 	_errMsgJsonToYamlConversionFail = "admisionrequest.extractor: failed to convert json to yaml node"
 	_errMsgInvalidPath              = "admisionrequest.extractor: failed to access the given path"
-	_errMsgUnexpectedResource       = "admisionrequest.extractor: expected workload resource"
-	imagePullSecretsConst           = "imagePullSecrets"
-	metadataConst                   = "metadata"
-	ownerReferencesConst            = "ownerReferences"
-	containersConst                 = "containers"
-	initContainersConst             = "initContainers"
-	serviceAccountNameConst         = "serviceAccountName"
-	ImageConst                      = "image"
-	NameConst                       = "name"
-	KindConst                       = "kind"
-    ApiVersionConst                 = "apiVersion"
+	_imagePullSecretsConst          = "imagePullSecrets"
+	_metadataConst                  = "metadata"
+	_ownerReferencesConst           = "ownerReferences"
+	_containersConst                = "containers"
+	_initContainersConst            = "initContainers"
+	_serviceAccountNameConst        = "serviceAccountName"
+	_imageConst                     = "image"
+	_nameConst                      = "name"
+	_kindConst                      = "kind"
+    _apiVersionConst                = "apiVersion"
 )
 
 var (
-	//from yaml.ConventionalContainersPaths, without containers(the last string in paths).
-	// Order matters to yaml.LookupFirstMatch function, that returns the first path that match in yaml file.
+	KubernetesWorkloadResources = []string{"Pod", "Deployment", "ReplicaSet", "StatefulSet", "DaemonSet",
+		"Job", "CronJob", "ReplicationController"} //https://kubernetes.io/docs/concepts/workloads/
+	// conventional pod spec paths for all kubernetes workload resources.
+	//based on yaml.ConventionalContainersPaths var.
 	conventionalPodSpecPaths = [][]string{
 		{"spec", "jobTemplate", "spec", "template", "spec"}, // CronJob
 		{"spec", "template", "spec"},// Deployment, ReplicaSet, StatefulSet, DaemonSet,Job, ReplicationController
 		{"spec"}} // Pod
-	KubernetesWorkloadResources = []string{"Pod", "Deployment", "ReplicaSet", "StatefulSet", "DaemonSet",
-		"Job", "CronJob", "ReplicationController"} //https://kubernetes.io/docs/concepts/workloads/
-	_errInvalidAdmission   = errors.New(_errMsgInvalidAdmission)
-	_errObjectNotFound     = errors.New(_errMsgObjectNotFound)
-	_errUnexpectedResource = errors.New(_errMsgUnexpectedResource)
+	_errInvalidAdmission   = errors.New("admisionrequest.extractor: admission request was nil")
+	_errObjectNotFound     = errors.New("admisionrequest.extractor: request did not include object")
+	_errUnexpectedResource = errors.New("admisionrequest.extractor: expected workload resource")
 )
 
 // ExtractWorkloadResourceFromAdmissionRequest return WorkloadResource object according
@@ -45,23 +42,26 @@ func (extractor *Extractor) ExtractWorkloadResourceFromAdmissionRequest(req *adm
 	tracer := extractor.tracerProvider.GetTracer("ExtractWorkloadResourceFromAdmissionRequest")
 	tracer.Info("ExtractWorkloadResourceFromAdmissionRequest Enter", "admission request", req)
 
-	err = reqBasicChecks(req)
+	err = extractor.isRequestValid(req)
 	if err != nil {
+		return nil, err
+	}
+
+	objectRequest := string(req.Object.Raw)
+	tracer.Info("kubernetes resource in admission request: ","object: ", objectRequest)
+	objectRequestYaml, err := yaml.ConvertJSONToYamlNode(objectRequest)
+	if err != nil {
+		err = errors.Wrap(err, _errMsgJsonToYamlConversionFail)
 		tracer.Error(err, "")
 		return nil, err
 	}
-	yamlFile, err := yaml.ConvertJSONToYamlNode(string(req.Object.Raw))
-	if err != nil {
-		tracer.Error(errors.Wrap(err, _errMsgJsonToYamlConversionFail), "")
-		return nil, errors.Wrap(err, _errMsgJsonToYamlConversionFail)
-	}
 
-	metadata, err := extractor.extractMetadataFromAdmissionRequest(yamlFile)
+	metadata, err := extractor.extractMetadataFromAdmissionRequest(objectRequestYaml)
 	if err != nil {
 		return nil, err
 	}
 
-	spec, err := extractor.extractSpecFromAdmissionRequest(yamlFile)
+	spec, err := extractor.extractSpecFromAdmissionRequest(objectRequestYaml)
 	if err != nil {
 		return nil, err
 	}
@@ -72,7 +72,7 @@ func (extractor *Extractor) ExtractWorkloadResourceFromAdmissionRequest(req *adm
 // getContainers returns workload kubernetes resource's containers and initContainers.
 func getContainers(specRoot *yaml.RNode) (containers []Container, initContainers []Container, err error) {
 	allContainers := make([][]Container,2)
-	for pathIndex, containerPath := range []string{containersConst, initContainersConst} {
+	for pathIndex, containerPath := range []string{_containersConst, _initContainersConst} {
 		containersInterface, err := specRoot.GetSlice(containerPath)
 		// if err != nil it means that containerType is an empty field in admission request
 		if err != nil {
@@ -85,11 +85,11 @@ func getContainers(specRoot *yaml.RNode) (containers []Container, initContainers
 			if ok == false {
 				return nil, nil, err
 			}
-			allContainers[pathIndex][i].Image, ok = (v[ImageConst]).(string)
+			allContainers[pathIndex][i].Image, ok = (v[_imageConst]).(string)
 			if ok == false {
 				return nil, nil, err
 			}
-			allContainers[pathIndex][i].Name, ok = (v[NameConst]).(string)
+			allContainers[pathIndex][i].Name, ok = (v[_nameConst]).(string)
 			if ok == false {
 				return nil, nil, err
 			}
@@ -100,7 +100,7 @@ func getContainers(specRoot *yaml.RNode) (containers []Container, initContainers
 
 // getImagePullSecrets returns workload kubernetes resource's image pull secrets.
 func getImagePullSecrets(specRoot *yaml.RNode) (secrets []corev1.LocalObjectReference, err error) {
-	imagePullSecretsInterface, pathErr := specRoot.GetSlice(imagePullSecretsConst)
+	imagePullSecretsInterface, pathErr := specRoot.GetSlice(_imagePullSecretsConst)
 	// if pathErr != nil it means that "imagePullSecrets" is an empty field in admission request
 	if pathErr != nil {
 		return nil, nil
@@ -112,7 +112,7 @@ func getImagePullSecrets(specRoot *yaml.RNode) (secrets []corev1.LocalObjectRefe
 		if ok == false {
 			return nil, err
 		}
-		secrets[i].Name, ok = (v[NameConst]).(string)
+		secrets[i].Name, ok = (v[_nameConst]).(string)
 		if ok == false {
 			return nil, err
 		}
@@ -120,15 +120,16 @@ func getImagePullSecrets(specRoot *yaml.RNode) (secrets []corev1.LocalObjectRefe
 	return secrets, nil
 }
 
-// GetOwnerReference returns workload kubernetes resource's owner reference.
+// getOwnerReference returns workload kubernetes resource's owner reference.
 func (extractor *Extractor) getOwnerReference(root *yaml.RNode) (ownerReferences []OwnerReference, err error) {
-	metaNode, pathErr := goToDestNode(root, metadataConst)
-	// if err != nil it means that "ownerReferences" is an empty field in admission request
+	metadata, pathErr := goToDestNode(root, _metadataConst)
+	// if err != nil it means that "metadata" is an empty field in admission request
 	if pathErr != nil {
 		return nil, nil
 	}
 
-	sliceOwnerReferences, err := metaNode.GetSlice(ownerReferencesConst)
+	// if err != nil it means that "ownerReferences" is an empty field in admission request
+	sliceOwnerReferences, err := metadata.GetSlice(_ownerReferencesConst)
 	if err != nil {
 		return nil, nil
 	}
@@ -138,15 +139,15 @@ func (extractor *Extractor) getOwnerReference(root *yaml.RNode) (ownerReferences
 		if ok == false {
 			return nil, err
 		}
-		ownerReferences[i].APIVersion,ok = mapReference[ApiVersionConst].(string)
+		ownerReferences[i].APIVersion,ok = mapReference[_apiVersionConst].(string)
 		if ok == false {
 			return nil, err
 		}
-		ownerReferences[i].Kind,ok = mapReference[KindConst].(string)
+		ownerReferences[i].Kind,ok = mapReference[_kindConst].(string)
 		if ok == false {
 			return nil, err
 		}
-		ownerReferences[i].Name,ok = mapReference[NameConst].(string)
+		ownerReferences[i].Name,ok = mapReference[_nameConst].(string)
 		if ok == false {
 			return nil, err
 		}
@@ -156,49 +157,57 @@ func (extractor *Extractor) getOwnerReference(root *yaml.RNode) (ownerReferences
 }
 
 
-//Basics checks of the application admission request.
-func reqBasicChecks(req *admission.Request) (err error) {
+//isRequestValid return error is request isn't valid, else returns nil.
+func (extractor *Extractor) isRequestValid(req *admission.Request) (err error) {
+	tracer := extractor.tracerProvider.GetTracer("isRequestValid")
 	if req == nil {
+		tracer.Error(_errInvalidAdmission, "")
 		return _errInvalidAdmission
 	}
 	if len(req.Object.Raw) == 0 {
+		tracer.Error(_errObjectNotFound, "")
 		return _errObjectNotFound
 	}
 	if !StringInSlice(req.Kind.Kind, KubernetesWorkloadResources) {
+		tracer.Error(_errUnexpectedResource, "")
 		return _errUnexpectedResource
 	}
 	return nil
 }
 
 // extractMetadataFromAdmissionRequest return *ObjectMetadata object according
-//// to the information in yamlFile.
+// to the information in yamlFile.
 func (extractor *Extractor) extractMetadataFromAdmissionRequest(root *yaml.RNode) (metadata *ObjectMetadata,err error) {
 	tracer := extractor.tracerProvider.GetTracer("extractMetadataFromAdmissionRequest")
 	name := root.GetName()
 	namespace := root.GetNamespace()
-	annotation := root.GetAnnotations()
-	if len(annotation)==0{
-		annotation = nil
+	annotations := root.GetAnnotations()
+	if len(annotations) == 0{
+		annotations = nil
 	}
 	ownerReferences, err := extractor.getOwnerReference(root)
 	if err != nil {
 		tracer.Error(err, "")
 		return nil, err
 	}
-	meta := newObjectMetadata(name, namespace, annotation, ownerReferences)
-	return &meta, nil
+	metadataObj := newObjectMetadata(name, namespace, annotations, ownerReferences)
+	metadata = &metadataObj
+	return metadata, nil
 }
 
 // extractSpecFromAdmissionRequest return *PodSpec object according
-//// to the information in yamlFile.
+// to the information in yamlFile.
 func (extractor *Extractor) extractSpecFromAdmissionRequest(root *yaml.RNode) (spec *PodSpec,err error) {
 	tracer := extractor.tracerProvider.GetTracer("extractSpecFromAdmissionRequest")
-	// return podspec yaml rNode.
-	specNode, err := yaml.LookupFirstMatch(conventionalPodSpecPaths).Filter(root)
+	// Gets the matching pod spec path of the given root.
+	podSpecPathFilter := yaml.LookupFirstMatch(conventionalPodSpecPaths)
+	// Go to podSpec Node according to given podSpecPathFilter.
+	specNode, err := podSpecPathFilter.Filter(root)
 	if err != nil{
-		// spec.containers is mandatory, api server will block the request.
-		// todo log and metric to deal with possible error with the spec path.
-		podSpec := newSpec(nil, nil, nil, "")
+		//if err is not nil then it means that specNode wasn't found. spec.containers is mandatory, therefore the api
+		//server will block the request - we don't want that our webhook will report error in this case.
+		// Todo [t-ngandelman] log and metric to deal with possible error with the spec path.
+		podSpec := newEmptySpec()
 		return &podSpec,nil
 	}
 	containerList, initContainerList, err := getContainers(specNode)
@@ -214,7 +223,7 @@ func (extractor *Extractor) extractSpecFromAdmissionRequest(root *yaml.RNode) (s
 
 	// err ignore because serviceAccountName may not exist. in that case ot will
 	// be assigned to empty string.
-	serviceAccountName, err := specNode.GetString(serviceAccountNameConst)
+	serviceAccountName, err := specNode.GetString(_serviceAccountNameConst)
 
 	podSpec := newSpec(containerList, initContainerList, imagePullSecrets, serviceAccountName)
 	return &podSpec, nil
