@@ -202,16 +202,16 @@ func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_resetTimeOutInCacheAft
 }
 
 func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_GetPodSpecCacheKey_Containers() {
-	containers := []admisionrequest.Container{_containers[0], _containers[1]}
+	containers := []*admisionrequest.Container{&_containers[0], &_containers[1]}
 	pod := createWorkloadResourceForTests(containers, nil)
-	result := suite.azdSecInfoProviderCacheClient.GetPodSpecCacheKey(&pod.Spec)
+	result := suite.azdSecInfoProviderCacheClient.GetPodSpecCacheKey(pod.Spec)
 	suite.Equal(_podSpecCacheKeyTest, result)
 }
 
 func (suite *AzdSecInfoProviderCacheClientTestSuite) Test_GetPodSpecCacheKey_InitContainers() {
-	containers := []admisionrequest.Container{_containers[0], _containers[1]}
+	containers := []*admisionrequest.Container{&_containers[0], &_containers[1]}
 	pod := createWorkloadResourceForTests(nil, containers)
-	result := suite.azdSecInfoProviderCacheClient.GetPodSpecCacheKey(&pod.Spec)
+	result := suite.azdSecInfoProviderCacheClient.GetPodSpecCacheKey(pod.Spec)
 	suite.Equal(_podSpecCacheKeyTest, result)
 }
 

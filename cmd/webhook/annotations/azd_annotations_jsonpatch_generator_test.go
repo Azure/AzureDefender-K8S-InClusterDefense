@@ -58,7 +58,8 @@ func (suite *TestSuite) SetupSuite() {
 			},
 		},
 	}
-	suite.workloadResourceNoAnnotations = &admisionrequest.WorkloadResource{}
+	suite.workloadResourceNoAnnotations = &admisionrequest.WorkloadResource{Spec: &admisionrequest.PodSpec{},Metadata: &admisionrequest.ObjectMetadata{}}
+	suite.workloadResourceNoAnnotations = &admisionrequest.WorkloadResource{Spec: &admisionrequest.PodSpec{},Metadata: &admisionrequest.ObjectMetadata{}}
 	suite.workloadResourceWithAnnotations = createWorkloadResourceWithAnnotationsForTest()
 }
 
@@ -140,7 +141,7 @@ func TestCreateContainersVulnerabilityScanAnnotationPatchAdd(t *testing.T) {
 }
 
 func createWorkloadResourceWithAnnotationsForTest() *admisionrequest.WorkloadResource {
-	metadata := admisionrequest.ObjectMetadata{
+	metadata := &admisionrequest.ObjectMetadata{
 			Name: "podTest",
 			Annotations: map[string]string{
 				_annotationTestKeyOne : _annotationTestValueOne,
@@ -152,7 +153,7 @@ func createWorkloadResourceWithAnnotationsForTest() *admisionrequest.WorkloadRes
 }
 
 func createWorkloadResourceWithAzdAnnotationsForTest() *admisionrequest.WorkloadResource {
-	metadata := admisionrequest.ObjectMetadata{
+	metadata := &admisionrequest.ObjectMetadata{
 		Name: "podTest",
 		Annotations: map[string]string{
 			_annotationTestKeyOne : _annotationTestValueOne,
@@ -165,7 +166,7 @@ func createWorkloadResourceWithAzdAnnotationsForTest() *admisionrequest.Workload
 }
 
 func createWorkloadResourceWithoutAnnotationsForTest() *admisionrequest.WorkloadResource {
-	metadata := admisionrequest.ObjectMetadata{
+	metadata := &admisionrequest.ObjectMetadata{
 		Name: "podTest",
 	}
 	workloadResource := admisionrequest.WorkloadResource{Metadata: metadata}

@@ -125,10 +125,10 @@ func (suite *AzdSecInfoProviderTestSuite) SetupTest() {
 }
 
 func (suite *AzdSecInfoProviderTestSuite) Test_getContainersVulnerabilityScanInfo_NoResultsInCache_ScannedResults() {
-	containers := []admisionrequest.Container{_containers[0]}
+	containers := []*admisionrequest.Container{&_containers[0]}
 	workloadResource := createWorkloadResourceForTests(containers, nil)
 
-	suite.cacheClientMock.On("GetPodSpecCacheKey", &workloadResource.Spec).Return(_imageOriginalTest1).Once()
+	suite.cacheClientMock.On("GetPodSpecCacheKey", workloadResource.Spec).Return(_imageOriginalTest1).Once()
 	suite.cacheClientMock.On("GetContainerVulnerabilityScanInfofromCache", _imageOriginalTest1).Return(nil, nil, new(cache.MissingKeyCacheError)).Once()
 	suite.cacheClientMock.On("ResetTimeOutInCacheAfterGettingScanResults", _imageOriginalTest1).Return(nil).Maybe()
 	suite.cacheClientMock.On("SetContainerVulnerabilityScanInfoInCache", _imageOriginalTest1, _expectedResultsTest1, nil).Return(nil).Maybe()
@@ -144,10 +144,10 @@ func (suite *AzdSecInfoProviderTestSuite) Test_getContainersVulnerabilityScanInf
 }
 
 func (suite *AzdSecInfoProviderTestSuite) Test_getContainersVulnerabilityScanInfo_NoResultsInCache_UnscannedResults() {
-	containers := []admisionrequest.Container{_containers[0]}
+	containers := []*admisionrequest.Container{&_containers[0]}
 	workloadResource := createWorkloadResourceForTests(containers, nil)
 
-	suite.cacheClientMock.On("GetPodSpecCacheKey", &workloadResource.Spec).Return(_imageOriginalTest1).Once()
+	suite.cacheClientMock.On("GetPodSpecCacheKey", workloadResource.Spec).Return(_imageOriginalTest1).Once()
 	suite.cacheClientMock.On("GetContainerVulnerabilityScanInfofromCache", _imageOriginalTest1).Return(nil, nil, new(cache.MissingKeyCacheError)).Once()
 	suite.cacheClientMock.On("ResetTimeOutInCacheAfterGettingScanResults", _imageOriginalTest1).Return(nil).Maybe()
 	suite.cacheClientMock.On("SetContainerVulnerabilityScanInfoInCache", _imageOriginalTest1, _expectedResultsTest2, nil).Return(nil).Maybe()
@@ -163,10 +163,10 @@ func (suite *AzdSecInfoProviderTestSuite) Test_getContainersVulnerabilityScanInf
 }
 
 func (suite *AzdSecInfoProviderTestSuite) Test_getContainersVulnerabilityScanInfo_ResultsInCache_ScannedResults() {
-	containers := []admisionrequest.Container{_containers[0]}
+	containers := []*admisionrequest.Container{&_containers[0]}
 	workloadResource := createWorkloadResourceForTests(containers, nil)
 
-	suite.cacheClientMock.On("GetPodSpecCacheKey", &workloadResource.Spec).Return(_imageOriginalTest1).Once()
+	suite.cacheClientMock.On("GetPodSpecCacheKey", workloadResource.Spec).Return(_imageOriginalTest1).Once()
 	suite.cacheClientMock.On("GetContainerVulnerabilityScanInfofromCache", _imageOriginalTest1).Return(_expectedResultsTest1, nil, nil).Once()
 
 	// Act
@@ -177,10 +177,10 @@ func (suite *AzdSecInfoProviderTestSuite) Test_getContainersVulnerabilityScanInf
 }
 
 func (suite *AzdSecInfoProviderTestSuite) Test_getContainersVulnerabilityScanInfo_ResultsInCache_ErrorAsResult() {
-	containers := []admisionrequest.Container{_containers[0]}
+	containers := []*admisionrequest.Container{&_containers[0]}
 	workloadResource := createWorkloadResourceForTests(containers, nil)
 
-	suite.cacheClientMock.On("GetPodSpecCacheKey", &workloadResource.Spec).Return(_imageOriginalTest1).Once()
+	suite.cacheClientMock.On("GetPodSpecCacheKey", workloadResource.Spec).Return(_imageOriginalTest1).Once()
 	suite.cacheClientMock.On("GetContainerVulnerabilityScanInfofromCache", _imageOriginalTest1).Return(nil, errors.New(""), nil).Once()
 
 	// Act
@@ -192,10 +192,10 @@ func (suite *AzdSecInfoProviderTestSuite) Test_getContainersVulnerabilityScanInf
 }
 
 func (suite *AzdSecInfoProviderTestSuite) Test_getContainersVulnerabilityScanInfo_NoResultsInCache_ScannedResults_NoTimeOut_ErrorFromCache() {
-	containers := []admisionrequest.Container{_containers[0]}
+	containers := []*admisionrequest.Container{&_containers[0]}
 	workloadResource := createWorkloadResourceForTests(containers, nil)
 
-	suite.cacheClientMock.On("GetPodSpecCacheKey", &workloadResource.Spec).Return(_imageOriginalTest1).Once()
+	suite.cacheClientMock.On("GetPodSpecCacheKey", workloadResource.Spec).Return(_imageOriginalTest1).Once()
 	suite.cacheClientMock.On("GetContainerVulnerabilityScanInfofromCache", _imageOriginalTest1).Return(nil, nil, errors.New("")).Once()
 	suite.cacheClientMock.On("ResetTimeOutInCacheAfterGettingScanResults", _imageOriginalTest1).Return(nil).Maybe()
 	suite.cacheClientMock.On("SetContainerVulnerabilityScanInfoInCache", _imageOriginalTest1, _expectedResultsTest1, nil).Return(nil).Maybe()
@@ -211,10 +211,10 @@ func (suite *AzdSecInfoProviderTestSuite) Test_getContainersVulnerabilityScanInf
 }
 
 func (suite *AzdSecInfoProviderTestSuite) Test_getContainersVulnerabilityScanInfo_EncounteredTimeout_FirstTimeout() {
-	containers := []admisionrequest.Container{_containers[0]}
+	containers := []*admisionrequest.Container{&_containers[0]}
 	workloadResource := createWorkloadResourceForTests(containers, nil)
 
-	suite.cacheClientMock.On("GetPodSpecCacheKey", &workloadResource.Spec).Return(_imageOriginalTest1).Once()
+	suite.cacheClientMock.On("GetPodSpecCacheKey", workloadResource.Spec).Return(_imageOriginalTest1).Once()
 	suite.cacheClientMock.On("GetContainerVulnerabilityScanInfofromCache", _imageOriginalTest1).Return(nil, nil, new(cache.MissingKeyCacheError)).Once()
 	suite.cacheClientMock.On("GetTimeOutStatus", _imageOriginalTest1).Return(0, nil).Once()
 	suite.cacheClientMock.On("SetTimeOutStatusAfterEncounteredTimeout", _imageOriginalTest1, 1).Return(nil).Once()
@@ -233,10 +233,10 @@ func (suite *AzdSecInfoProviderTestSuite) Test_getContainersVulnerabilityScanInf
 }
 
 func (suite *AzdSecInfoProviderTestSuite) Test_getContainersVulnerabilityScanInfo_EncounteredTimeout_SecondTimeout() {
-	containers := []admisionrequest.Container{_containers[0]}
+	containers := []*admisionrequest.Container{&_containers[0]}
 	workloadResource := createWorkloadResourceForTests(containers, nil)
 
-	suite.cacheClientMock.On("GetPodSpecCacheKey", &workloadResource.Spec).Return(_imageOriginalTest1).Once()
+	suite.cacheClientMock.On("GetPodSpecCacheKey", workloadResource.Spec).Return(_imageOriginalTest1).Once()
 	suite.cacheClientMock.On("GetContainerVulnerabilityScanInfofromCache", _imageOriginalTest1).Return(nil, nil, new(cache.MissingKeyCacheError)).Once()
 	suite.cacheClientMock.On("GetTimeOutStatus", _imageOriginalTest1).Return(1, nil).Once()
 	suite.cacheClientMock.On("SetTimeOutStatusAfterEncounteredTimeout", _imageOriginalTest1, 2).Return(nil).Once()
@@ -255,10 +255,10 @@ func (suite *AzdSecInfoProviderTestSuite) Test_getContainersVulnerabilityScanInf
 }
 
 func (suite *AzdSecInfoProviderTestSuite) Test_getContainersVulnerabilityScanInfo_EncounteredTimeout_ThirdTimeout() {
-	containers := []admisionrequest.Container{_containers[0]}
+	containers := []*admisionrequest.Container{&_containers[0]}
 	workloadResource := createWorkloadResourceForTests(containers, nil)
 
-	suite.cacheClientMock.On("GetPodSpecCacheKey", &workloadResource.Spec).Return(_imageOriginalTest1).Once()
+	suite.cacheClientMock.On("GetPodSpecCacheKey", workloadResource.Spec).Return(_imageOriginalTest1).Once()
 	suite.cacheClientMock.On("GetContainerVulnerabilityScanInfofromCache", _imageOriginalTest1).Return(nil, nil, new(cache.MissingKeyCacheError)).Once()
 	suite.cacheClientMock.On("GetTimeOutStatus", _imageOriginalTest1).Return(2, nil).Once()
 	suite.cacheClientMock.On("SetContainerVulnerabilityScanInfoInCache", _imageOriginalTest1, _expectedResultsTest1, nil).Return(nil).Maybe()
@@ -277,10 +277,10 @@ func (suite *AzdSecInfoProviderTestSuite) Test_getContainersVulnerabilityScanInf
 }
 
 func (suite *AzdSecInfoProviderTestSuite) Test_getContainersVulnerabilityScanInfo_EncounteredTimeout_ErrorFromCache() {
-	containers := []admisionrequest.Container{_containers[0]}
+	containers := []*admisionrequest.Container{&_containers[0]}
 	workloadResource := createWorkloadResourceForTests(containers, nil)
 
-	suite.cacheClientMock.On("GetPodSpecCacheKey", &workloadResource.Spec).Return(_imageOriginalTest1).Once()
+	suite.cacheClientMock.On("GetPodSpecCacheKey", workloadResource.Spec).Return(_imageOriginalTest1).Once()
 	suite.cacheClientMock.On("GetContainerVulnerabilityScanInfofromCache", _imageOriginalTest1).Return(nil, nil, new(cache.MissingKeyCacheError)).Once()
 	suite.cacheClientMock.On("GetTimeOutStatus", _imageOriginalTest1).Return(-1, errors.New("")).Once()
 	suite.cacheClientMock.On("SetContainerVulnerabilityScanInfoInCache", _imageOriginalTest1, _expectedResultsTest1, nil).Return(nil).Maybe()
@@ -356,20 +356,20 @@ func (suite *AzdSecInfoProviderTestSuite) goroutineTest(funcToRun func(time.Dura
 }
 
 func (suite *AzdSecInfoProviderTestSuite) getContainersVulnerabilityScanInfoTest_InitContainersNil(waitFirstContainer time.Duration, waitSecondContainer time.Duration) {
-	containers := []admisionrequest.Container{_containers[0], _containers[1]}
+	containers := []*admisionrequest.Container{&_containers[0], &_containers[1]}
 	workloadResource := createWorkloadResourceForTests(containers, nil)
 	suite.getContainersVulnerabilityScanInfoTest(workloadResource, waitFirstContainer, waitSecondContainer)
 }
 
 func (suite *AzdSecInfoProviderTestSuite) getContainersVulnerabilityScanInfoTest_ContainersNil(waitFirstContainer time.Duration, waitSecondContainer time.Duration) {
-	containers := []admisionrequest.Container{_containers[0], _containers[1]}
+	containers := []*admisionrequest.Container{&_containers[0], &_containers[1]}
 	workloadResource := createWorkloadResourceForTests(nil, containers)
 	suite.getContainersVulnerabilityScanInfoTest(workloadResource, waitFirstContainer, waitSecondContainer)
 }
 
 func (suite *AzdSecInfoProviderTestSuite) getContainersVulnerabilityScanInfoTest_OneContainerOneInitContainer(waitFirstContainer time.Duration, waitSecondContainer time.Duration) {
-	containers := []admisionrequest.Container{_containers[0]}
-	initContainers := []admisionrequest.Container{_containers[1]}
+	containers := []*admisionrequest.Container{&_containers[0]}
+	initContainers := []*admisionrequest.Container{&_containers[1]}
 	pod := createWorkloadResourceForTests(containers, initContainers)
 	suite.getContainersVulnerabilityScanInfoTest(pod, waitFirstContainer, waitSecondContainer)
 }
@@ -406,13 +406,13 @@ func measureTime(f func(time.Duration, time.Duration), waitFirstContainer time.D
 	return time.Since(start)
 }
 
-func createWorkloadResourceForTests(containers []admisionrequest.Container, initContainers []admisionrequest.Container) *admisionrequest.WorkloadResource {
+func createWorkloadResourceForTests(containers []*admisionrequest.Container, initContainers []*admisionrequest.Container) *admisionrequest.WorkloadResource {
 	return &admisionrequest.WorkloadResource{
-		Metadata: admisionrequest.ObjectMetadata{
+		Metadata: &admisionrequest.ObjectMetadata{
 			Name:      "podTest",
 			Namespace: "default",
 		},
-		Spec: admisionrequest.PodSpec{
+		Spec: &admisionrequest.PodSpec{
 			Containers:     containers,
 			InitContainers: initContainers,
 		},

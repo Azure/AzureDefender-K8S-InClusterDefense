@@ -3,6 +3,7 @@ package admisionrequest
 import (
 	"encoding/json"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/suite"
 	admissionv1 "k8s.io/api/admission/v1"
@@ -16,54 +17,60 @@ import (
 	"testing"
 )
 
-var (containersOriginal = []corev1.Container{
+var (
+	_actualContainers = []corev1.Container{
 		{
 			Name:  "containerTest",
 			Image: "image.com",
 		},
 	}
-	containersNew = []Container{
+	_expectedContainers = []*Container{
 		{
 			Name:  "containerTest",
 			Image: "image.com",
 		},
 	}
-	initContainersOriginal = []corev1.Container{
+	_actualInitContainers = []corev1.Container{
 		{
 			Name:  "initContainerTest",
 			Image: "image.com",
 		},
 	}
-	initContainersNew = []Container{
+	_expectedInitContainers = []*Container{
 		{
 			Name:  "initContainerTest",
 			Image: "image.com",
 		},
 	}
-	name             = "podTest"
-	imagePullSecrets = []corev1.LocalObjectReference{
+	_name                     = "podTest"
+	_expectedImagePullSecrets = []*corev1.LocalObjectReference{
 		{
 			Name: "secret",
 		},
 	}
-	serviceAccountName = "podServiceAccount"
-	namespace          = "podNameSpace"
-	annotation         = map[string]string{
+	_actualImagePullSecrets = []corev1.LocalObjectReference{
+		{
+			Name: "secret",
+		},
+	}
+	_serviceAccountName = "podServiceAccount"
+	_namespace          = "podNameSpace"
+	_annotation         = map[string]string{
 		"key1": "value1",
 		"key2": "value2",
 	}
-	ownerReferences = []OwnerReference{
+	_expectedOwnerReferences = []*OwnerReference{
 		{
-			APIVersion: "",
-			Kind:       "",
-			Name:       "",
+			APIVersion: "v1",
+			Kind:       "pod",
+			Name:       "podName",
 		},
 	}
-	ownerReferencesOriginal = []metav1.OwnerReference{
+	_actualOwnerReferences = []metav1.OwnerReference{
 		{
-			APIVersion: "",
-			Kind:       "",
-			Name:       "",
+			APIVersion: "v1",
+			Kind:       "pod",
+			Name:       "podName",
 		},
 	}
 )
@@ -72,157 +79,141 @@ var (containersOriginal = []corev1.Container{
 type TestSuite struct {
 	suite.Suite
 	pod        *corev1.Pod
-	replicationController *corev1.ReplicationController
-	deployment *apps1.Deployment
-	replicaSet *apps1.ReplicaSet
-	statefulSet *apps1.StatefulSet
-	daemonSet *apps1.DaemonSet
-	job *batch1.Job
-	cronJob *batch1.CronJob
 	workloadResource *WorkloadResource
-	emptyPod *corev1.Pod
-	podWithEmptyProperties *corev1.Pod
 	emptyWorkloadResource *WorkloadResource
 	podReq *admission.Request
 	emptyPodReq *admission.Request
-	deploymentReq *admission.Request
-	replicaSetReq *admission.Request
-	statefulSetReq *admission.Request
-	replicationControllerReq *admission.Request
 	daemonSetReq *admission.Request
-	jobReq *admission.Request
-	cronJobReq *admission.Request
 	podWithEmptyPropertiesReq *admission.Request
 	extractor Extractor
 }
 
 func (suite *TestSuite) SetupTest() {
 	suite.pod = createFullPodForTests()
-	suite.emptyPod = createEmptyPodForTests()
 	suite.workloadResource = createFullWorkloadResourceForTests()
 	suite.emptyWorkloadResource = createEmptyWorkloadResourceForTests()
-	suite.deployment = createFullDeploymentForTests()
-	suite.daemonSet = createFullDaemonSetForTests()
-	suite.replicaSet = createFullReplicaSetForTests()
-	suite.statefulSet = createFullStatefulSetForTests()
-	suite.replicationController = createFullReplicationControllerForTests()
-	suite.job = createFullJobForTests()
-	suite.cronJob = createFullCronJobForTests()
-	suite.podWithEmptyProperties = createPodWithEmptyPropertiesForTests()
-
 	suite.podReq = createReq(suite.pod,"Pod")
-	suite.emptyPodReq = createReq(suite.emptyPod,"Pod")
-	suite.deploymentReq = createReq(suite.deployment,"Deployment")
-	suite.replicaSetReq = createReq(suite.replicaSet,"ReplicaSet")
-	suite.statefulSetReq = createReq(suite.statefulSet,"StatefulSet")
-	suite.replicationControllerReq = createReq(suite.replicationController,"ReplicationController")
-	suite.daemonSetReq = createReq(suite.daemonSet,"DaemonSet")
-	suite.jobReq = createReq(suite.job,"Job")
-	suite.cronJobReq = createReq(suite.cronJob,"CronJob")
-	suite.podWithEmptyPropertiesReq = createReq(suite.podWithEmptyProperties,"Pod")
-
 	suite.extractor = *NewExtractor(instrumentation.NewNoOpInstrumentationProvider())
-
-
-
 }
 
 func (suite *TestSuite) Test_ExtractWorkloadResourceFromAdmissionRequest_PodAdmissionReqWithMatchingObject_AsExpected() {
-
 	workLoadResource, err := suite.extractor.ExtractWorkloadResourceFromAdmissionRequest(suite.podReq)
 	suite.Nil(err)
 	suite.True(reflect.DeepEqual(suite.workloadResource, workLoadResource))
 }
 
 func (suite *TestSuite) Test_ExtractWorkloadResourceFromAdmissionRequest_DeploymentAdmissionReqWithMatchingObject_AsExpected() {
-
-	workLoadResource, err := suite.extractor.ExtractWorkloadResourceFromAdmissionRequest(suite.deploymentReq)
+	deployment := createFullDeploymentForTests()
+	req := createReq(deployment,"Deployment")
+	workLoadResource, err := suite.extractor.ExtractWorkloadResourceFromAdmissionRequest(req)
 	suite.Nil(err)
 	suite.True(reflect.DeepEqual(suite.workloadResource, workLoadResource))
 }
 
 func (suite *TestSuite) Test_ExtractWorkloadResourceFromAdmissionRequest_ReplicaSetAdmissionReqWithMatchingObject_AsExpected() {
-
-	workLoadResource, err := suite.extractor.ExtractWorkloadResourceFromAdmissionRequest(suite.replicaSetReq)
+	replicaSet := createFullReplicaSetForTests()
+	req := createReq(replicaSet,"ReplicaSet")
+	workLoadResource, err := suite.extractor.ExtractWorkloadResourceFromAdmissionRequest(req)
 	suite.Nil(err)
 	suite.True(reflect.DeepEqual(suite.workloadResource, workLoadResource))
 }
 
 func (suite *TestSuite) Test_ExtractWorkloadResourceFromAdmissionRequest_ReplicationControllerAdmissionReqWithMatchingObject_AsExpected() {
-
-	workLoadResource, err := suite.extractor.ExtractWorkloadResourceFromAdmissionRequest(suite.replicationControllerReq)
+	replicationController := createFullReplicationControllerForTests()
+	req := createReq(replicationController,"ReplicationController")
+	workLoadResource, err := suite.extractor.ExtractWorkloadResourceFromAdmissionRequest(req)
 	suite.Nil(err)
 	suite.True(reflect.DeepEqual(suite.workloadResource, workLoadResource))
 }
 
 func (suite *TestSuite) Test_ExtractWorkloadResourceFromAdmissionRequest_StatefulSetAdmissionReqWithMatchingObject_AsExpected() {
-
-	workLoadResource, err := suite.extractor.ExtractWorkloadResourceFromAdmissionRequest(suite.statefulSetReq)
+	statefulSet := createFullStatefulSetForTests()
+	req := createReq(statefulSet,"StatefulSet")
+	workLoadResource, err := suite.extractor.ExtractWorkloadResourceFromAdmissionRequest(req)
 	suite.Nil(err)
 	suite.True(reflect.DeepEqual(suite.workloadResource, workLoadResource))
 }
 
 func (suite *TestSuite) Test_ExtractWorkloadResourceFromAdmissionRequest_DaemonSetAdmissionReqWithMatchingObject_AsExpected() {
-
-	workLoadResource, err := suite.extractor.ExtractWorkloadResourceFromAdmissionRequest(suite.daemonSetReq)
+	daemonSet := createFullDaemonSetForTests()
+	req := createReq(daemonSet,"DaemonSet")
+	workLoadResource, err := suite.extractor.ExtractWorkloadResourceFromAdmissionRequest(req)
 	suite.Nil(err)
 	suite.True(reflect.DeepEqual(suite.workloadResource, workLoadResource))
 }
 
 func (suite *TestSuite) Test_ExtractWorkloadResourceFromAdmissionRequest_JobAdmissionReqWithMatchingObject_AsExpected() {
-
-	workLoadResource, err := suite.extractor.ExtractWorkloadResourceFromAdmissionRequest(suite.jobReq)
+	job := createFullJobForTests()
+	req := createReq(job,"Job")
+	workLoadResource, err := suite.extractor.ExtractWorkloadResourceFromAdmissionRequest(req)
 	suite.Nil(err)
 	suite.True(reflect.DeepEqual(suite.workloadResource, workLoadResource))
 }
 
 func (suite *TestSuite) Test_ExtractWorkloadResourceFromAdmissionRequest_CronJobAdmissionReqWithMatchingObject_AsExpected() {
-
-	workLoadResource, err := suite.extractor.ExtractWorkloadResourceFromAdmissionRequest(suite.jobReq)
+	cronJob := createFullCronJobForTests()
+	req := createReq(cronJob,"CronJob")
+	workLoadResource, err := suite.extractor.ExtractWorkloadResourceFromAdmissionRequest(req)
 	suite.Nil(err)
 	suite.True(reflect.DeepEqual(suite.workloadResource, workLoadResource))
 }
 
 func (suite *TestSuite) Test_ExtractWorkloadResourceFromAdmissionRequest_EmptyPodAdmissionReqWithMatchingObject_AsExpected() {
-
-	workLoadResource, err := suite.extractor.ExtractWorkloadResourceFromAdmissionRequest(suite.emptyPodReq)
+	emptyPod := createEmptyPodForTests()
+	req := createReq(emptyPod, "Pod")
+	workLoadResource, err := suite.extractor.ExtractWorkloadResourceFromAdmissionRequest(req)
 	suite.Nil(err)
 	suite.True(reflect.DeepEqual(suite.emptyWorkloadResource, workLoadResource))
 }
 
 func (suite *TestSuite) Test_ExtractWorkloadResourceFromAdmissionRequest_PodWithEmptyPropertiesAdmissionReqWithMatchingObject_AsExpected() {
-
-	workLoadResource, err := suite.extractor.ExtractWorkloadResourceFromAdmissionRequest(suite.podWithEmptyPropertiesReq)
+	emptyPropertiesPod := createPodWithEmptyPropertiesForTests()
+	req := createReq(emptyPropertiesPod, "Pod")
+	workLoadResource, err := suite.extractor.ExtractWorkloadResourceFromAdmissionRequest(req)
 	suite.Nil(err)
 	suite.True(reflect.DeepEqual(suite.emptyWorkloadResource, workLoadResource))
 }
 
 func (suite *TestSuite) Test_GetWorkloadResourceFromAdmissionRequest_BadFormat_Error() {
 	suite.podReq.Object.Raw = []byte("{ \"a\" : \"badFormat\"")
-
 	workLoadResource, err := suite.extractor.ExtractWorkloadResourceFromAdmissionRequest(suite.podReq)
 	suite.Nil(workLoadResource)
+	//suite.True(errors.Is(err, errors.New(_errMsgJsonToYamlConversionFail)))
 	suite.NotEqual(nil, err)
 }
 
 func (suite *TestSuite) Test_GetWorkloadResourceFromAdmissionRequest_RequestNull_Error() {
 	workLoadResource, err := suite.extractor.ExtractWorkloadResourceFromAdmissionRequest(nil)
 	suite.Nil(workLoadResource)
-	suite.Equal(_errInvalidAdmission, err)
+	suite.True(errors.Is( _errInvalidAdmission, err))
 }
 
 func (suite *TestSuite) Test_GetWorkloadResourceFromAdmissionRequest_EmptyRawObject_Error() {
 	suite.podReq.Object.Raw = []byte{}
 	workLoadResource, err := suite.extractor.ExtractWorkloadResourceFromAdmissionRequest(suite.podReq)
 	suite.Nil(workLoadResource)
-	suite.Equal(_errObjectNotFound, err)
+	suite.True(errors.Is(_errWorkloadResourceEmpty, err))
+}
+
+func (suite *TestSuite) Test_GetWorkloadResourceFromAdmissionRequest_EmptyRawObject_Error() {
+	suite.podReq.Object.Raw = []byte{}
+	workLoadResource, err := suite.extractor.ExtractWorkloadResourceFromAdmissionRequest(suite.podReq)
+	suite.Nil(workLoadResource)
+	suite.True(errors.Is(_errWorkloadResourceEmpty, err))
+}
+
+func (suite *TestSuite) Test_GetWorkloadResourceFromAdmissionRequest_EmptyRawObject_Error() {
+	suite.podReq.Object.Raw = []byte{}
+	workLoadResource, err := suite.extractor.ExtractWorkloadResourceFromAdmissionRequest(suite.podReq)
+	suite.Nil(workLoadResource)
+	suite.True(errors.Is(_errWorkloadResourceEmpty, err))
 }
 
 func (suite *TestSuite) Test_GetWorkloadResourceFromAdmissionRequest_NotWorkloadResourceKindRequest_Error() {
 	suite.podReq.Kind.Kind = "NotWorkloadResource"
 	workLoadResource, err := suite.extractor.ExtractWorkloadResourceFromAdmissionRequest(suite.podReq)
 	suite.Nil(workLoadResource)
-	suite.Equal(_errUnexpectedResource, err)
+	suite.True(errors.Is( _errUnexpectedResource, err))
 }
 
 func TestExtractWorkloadResourceFromAdmissionRequest(t *testing.T) {
@@ -231,19 +222,19 @@ func TestExtractWorkloadResourceFromAdmissionRequest(t *testing.T) {
 
 func createPodSpec() corev1.PodSpec {
 	return corev1.PodSpec{
-		Containers:         containersOriginal,
-		InitContainers:     initContainersOriginal,
-		ImagePullSecrets:   imagePullSecrets,
-		ServiceAccountName: serviceAccountName,
+		Containers:         _actualContainers,
+		InitContainers:     _actualInitContainers,
+		ImagePullSecrets:   _actualImagePullSecrets,
+		ServiceAccountName: _serviceAccountName,
 	}
 }
 
 func createMetadata() metav1.ObjectMeta {
 	return metav1.ObjectMeta{
-		Name:        name,
-		Namespace:   namespace,
-		Annotations: annotation,
-		OwnerReferences: ownerReferencesOriginal,
+		Name:            _name,
+		Namespace:       _namespace,
+		Annotations:     _annotation,
+		OwnerReferences: _actualOwnerReferences,
 	}
 }
 
@@ -337,8 +328,8 @@ func createFullReplicationControllerForTests() *corev1.ReplicationController {
 }
 
 func createFullWorkloadResourceForTests() *WorkloadResource {
-	return newWorkLoadResource(newObjectMetadata(name, namespace, annotation, ownerReferences),
-		newSpec(containersNew, initContainersNew, imagePullSecrets, serviceAccountName))
+	return newWorkLoadResource(newObjectMetadata(_name, _namespace, _annotation, _expectedOwnerReferences),
+		newSpec(_expectedContainers, _expectedInitContainers, _expectedImagePullSecrets, _serviceAccountName))
 }
 func createEmptyPodForTests() *corev1.Pod {
 	return &corev1.Pod{}
@@ -347,10 +338,9 @@ func createEmptyPodForTests() *corev1.Pod {
 func createPodWithEmptyPropertiesForTests() *corev1.Pod {
 	return &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{},
-		Spec:corev1.PodSpec{},
+		Spec: corev1.PodSpec{},
 	}
 }
-
 
 func createEmptyWorkloadResourceForTests() *WorkloadResource {
 	return newWorkLoadResource(newObjectMetadata("", "", nil, nil),
@@ -367,7 +357,7 @@ func createReq(resource interface{},kind string) *admission.Request{
 			Name: "",
 			Kind: metav1.GroupVersionKind{
 				Kind:    kind,
-				Group:   "",
+				Group:   "v1",
 				Version: "",
 			},
 			Object: runtime.RawExtension{

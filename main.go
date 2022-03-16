@@ -6,6 +6,7 @@ import (
 	"github.com/Azure/ASC-go-libs/pkg/config"
 	tivanInstrumentation "github.com/Azure/ASC-go-libs/pkg/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/cmd/webhook"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/cmd/webhook/admisionrequest"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/azdsecinfo"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/dataproviders/arg"
 	argqueries "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/dataproviders/arg/queries"
@@ -228,10 +229,14 @@ func main() {
 	argDataProviderCacheClient := arg.NewARGDataProviderCacheClient(instrumentationProvider, persistentCacheClient, argDataProviderConfiguration)
 	argDataProvider := arg.NewARGDataProvider(instrumentationProvider, argClient, argQueryGenerator, argDataProviderCacheClient, argDataProviderConfiguration)
 
+	// Create Extractor
+	extractor := admisionrequest.NewExtractor(instrumentationProvider)
+
+
 	// Handler and azdSecinfoProvider
 	azdSecInfoProviderCacheClient := azdsecinfo.NewAzdSecInfoProviderCacheClient(instrumentationProvider, persistentCacheClient, azdSecInfoProviderConfiguration)
 	azdSecInfoProvider := azdsecinfo.NewAzdSecInfoProvider(instrumentationProvider, argDataProvider, tag2digestResolver, getContainersVulnerabilityScanInfoTimeoutDuration, azdSecInfoProviderCacheClient)
-	handler := webhook.NewHandler(azdSecInfoProvider, handlerConfiguration, instrumentationProvider)
+	handler := webhook.NewHandler(azdSecInfoProvider, handlerConfiguration, instrumentationProvider, extractor)
 
 	// Manager and server
 	managerFactory := webhook.NewManagerFactory(managerConfiguration, instrumentationProvider)

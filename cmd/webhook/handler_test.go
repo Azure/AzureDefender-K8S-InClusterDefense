@@ -1,6 +1,6 @@
-///*
-//TODO  Add tests that the patching format is match to our policy.
-//*/
+/*
+TODO  Add tests that the patching format is match to our policy.
+*/
 package webhook
 
 import (
@@ -51,7 +51,7 @@ var (
 		},
 	}
 
-	_containersAdmision = []admisionrequest.Container{
+	_containersAdmision = []*admisionrequest.Container{
 		{
 			Name:  "containerTest1",
 			Image: "image1.com",
@@ -65,7 +65,6 @@ var (
 			Image: "image3.com",
 		},
 	}
-
 
 	_firstContainerVulnerabilityScanInfo  = &contracts.ContainerVulnerabilityScanInfo{Name: "Lior"}
 	_secondContainerVulnerabilityScanInfo = &contracts.ContainerVulnerabilityScanInfo{Name: "Or"}
@@ -102,7 +101,7 @@ func (suite *TestSuite) SetupTest() {
 func (suite *TestSuite) Test_Handle_DryRunTrue_ShouldNotPatched() {
 	// Setup
 	pod := createPodForTests([]corev1.Container{_containers[0]}, nil)
-	resource := createWorkloadResourceForTests([]admisionrequest.Container{_containersAdmision[0]}, nil)
+	resource := createWorkloadResourceForTests([]*admisionrequest.Container{_containersAdmision[0]}, nil)
 	req := createRequestForTests(pod)
 	expectedInfo := []*contracts.ContainerVulnerabilityScanInfo{_firstContainerVulnerabilityScanInfo}
 	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", resource).Return(expectedInfo, nil).Once()
@@ -119,7 +118,7 @@ func (suite *TestSuite) Test_Handle_DryRunTrue_ShouldNotPatched() {
 func (suite *TestSuite) Test_Handle_DryRunFalse_ShouldPatched() {
 	// Setup
 	pod := createPodForTests([]corev1.Container{_containers[0]}, nil)
-	resource := createWorkloadResourceForTests([]admisionrequest.Container{_containersAdmision[0]}, nil)
+	resource := createWorkloadResourceForTests([]*admisionrequest.Container{_containersAdmision[0]}, nil)
 	req := createRequestForTests(pod)
 	expected := []*contracts.ContainerVulnerabilityScanInfo{
 		_firstContainerVulnerabilityScanInfo,
@@ -141,19 +140,19 @@ func (suite *TestSuite) Test_Handle_DryRunFalse_ShouldPatched() {
 }
 
 func (suite *TestSuite) Test_Handle_RequestKindIsNotPod_ShouldNotPatched() {
-// Setup
-containers := []corev1.Container{_containers[0]}
-pod := createPodForTests(containers, nil)
-req := createRequestForTests(pod)
-req.Kind.Kind = "NotPodKind"
+	// Setup
+	containers := []corev1.Container{_containers[0]}
+	pod := createPodForTests(containers, nil)
+	req := createRequestForTests(pod)
+	req.Kind.Kind = "NotPodKind"
 
-handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider())
-// Act
-resp := handler.Handle(context.Background(), *req)
-// Test
-suite.Equal(admission.Allowed(string(_noMutationForKindReason)), resp)
-suite.Equal(metav1.StatusReason(_noMutationForKindReason), resp.Result.Reason)
-suite.azdSecProviderMock.AssertExpectations(suite.T())
+	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider())
+	// Act
+	resp := handler.Handle(context.Background(), *req)
+	// Test
+	suite.Equal(admission.Allowed(string(_noMutationForKindReason)), resp)
+	suite.Equal(metav1.StatusReason(_noMutationForKindReason), resp.Result.Reason)
+	suite.azdSecProviderMock.AssertExpectations(suite.T())
 }
 
 func (suite *TestSuite) Test_Handle_RequestDeleteOperation_ShouldNotPatched() {
@@ -191,7 +190,7 @@ func (suite *TestSuite) Test_Handle_RequestConnectOperation_ShouldNotPatched() {
 func (suite *TestSuite) Test_Handle_RequestUpdateOperation_ShouldPatched() {
 	// Setup
 	pod := createPodForTests([]corev1.Container{_containers[0]}, nil)
-	resource := createWorkloadResourceForTests([]admisionrequest.Container{_containersAdmision[0]}, nil)
+	resource := createWorkloadResourceForTests([]*admisionrequest.Container{_containersAdmision[0]}, nil)
 	req := createRequestForTests(pod)
 	req.Operation = admissionv1.Update
 	expected := []*contracts.ContainerVulnerabilityScanInfo{
@@ -216,7 +215,7 @@ func (suite *TestSuite) Test_Handle_RequestUpdateOperation_ShouldPatched() {
 func (suite *TestSuite) Test_Handle_OneContainerZeroInitContainer_ShouldPatchedOne() {
 	// Setup
 	pod := createPodForTests([]corev1.Container{_containers[0]}, nil)
-	resource := createWorkloadResourceForTests([]admisionrequest.Container{_containersAdmision[0]},nil)
+	resource := createWorkloadResourceForTests([]*admisionrequest.Container{_containersAdmision[0]},nil)
 	req := createRequestForTests(pod)
 	expectedInfo := []*contracts.ContainerVulnerabilityScanInfo{_firstContainerVulnerabilityScanInfo}
 	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", resource).Return(expectedInfo, nil).Once()
@@ -242,7 +241,7 @@ func (suite *TestSuite) Test_Handle_OneContainerZeroInitContainer_ShouldPatchedO
 func (suite *TestSuite) Test_Handle_TwoContainerZeroInitContainer_ShouldPatchedTwo() {
 	// Setup
 	pod := createPodForTests([]corev1.Container{_containers[0], _containers[1]}, nil)
-	resource := createWorkloadResourceForTests([]admisionrequest.Container{_containersAdmision[0], _containersAdmision[1]}, nil)
+	resource := createWorkloadResourceForTests([]*admisionrequest.Container{_containersAdmision[0], _containersAdmision[1]}, nil)
 	req := createRequestForTests(pod)
 	expectedInfo := []*contracts.ContainerVulnerabilityScanInfo{_firstContainerVulnerabilityScanInfo, _secondContainerVulnerabilityScanInfo}
 	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", resource).Return(expectedInfo, nil).Once()
@@ -262,7 +261,7 @@ func (suite *TestSuite) Test_Handle_TwoContainerZeroInitContainer_ShouldPatchedT
 func (suite *TestSuite) Test_Handle_ZeroContainerOneInitContainer_ShouldPatchedOne() {
 	// Setup
 	pod := createPodForTests(nil, []corev1.Container{_containers[0]})
-	resource := createWorkloadResourceForTests(nil, []admisionrequest.Container{_containersAdmision[0]})
+	resource := createWorkloadResourceForTests(nil, []*admisionrequest.Container{_containersAdmision[0]})
 	req := createRequestForTests(pod)
 
 	expectedInfo := []*contracts.ContainerVulnerabilityScanInfo{_firstContainerVulnerabilityScanInfo}
@@ -284,7 +283,7 @@ func (suite *TestSuite) Test_Handle_ZeroContainerOneInitContainer_ShouldPatchedO
 func (suite *TestSuite) Test_Handle_ZeroContainerTwoInitContainer_ShouldPatchedTwo() {
 	// Setup
 	pod := createPodForTests(nil, []corev1.Container{_containers[0], _containers[1]})
-	resource := createWorkloadResourceForTests(nil, []admisionrequest.Container{_containersAdmision[0], _containersAdmision[1]})
+	resource := createWorkloadResourceForTests(nil, []*admisionrequest.Container{_containersAdmision[0], _containersAdmision[1]})
 	req := createRequestForTests(pod)
 
 	expectedInfo := []*contracts.ContainerVulnerabilityScanInfo{_firstContainerVulnerabilityScanInfo, _secondContainerVulnerabilityScanInfo}
@@ -307,7 +306,7 @@ func (suite *TestSuite) Test_Handle_ZeroContainerTwoInitContainer_ShouldPatchedT
 func (suite *TestSuite) Test_Handle_OneContainerOneInitContainer_ShouldPatchedTwo() {
 	// Setup
 	pod := createPodForTests(nil, []corev1.Container{_containers[0], _containers[1]})
-	resource := createWorkloadResourceForTests(nil,[]admisionrequest.Container{_containersAdmision[0], _containersAdmision[1]})
+	resource := createWorkloadResourceForTests(nil,[]*admisionrequest.Container{_containersAdmision[0], _containersAdmision[1]})
 	req := createRequestForTests(pod)
 
 	expectedInfo := []*contracts.ContainerVulnerabilityScanInfo{_firstContainerVulnerabilityScanInfo, _secondContainerVulnerabilityScanInfo}
@@ -328,7 +327,7 @@ func (suite *TestSuite) Test_Handle_OneContainerOneInitContainer_ShouldPatchedTw
 func (suite *TestSuite) Test_Handle_Error_AllowedTrueWithError_PodNoAnnotations() {
 	// Setup
 	pod := createPodForTests(nil, []corev1.Container{_containers[0]})
-	resource := createWorkloadResourceForTests(nil, []admisionrequest.Container{_containersAdmision[0]})
+	resource := createWorkloadResourceForTests(nil, []*admisionrequest.Container{_containersAdmision[0]})
 	req := createRequestForTests(pod)
 
 	err := errors.New("MockError!!")
@@ -356,7 +355,7 @@ func (suite *TestSuite) Test_Handle_Error_AllowedTrueWithError_PodNoAnnotations(
 func (suite *TestSuite) Test_Handle_Error_AllowedTrueWithError_PodWithAnnotations() {
 	// Setup
 	pod := createPodForTestsWithAnnotations(nil, []corev1.Container{_containers[0]})
-	resource := createWorkloadResourceForTestsWithAnnotations(nil, []admisionrequest.Container{_containersAdmision[0]})
+	resource := createWorkloadResourceForTestsWithAnnotations(nil, []*admisionrequest.Container{_containersAdmision[0]})
 	req := createRequestForTests(pod)
 
 	err := errors.New("MockError!!")
@@ -384,7 +383,7 @@ func (suite *TestSuite) Test_Handle_Error_AllowedTrueWithError_PodWithAnnotation
 func (suite *TestSuite) Test_Handle_Error_AllowedTrueWithError_PodWithAzdAnnotations() {
 	// Setup
 	pod := createPodForTestsWithAzdAnnotations(nil, []corev1.Container{_containers[0]})
-	resource := createWorkloadResourceForTestsWithAzdAnnotations(nil, []admisionrequest.Container{_containersAdmision[0]})
+	resource := createWorkloadResourceForTestsWithAzdAnnotations(nil, []*admisionrequest.Container{_containersAdmision[0]})
 	req := createRequestForTests(pod)
 
 	err := errors.New("MockError!!")
@@ -409,7 +408,7 @@ func (suite *TestSuite) Test_Handle_Error_AllowedTrueWithError_PodWithAzdAnnotat
 func (suite *TestSuite) Test_Handle_Error_AllowedTrueWithError_PodWithOnlyAzdAnnotations() {
 	// Setup
 	pod := createPodForTestsWithOnlyAzdAnnotations(nil, []corev1.Container{_containers[0]})
-	resource := createWorkloadResourceForTestsWithOnlyAzdAnnotations(nil, []admisionrequest.Container{_containersAdmision[0]})
+	resource := createWorkloadResourceForTestsWithOnlyAzdAnnotations(nil, []*admisionrequest.Container{_containersAdmision[0]})
 	req := createRequestForTests(pod)
 
 	err := errors.New("MockError!!")
@@ -498,13 +497,13 @@ func createPodForTests(containers []corev1.Container, initContainers []corev1.Co
 	}
 }
 
-func createWorkloadResourceForTests(containers []admisionrequest.Container, initContainers []admisionrequest.Container) *admisionrequest.WorkloadResource {
+func createWorkloadResourceForTests(containers []*admisionrequest.Container, initContainers []*admisionrequest.Container) *admisionrequest.WorkloadResource {
 	return &admisionrequest.WorkloadResource{
-		Metadata: admisionrequest.ObjectMetadata{
+		Metadata: &admisionrequest.ObjectMetadata{
 			Name:      "podTest",
 			Namespace: "default",
 		},
-		Spec: admisionrequest.PodSpec{
+		Spec: &admisionrequest.PodSpec{
 			Containers:     containers,
 			InitContainers: initContainers,
 		},
@@ -529,9 +528,9 @@ func createPodForTestsWithAnnotations(containers []corev1.Container, initContain
 	}
 }
 
-func createWorkloadResourceForTestsWithAnnotations(containers []admisionrequest.Container, initContainers []admisionrequest.Container) *admisionrequest.WorkloadResource {
+func createWorkloadResourceForTestsWithAnnotations(containers []*admisionrequest.Container, initContainers []*admisionrequest.Container) *admisionrequest.WorkloadResource {
 	return &admisionrequest.WorkloadResource{
-		Metadata: admisionrequest.ObjectMetadata{
+		Metadata: &admisionrequest.ObjectMetadata{
 			Name:      "podTest",
 			Namespace: "default",
 			Annotations: map[string]string{
@@ -539,7 +538,7 @@ func createWorkloadResourceForTestsWithAnnotations(containers []admisionrequest.
 				_annotationTestKeyTwo : _annotationTestValueTwo,
 			},
 		},
-		Spec: admisionrequest.PodSpec{
+		Spec: &admisionrequest.PodSpec{
 			Containers:     containers,
 			InitContainers: initContainers,
 		},
@@ -565,9 +564,9 @@ func createPodForTestsWithAzdAnnotations(containers []corev1.Container, initCont
 	}
 }
 
-func createWorkloadResourceForTestsWithAzdAnnotations(containers []admisionrequest.Container, initContainers []admisionrequest.Container) *admisionrequest.WorkloadResource {
+func createWorkloadResourceForTestsWithAzdAnnotations(containers []*admisionrequest.Container, initContainers []*admisionrequest.Container) *admisionrequest.WorkloadResource {
 	return &admisionrequest.WorkloadResource{
-		Metadata: admisionrequest.ObjectMetadata{
+		Metadata: &admisionrequest.ObjectMetadata{
 			Name:      "podTest",
 			Namespace: "default",
 			Annotations: map[string]string{
@@ -576,7 +575,7 @@ func createWorkloadResourceForTestsWithAzdAnnotations(containers []admisionreque
 				contracts.ContainersVulnerabilityScanInfoAnnotationName: "some value",
 			},
 		},
-		Spec: admisionrequest.PodSpec{
+		Spec: &admisionrequest.PodSpec{
 			Containers:     containers,
 			InitContainers: initContainers,
 		},
@@ -600,16 +599,16 @@ func createPodForTestsWithOnlyAzdAnnotations(containers []corev1.Container, init
 	}
 }
 
-func createWorkloadResourceForTestsWithOnlyAzdAnnotations(containers []admisionrequest.Container, initContainers []admisionrequest.Container) *admisionrequest.WorkloadResource {
+func createWorkloadResourceForTestsWithOnlyAzdAnnotations(containers []*admisionrequest.Container, initContainers []*admisionrequest.Container) *admisionrequest.WorkloadResource {
 	return &admisionrequest.WorkloadResource{
-		Metadata: admisionrequest.ObjectMetadata{
+		Metadata: &admisionrequest.ObjectMetadata{
 			Name:      "podTest",
 			Namespace: "default",
 			Annotations: map[string]string{
 				contracts.ContainersVulnerabilityScanInfoAnnotationName: "some value",
 			},
 		},
-		Spec: admisionrequest.PodSpec{
+		Spec: &admisionrequest.PodSpec{
 			Containers:     containers,
 			InitContainers: initContainers,
 		},

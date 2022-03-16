@@ -59,6 +59,8 @@ type Handler struct {
 	azdSecInfoProvider azdsecinfo.IAzdSecInfoProvider
 	// Configurations handler's config.
 	configuration *HandlerConfiguration
+	// Extractor extracts workload resource from admission request.
+	extractor admisionrequest.Extractor
 }
 
 // HandlerConfiguration configuration for handler
@@ -68,13 +70,14 @@ type HandlerConfiguration struct {
 }
 
 // NewHandler Constructor for Handler
-func NewHandler(azdSecInfoProvider azdsecinfo.IAzdSecInfoProvider, configuration *HandlerConfiguration, instrumentationProvider instrumentation.IInstrumentationProvider) *Handler {
+func NewHandler(azdSecInfoProvider azdsecinfo.IAzdSecInfoProvider, configuration *HandlerConfiguration, instrumentationProvider instrumentation.IInstrumentationProvider, extractor admisionrequest.Extractor) *Handler {
 
 	return &Handler{
 		tracerProvider:     instrumentationProvider.GetTracerProvider("Handler"),
 		metricSubmitter:    instrumentationProvider.GetMetricSubmitter(),
 		azdSecInfoProvider: azdSecInfoProvider,
 		configuration:      configuration,
+		extractor:          extractor,
 	}
 }
 
@@ -85,7 +88,7 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 	response := admission.Response{}
 	reason := _notPatchedReason
 	workLoadResourceName := ""
-	var workLoadResourceOwnerRefrences [] admisionrequest.OwnerReference
+	var workLoadResourceOwnerRefrences []* admisionrequest.OwnerReference
 
 	var err error
 	defer func() {
@@ -124,8 +127,7 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 		response = admission.Allowed(string(reason))
 		return response
 	}
-	extractor := admisionrequest.NewExtractor(instrumentation.NewNoOpInstrumentationProvider())
-	workloadResource, err := extractor.ExtractWorkloadResourceFromAdmissionRequest(&req)
+	workloadResource, err := handler.extractor.ExtractWorkloadResourceFromAdmissionRequest(&req)
 	if err != nil {
 		err = errors.Wrap(err, "Handler.Handle received error on handleRequest")
 		tracer.Error(err, "")
@@ -284,7 +286,7 @@ func (handler *Handler) shouldRequestBeFiltered(req admission.Request) (bool, re
 	}
 
 	// Filter if the kind is not workload resource
-	if !admisionrequest.StringInSlice(req.Kind.Kind, admisionrequest.KubernetesWorkloadResources) {
+	if !utils.StringInSlice(req.Kind.Kind, admisionrequest.KubernetesWorkloadResourcesSupported) {
 		tracer.Info("Request filtered out due to the request is not supported kind.", "ReqKind", req.Kind.Kind)
 		return true, _noMutationForKindReason
 	}

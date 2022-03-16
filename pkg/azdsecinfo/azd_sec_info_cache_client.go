@@ -308,7 +308,7 @@ func (client *AzdSecInfoProviderCacheClient) marshalScanResults(containerVulnera
 // The key is containerName:imageName as string seperate each containerName:imageName by comma.
 // For example - 'myName1:alpine,myName2:nginx'
 func (client *AzdSecInfoProviderCacheClient) GetPodSpecCacheKey(podSpec *admisionrequest.PodSpec) string {
-	containers := utils.ExtractContainersFromPodSpecAsString(podSpec)
+	containers := podSpec.ExtractContainersFromPodSpecAsString()
 	// Sort the array - it is important for the cache to be sorted.
 	sort.Strings(containers)
 	podSpecCacheKey := strings.Join(containers, ",")
