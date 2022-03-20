@@ -29,10 +29,10 @@ import (
 const (
 	_expectedTestAddPatchOperation   = "add"
 	_expectedTestAnnotationPatchPath = "/metadata/annotations"
-	_annotationTestKeyOne = "cluster-autoscaler.kubernetes.io/safe-to-evict"
-	_annotationTestValueOne = "true"
-	_annotationTestKeyTwo = "container.seccomp.security.alpha.kubernetes.io/manager"
-	_annotationTestValueTwo = "runtime/default"
+	_annotationTestKeyOne            = "cluster-autoscaler.kubernetes.io/safe-to-evict"
+	_annotationTestValueOne          = "true"
+	_annotationTestKeyTwo            = "container.seccomp.security.alpha.kubernetes.io/manager"
+	_annotationTestValueTwo          = "runtime/default"
 )
 
 var (
@@ -71,23 +71,24 @@ var (
 
 	_expectedPatchForErrorEncountered1 = jsonpatch.Operation{
 		Operation: "add",
-		Path: _expectedTestAnnotationPatchPath,
+		Path:      _expectedTestAnnotationPatchPath,
 		Value: map[string]string{
-			_annotationTestKeyOne : _annotationTestValueOne,
-			_annotationTestKeyTwo : _annotationTestValueTwo,
+			_annotationTestKeyOne: _annotationTestValueOne,
+			_annotationTestKeyTwo: _annotationTestValueTwo,
 		},
 	}
 
 	_expectedPatchForErrorEncountered2 = jsonpatch.Operation{
 		Operation: "add",
-		Path: _expectedTestAnnotationPatchPath,
-		Value: map[string]string{},
+		Path:      _expectedTestAnnotationPatchPath,
+		Value:     map[string]string{},
 	}
 )
 
 type TestSuite struct {
 	suite.Suite
 	azdSecProviderMock *azdsecinfoMocks.IAzdSecInfoProvider
+	extractor          admisionrequest.IExtractor
 }
 
 // This will run before each test in the suite
@@ -96,6 +97,7 @@ func (suite *TestSuite) SetupTest() {
 	utils.UpdateDeploymentForTests(&utils.DeploymentConfiguration{Namespace: "kube-system"})
 	// Mock
 	suite.azdSecProviderMock = &azdsecinfoMocks.IAzdSecInfoProvider{}
+	suite.extractor = admisionrequest.NewExtractor(instrumentation.NewNoOpInstrumentationProvider())
 }
 
 func (suite *TestSuite) Test_Handle_DryRunTrue_ShouldNotPatched() {
@@ -106,7 +108,7 @@ func (suite *TestSuite) Test_Handle_DryRunTrue_ShouldNotPatched() {
 	expectedInfo := []*contracts.ContainerVulnerabilityScanInfo{_firstContainerVulnerabilityScanInfo}
 	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", resource).Return(expectedInfo, nil).Once()
 
-	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: true}, instrumentation.NewNoOpInstrumentationProvider())
+	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: true}, instrumentation.NewNoOpInstrumentationProvider(), suite.extractor)
 	// Act
 	resp := handler.Handle(context.Background(), *req)
 	// Test
@@ -126,7 +128,7 @@ func (suite *TestSuite) Test_Handle_DryRunFalse_ShouldPatched() {
 
 	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", resource).Return(expected, nil).Once()
 
-	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider())
+	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider(), suite.extractor)
 	// Act
 	resp := handler.Handle(context.Background(), *req)
 	// Test
@@ -146,7 +148,7 @@ func (suite *TestSuite) Test_Handle_RequestKindIsNotPod_ShouldNotPatched() {
 	req := createRequestForTests(pod)
 	req.Kind.Kind = "NotPodKind"
 
-	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider())
+	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider(), suite.extractor)
 	// Act
 	resp := handler.Handle(context.Background(), *req)
 	// Test
@@ -162,7 +164,7 @@ func (suite *TestSuite) Test_Handle_RequestDeleteOperation_ShouldNotPatched() {
 	req := createRequestForTests(pod)
 	req.Operation = admissionv1.Delete
 
-	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider())
+	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider(), suite.extractor)
 	// Act
 	resp := handler.Handle(context.Background(), *req)
 	// Test
@@ -178,7 +180,7 @@ func (suite *TestSuite) Test_Handle_RequestConnectOperation_ShouldNotPatched() {
 	req := createRequestForTests(pod)
 	req.Operation = admissionv1.Connect
 
-	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider())
+	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider(), suite.extractor)
 	// Act
 	resp := handler.Handle(context.Background(), *req)
 	// Test
@@ -199,7 +201,7 @@ func (suite *TestSuite) Test_Handle_RequestUpdateOperation_ShouldPatched() {
 
 	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", resource).Return(expected, nil).Once()
 
-	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider())
+	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider(), suite.extractor)
 	// Act
 	resp := handler.Handle(context.Background(), *req)
 	// Test
@@ -215,7 +217,7 @@ func (suite *TestSuite) Test_Handle_RequestUpdateOperation_ShouldPatched() {
 func (suite *TestSuite) Test_Handle_OneContainerZeroInitContainer_ShouldPatchedOne() {
 	// Setup
 	pod := createPodForTests([]corev1.Container{_containers[0]}, nil)
-	resource := createWorkloadResourceForTests([]*admisionrequest.Container{_containersAdmision[0]},nil)
+	resource := createWorkloadResourceForTests([]*admisionrequest.Container{_containersAdmision[0]}, nil)
 	req := createRequestForTests(pod)
 	expectedInfo := []*contracts.ContainerVulnerabilityScanInfo{_firstContainerVulnerabilityScanInfo}
 	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", resource).Return(expectedInfo, nil).Once()
@@ -224,7 +226,7 @@ func (suite *TestSuite) Test_Handle_OneContainerZeroInitContainer_ShouldPatchedO
 		_firstContainerVulnerabilityScanInfo,
 	}
 
-	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider())
+	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider(), suite.extractor)
 
 	// Act
 	resp := handler.Handle(context.Background(), *req)
@@ -246,7 +248,7 @@ func (suite *TestSuite) Test_Handle_TwoContainerZeroInitContainer_ShouldPatchedT
 	expectedInfo := []*contracts.ContainerVulnerabilityScanInfo{_firstContainerVulnerabilityScanInfo, _secondContainerVulnerabilityScanInfo}
 	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", resource).Return(expectedInfo, nil).Once()
 
-	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider())
+	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider(), suite.extractor)
 
 	// Act
 	resp := handler.Handle(context.Background(), *req)
@@ -267,7 +269,7 @@ func (suite *TestSuite) Test_Handle_ZeroContainerOneInitContainer_ShouldPatchedO
 	expectedInfo := []*contracts.ContainerVulnerabilityScanInfo{_firstContainerVulnerabilityScanInfo}
 	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", resource).Return(expectedInfo, nil).Once()
 
-	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider())
+	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider(), suite.extractor)
 
 	//Act
 	resp := handler.Handle(context.Background(), *req)
@@ -289,7 +291,7 @@ func (suite *TestSuite) Test_Handle_ZeroContainerTwoInitContainer_ShouldPatchedT
 	expectedInfo := []*contracts.ContainerVulnerabilityScanInfo{_firstContainerVulnerabilityScanInfo, _secondContainerVulnerabilityScanInfo}
 	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", resource).Return(expectedInfo, nil).Once()
 
-	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider())
+	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider(), suite.extractor)
 
 	//Act
 	resp := handler.Handle(context.Background(), *req)
@@ -306,13 +308,13 @@ func (suite *TestSuite) Test_Handle_ZeroContainerTwoInitContainer_ShouldPatchedT
 func (suite *TestSuite) Test_Handle_OneContainerOneInitContainer_ShouldPatchedTwo() {
 	// Setup
 	pod := createPodForTests(nil, []corev1.Container{_containers[0], _containers[1]})
-	resource := createWorkloadResourceForTests(nil,[]*admisionrequest.Container{_containersAdmision[0], _containersAdmision[1]})
+	resource := createWorkloadResourceForTests(nil, []*admisionrequest.Container{_containersAdmision[0], _containersAdmision[1]})
 	req := createRequestForTests(pod)
 
 	expectedInfo := []*contracts.ContainerVulnerabilityScanInfo{_firstContainerVulnerabilityScanInfo, _secondContainerVulnerabilityScanInfo}
 	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", resource).Return(expectedInfo, nil).Once()
 
-	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider())
+	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider(), suite.extractor)
 
 	// Act
 	resp := handler.Handle(context.Background(), *req)
@@ -334,13 +336,11 @@ func (suite *TestSuite) Test_Handle_Error_AllowedTrueWithError_PodNoAnnotations(
 
 	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", resource).Return(nil, err).Once()
 
-	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider())
+	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider(), suite.extractor)
 
 	// Act
 	resp := handler.Handle(context.Background(), *req)
 	// Test
-
-
 
 	suite.Equal(int32(http.StatusInternalServerError), resp.Result.Code)
 	suite.NotEmpty(resp.Result.Message)
@@ -348,7 +348,7 @@ func (suite *TestSuite) Test_Handle_Error_AllowedTrueWithError_PodNoAnnotations(
 	// Super important
 	suite.True(resp.Allowed)
 	suite.Equal(0, len(resp.Patches))
-	suite.Nil( resp.Patches)
+	suite.Nil(resp.Patches)
 	suite.azdSecProviderMock.AssertExpectations(suite.T())
 }
 
@@ -362,13 +362,11 @@ func (suite *TestSuite) Test_Handle_Error_AllowedTrueWithError_PodWithAnnotation
 
 	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", resource).Return(nil, err).Once()
 
-	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider())
+	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider(), suite.extractor)
 
 	// Act
 	resp := handler.Handle(context.Background(), *req)
 	// Test
-
-
 
 	suite.Equal(int32(http.StatusInternalServerError), resp.Result.Code)
 	suite.NotEmpty(resp.Result.Message)
@@ -376,7 +374,7 @@ func (suite *TestSuite) Test_Handle_Error_AllowedTrueWithError_PodWithAnnotation
 	// Super important
 	suite.True(resp.Allowed)
 	suite.Equal(0, len(resp.Patches))
-	suite.Nil( resp.Patches)
+	suite.Nil(resp.Patches)
 	suite.azdSecProviderMock.AssertExpectations(suite.T())
 }
 
@@ -390,13 +388,11 @@ func (suite *TestSuite) Test_Handle_Error_AllowedTrueWithError_PodWithAzdAnnotat
 
 	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", resource).Return(nil, err).Once()
 
-	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider())
+	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider(), suite.extractor)
 
 	// Act
 	resp := handler.Handle(context.Background(), *req)
 	// Test
-
-
 
 	suite.Equal(int32(http.StatusInternalServerError), resp.Result.Code)
 	suite.Equal(1, len(resp.Patches))
@@ -415,12 +411,11 @@ func (suite *TestSuite) Test_Handle_Error_AllowedTrueWithError_PodWithOnlyAzdAnn
 
 	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", resource).Return(nil, err).Once()
 
-	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider())
+	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider(), suite.extractor)
 
 	// Act
 	resp := handler.Handle(context.Background(), *req)
 	// Test
-
 
 	suite.Equal(int32(http.StatusInternalServerError), resp.Result.Code)
 	suite.Equal(1, len(resp.Patches))
@@ -516,8 +511,8 @@ func createPodForTestsWithAnnotations(containers []corev1.Container, initContain
 			Name:      "podTest",
 			Namespace: "default",
 			Annotations: map[string]string{
-				_annotationTestKeyOne : _annotationTestValueOne,
-				_annotationTestKeyTwo : _annotationTestValueTwo,
+				_annotationTestKeyOne: _annotationTestValueOne,
+				_annotationTestKeyTwo: _annotationTestValueTwo,
 			},
 		},
 		TypeMeta: metav1.TypeMeta{},
@@ -534,8 +529,8 @@ func createWorkloadResourceForTestsWithAnnotations(containers []*admisionrequest
 			Name:      "podTest",
 			Namespace: "default",
 			Annotations: map[string]string{
-				_annotationTestKeyOne : _annotationTestValueOne,
-				_annotationTestKeyTwo : _annotationTestValueTwo,
+				_annotationTestKeyOne: _annotationTestValueOne,
+				_annotationTestKeyTwo: _annotationTestValueTwo,
 			},
 		},
 		Spec: &admisionrequest.PodSpec{
@@ -551,8 +546,8 @@ func createPodForTestsWithAzdAnnotations(containers []corev1.Container, initCont
 			Name:      "podTest",
 			Namespace: "default",
 			Annotations: map[string]string{
-				_annotationTestKeyOne : _annotationTestValueOne,
-				_annotationTestKeyTwo : _annotationTestValueTwo,
+				_annotationTestKeyOne: _annotationTestValueOne,
+				_annotationTestKeyTwo: _annotationTestValueTwo,
 				contracts.ContainersVulnerabilityScanInfoAnnotationName: "some value",
 			},
 		},
@@ -570,8 +565,8 @@ func createWorkloadResourceForTestsWithAzdAnnotations(containers []*admisionrequ
 			Name:      "podTest",
 			Namespace: "default",
 			Annotations: map[string]string{
-				_annotationTestKeyOne : _annotationTestValueOne,
-				_annotationTestKeyTwo : _annotationTestValueTwo,
+				_annotationTestKeyOne: _annotationTestValueOne,
+				_annotationTestKeyTwo: _annotationTestValueTwo,
 				contracts.ContainersVulnerabilityScanInfoAnnotationName: "some value",
 			},
 		},

@@ -60,7 +60,7 @@ type Handler struct {
 	// Configurations handler's config.
 	configuration *HandlerConfiguration
 	// Extractor extracts workload resource from admission request.
-	extractor admisionrequest.Extractor
+	extractor admisionrequest.IExtractor
 }
 
 // HandlerConfiguration configuration for handler
@@ -70,7 +70,7 @@ type HandlerConfiguration struct {
 }
 
 // NewHandler Constructor for Handler
-func NewHandler(azdSecInfoProvider azdsecinfo.IAzdSecInfoProvider, configuration *HandlerConfiguration, instrumentationProvider instrumentation.IInstrumentationProvider, extractor admisionrequest.Extractor) *Handler {
+func NewHandler(azdSecInfoProvider azdsecinfo.IAzdSecInfoProvider, configuration *HandlerConfiguration, instrumentationProvider instrumentation.IInstrumentationProvider, extractor admisionrequest.IExtractor) *Handler {
 
 	return &Handler{
 		tracerProvider:     instrumentationProvider.GetTracerProvider("Handler"),
@@ -88,7 +88,7 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 	response := admission.Response{}
 	reason := _notPatchedReason
 	workLoadResourceName := ""
-	var workLoadResourceOwnerRefrences []* admisionrequest.OwnerReference
+	var workLoadResourceOwnerRefrences []*admisionrequest.OwnerReference
 
 	var err error
 	defer func() {
@@ -97,13 +97,13 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 			if !ok {
 				err = errors.New(fmt.Sprint(r))
 			}
-			tracer.Error(err, "Handler handle Panic error","resource:", req.Resource,"namespace:", req.Namespace,"Name:", req.Name,"workLoadResourceOwnerRefrences:", workLoadResourceOwnerRefrences, "workLoadResourceName:", workLoadResourceName, "operation:", req.Operation, "reqKind:", req.Kind)
+			tracer.Error(err, "Handler handle Panic error", "resource:", req.Resource, "namespace:", req.Namespace, "Name:", req.Name, "workLoadResourceOwnerRefrences:", workLoadResourceOwnerRefrences, "workLoadResourceName:", workLoadResourceName, "operation:", req.Operation, "reqKind:", req.Kind)
 			handler.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "Handler.Handle.Panic"))
 			// Re throw panic
 			panic(r)
 		}
 		// Repost response latency
-		tracer.Info("HandleLatency", "resource", req.Resource, "namespace:", req.Namespace,"Name:", req.Name,"workLoadResourceOwnerRefrences:", workLoadResourceOwnerRefrences, "workLoadResourceName:", workLoadResourceName, "latencyinMS", util.GetDurationMilliseconds(startTime))
+		tracer.Info("HandleLatency", "resource", req.Resource, "namespace:", req.Namespace, "Name:", req.Name, "workLoadResourceOwnerRefrences:", workLoadResourceOwnerRefrences, "workLoadResourceName:", workLoadResourceName, "latencyinMS", util.GetDurationMilliseconds(startTime))
 
 		// Extract response status
 		var responseCode int32
@@ -113,11 +113,11 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 			responseCode = response.Result.Code
 			responseResultReasonStr = string(response.Result.Reason)
 		}
-		tracer.Info("Handle.Response.Result", "resource", req.Resource, "namespace:", req.Namespace,"Name:", req.Name, "Allowed", response.Allowed, "ResultReason", responseResultReasonStr, "code", responseCode, "patchCount", patchCount)
+		tracer.Info("Handle.Response.Result", "resource", req.Resource, "namespace:", req.Namespace, "Name:", req.Name, "Allowed", response.Allowed, "ResultReason", responseResultReasonStr, "code", responseCode, "patchCount", patchCount)
 		handler.metricSubmitter.SendMetric(util.GetDurationMilliseconds(startTime), webhookmetric.NewHandlerHandleLatencyMetric(req.Kind.Kind, response.Allowed, responseResultReasonStr, responseCode, patchCount))
 	}()
 	// Logs
-	tracer.Info("received request", "resource:", req.Resource,"namespace:", req.Namespace,"Name:", req.Name, "operation:", req.Operation, "reqKind:", req.Kind)
+	tracer.Info("received request", "resource:", req.Resource, "namespace:", req.Namespace, "Name:", req.Name, "operation:", req.Operation, "reqKind:", req.Kind)
 
 	handler.metricSubmitter.SendMetric(1, webhookmetric.NewHandlerNewRequestMetric(req.Kind.Kind, req.Operation))
 
@@ -136,7 +136,7 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 		response = handler.admissionErrorResponse(errors.Wrap(err, string(reason)))
 		return response
 	}
-	tracer.Info("WorkLoadResource request unmarshall","resource:", req.Resource,"namespace:", req.Namespace, "WorkLoadResourceOwnerRefrences:", workLoadResourceOwnerRefrences,  "operation:", req.Operation, "reqKind:", req.Kind)
+	tracer.Info("WorkLoadResource request unmarshall", "resource:", req.Resource, "namespace:", req.Namespace, "WorkLoadResourceOwnerRefrences:", workLoadResourceOwnerRefrences, "operation:", req.Operation, "reqKind:", req.Kind)
 	workLoadResourceName = workloadResource.Metadata.Name
 	workLoadResourceOwnerRefrences = workloadResource.Metadata.OwnerReferences
 	response, err = handler.handleWorkLoadResourceRequest(workloadResource)
@@ -145,7 +145,7 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 		tracer.Error(err, "")
 		handler.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "Handle.handleWorkLoadResourceRequest"))
 		response := handler.getResponseWhenErrorEncountered(workloadResource, err)
-		tracer.Info("Handler Responded","resource:", req.Resource,"namespace:", req.Namespace,"Name:", req.Name, "operation:", req.Operation, "reqKind:", req.Kind, "response:", response)
+		tracer.Info("Handler Responded", "resource:", req.Resource, "namespace:", req.Namespace, "Name:", req.Name, "operation:", req.Operation, "reqKind:", req.Kind, "response:", response)
 		return response
 	}
 
@@ -159,7 +159,7 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 	}
 
 	reason = _patchedReason
-	tracer.Info("Handler Responded","resource:", req.Resource,"namespace:", req.Namespace,"Name:", req.Name, "operation:", req.Operation, "reqKind:", req.Kind, "response:", response)
+	tracer.Info("Handler Responded", "resource:", req.Resource, "namespace:", req.Namespace, "Name:", req.Name, "operation:", req.Operation, "reqKind:", req.Kind, "response:", response)
 	return response
 }
 
@@ -181,6 +181,7 @@ func (handler *Handler) handleWorkLoadResourceRequest(workloadResource *admision
 	// Patch all patches operations
 	return admission.Patched(string(_patchedReason), patches...), nil
 }
+
 // getResponseWhenErrorEncountered returns a response in which it deletes previous ContainersVulnerabilityScan annotations.
 // If no such annotations exist it returns handler.admissionErrorResponse with the original error.
 func (handler *Handler) getResponseWhenErrorEncountered(workloadResource *admisionrequest.WorkloadResource, originalError error) admission.Response {
@@ -203,7 +204,7 @@ func (handler *Handler) getResponseWhenErrorEncountered(workloadResource *admisi
 
 	// patch is nil when the workLoadResource's annotations doesn't contain the webhook annotations so there is no need
 	//to delete them. response with the original error
-	if patch == nil{
+	if patch == nil {
 		tracer.Info("ContainersVulnerabilityScanAnnotation dont exist - no need to delete them ")
 		reason := _notPatchedErrorReason
 		response := handler.admissionErrorResponse(errors.Wrap(originalError, string(reason)))
@@ -214,7 +215,7 @@ func (handler *Handler) getResponseWhenErrorEncountered(workloadResource *admisi
 	patches = append(patches, *patch)
 
 	// Patch all patches operations
-	return handler.admissionErrorResponseWithAnnotationsDelete(originalError,patches)
+	return handler.admissionErrorResponseWithAnnotationsDelete(originalError, patches)
 }
 
 // getWorkLoadResourceContainersVulnerabilityScanInfoAnnotationsOperation receives a workLoadResource to generate a vuln scan annotation add operation
@@ -282,7 +283,7 @@ func (handler *Handler) shouldRequestBeFiltered(req admission.Request) (bool, re
 	// If it's the same namespace of the mutation webhook
 	if req.Namespace == utils.GetDeploymentInstance().GetNamespace() {
 		tracer.Info("Request filtered out due to it is in the same namespace as the handler.", "Namespace", req.Namespace)
-	return true, _noSelfManagementReason
+		return true, _noSelfManagementReason
 	}
 
 	// Filter if the kind is not workload resource

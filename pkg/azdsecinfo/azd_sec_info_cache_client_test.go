@@ -21,7 +21,7 @@ const (
 )
 
 var (
-	_podSpecCacheKeyTest = "containerTest1:" + _imageOriginalTest1 + "," + "containerTest2:" + _imageOriginalTest2
+	_podSpecCacheKeyTest         = "containerTest1:" + _imageOriginalTest1 + "," + "containerTest2:" + _imageOriginalTest2
 	_expectedResultsWrapperTest1 = &containerVulnerabilityCacheResultsWrapper{ContainerVulnerabilityScanInfo: _expectedResultsTest1, ErrString: ""}
 )
 

@@ -13,7 +13,6 @@ const (
 	initContainersPath ContainersPath = _initContainersConst
 )
 
-
 // OwnerReference contains information to let you identify an owning
 // object. An owning object must be in the same namespace as the dependent, or
 // be cluster-scoped, so there is no namespace field.
@@ -78,8 +77,8 @@ type PodSpec struct {
 func newSpec(containers []*Container, initContainers []*Container, imagePullSecrets []*corev1.LocalObjectReference,
 	serviceAccountName string) (spec *PodSpec) {
 	return &PodSpec{Containers: containers,
-		InitContainers: initContainers,
-		ImagePullSecrets: imagePullSecrets,
+		InitContainers:     initContainers,
+		ImagePullSecrets:   imagePullSecrets,
 		ServiceAccountName: serviceAccountName}
 }
 
@@ -117,4 +116,3 @@ type WorkloadResource struct {
 func newWorkLoadResource(metadata *ObjectMetadata, spec *PodSpec) (workLoadResource *WorkloadResource) {
 	return &WorkloadResource{Metadata: metadata, Spec: spec}
 }
-

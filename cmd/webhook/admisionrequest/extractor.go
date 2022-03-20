@@ -33,13 +33,20 @@ var (
 	conventionalPodSpecPaths = [][]string{
 		{"spec", "jobTemplate", "spec", "template", "spec"}, // CronJob
 		{"spec", "template", "spec"},                        // Deployment, ReplicaSet, StatefulSet, DaemonSet,Job, ReplicationController
-		{"spec"}} // Pod
+		{"spec"}}                                            // Pod
 	_errInvalidAdmission      = errors.New("admisionrequest.extractor: admission request was nil")
 	_errWorkloadResourceEmpty = errors.New("admisionrequest.extractor: request did not include workload resource")
 	_errUnexpectedResource    = errors.New("admisionrequest.extractor: expected workload resource")
-	_errTypeConversionFailed = errors.New("admisionrequest.extractor: type conversion failed")
-	_errWrongContainersPath  = errors.New("admisionrequest.extractor: wrong containers path")
+	_errTypeConversionFailed  = errors.New("admisionrequest.extractor: type conversion failed")
+	_errWrongContainersPath   = errors.New("admisionrequest.extractor: wrong containers path")
 )
+
+// IExtractor represents interface for admission request extractor.
+type IExtractor interface {
+	// ExtractWorkloadResourceFromAdmissionRequest return WorkloadResource object according
+	// to the information in admission.Request.
+	ExtractWorkloadResourceFromAdmissionRequest(req *admission.Request) (*WorkloadResource, error)
+}
 
 // Extractor implements extractor from admission request to workload resource.
 type Extractor struct {
@@ -90,34 +97,33 @@ func (extractor *Extractor) ExtractWorkloadResourceFromAdmissionRequest(req *adm
 	return newWorkLoadResource(metadata, spec), nil
 }
 
-
-func (extractor *Extractor) getContainersFromPath(specRoot *yaml.RNode, path ContainersPath) (containers []*Container, err error){
+func (extractor *Extractor) getContainersFromPath(specRoot *yaml.RNode, path ContainersPath) (containers []*Container, err error) {
 	tracer := extractor.tracerProvider.GetTracer("getContainersFromPath")
-	if !(path == containersPath|| path == initContainersPath){
-		tracer.Error(_errWrongContainersPath,"")
+	if !(path == containersPath || path == initContainersPath) {
+		tracer.Error(_errWrongContainersPath, "")
 		return nil, _errWrongContainersPath
 	}
 	containersInterface, err := specRoot.GetSlice(string(path))
 	if err != nil {
-		tracer.Info(string(path)+" field is missing")
-		return nil,nil
+		tracer.Info(string(path) + " field is missing")
+		return nil, nil
 	}
 	containers = make([]*Container, len(containersInterface))
 	for i, containerObj := range containersInterface {
 		v, ok := containerObj.(map[string]interface{})
 		if ok == false {
-			tracer.Error(_errTypeConversionFailed,"")
+			tracer.Error(_errTypeConversionFailed, "")
 			return nil, _errTypeConversionFailed
 		}
 		containers[i] = &Container{}
 		containers[i].Image, ok = (v[_imageConst]).(string)
 		if ok == false {
-			tracer.Error(_errTypeConversionFailed,"")
+			tracer.Error(_errTypeConversionFailed, "")
 			return nil, _errTypeConversionFailed
 		}
 		containers[i].Name, ok = (v[_nameConst]).(string)
 		if ok == false {
-			tracer.Error(_errTypeConversionFailed,"")
+			tracer.Error(_errTypeConversionFailed, "")
 			return nil, _errTypeConversionFailed
 		}
 	}
@@ -126,11 +132,11 @@ func (extractor *Extractor) getContainersFromPath(specRoot *yaml.RNode, path Con
 
 // getContainers returns workload kubernetes resource's containers and initContainers.
 func (extractor *Extractor) getContainers(specRoot *yaml.RNode) (containers []*Container, initContainers []*Container, err error) {
-	containers, err = extractor.getContainersFromPath(specRoot,containersPath)
+	containers, err = extractor.getContainersFromPath(specRoot, containersPath)
 	if err != nil {
 		return nil, nil, err
 	}
-	initContainers, err = extractor.getContainersFromPath(specRoot,initContainersPath)
+	initContainers, err = extractor.getContainersFromPath(specRoot, initContainersPath)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -150,13 +156,13 @@ func (extractor *Extractor) getImagePullSecrets(specRoot *yaml.RNode) (secrets [
 	for i, abstractImagePullSecret := range abstractImagePullSecrets {
 		temporaryUnmarshalledSecret, ok := abstractImagePullSecret.(map[string]interface{})
 		if ok == false {
-			tracer.Error(_errTypeConversionFailed,"")
+			tracer.Error(_errTypeConversionFailed, "")
 			return nil, _errTypeConversionFailed
 		}
 		secrets[i] = &corev1.LocalObjectReference{}
 		secrets[i].Name, ok = (temporaryUnmarshalledSecret[_nameConst]).(string)
 		if ok == false {
-			tracer.Error(_errTypeConversionFailed,"")
+			tracer.Error(_errTypeConversionFailed, "")
 			return nil, _errTypeConversionFailed
 		}
 	}
@@ -270,10 +276,10 @@ func (extractor *Extractor) extractSpecFromAdmissionRequest(root *yaml.RNode) (s
 	}
 
 	serviceAccountName, err := specNode.GetString(_serviceAccountNameConst)
-	if serviceAccountName == ""{
+	if serviceAccountName == "" {
 		tracer.Info("serviceAccountName is empty field")
 	}
-	tracer.Info("spec: ", "containers", containerList,"initContainers",initContainerList,
+	tracer.Info("spec: ", "containers", containerList, "initContainers", initContainerList,
 		"initContainer", imagePullSecrets, "serviceAccountName", serviceAccountName)
 	return newSpec(containerList, initContainerList, imagePullSecrets, serviceAccountName), nil
 }

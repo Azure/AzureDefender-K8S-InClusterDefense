@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	_errInvalidPath =errors.New("admisionrequest.extractor: failed to access the given path")
+	_errInvalidPath = errors.New("admisionrequest.extractor: failed to access the given path")
 )
 
 /*
@@ -76,9 +76,9 @@ func GoToDestNode(yamlFile *yaml1.RNode, path ...string) (destNode *yaml1.RNode,
 	// gets the rNode of the given pathFilters.
 	DestNode, err := yamlFile.Pipe(pathFilters)
 	if err != nil {
-		return nil,  err
+		return nil, err
 	}
-	if DestNode == nil{
+	if DestNode == nil {
 		return nil, _errInvalidPath
 	}
 	return DestNode, nil

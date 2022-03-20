@@ -3,8 +3,10 @@
 package mocks
 
 import (
-	"github.com/Azure/AzureDefender-K8S-InClusterDefense/cmd/webhook/admisionrequest"
+	admisionrequest "github.com/Azure/AzureDefender-K8S-InClusterDefense/cmd/webhook/admisionrequest"
+
 	contracts "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/azdsecinfo/contracts"
+
 	mock "github.com/stretchr/testify/mock"
 )
 

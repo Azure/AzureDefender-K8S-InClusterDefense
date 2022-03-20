@@ -51,12 +51,12 @@ func CreateContainersVulnerabilityScanAnnotationPatchAdd(containersScanInfoList 
 // CreateAnnotationPatchToDeleteContainersVulnerabilityScanAnnotationIfNeeded create a patch to delete ContainersVulnerabilityScanAnnotation (stale annotations) if the WorkloadResource's annotations contain ContainersVulnerabilityScanAnnotation.
 // Otherwise, no deletion is needed - return nil.
 func CreateAnnotationPatchToDeleteContainersVulnerabilityScanAnnotationIfNeeded(workloadResource *admisionrequest.WorkloadResource) (*jsonpatch.JsonPatchOperation, error) {
-	if workloadResource == nil{
+	if workloadResource == nil {
 		return nil, errors.Wrap(utils.NilArgumentError, "CreateAnnotationPatchToDeleteContainersVulnerabilityScanAnnotationIfNeeded got nil WorkloadResource")
 	}
 
 	// there is no need to delete ContainersVulnerabilityScanInfoAnnotation (WorkloadResource's annotations are nil or contracts.ContainersVulnerabilityScanInfoAnnotationName don't exist)
-	if !isDeleteStaleAzdAnnotationsNeeded(workloadResource.Metadata.Annotations){
+	if !isDeleteStaleAzdAnnotationsNeeded(workloadResource.Metadata.Annotations) {
 		return nil, nil
 	}
 
@@ -84,7 +84,7 @@ func marshalAnnotationInnerObject(object interface{}) (string, error) {
 // updateAnnotations update the annotations of a given WorkloadResource with the given key and value.
 // If annotations map not exist - create a new map and add the key.
 // Return the annotations map
-func updateAnnotations(workloadResource *admisionrequest.WorkloadResource, key string, value string) (map[string]string, error){
+func updateAnnotations(workloadResource *admisionrequest.WorkloadResource, key string, value string) (map[string]string, error) {
 	if workloadResource == nil {
 		return nil, errors.Wrap(utils.NilArgumentError, "updateAnnotations got nil WorkloadResource")
 	}
@@ -93,18 +93,18 @@ func updateAnnotations(workloadResource *admisionrequest.WorkloadResource, key s
 		annotations = make(map[string]string)
 		workloadResource.Metadata.Annotations = annotations
 	}
-	annotations[key]=value
+	annotations[key] = value
 	return annotations, nil
 }
 
 // isDeleteStaleAzdAnnotationsNeeded returns true if delete stale Azd annotations is needed, otherwise false.
-func isDeleteStaleAzdAnnotationsNeeded(annotations map[string]string) bool{
+func isDeleteStaleAzdAnnotationsNeeded(annotations map[string]string) bool {
 	// no annotations - no need to delete
 	if annotations == nil {
 		return false
 	}
 	// key don't exist - no need to delete
-	if _, ok := annotations[contracts.ContainersVulnerabilityScanInfoAnnotationName]; !ok{
+	if _, ok := annotations[contracts.ContainersVulnerabilityScanInfoAnnotationName]; !ok {
 		return false
 	}
 	// key exist - need to delete
@@ -112,7 +112,7 @@ func isDeleteStaleAzdAnnotationsNeeded(annotations map[string]string) bool{
 }
 
 // deleteAzdAnnotations return the WorkloadResource's annotations after deleting contracts.ContainersVulnerabilityScanInfoAnnotationName.
-func deleteAzdAnnotations(annotations map[string]string) map[string]string{
+func deleteAzdAnnotations(annotations map[string]string) map[string]string {
 	delete(annotations, contracts.ContainersVulnerabilityScanInfoAnnotationName)
 	return annotations
 }

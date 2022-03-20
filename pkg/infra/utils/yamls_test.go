@@ -18,11 +18,11 @@ type YamlsTestSuite struct {
 
 func (suite *YamlsTestSuite) SetupTest() {
 	jsonFile, err := os.ReadFile("yaml_test.json")
-	if err!= nil{
+	if err != nil {
 		panic(suite)
 	}
 	yamlFile, err := yaml1.ConvertJSONToYamlNode(string(jsonFile))
-	if err!= nil{
+	if err != nil {
 		panic(suite)
 	}
 	suite.File = yamlFile
@@ -38,7 +38,7 @@ func (suite *YamlsTestSuite) Test_GoToDestNode_DestNodeExist() {
 }
 
 func (suite *YamlsTestSuite) Test_GoToDestNode_DestNodeNotExist() {
-	dest, err := GoToDestNode(suite.File, "metadata","field")
+	dest, err := GoToDestNode(suite.File, "metadata", "field")
 	suite.Nil(dest)
 	suite.True(errors.Is(err, _errInvalidPath))
 }

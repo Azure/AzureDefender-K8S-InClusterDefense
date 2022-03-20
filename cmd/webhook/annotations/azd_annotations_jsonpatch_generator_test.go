@@ -12,15 +12,15 @@ import (
 const (
 	_expectedTestAddPatchOperation   = "add"
 	_expectedTestAnnotationPatchPath = "/metadata/annotations"
-	_annotationTestKeyOne = "cluster-autoscaler.kubernetes.io/safe-to-evict"
-	_annotationTestValueOne = "true"
-	_annotationTestKeyTwo = "container.seccomp.security.alpha.kubernetes.io/manager"
-	_annotationTestValueTwo = "runtime/default"
+	_annotationTestKeyOne            = "cluster-autoscaler.kubernetes.io/safe-to-evict"
+	_annotationTestValueOne          = "true"
+	_annotationTestKeyTwo            = "container.seccomp.security.alpha.kubernetes.io/manager"
+	_annotationTestValueTwo          = "runtime/default"
 )
 
 type TestSuite struct {
 	suite.Suite
-	containersScanInfo            []*contracts.ContainerVulnerabilityScanInfo
+	containersScanInfo              []*contracts.ContainerVulnerabilityScanInfo
 	workloadResourceNoAnnotations   *admisionrequest.WorkloadResource
 	workloadResourceWithAnnotations *admisionrequest.WorkloadResource
 }
@@ -58,8 +58,8 @@ func (suite *TestSuite) SetupSuite() {
 			},
 		},
 	}
-	suite.workloadResourceNoAnnotations = &admisionrequest.WorkloadResource{Spec: &admisionrequest.PodSpec{},Metadata: &admisionrequest.ObjectMetadata{}}
-	suite.workloadResourceNoAnnotations = &admisionrequest.WorkloadResource{Spec: &admisionrequest.PodSpec{},Metadata: &admisionrequest.ObjectMetadata{}}
+	suite.workloadResourceNoAnnotations = &admisionrequest.WorkloadResource{Spec: &admisionrequest.PodSpec{}, Metadata: &admisionrequest.ObjectMetadata{}}
+	suite.workloadResourceNoAnnotations = &admisionrequest.WorkloadResource{Spec: &admisionrequest.PodSpec{}, Metadata: &admisionrequest.ObjectMetadata{}}
 	suite.workloadResourceWithAnnotations = createWorkloadResourceWithAnnotationsForTest()
 }
 
@@ -105,7 +105,7 @@ func (suite *TestSuite) Test_DeleteContainersVulnerabilityScanAnnotationPatch_Po
 	suite.Nil(result)
 }
 
-func (suite *TestSuite)checkContainersVulnerabilityScanAnnotation(patchLen int, pod *admisionrequest.WorkloadResource) map[string]string{
+func (suite *TestSuite) checkContainersVulnerabilityScanAnnotation(patchLen int, pod *admisionrequest.WorkloadResource) map[string]string {
 	result, err := CreateContainersVulnerabilityScanAnnotationPatchAdd(suite.containersScanInfo, pod)
 	suite.Nil(err)
 	suite.Equal(_expectedTestAddPatchOperation, result.Operation)
@@ -130,7 +130,7 @@ func (suite *TestSuite)checkContainersVulnerabilityScanAnnotation(patchLen int, 
 	return mapAnnotations
 }
 
-func (suite *TestSuite)checkNoOverrideOfExistingAnnotations(mapAnnotations map[string]string, expectedKey string, expectedVal string){
+func (suite *TestSuite) checkNoOverrideOfExistingAnnotations(mapAnnotations map[string]string, expectedKey string, expectedVal string) {
 	strAnnotationField1, ok := mapAnnotations[expectedKey]
 	suite.True(ok)
 	suite.Equal(expectedVal, strAnnotationField1)
@@ -142,12 +142,12 @@ func TestCreateContainersVulnerabilityScanAnnotationPatchAdd(t *testing.T) {
 
 func createWorkloadResourceWithAnnotationsForTest() *admisionrequest.WorkloadResource {
 	metadata := &admisionrequest.ObjectMetadata{
-			Name: "podTest",
-			Annotations: map[string]string{
-				_annotationTestKeyOne : _annotationTestValueOne,
-				_annotationTestKeyTwo : _annotationTestValueTwo,
-			},
-		}
+		Name: "podTest",
+		Annotations: map[string]string{
+			_annotationTestKeyOne: _annotationTestValueOne,
+			_annotationTestKeyTwo: _annotationTestValueTwo,
+		},
+	}
 	workloadResource := admisionrequest.WorkloadResource{Metadata: metadata}
 	return &workloadResource
 }
@@ -156,8 +156,8 @@ func createWorkloadResourceWithAzdAnnotationsForTest() *admisionrequest.Workload
 	metadata := &admisionrequest.ObjectMetadata{
 		Name: "podTest",
 		Annotations: map[string]string{
-			_annotationTestKeyOne : _annotationTestValueOne,
-			_annotationTestKeyTwo : _annotationTestValueTwo,
+			_annotationTestKeyOne: _annotationTestValueOne,
+			_annotationTestKeyTwo: _annotationTestValueTwo,
 			contracts.ContainersVulnerabilityScanInfoAnnotationName: "some value",
 		},
 	}
@@ -172,4 +172,3 @@ func createWorkloadResourceWithoutAnnotationsForTest() *admisionrequest.Workload
 	workloadResource := admisionrequest.WorkloadResource{Metadata: metadata}
 	return &workloadResource
 }
-

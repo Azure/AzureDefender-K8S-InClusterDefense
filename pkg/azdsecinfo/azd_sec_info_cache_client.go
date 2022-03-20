@@ -237,7 +237,7 @@ func (client *AzdSecInfoProviderCacheClient) ResetTimeOutInCacheAfterGettingScan
 	// Check if the timeOutCacheKey is already in cache
 	timeoutEncounteredString, err := client.cacheClient.Get(timeOutCacheKey)
 	if err != nil {
-		if 	cache.IsMissingKeyCacheError(err) {
+		if cache.IsMissingKeyCacheError(err) {
 			tracer.Info("Missing key. TimeOutCacheKey is not in cache", "timeOutCacheKey", timeOutCacheKey)
 			return nil
 		}
