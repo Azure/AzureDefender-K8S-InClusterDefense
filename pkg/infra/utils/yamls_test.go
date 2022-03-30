@@ -2,7 +2,7 @@ package utils
 
 import (
 	"github.com/pkg/errors"
-	"os"
+	"io/ioutil"
 	yaml1 "sigs.k8s.io/kustomize/kyaml/yaml"
 )
 
@@ -17,7 +17,7 @@ type YamlsTestSuite struct {
 }
 
 func (suite *YamlsTestSuite) SetupTest() {
-	jsonFile, err := os.ReadFile("yaml_test.json")
+	jsonFile, err := ioutil.ReadFile("../../azdsecinfo/contracts/testdata/yaml_test.json")
 	if err != nil {
 		panic(suite)
 	}

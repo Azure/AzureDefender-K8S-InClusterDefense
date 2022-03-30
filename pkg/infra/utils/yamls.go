@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	_errInvalidPath = errors.New("admisionrequest.extractor: failed to access the given path")
+	_errInvalidPath = errors.New("Failed to access the given path")
 )
 
 /*

@@ -66,7 +66,8 @@ type Handler struct {
 // HandlerConfiguration configuration for handler
 type HandlerConfiguration struct {
 	// DryRun is flag that if it's true, it handles request but doesn't mutate the workLoadResource podSpec.
-	DryRun bool
+	DryRun                               bool
+	SupportedKubernetesWorkloadResources []string
 }
 
 // NewHandler Constructor for Handler
@@ -287,7 +288,7 @@ func (handler *Handler) shouldRequestBeFiltered(req admission.Request) (bool, re
 	}
 
 	// Filter if the kind is not workload resource
-	if !utils.StringInSlice(req.Kind.Kind, admisionrequest.KubernetesWorkloadResourcesSupported) {
+	if !utils.StringInSlice(req.Kind.Kind, handler.configuration.SupportedKubernetesWorkloadResources) {
 		tracer.Info("Request filtered out due to the request is not supported kind.", "ReqKind", req.Kind.Kind)
 		return true, _noMutationForKindReason
 	}

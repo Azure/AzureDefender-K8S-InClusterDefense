@@ -16,6 +16,15 @@ webhook:
     enableCertRotation: true
   handlerConfiguration:
     dryRun: false
+    SupportedKubernetesWorkloadResources:
+      - Pod
+      - Deployment
+      - ReplicaSet
+      - StatefulSet
+      - DaemonSet
+      - Job
+      - CronJob
+      - ReplicationController
 instrumentation:
   trace:
     tracerConfiguration:
@@ -113,3 +122,6 @@ azdSecInfoProvider:
     CacheExpirationTimeTimeout: 15 # 15 minutes
     # Expiration time IN SECONDS of containerVulnerabilityScanInfo in cache - 30 seconds in order to handle replica set (multiply requests on the same pod)
     CacheExpirationContainerVulnerabilityScanInfo: 30 # 30 seconds
+
+
+

@@ -14,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
+	"strings"
 	"testing"
 )
 
@@ -85,6 +86,7 @@ type TestSuite struct {
 	daemonSetReq              *admission.Request
 	podWithEmptyPropertiesReq *admission.Request
 	extractor                 Extractor
+	config ExtractorConfiguration
 }
 
 func (suite *TestSuite) SetupTest() {
@@ -92,7 +94,9 @@ func (suite *TestSuite) SetupTest() {
 	suite.workloadResource = createFullWorkloadResourceForTests()
 	suite.emptyWorkloadResource = createEmptyWorkloadResourceForTests()
 	suite.podReq = createReq(suite.pod, "Pod")
-	suite.extractor = *NewExtractor(instrumentation.NewNoOpInstrumentationProvider())
+	suite.config = ExtractorConfiguration{SupportedKubernetesWorkloadResources: []string{"Pod", "Deployment",
+		"ReplicaSet", "StatefulSet", "DaemonSet", "Job", "CronJob", "ReplicationController"}}
+	suite.extractor = *NewExtractor(instrumentation.NewNoOpInstrumentationProvider(),&suite.config)
 }
 
 func (suite *TestSuite) Test_ExtractWorkloadResourceFromAdmissionRequest_PodAdmissionReqWithMatchingObject_AsExpected() {
@@ -177,35 +181,34 @@ func (suite *TestSuite) Test_GetWorkloadResourceFromAdmissionRequest_BadFormat_E
 	suite.podReq.Object.Raw = []byte("{ \"a\" : \"badFormat\"")
 	workLoadResource, err := suite.extractor.ExtractWorkloadResourceFromAdmissionRequest(suite.podReq)
 	suite.Nil(workLoadResource)
-	//suite.True(errors.Is(err, errors.New(_errMsgJsonToYamlConversionFail)))
 	suite.NotEqual(nil, err)
 }
 
 func (suite *TestSuite) Test_GetWorkloadResourceFromAdmissionRequest_RequestNull_Error() {
 	workLoadResource, err := suite.extractor.ExtractWorkloadResourceFromAdmissionRequest(nil)
 	suite.Nil(workLoadResource)
-	suite.True(errors.Is(_errInvalidAdmission, err))
+	suite.True(errors.Is(err, _errInvalidAdmission))
 }
 
 func (suite *TestSuite) Test_GetWorkloadResourceFromAdmissionRequest_EmptyRawObject_Error() {
 	suite.podReq.Object.Raw = []byte{}
 	workLoadResource, err := suite.extractor.ExtractWorkloadResourceFromAdmissionRequest(suite.podReq)
 	suite.Nil(workLoadResource)
-	suite.True(errors.Is(_errWorkloadResourceEmpty, err))
+	suite.True(errors.Is(err, _errWorkloadResourceEmpty))
 }
 
 func (suite *TestSuite) Test_GetWorkloadResourceFromAdmissionRequest_NilRawObject_Error() {
 	suite.podReq.Object.Raw = nil
 	workLoadResource, err := suite.extractor.ExtractWorkloadResourceFromAdmissionRequest(suite.podReq)
 	suite.Nil(workLoadResource)
-	suite.True(errors.Is(_errWorkloadResourceEmpty, err))
+	suite.True(errors.Is(err,_errWorkloadResourceEmpty))
 }
 
 func (suite *TestSuite) Test_GetWorkloadResourceFromAdmissionRequest_NotWorkloadResourceKindRequest_Error() {
 	suite.podReq.Kind.Kind = "NotWorkloadResource"
 	workLoadResource, err := suite.extractor.ExtractWorkloadResourceFromAdmissionRequest(suite.podReq)
 	suite.Nil(workLoadResource)
-	suite.True(errors.Is(_errUnexpectedResource, err))
+	suite.True(strings.Contains(err.Error(), "NotWorkloadResource is unsupported kind of workload resource"))
 }
 
 func TestExtractWorkloadResourceFromAdmissionRequest(t *testing.T) {

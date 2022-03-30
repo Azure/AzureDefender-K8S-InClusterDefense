@@ -5,13 +5,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-// ContainersPath Declare ContainersPath enum.
-type ContainersPath string
-
-const (
-	containersPath     ContainersPath = _containersConst
-	initContainersPath ContainersPath = _initContainersConst
-)
 
 // OwnerReference contains information to let you identify an owning
 // object. An owning object must be in the same namespace as the dependent, or

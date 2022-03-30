@@ -97,7 +97,9 @@ func (suite *TestSuite) SetupTest() {
 	utils.UpdateDeploymentForTests(&utils.DeploymentConfiguration{Namespace: "kube-system"})
 	// Mock
 	suite.azdSecProviderMock = &azdsecinfoMocks.IAzdSecInfoProvider{}
-	suite.extractor = admisionrequest.NewExtractor(instrumentation.NewNoOpInstrumentationProvider())
+	extractorConfig := admisionrequest.ExtractorConfiguration{SupportedKubernetesWorkloadResources: []string{"Pod", "Deployment",
+		"ReplicaSet", "StatefulSet", "DaemonSet", "Job", "CronJob", "ReplicationController"}}
+	suite.extractor = admisionrequest.NewExtractor(instrumentation.NewNoOpInstrumentationProvider(), &extractorConfig)
 }
 
 func (suite *TestSuite) Test_Handle_DryRunTrue_ShouldNotPatched() {

@@ -40,6 +40,16 @@ AzDProxy:
     handlerConfiguration:
       # -- is the run on dry mode.
       runOnDryRunMode: false
+      # https://kubernetes.io/docs/concepts/workloads/
+      supportedKubernetesWorkloadResources:
+        - Pod
+        - Deployment
+        - ReplicaSet
+        - StatefulSet
+        - DaemonSet
+        - Job
+        - CronJob
+        - ReplicationController
 
     # -- The resources of the webhook.
     resources:
@@ -268,3 +278,5 @@ AzDProxy:
       CacheExpirationTimeTimeout: 15 # 15 minutes
       # Expiration time IN SECONDS of containerVulnerabilityScanInfo in cache - 30 seconds in order to handle multiple requests on the same pod.
       CacheExpirationContainerVulnerabilityScanInfo: 30 # 30 seconds
+
+

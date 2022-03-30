@@ -220,7 +220,7 @@ func main() {
 		log.Fatal("main.NewArgBaseClientWrapper", err)
 	}
 
-	argClientRetryPolicy:= retrypolicy.NewRetryPolicy(instrumentationProvider, argBaseClientRetryPolicyConfiguration)
+	argClientRetryPolicy := retrypolicy.NewRetryPolicy(instrumentationProvider, argBaseClientRetryPolicyConfiguration)
 	argClient := arg.NewARGClient(instrumentationProvider, argBaseClient, argClientConfiguration, argClientRetryPolicy)
 	argQueryGenerator, err := argqueries.CreateARGQueryGenerator(instrumentationProvider)
 	if err != nil {
@@ -230,8 +230,8 @@ func main() {
 	argDataProvider := arg.NewARGDataProvider(instrumentationProvider, argClient, argQueryGenerator, argDataProviderCacheClient, argDataProviderConfiguration)
 
 	// Create Extractor
-	extractor := admisionrequest.NewExtractor(instrumentationProvider)
-
+	extractorConfiguration := admisionrequest.ExtractorConfiguration{SupportedKubernetesWorkloadResources: handlerConfiguration.SupportedKubernetesWorkloadResources}
+	extractor := admisionrequest.NewExtractor(instrumentationProvider, &extractorConfiguration)
 
 	// Handler and azdSecinfoProvider
 	azdSecInfoProviderCacheClient := azdsecinfo.NewAzdSecInfoProviderCacheClient(instrumentationProvider, persistentCacheClient, azdSecInfoProviderConfiguration)

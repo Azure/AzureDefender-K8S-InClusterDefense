@@ -28,6 +28,8 @@ data:
         enableCertRotation: {{.Values.AzDProxy.webhook.serverConfiguration.enableCertRotation}}
       handlerConfiguration:
         dryRun: {{.Values.AzDProxy.webhook.handlerConfiguration.runOnDryRunMode}}
+        SupportedKubernetesWorkloadResources: {{.Values.AzDProxy.webhook.handlerConfiguration.supportedKubernetesWorkloadResources}}
+
     instrumentation:
       trace:
         tracerConfiguration:
@@ -120,3 +122,4 @@ data:
       azdSecInfoProviderConfiguration:
         CacheExpirationTimeTimeout: {{ .Values.AzDProxy.azdSecInfoProvider.azdSecInfoProviderConfiguration.CacheExpirationTimeTimeout }}
         CacheExpirationContainerVulnerabilityScanInfo: {{ .Values.AzDProxy.azdSecInfoProvider.azdSecInfoProviderConfiguration.CacheExpirationContainerVulnerabilityScanInfo }}
+
