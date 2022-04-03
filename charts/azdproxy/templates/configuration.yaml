@@ -28,7 +28,9 @@ data:
         enableCertRotation: {{.Values.AzDProxy.webhook.serverConfiguration.enableCertRotation}}
       handlerConfiguration:
         dryRun: {{.Values.AzDProxy.webhook.handlerConfiguration.runOnDryRunMode}}
-        SupportedKubernetesWorkloadResources: {{.Values.AzDProxy.webhook.handlerConfiguration.supportedKubernetesWorkloadResources}}
+        supportedKubernetesWorkloadResources: {{ toYaml .Values.AzDProxy.webhook.supportedKubernetesWorkloadResources | nindent 12 }}
+      extractorConfiguration:
+        supportedKubernetesWorkloadResources: {{ toYaml .Values.AzDProxy.webhook.supportedKubernetesWorkloadResources | nindent 12 }}
 
     instrumentation:
       trace:

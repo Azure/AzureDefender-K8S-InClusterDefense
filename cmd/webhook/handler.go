@@ -13,6 +13,7 @@ import (
 	admissionv1 "k8s.io/api/admission/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"net/http"
+	"reflect"
 	"time"
 
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/cmd/webhook/annotations"
@@ -288,8 +289,9 @@ func (handler *Handler) shouldRequestBeFiltered(req admission.Request) (bool, re
 	}
 
 	// Filter if the kind is not workload resource
+	tracer.Info("SupportedKubernetesWorkloadResources: ","array", handler.configuration.SupportedKubernetesWorkloadResources,"type",reflect.TypeOf(handler.configuration.SupportedKubernetesWorkloadResources[0]).Kind())
 	if !utils.StringInSlice(req.Kind.Kind, handler.configuration.SupportedKubernetesWorkloadResources) {
-		tracer.Info("Request filtered out due to the request is not supported kind.", "ReqKind", req.Kind.Kind)
+		tracer.Info("Request filtered out due to the request is not supported kind: ", "ReqKind", req.Kind.Kind)
 		return true, _noMutationForKindReason
 	}
 

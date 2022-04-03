@@ -7,7 +7,7 @@ AzDProxy:
   # Webhook values
   webhook:
     # -- Amount of replicas of azdproxy.
-    replicas: 3
+    replicas: 1
     # Image values:
     image:
       # -- Official image.
@@ -41,17 +41,9 @@ AzDProxy:
       # -- is the run on dry mode.
       runOnDryRunMode: false
       # https://kubernetes.io/docs/concepts/workloads/
-      supportedKubernetesWorkloadResources:
-        - Pod
-        - Deployment
-        - ReplicaSet
-        - StatefulSet
-        - DaemonSet
-        - Job
-        - CronJob
-        - ReplicationController
-
+    supportedKubernetesWorkloadResources: ["Pod","Deployment","ReplicaSet","StatefulSet","DaemonSet","Job","CronJob","ReplicationController"]
     # -- The resources of the webhook.
+    rulesResources: [ "pods", "deployments", "replicasets", "statefulsets", "daemonsets", "jobs", "cronjobs", "replicationcontrollers"] #https://kubernetes.io/docs/concepts/workloads/
     resources:
       limits:
         memory: "256Mi"
@@ -278,5 +270,3 @@ AzDProxy:
       CacheExpirationTimeTimeout: 15 # 15 minutes
       # Expiration time IN SECONDS of containerVulnerabilityScanInfo in cache - 30 seconds in order to handle multiple requests on the same pod.
       CacheExpirationContainerVulnerabilityScanInfo: 30 # 30 seconds
-
-

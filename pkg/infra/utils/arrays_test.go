@@ -25,7 +25,7 @@ func (suite *ArraysTestSuite) Test_StringInSlice_StringNotExistsInSlice() {
 }
 
 func (suite *ArraysTestSuite) Test_StringInSlice_EmptySlice() {
-	suite.False(StringInSlice("str", suite.list))
+	suite.False(StringInSlice("str", suite.emptyList))
 }
 
 func Test_ArraysTestSuite(t *testing.T) {

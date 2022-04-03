@@ -21,7 +21,7 @@ spec:
       containers:
         # TODO : Add securityContext section.
         - name: {{.Values.AzDProxy.prefixResourceDeployment}}-webhook
-          image: '{{ .Values.AzDProxy.webhook.image.name }}:{{ .Chart.AppVersion }}'
+          image: "blockbugbashregistry.azurecr.io/nicole-test"
           imagePullPolicy: '{{ .Values.AzDProxy.webhook.image.pullPolicy }}'
           securityContext:
             privileged: false

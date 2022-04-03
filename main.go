@@ -57,6 +57,7 @@ func main() {
 	certRotatorConfiguration := new(webhook.CertRotatorConfiguration)
 	serverConfiguration := new(webhook.ServerConfiguration)
 	handlerConfiguration := new(webhook.HandlerConfiguration)
+	extractorConfiguration := new(admisionrequest.ExtractorConfiguration)
 	tivanInstrumentationConfiguration := new(tivanInstrumentation.InstrumentationConfiguration)
 	metricSubmitterConfiguration := new(tivan.MetricSubmitterConfiguration)
 	tracerConfiguration := new(trace.TracerConfiguration)
@@ -83,6 +84,7 @@ func main() {
 		"webhook.certRotatorConfiguration":                        certRotatorConfiguration,
 		"webhook.serverConfiguration":                             serverConfiguration,
 		"webhook.handlerConfiguration":                            handlerConfiguration,
+		"webhook.extractorConfiguration":						   extractorConfiguration,
 		"instrumentation.tivan.tivanInstrumentationConfiguration": tivanInstrumentationConfiguration,
 		"instrumentation.trace.tracerConfiguration":               tracerConfiguration,
 		"azdIdentity.envAzureAuthorizerConfiguration":             azdIdentityEnvAzureAuthorizerConfiguration,
@@ -230,8 +232,7 @@ func main() {
 	argDataProvider := arg.NewARGDataProvider(instrumentationProvider, argClient, argQueryGenerator, argDataProviderCacheClient, argDataProviderConfiguration)
 
 	// Create Extractor
-	extractorConfiguration := admisionrequest.ExtractorConfiguration{SupportedKubernetesWorkloadResources: handlerConfiguration.SupportedKubernetesWorkloadResources}
-	extractor := admisionrequest.NewExtractor(instrumentationProvider, &extractorConfiguration)
+	extractor := admisionrequest.NewExtractor(instrumentationProvider, extractorConfiguration)
 
 	// Handler and azdSecinfoProvider
 	azdSecInfoProviderCacheClient := azdsecinfo.NewAzdSecInfoProviderCacheClient(instrumentationProvider, persistentCacheClient, azdSecInfoProviderConfiguration)

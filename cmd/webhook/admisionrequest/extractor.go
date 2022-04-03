@@ -1,6 +1,7 @@
 package admisionrequest
 
 import (
+	"fmt"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
@@ -10,23 +11,24 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 	"sigs.k8s.io/kustomize/kyaml/yaml"
 )
+
 // ContainersPath Declare ContainersPath enum.
 type ContainersPath string
 
 const (
-	_errMsgJsonToYamlConversionFail = "Failed to convert json to yaml node"
-	_imagePullSecretsConst          = "imagePullSecrets"
-	_metadataConst                  = "metadata"
-	_ownerReferencesConst           = "ownerReferences"
-	_containersConst                = "containers"
-	_initContainersConst            = "initContainers"
-	_serviceAccountNameConst        = "serviceAccountName"
-	_imageConst                     = "image"
-	_nameConst                      = "name"
-	_kindConst                      = "kind"
-	_apiVersionConst                = "apiVersion"
-	containersPath     ContainersPath = _containersConst
-	initContainersPath ContainersPath = _initContainersConst
+	_errMsgJsonToYamlConversionFail                = "Failed to convert json to yaml node"
+	_imagePullSecretsConst                         = "imagePullSecrets"
+	_metadataConst                                 = "metadata"
+	_ownerReferencesConst                          = "ownerReferences"
+	_containersConst                               = "containers"
+	_initContainersConst                           = "initContainers"
+	_serviceAccountNameConst                       = "serviceAccountName"
+	_imageConst                                    = "image"
+	_nameConst                                     = "name"
+	_kindConst                                     = "kind"
+	_apiVersionConst                               = "apiVersion"
+	_containersPath                 ContainersPath = _containersConst
+	_initContainersPath             ContainersPath = _initContainersConst
 )
 
 var (
@@ -63,7 +65,7 @@ type Extractor struct {
 	tracerProvider trace.ITracerProvider
 	// MetricSubmitter
 	metricSubmitter metric.IMetricSubmitter
-
+	// Configurations extractor's config.
 	configuration *ExtractorConfiguration
 }
 
@@ -72,7 +74,7 @@ func NewExtractor(instrumentationProvider instrumentation.IInstrumentationProvid
 	return &Extractor{
 		tracerProvider:  instrumentationProvider.GetTracerProvider("Extractor"),
 		metricSubmitter: instrumentationProvider.GetMetricSubmitter(),
-		configuration: configuration,
+		configuration:   configuration,
 	}
 }
 
@@ -82,10 +84,10 @@ func (extractor *Extractor) ExtractWorkloadResourceFromAdmissionRequest(req *adm
 	tracer := extractor.tracerProvider.GetTracer("ExtractWorkloadResourceFromAdmissionRequest")
 	tracer.Info("ExtractWorkloadResourceFromAdmissionRequest Enter", "admission request", req)
 
-	err = extractor.isRequestValid(req)
-	if err != nil {
-		err = errors.Wrap(err,"request isn't valid")
-		tracer.Error(err,"")
+	isValid, err := extractor.isRequestValid(req)
+	if isValid == false || err != nil {
+		err = errors.Wrap(err, "request isn't valid")
+		tracer.Error(err, "")
 		return nil, err
 	}
 
@@ -100,7 +102,7 @@ func (extractor *Extractor) ExtractWorkloadResourceFromAdmissionRequest(req *adm
 
 	metadata, err := extractor.extractMetadataFromAdmissionRequest(objectRequestYaml)
 	if err != nil {
-		err = errors.Wrap(err,"failed to extract metadata from admission request")
+		err = errors.Wrap(err, "failed to extract metadata from admission request")
 		tracer.Error(err, "")
 		return nil, err
 	}
@@ -111,27 +113,27 @@ func (extractor *Extractor) ExtractWorkloadResourceFromAdmissionRequest(req *adm
 	}
 
 	workloadResource := newWorkLoadResource(metadata, spec)
-	tracer.Info("workload resource :",workloadResource)
+	tracer.Info("workload resource :", workloadResource)
 	return workloadResource, nil
 }
 
 //isRequestValid return error is request isn't valid, else returns nil.
-func (extractor *Extractor) isRequestValid(req *admission.Request) (err error) {
+func (extractor *Extractor) isRequestValid(req *admission.Request) (isValid bool, err error) {
 	tracer := extractor.tracerProvider.GetTracer("isRequestValid")
 	if req == nil {
 		tracer.Error(_errInvalidAdmission, "")
-		return _errInvalidAdmission
+		return false, _errInvalidAdmission
 	}
 	if len(req.Object.Raw) == 0 {
 		tracer.Error(_errWorkloadResourceEmpty, "")
-		return _errWorkloadResourceEmpty
+		return false, _errWorkloadResourceEmpty
 	}
 	if !utils.StringInSlice(req.Kind.Kind, extractor.configuration.SupportedKubernetesWorkloadResources) {
-		err = errors.New(req.Kind.Kind+" is unsupported kind of workload resource")
-		tracer.Error(err ,"")
-		return err
+		err = errors.New(fmt.Sprintf("%s is unsupported kind of workload resource",req.Kind.Kind))
+		tracer.Error(err, "")
+		return false, err
 	}
-	return nil
+	return true, nil
 }
 
 // extractMetadataFromAdmissionRequest extracts *ObjectMetadata from admission request.
@@ -167,11 +169,11 @@ func (extractor *Extractor) extractSpecFromAdmissionRequest(root *yaml.RNode) (s
 	// Go to podSpec Node according to given podSpecPathFilter.
 	specNode, err := podSpecPathFilter.Filter(root)
 	if err != nil {
-		tracer.Error(err,"")
+		tracer.Error(err, "")
 		return nil, err
 	}
 
-	if specNode == nil{
+	if specNode == nil {
 		// spec.containers is mandatory, therefore the api server will block the request.
 		// we don't want that our webhook will report error in this case.
 		tracer.Info("spec field is missing. Api server should have blocked the request")
@@ -219,11 +221,9 @@ func (extractor *Extractor) getImagePullSecrets(specRoot *yaml.RNode) (secrets [
 			tracer.Error(_errTypeConversionFailed, "Failed to convert secret name interface to string")
 			return nil, _errTypeConversionFailed
 		}
-		secret := &corev1.LocalObjectReference{}
-		secret.Name = secretName
-		secrets[i] = secret
+		secrets[i] = &corev1.LocalObjectReference{Name: secretName}
 	}
-	tracer.Info("secrets array: ", secrets)
+	tracer.Info("secrets array: ", "secrets: ", secrets)
 	return secrets, nil
 }
 
@@ -265,23 +265,19 @@ func (extractor *Extractor) getOwnerReference(root *yaml.RNode) (ownerReferences
 			tracer.Error(_errTypeConversionFailed, "Failed to convert owner reference name interface to string")
 			return nil, _errTypeConversionFailed
 		}
-		ownerReference := &OwnerReference{}
-		ownerReference.APIVersion = apiVersion
-		ownerReference.Kind = kind
-		ownerReference.Name = name
-		ownerReferences[i] = ownerReference
+		ownerReferences[i] = &OwnerReference{APIVersion: apiVersion, Kind:kind, Name:name}
 	}
-	tracer.Info("ownerReferences array: ", ownerReferences)
+	tracer.Info("ownerReferences ","array: ", ownerReferences)
 	return ownerReferences, nil
 }
 
 // getContainers returns workload kubernetes resource's containers and initContainers.
 func (extractor *Extractor) getContainers(specRoot *yaml.RNode) (containers []*Container, initContainers []*Container, err error) {
-	containers, err = extractor.getContainersFromPath(specRoot, containersPath)
+	containers, err = extractor.getContainersFromPath(specRoot, _containersPath)
 	if err != nil {
 		return nil, nil, err
 	}
-	initContainers, err = extractor.getContainersFromPath(specRoot, initContainersPath)
+	initContainers, err = extractor.getContainersFromPath(specRoot, _initContainersPath)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -290,13 +286,13 @@ func (extractor *Extractor) getContainers(specRoot *yaml.RNode) (containers []*C
 
 func (extractor *Extractor) getContainersFromPath(specRoot *yaml.RNode, path ContainersPath) (containers []*Container, err error) {
 	tracer := extractor.tracerProvider.GetTracer("getContainersFromPath")
-	if !(path == containersPath || path == initContainersPath) {
+	if !(path == _containersPath || path == _initContainersPath) {
 		tracer.Error(_errWrongContainersPath, "")
 		return nil, _errWrongContainersPath
 	}
 	containersInterface, err := specRoot.GetSlice(string(path))
 	if err != nil {
-		tracer.Info(string(path) + " field is missing")
+		tracer.Info(fmt.Sprintf("%s field is missing", string(path)))
 		return nil, nil
 	}
 	containers = make([]*Container, len(containersInterface))
@@ -316,11 +312,8 @@ func (extractor *Extractor) getContainersFromPath(specRoot *yaml.RNode, path Con
 			tracer.Error(_errTypeConversionFailed, "Failed to convert container name interface to string")
 			return nil, _errTypeConversionFailed
 		}
-		container := &Container{}
-		container.Image, container.Name = imageName,  containerName
-		containers[i] = container
+		containers[i] = &Container{Image: imageName, Name: containerName}
 	}
-	tracer.Info(string(path)+" array: ",containers)
+	tracer.Info(string(path)," array: ", containers)
 	return containers, nil
 }
-

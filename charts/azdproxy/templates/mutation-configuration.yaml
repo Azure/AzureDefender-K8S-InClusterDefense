@@ -12,7 +12,7 @@ webhooks:
       - apiGroups: [ "", "apps", "batch" ] # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#-strong-workloads-apis-strong-
         apiVersions: [ "v1" ]  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#-strong-workloads-apis-strong-
         operations: [ "CREATE", "UPDATE" ]  # Apply mutation only on create and update operations
-        resources: [ "pods", "deployments", "replicasets", "statefulsets", "daemonsets", "jobs", "cronjobs", "replicationcontrollers"] #https://kubernetes.io/docs/concepts/workloads/
+        resources: {{ toYaml .Values.AzDProxy.webhook.rulesResources | nindent 12 }}
         scope: "Namespaced"
     clientConfig:
       service:

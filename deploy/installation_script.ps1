@@ -294,7 +294,7 @@ kubectl config use-context $cluster_name
 # Install helm chart
 $env:HELM_EXPERIMENTAL_OCI=1
 # Install helm chart from mcr repo on kube-system namespace and pass subscription and client id's params.
-helm upgrade in-cluster-defense oci://mcr.microsoft.com/azuredefender/stable/in-cluster-defense-helm --version $helm_chart_version --install --wait `
+helm upgrade in-cluster-defense ./charts/azdproxy --install --wait `
             -n kube-system `
                 --set AzDProxy.kubeletIdentity.envAzureAuthorizerConfiguration.mSIClientId=$kubelet_client_id `
                 --set AzDProxy.azdIdentity.envAzureAuthorizerConfiguration.mSIClientId=$in_cluster_defense_identity_client_id `

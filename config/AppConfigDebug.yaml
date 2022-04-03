@@ -16,7 +16,7 @@ webhook:
     enableCertRotation: true
   handlerConfiguration:
     dryRun: false
-    SupportedKubernetesWorkloadResources:
+    supportedKubernetesWorkloadResources:
       - Pod
       - Deployment
       - ReplicaSet
@@ -25,6 +25,9 @@ webhook:
       - Job
       - CronJob
       - ReplicationController
+  extractorConfiguration:
+    supportedKubernetesWorkloadResources: ["Pod","Deployment","ReplicaSet","StatefulSet","DaemonSet","Job","CronJob","ReplicationController"]
+
 instrumentation:
   trace:
     tracerConfiguration:
