@@ -1,7 +1,7 @@
 # Set arguments and default values
 ARG GO_VERSION=1.16
 ARG BUILDER_IMAGE=golang:${GO_VERSION}
-ARG BASE_IMAGE=alpine:3.15.2
+ARG BASE_IMAGE=alpine:3.15.3
 ARG LISTEN_PORT=8000
 
 #### STEP 1- Build image ####
