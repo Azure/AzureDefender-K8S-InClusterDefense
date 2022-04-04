@@ -1,5 +1,0 @@
-# todo [t-ngandelman] resolve this vulnerability and delete with file. https://nvd.nist.gov/vuln/detail/CVE-2022-0778
-general:
-  vulnerabilities:
-    - CVE-2022-0778
-    - CVE-2018-25032
