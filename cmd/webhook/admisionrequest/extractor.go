@@ -82,7 +82,7 @@ func NewExtractor(instrumentationProvider instrumentation.IInstrumentationProvid
 // to the information in admission.Request.
 func (extractor *Extractor) ExtractWorkloadResourceFromAdmissionRequest(req *admission.Request) (resource *WorkloadResource, err error) {
 	tracer := extractor.tracerProvider.GetTracer("ExtractWorkloadResourceFromAdmissionRequest")
-	tracer.Info("ExtractWorkloadResourceFromAdmissionRequest Enter", "admission request", req)
+	tracer.Info("ExtractWorkloadResourceFromAdmissionRequest Enter")
 
 	isValid, err := extractor.isRequestValid(req)
 	if isValid == false || err != nil {
@@ -113,7 +113,6 @@ func (extractor *Extractor) ExtractWorkloadResourceFromAdmissionRequest(req *adm
 	}
 
 	workloadResource := newWorkLoadResource(metadata, spec)
-	tracer.Info("workload resource :", workloadResource)
 	return workloadResource, nil
 }
 
@@ -129,7 +128,7 @@ func (extractor *Extractor) isRequestValid(req *admission.Request) (isValid bool
 		return false, _errWorkloadResourceEmpty
 	}
 	if !utils.StringInSlice(req.Kind.Kind, extractor.configuration.SupportedKubernetesWorkloadResources) {
-		err = errors.New(fmt.Sprintf("%s is unsupported kind of workload resource",req.Kind.Kind))
+		err = errors.New(fmt.Sprintf("%s is unsupported kind of workload resource", req.Kind.Kind))
 		tracer.Error(err, "")
 		return false, err
 	}
@@ -157,6 +156,7 @@ func (extractor *Extractor) extractMetadataFromAdmissionRequest(root *yaml.RNode
 		tracer.Error(err, "")
 		return nil, err
 	}
+	tracer.Info("metadata: ", " name:", name, " namespace:", "annotations", annotations)
 	metadata = newObjectMetadata(name, namespace, annotations, ownerReferences)
 	return metadata, nil
 }
@@ -222,8 +222,8 @@ func (extractor *Extractor) getImagePullSecrets(specRoot *yaml.RNode) (secrets [
 			return nil, _errTypeConversionFailed
 		}
 		secrets[i] = &corev1.LocalObjectReference{Name: secretName}
+		tracer.Info("secret: ", "Name: ", secretName)
 	}
-	tracer.Info("secrets array: ", "secrets: ", secrets)
 	return secrets, nil
 }
 
@@ -265,9 +265,9 @@ func (extractor *Extractor) getOwnerReference(root *yaml.RNode) (ownerReferences
 			tracer.Error(_errTypeConversionFailed, "Failed to convert owner reference name interface to string")
 			return nil, _errTypeConversionFailed
 		}
-		ownerReferences[i] = &OwnerReference{APIVersion: apiVersion, Kind:kind, Name:name}
+		ownerReferences[i] = &OwnerReference{APIVersion: apiVersion, Kind: kind, Name: name}
+		tracer.Info("ownerReference: ", "apiVersion", apiVersion, "kind", kind, "name", name)
 	}
-	tracer.Info("ownerReferences ","array: ", ownerReferences)
 	return ownerReferences, nil
 }
 
@@ -313,7 +313,7 @@ func (extractor *Extractor) getContainersFromPath(specRoot *yaml.RNode, path Con
 			return nil, _errTypeConversionFailed
 		}
 		containers[i] = &Container{Image: imageName, Name: containerName}
+		tracer.Info("container:", " Name:", containerName, " Image:", imageName)
 	}
-	tracer.Info(string(path)," array: ", containers)
 	return containers, nil
 }
