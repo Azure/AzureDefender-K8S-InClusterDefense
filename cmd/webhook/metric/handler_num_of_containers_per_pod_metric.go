@@ -11,8 +11,8 @@ var _ metric.IMetric = (*HandlerNumOfContainersPerPodMetric)(nil)
 type HandlerNumOfContainersPerPodMetric struct {
 }
 
-// NewHandlerNumOfContainersPerPodMetric Ctor
-func NewHandlerNumOfContainersPerPodMetric() *HandlerNumOfContainersPerPodMetric {
+// NewHandlerNumOfContainersPerworkLoadResourceMetric Ctor
+func NewHandlerNumOfContainersPerworkLoadResourceMetric() *HandlerNumOfContainersPerPodMetric {
 	return &HandlerNumOfContainersPerPodMetric{}
 }
 

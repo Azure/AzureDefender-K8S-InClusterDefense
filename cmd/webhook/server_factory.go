@@ -56,7 +56,6 @@ func (factory *ServerFactory) CreateServer() (server *Server, err error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to create Manager for server")
 	}
-
 	// Create Server
 	server = NewServer(factory.instrumentationProvider, mgr, certRotator, factory.webhookHandler, factory.configuration)
 

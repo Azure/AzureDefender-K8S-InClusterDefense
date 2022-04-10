@@ -2,6 +2,7 @@ package azdsecinfo
 
 import (
 	"encoding/json"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/cmd/webhook/admisionrequest"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/azdsecinfo/contracts"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/cache"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
@@ -10,7 +11,6 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/utils"
 	"github.com/pkg/errors"
-	corev1 "k8s.io/api/core/v1"
 	"sort"
 	"strconv"
 	"strings"
@@ -52,7 +52,7 @@ type IAzdSecInfoProviderCacheClient interface {
 	ResetTimeOutInCacheAfterGettingScanResults(podSpecCacheKey string) error
 
 	// GetPodSpecCacheKey get the cache key without the prefix of a given podSpec
-	GetPodSpecCacheKey(podSpec *corev1.PodSpec) string
+	GetPodSpecCacheKey(podSpec *admisionrequest.PodSpec) string
 }
 
 // AzdSecInfoProviderCacheClient implements IAzdSecInfoProviderCacheClient interface
@@ -237,7 +237,7 @@ func (client *AzdSecInfoProviderCacheClient) ResetTimeOutInCacheAfterGettingScan
 	// Check if the timeOutCacheKey is already in cache
 	timeoutEncounteredString, err := client.cacheClient.Get(timeOutCacheKey)
 	if err != nil {
-		if 	cache.IsMissingKeyCacheError(err) {
+		if cache.IsMissingKeyCacheError(err) {
 			tracer.Info("Missing key. TimeOutCacheKey is not in cache", "timeOutCacheKey", timeOutCacheKey)
 			return nil
 		}
@@ -307,8 +307,8 @@ func (client *AzdSecInfoProviderCacheClient) marshalScanResults(containerVulnera
 // GetPodSpecCacheKey get the cache key without the prefix of a given podSpec
 // The key is containerName:imageName as string seperate each containerName:imageName by comma.
 // For example - 'myName1:alpine,myName2:nginx'
-func (client *AzdSecInfoProviderCacheClient) GetPodSpecCacheKey(podSpec *corev1.PodSpec) string {
-	containers := utils.ExtractContainersFromPodSpecAsString(podSpec)
+func (client *AzdSecInfoProviderCacheClient) GetPodSpecCacheKey(podSpec *admisionrequest.PodSpec) string {
+	containers := podSpec.ExtractContainersFromPodSpecAsString()
 	// Sort the array - it is important for the cache to be sorted.
 	sort.Strings(containers)
 	podSpecCacheKey := strings.Join(containers, ",")

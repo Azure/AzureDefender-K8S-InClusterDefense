@@ -1,45 +1,319 @@
 package admisionrequest
 
 import (
-	"encoding/json"
 	"fmt"
-
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/utils"
 	"github.com/pkg/errors"
-
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
+	"sigs.k8s.io/kustomize/kyaml/yaml"
 )
 
+// ContainersPath Declare ContainersPath enum.
+type ContainersPath string
+
 const (
-	// PodKind admission pod kind of the pod request in admission review
-	PodKind = "Pod"
+	_errMsgJsonToYamlConversionFail                = "Failed to convert json to yaml node"
+	_imagePullSecretsConst                         = "imagePullSecrets"
+	_metadataConst                                 = "metadata"
+	_ownerReferencesConst                          = "ownerReferences"
+	_containersConst                               = "containers"
+	_initContainersConst                           = "initContainers"
+	_serviceAccountNameConst                       = "serviceAccountName"
+	_imageConst                                    = "image"
+	_nameConst                                     = "name"
+	_kindConst                                     = "kind"
+	_apiVersionConst                               = "apiVersion"
+	_containersPath                 ContainersPath = _containersConst
+	_initContainersPath             ContainersPath = _initContainersConst
 )
 
 var (
-	_errObjectNotFound     = errors.New("admisionrequest.extractor: request did not include object")
-	_errUnexpectedResource = errors.New("admisionrequest.extractor: expected pod resource")
-	_errInvalidAdmission   = errors.New("admisionrequest.extractor: admission request was nil")
+	// conventional pod spec paths for all kubernetes workload resources.
+	//based on yaml.ConventionalContainersPaths var.
+	_conventionalPodSpecPaths = [][]string{
+		{"spec", "jobTemplate", "spec", "template", "spec"}, // CronJob
+		{"spec", "template", "spec"},                        // Deployment, ReplicaSet, StatefulSet, DaemonSet,Job, ReplicationController
+		{"spec"}}                                            // Pod
+	_errInvalidAdmission      = errors.New("Admission request was nil")
+	_errWorkloadResourceEmpty = errors.New("Request did not include workload resource")
+	_errTypeConversionFailed  = errors.New("Type conversion failed")
+	_errWrongContainersPath   = errors.New("Wrong containers path")
 )
 
-// UnmarshalPod unmarshals the raw object in the AdmissionRequest into a Pod.
-func UnmarshalPod(r *admission.Request) (*corev1.Pod, error) {
-	if r == nil {
-		return nil, _errInvalidAdmission
+// ExtractorConfiguration configuration for extractor
+type ExtractorConfiguration struct {
+	SupportedKubernetesWorkloadResources []string
+}
+
+// IExtractor represents interface for admission request extractor.
+type IExtractor interface {
+	// ExtractWorkloadResourceFromAdmissionRequest return WorkloadResource object according
+	// to the information in admission.Request.
+	ExtractWorkloadResourceFromAdmissionRequest(req *admission.Request) (*WorkloadResource, error)
+}
+
+// Extractor implements IExtractor interface
+var _ IExtractor = (*Extractor)(nil)
+
+// Extractor implements extractor from admission request to workload resource.
+type Extractor struct {
+	// tracerProvider of the handler
+	tracerProvider trace.ITracerProvider
+	// MetricSubmitter
+	metricSubmitter metric.IMetricSubmitter
+	// Configurations extractor's config.
+	configuration *ExtractorConfiguration
+}
+
+// NewExtractor Constructor for Extractor
+func NewExtractor(instrumentationProvider instrumentation.IInstrumentationProvider, configuration *ExtractorConfiguration) *Extractor {
+	return &Extractor{
+		tracerProvider:  instrumentationProvider.GetTracerProvider("Extractor"),
+		metricSubmitter: instrumentationProvider.GetMetricSubmitter(),
+		configuration:   configuration,
 	}
-	if len(r.Object.Raw) == 0 {
-		return nil, _errObjectNotFound
-	}
-	if r.Kind.Kind != PodKind {
-		// If the MutatingWebhookConfiguration was given additional resource scopes.
-		return nil, _errUnexpectedResource
+}
+
+// ExtractWorkloadResourceFromAdmissionRequest return WorkloadResource object according
+// to the information in admission.Request.
+func (extractor *Extractor) ExtractWorkloadResourceFromAdmissionRequest(req *admission.Request) (resource *WorkloadResource, err error) {
+	tracer := extractor.tracerProvider.GetTracer("ExtractWorkloadResourceFromAdmissionRequest")
+	tracer.Info("ExtractWorkloadResourceFromAdmissionRequest Enter")
+
+	isValid, err := extractor.isRequestValid(req)
+	if isValid == false || err != nil {
+		err = errors.Wrap(err, "request isn't valid")
+		tracer.Error(err, "")
+		return nil, err
 	}
 
-	pod := new(corev1.Pod)
-
-	err := json.Unmarshal(r.Object.Raw, &pod)
+	objectRequest := string(req.Object.Raw)
+	tracer.Info("kubernetes resource in admission request: ", "object: ", objectRequest)
+	objectRequestYaml, err := yaml.ConvertJSONToYamlNode(objectRequest)
 	if err != nil {
-		fmt.Print(err)
-		return nil, errors.Wrap(err, "extractor.UnmarshalPod: failed in json.Unmarshal")
+		err = errors.Wrap(err, _errMsgJsonToYamlConversionFail)
+		tracer.Error(err, "")
+		return nil, err
 	}
-	return pod, nil
+
+	metadata, err := extractor.extractMetadataFromAdmissionRequest(objectRequestYaml)
+	if err != nil {
+		err = errors.Wrap(err, "failed to extract metadata from admission request")
+		tracer.Error(err, "")
+		return nil, err
+	}
+
+	spec, err := extractor.extractSpecFromAdmissionRequest(objectRequestYaml)
+	if err != nil {
+		return nil, err
+	}
+
+	workloadResource := newWorkLoadResource(metadata, spec)
+	return workloadResource, nil
+}
+
+//isRequestValid return error is request isn't valid, else returns nil.
+func (extractor *Extractor) isRequestValid(req *admission.Request) (isValid bool, err error) {
+	tracer := extractor.tracerProvider.GetTracer("isRequestValid")
+	if req == nil {
+		tracer.Error(_errInvalidAdmission, "")
+		return false, _errInvalidAdmission
+	}
+	if len(req.Object.Raw) == 0 {
+		tracer.Error(_errWorkloadResourceEmpty, "")
+		return false, _errWorkloadResourceEmpty
+	}
+	if !utils.StringInSlice(req.Kind.Kind, extractor.configuration.SupportedKubernetesWorkloadResources) {
+		err = errors.New(fmt.Sprintf("%s is unsupported kind of workload resource", req.Kind.Kind))
+		tracer.Error(err, "")
+		return false, err
+	}
+	return true, nil
+}
+
+// extractMetadataFromAdmissionRequest extracts *ObjectMetadata from admission request.
+func (extractor *Extractor) extractMetadataFromAdmissionRequest(root *yaml.RNode) (metadata *ObjectMetadata, err error) {
+	tracer := extractor.tracerProvider.GetTracer("extractMetadataFromAdmissionRequest")
+	name := root.GetName()
+	// name is mandatory therefore if it is empty the api server will block the request -
+	// we don't want that our webhook will report error in this case.
+	if name == "" {
+		tracer.Info("name is empty")
+	}
+	namespace := root.GetNamespace()
+	annotations := root.GetAnnotations()
+	// If annotations field missing from yaml, annotations is nil by default but GetAnnotations returns empty map.
+	if len(annotations) == 0 {
+		annotations = nil
+	}
+	ownerReferences, err := extractor.getOwnerReference(root)
+	if err != nil {
+		err = errors.Wrap(err, "Couldn't get owner references from metadata: error encountered")
+		tracer.Error(err, "")
+		return nil, err
+	}
+	tracer.Info("metadata: ", " name:", name, " namespace:", "annotations", annotations)
+	metadata = newObjectMetadata(name, namespace, annotations, ownerReferences)
+	return metadata, nil
+}
+
+// extractSpecFromAdmissionRequest extracts *PodSpec from admission request.
+func (extractor *Extractor) extractSpecFromAdmissionRequest(root *yaml.RNode) (spec *PodSpec, err error) {
+	tracer := extractor.tracerProvider.GetTracer("extractSpecFromAdmissionRequest")
+	// Gets the matching pod spec path of the given root.
+	podSpecPathFilter := yaml.LookupFirstMatch(_conventionalPodSpecPaths)
+	// Go to podSpec Node according to given podSpecPathFilter.
+	specNode, err := podSpecPathFilter.Filter(root)
+	if err != nil {
+		tracer.Error(err, "")
+		return nil, err
+	}
+
+	if specNode == nil {
+		// spec.containers is mandatory, therefore the api server will block the request.
+		// we don't want that our webhook will report error in this case.
+		tracer.Info("spec field is missing. Api server should have blocked the request")
+		return newEmptySpec(), err
+	}
+	containerList, initContainerList, err := extractor.getContainers(specNode)
+	if err != nil {
+		err = errors.Wrap(err, "Couldn't get containers/init containers from spec: error encountered")
+		tracer.Error(err, "")
+		return nil, err
+	}
+	imagePullSecrets, err := extractor.getImagePullSecrets(specNode)
+	if err != nil {
+		err = errors.Wrap(err, "Couldn't get  image pull secrets from spec: error encountered")
+		tracer.Error(err, "")
+		return nil, err
+	}
+
+	serviceAccountName, err := specNode.GetString(_serviceAccountNameConst)
+	if serviceAccountName == "" {
+		tracer.Info("serviceAccountName is empty field")
+	}
+	spec = newSpec(containerList, initContainerList, imagePullSecrets, serviceAccountName)
+	return spec, nil
+}
+
+// getImagePullSecrets returns workload kubernetes resource's image pull secrets.
+func (extractor *Extractor) getImagePullSecrets(specRoot *yaml.RNode) (secrets []*corev1.LocalObjectReference, err error) {
+	tracer := extractor.tracerProvider.GetTracer("getImagePullSecrets")
+	abstractImagePullSecrets, err := specRoot.GetSlice(_imagePullSecretsConst)
+	// if err != nil it means that "imagePullSecretsResource" is an empty field in admission request
+	if err != nil {
+		tracer.Info("imagePullSecrets field  is missing")
+		return nil, nil
+	}
+	secrets = make([]*corev1.LocalObjectReference, len(abstractImagePullSecrets))
+	for i, abstractImagePullSecret := range abstractImagePullSecrets {
+		temporaryUnmarshalledSecret, ok := abstractImagePullSecret.(map[string]interface{})
+		if ok == false {
+			tracer.Error(_errTypeConversionFailed, "Failed to convert secret interface to map")
+			return nil, _errTypeConversionFailed
+		}
+		secretName, ok := (temporaryUnmarshalledSecret[_nameConst]).(string)
+		if ok == false {
+			tracer.Error(_errTypeConversionFailed, "Failed to convert secret name interface to string")
+			return nil, _errTypeConversionFailed
+		}
+		secrets[i] = &corev1.LocalObjectReference{Name: secretName}
+		tracer.Info("secret: ", "Name: ", secretName)
+	}
+	return secrets, nil
+}
+
+// getOwnerReference returns workload kubernetes resource's owner reference.
+func (extractor *Extractor) getOwnerReference(root *yaml.RNode) (ownerReferences []*OwnerReference, err error) {
+	tracer := extractor.tracerProvider.GetTracer("getOwnerReference")
+	metadata, err := utils.GoToDestNode(root, _metadataConst)
+	// if err != nil it means that "metadata" is an empty field in admission request
+	if err != nil {
+		tracer.Info("metadata field is missing")
+		return nil, nil
+	}
+	// if err != nil it means that "ownerReferences" is an empty field in admission request
+	sliceOwnerReferences, err := metadata.GetSlice(_ownerReferencesConst)
+	if err != nil {
+		tracer.Info("ownerReferences field is missing")
+		return nil, nil
+	}
+
+	ownerReferences = make([]*OwnerReference, len(sliceOwnerReferences))
+	for i, abstractOwnerReference := range sliceOwnerReferences {
+		mapReference, ok := abstractOwnerReference.(map[string]interface{})
+		if ok == false {
+			tracer.Error(_errTypeConversionFailed, "Failed to convert owner reference interface to map")
+			return nil, _errTypeConversionFailed
+		}
+		apiVersion, ok := mapReference[_apiVersionConst].(string)
+		if ok == false {
+			tracer.Error(_errTypeConversionFailed, "Failed to convert owner reference api version interface to string")
+			return nil, _errTypeConversionFailed
+		}
+		kind, ok := mapReference[_kindConst].(string)
+		if ok == false {
+			tracer.Error(_errTypeConversionFailed, "Failed to convert owner reference kind interface to string")
+			return nil, _errTypeConversionFailed
+		}
+		name, ok := mapReference[_nameConst].(string)
+		if ok == false {
+			tracer.Error(_errTypeConversionFailed, "Failed to convert owner reference name interface to string")
+			return nil, _errTypeConversionFailed
+		}
+		ownerReferences[i] = &OwnerReference{APIVersion: apiVersion, Kind: kind, Name: name}
+		tracer.Info("ownerReference: ", "apiVersion", apiVersion, "kind", kind, "name", name)
+	}
+	return ownerReferences, nil
+}
+
+// getContainers returns workload kubernetes resource's containers and initContainers.
+func (extractor *Extractor) getContainers(specRoot *yaml.RNode) (containers []*Container, initContainers []*Container, err error) {
+	containers, err = extractor.getContainersFromPath(specRoot, _containersPath)
+	if err != nil {
+		return nil, nil, err
+	}
+	initContainers, err = extractor.getContainersFromPath(specRoot, _initContainersPath)
+	if err != nil {
+		return nil, nil, err
+	}
+	return containers, initContainers, nil
+}
+
+func (extractor *Extractor) getContainersFromPath(specRoot *yaml.RNode, path ContainersPath) (containers []*Container, err error) {
+	tracer := extractor.tracerProvider.GetTracer("getContainersFromPath")
+	if !(path == _containersPath || path == _initContainersPath) {
+		tracer.Error(_errWrongContainersPath, "")
+		return nil, _errWrongContainersPath
+	}
+	containersInterface, err := specRoot.GetSlice(string(path))
+	if err != nil {
+		tracer.Info(fmt.Sprintf("%s field is missing", string(path)))
+		return nil, nil
+	}
+	containers = make([]*Container, len(containersInterface))
+	for i, containerObj := range containersInterface {
+		tempContainer, ok := containerObj.(map[string]interface{})
+		if ok == false {
+			tracer.Error(_errTypeConversionFailed, "Failed to convert container interface to map")
+			return nil, _errTypeConversionFailed
+		}
+		imageName, ok := (tempContainer[_imageConst]).(string)
+		if ok == false {
+			tracer.Error(_errTypeConversionFailed, "Failed to convert image name interface to string")
+			return nil, _errTypeConversionFailed
+		}
+		containerName, ok := (tempContainer[_nameConst]).(string)
+		if ok == false {
+			tracer.Error(_errTypeConversionFailed, "Failed to convert container name interface to string")
+			return nil, _errTypeConversionFailed
+		}
+		containers[i] = &Container{Image: imageName, Name: containerName}
+		tracer.Info("container:", " Name:", containerName, " Image:", imageName)
+	}
+	return containers, nil
 }

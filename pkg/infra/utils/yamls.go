@@ -4,8 +4,13 @@ import (
 	"fmt"
 	"github.com/pkg/errors"
 	"io/ioutil"
+	yaml1 "sigs.k8s.io/kustomize/kyaml/yaml"
 	"sigs.k8s.io/yaml"
 	"strings"
+)
+
+var (
+	_errInvalidPath = errors.New("Failed to access the given path")
 )
 
 /*
@@ -38,7 +43,6 @@ func CheckIfAllKeysOfFirstAreInSecond(path1 string, path2 string) (bool, error) 
 	if err != nil {
 		return false, err
 	}
-
 	return AreAllKeysOfFirstMapExistsInSecondMap(values1, values2), nil
 }
 
@@ -63,4 +67,19 @@ func CreateMapFromPathOfYaml(path string) (map[string]interface{}, error) {
 		return nil, err
 	}
 	return valuesMap, err
+}
+
+// GoToDestNode returns the *Rnode of the given path.
+func GoToDestNode(yamlFile *yaml1.RNode, path ...string) (destNode *yaml1.RNode, err error) {
+	// Return filters of the given path strings.
+	pathFilters := yaml1.Lookup(path...)
+	// gets the rNode of the given pathFilters.
+	DestNode, err := yamlFile.Pipe(pathFilters)
+	if err != nil {
+		return nil, err
+	}
+	if DestNode == nil {
+		return nil, _errInvalidPath
+	}
+	return DestNode, nil
 }

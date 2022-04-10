@@ -4,24 +4,23 @@ package webhook
 import (
 	"context"
 	"fmt"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/cmd/webhook/admisionrequest"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric/util"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/utils"
 	admissionv1 "k8s.io/api/admission/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"net/http"
+	"reflect"
 	"time"
 
-	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
-	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/metric"
-	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation/trace"
-
-	"github.com/Azure/AzureDefender-K8S-InClusterDefense/cmd/webhook/admisionrequest"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/cmd/webhook/annotations"
 	webhookmetric "github.com/Azure/AzureDefender-K8S-InClusterDefense/cmd/webhook/metric"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/azdsecinfo"
 	"github.com/pkg/errors"
 	"gomodules.xyz/jsonpatch/v2"
-	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
@@ -61,22 +60,26 @@ type Handler struct {
 	azdSecInfoProvider azdsecinfo.IAzdSecInfoProvider
 	// Configurations handler's config.
 	configuration *HandlerConfiguration
+	// Extractor extracts workload resource from admission request.
+	extractor admisionrequest.IExtractor
 }
 
 // HandlerConfiguration configuration for handler
 type HandlerConfiguration struct {
-	// DryRun is flag that if it's true, it handles request but doesn't mutate the pod spec.
-	DryRun bool
+	// DryRun is flag that if it's true, it handles request but doesn't mutate the workLoadResource podSpec.
+	DryRun                               bool
+	SupportedKubernetesWorkloadResources []string
 }
 
 // NewHandler Constructor for Handler
-func NewHandler(azdSecInfoProvider azdsecinfo.IAzdSecInfoProvider, configuration *HandlerConfiguration, instrumentationProvider instrumentation.IInstrumentationProvider) *Handler {
+func NewHandler(azdSecInfoProvider azdsecinfo.IAzdSecInfoProvider, configuration *HandlerConfiguration, instrumentationProvider instrumentation.IInstrumentationProvider, extractor admisionrequest.IExtractor) *Handler {
 
 	return &Handler{
 		tracerProvider:     instrumentationProvider.GetTracerProvider("Handler"),
 		metricSubmitter:    instrumentationProvider.GetMetricSubmitter(),
 		azdSecInfoProvider: azdSecInfoProvider,
 		configuration:      configuration,
+		extractor:          extractor,
 	}
 }
 
@@ -86,8 +89,8 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 	tracer := handler.tracerProvider.GetTracer("Handle")
 	response := admission.Response{}
 	reason := _notPatchedReason
-	podName  := ""
-	var podOwnerRefrences[] metav1.OwnerReference
+	workLoadResourceName := ""
+	var workLoadResourceOwnerRefrences []*admisionrequest.OwnerReference
 
 	var err error
 	defer func() {
@@ -96,13 +99,13 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 			if !ok {
 				err = errors.New(fmt.Sprint(r))
 			}
-			tracer.Error(err, "Handler handle Panic error","resource:", req.Resource,"namespace:", req.Namespace,"Name:", req.Name,"podOwnerRefrences:",podOwnerRefrences, "PodName:", podName, "operation:", req.Operation, "reqKind:", req.Kind)
+			tracer.Error(err, "Handler handle Panic error", "resource:", req.Resource, "namespace:", req.Namespace, "Name:", req.Name, "workLoadResourceOwnerRefrences:", workLoadResourceOwnerRefrences, "workLoadResourceName:", workLoadResourceName, "operation:", req.Operation, "reqKind:", req.Kind)
 			handler.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "Handler.Handle.Panic"))
 			// Re throw panic
 			panic(r)
 		}
 		// Repost response latency
-		tracer.Info("HandleLatency", "resource", req.Resource, "namespace:", req.Namespace,"Name:", req.Name,"podOwnerRefrences:",podOwnerRefrences, "PodName:", podName, "latencyinMS", util.GetDurationMilliseconds(startTime))
+		tracer.Info("HandleLatency", "resource", req.Resource, "namespace:", req.Namespace, "Name:", req.Name, "workLoadResourceOwnerRefrences:", workLoadResourceOwnerRefrences, "workLoadResourceName:", workLoadResourceName, "latencyinMS", util.GetDurationMilliseconds(startTime))
 
 		// Extract response status
 		var responseCode int32
@@ -112,12 +115,11 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 			responseCode = response.Result.Code
 			responseResultReasonStr = string(response.Result.Reason)
 		}
-		tracer.Info("Handle.Response.Result", "resource", req.Resource, "namespace:", req.Namespace,"Name:", req.Name, "Allowed", response.Allowed, "ResultReason", responseResultReasonStr, "code", responseCode, "patchCount", patchCount)
+		tracer.Info("Handle.Response.Result", "resource", req.Resource, "namespace:", req.Namespace, "Name:", req.Name, "Allowed", response.Allowed, "ResultReason", responseResultReasonStr, "code", responseCode, "patchCount", patchCount)
 		handler.metricSubmitter.SendMetric(util.GetDurationMilliseconds(startTime), webhookmetric.NewHandlerHandleLatencyMetric(req.Kind.Kind, response.Allowed, responseResultReasonStr, responseCode, patchCount))
 	}()
-
 	// Logs
-	tracer.Info("received request", "resource:", req.Resource,"namespace:", req.Namespace,"Name:", req.Name, "operation:", req.Operation, "reqKind:", req.Kind)
+	tracer.Info("received request", "resource:", req.Resource, "namespace:", req.Namespace, "Name:", req.Name, "operation:", req.Operation, "reqKind:", req.Kind)
 
 	handler.metricSubmitter.SendMetric(1, webhookmetric.NewHandlerNewRequestMetric(req.Kind.Kind, req.Operation))
 
@@ -127,32 +129,31 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 		response = admission.Allowed(string(reason))
 		return response
 	}
-	pod, err := admisionrequest.UnmarshalPod(&req)
+	workloadResource, err := handler.extractor.ExtractWorkloadResourceFromAdmissionRequest(&req)
 	if err != nil {
-		err = errors.Wrap(err, "Handler.Handle received error on handlePodRequest")
+		err = errors.Wrap(err, "Handler.Handle received error on handleRequest")
 		tracer.Error(err, "")
-		handler.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "Handle.handlePodRequest"))
+		handler.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "Handle.handleRequest"))
 		reason = _notPatchedErrorReason
 		response = handler.admissionErrorResponse(errors.Wrap(err, string(reason)))
 		return response
 	}
-	tracer.Info("Pod request unmarshall","resource:", req.Resource,"namespace:", req.Namespace,"podName:", pod.Name, "podOwnerRefrences:", podOwnerRefrences, "podOwners:", pod.OwnerReferences, "operation:", req.Operation, "reqKind:", req.Kind)
-	podName = pod.Name
-	podOwnerRefrences = pod.OwnerReferences
-
-	response, err = handler.handlePodRequest(pod)
+	tracer.Info("WorkLoadResource request unmarshall", "resource:", req.Resource, "namespace:", req.Namespace, "WorkLoadResourceOwnerRefrences:", workLoadResourceOwnerRefrences, "operation:", req.Operation, "reqKind:", req.Kind)
+	workLoadResourceName = workloadResource.Metadata.Name
+	workLoadResourceOwnerRefrences = workloadResource.Metadata.OwnerReferences
+	response, err = handler.handleWorkLoadResourceRequest(workloadResource)
 	if err != nil {
-		err = errors.Wrap(err, "Handler.Handle received error on handlePodRequest")
+		err = errors.Wrap(err, "Handler.Handle received error on handleWorkLoadResourceRequest")
 		tracer.Error(err, "")
-		handler.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "Handle.handlePodRequest"))
-		response := handler.getResponseWhenErrorEncountered(pod, err)
-		tracer.Info("Handler Responded","resource:", req.Resource,"namespace:", req.Namespace,"Name:", req.Name, "operation:", req.Operation, "reqKind:", req.Kind, "response:", response)
+		handler.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "Handle.handleWorkLoadResourceRequest"))
+		response := handler.getResponseWhenErrorEncountered(workloadResource, err)
+		tracer.Info("Handler Responded", "resource:", req.Resource, "namespace:", req.Namespace, "Name:", req.Name, "operation:", req.Operation, "reqKind:", req.Kind, "response:", response)
 		return response
 	}
 
 	// In case of dryrun=true:  reset all patch operations
 	if handler.configuration.DryRun {
-		tracer.Info("Handler.handlePodRequest not mutating resource, because handler is on dryrun mode.", "ResponseInCaseOfNotDryRun", response)
+		tracer.Info("Handler.handleWorkLoadResourceRequest not mutating resource, because handler is on dryrun mode.", "ResponseInCaseOfNotDryRun", response)
 		reason = _notPatchedHandlerDryRunReason
 		// Override response with clean response.
 		response = admission.Allowed(string(reason))
@@ -160,21 +161,19 @@ func (handler *Handler) Handle(ctx context.Context, req admission.Request) admis
 	}
 
 	reason = _patchedReason
-	tracer.Info("Handler Responded","resource:", req.Resource,"namespace:", req.Namespace,"Name:", req.Name, "operation:", req.Operation, "reqKind:", req.Kind, "response:", response)
+	tracer.Info("Handler Responded", "resource:", req.Resource, "namespace:", req.Namespace, "Name:", req.Name, "operation:", req.Operation, "reqKind:", req.Kind, "response:", response)
 	return response
 }
 
-// handlePodRequest gets request that should be handled and returned the response with the relevant patches.
-func (handler *Handler) handlePodRequest(pod *corev1.Pod) (admission.Response, error) {
-	tracer := handler.tracerProvider.GetTracer("handlePodRequest")
-
+// handleWorkLoadResourceRequest gets request that should be handled and returned the response with the relevant patches.
+func (handler *Handler) handleWorkLoadResourceRequest(workloadResource *admisionrequest.WorkloadResource) (admission.Response, error) {
+	tracer := handler.tracerProvider.GetTracer("handleWorkloadResourceRequest")
 	patches := []jsonpatch.JsonPatchOperation{}
-
-	vulnerabilitySecAnnotationsPatch, err := handler.getPodContainersVulnerabilityScanInfoAnnotationsOperation(pod)
+	vulnerabilitySecAnnotationsPatch, err := handler.getWorkLoadResourceContainersVulnerabilityScanInfoAnnotationsOperation(workloadResource)
 	if err != nil {
-		err = errors.Wrap(err, "Handler.handlePodRequest Failed to getPodContainersVulnerabilityScanInfoAnnotationsOperation for Pod")
+		err = errors.Wrap(err, "Handler.handleWorkLoadResourceRequest Failed to getWorkLoadResourceContainersVulnerabilityScanInfoAnnotationsOperation for WorkLoadResource")
 		tracer.Error(err, "")
-		handler.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "handlePodRequest.getPodContainersVulnerabilityScanInfoAnnotationsOperation"))
+		handler.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "handleWorkLoadResourceRequest.getWorkLoadResourceContainersVulnerabilityScanInfoAnnotationsOperation"))
 		return admission.Response{}, err
 	}
 
@@ -184,19 +183,20 @@ func (handler *Handler) handlePodRequest(pod *corev1.Pod) (admission.Response, e
 	// Patch all patches operations
 	return admission.Patched(string(_patchedReason), patches...), nil
 }
+
 // getResponseWhenErrorEncountered returns a response in which it deletes previous ContainersVulnerabilityScan annotations.
 // If no such annotations exist it returns handler.admissionErrorResponse with the original error.
-func (handler *Handler) getResponseWhenErrorEncountered(pod *corev1.Pod, originalError error) admission.Response {
+func (handler *Handler) getResponseWhenErrorEncountered(workloadResource *admisionrequest.WorkloadResource, originalError error) admission.Response {
 	tracer := handler.tracerProvider.GetTracer("getResponseWhenErrorEncountered")
 
 	patches := []jsonpatch.JsonPatchOperation{}
 
 	// returns nil if no deletion is needed.
-	patch, err := annotations.CreateAnnotationPatchToDeleteContainersVulnerabilityScanAnnotationIfNeeded(pod)
+	patch, err := annotations.CreateAnnotationPatchToDeleteContainersVulnerabilityScanAnnotationIfNeeded(workloadResource)
 
 	// if error encountered during CreateAnnotationPatchToDeleteContainersVulnerabilityScanAnnotationIfNeeded - response with the original error
 	if err != nil {
-		err = errors.Wrap(err, "Handler.getResponseWhenErrorEncountered Failed to CreateAnnotationPatchToDeleteContainersVulnerabilityScanAnnotationIfNeeded for Pod")
+		err = errors.Wrap(err, "Handler.getResponseWhenErrorEncountered Failed to CreateAnnotationPatchToDeleteContainersVulnerabilityScanAnnotationIfNeeded for workLoadResource")
 		tracer.Error(err, "")
 		handler.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "Handler.getResponseWhenErrorEncountered"))
 		reason := _notPatchedErrorReason
@@ -204,9 +204,9 @@ func (handler *Handler) getResponseWhenErrorEncountered(pod *corev1.Pod, origina
 		return response
 	}
 
-	// patch is nil when the pod's annotations doesn't contain the webhook annotations so there is no need to delete them.
-	// response with the original error
-	if patch == nil{
+	// patch is nil when the workLoadResource's annotations doesn't contain the webhook annotations so there is no need
+	//to delete them. response with the original error
+	if patch == nil {
 		tracer.Info("ContainersVulnerabilityScanAnnotation dont exist - no need to delete them ")
 		reason := _notPatchedErrorReason
 		response := handler.admissionErrorResponse(errors.Wrap(originalError, string(reason)))
@@ -217,17 +217,17 @@ func (handler *Handler) getResponseWhenErrorEncountered(pod *corev1.Pod, origina
 	patches = append(patches, *patch)
 
 	// Patch all patches operations
-	return handler.admissionErrorResponseWithAnnotationsDelete(originalError,patches)
+	return handler.admissionErrorResponseWithAnnotationsDelete(originalError, patches)
 }
 
-// getPodContainersVulnerabilityScanInfoAnnotationsOperation receives a pod to generate a vuln scan annotation add operation
-// Get vuln scan infor from azdSecInfo provider, then create a json annotation for it on pods custom annotations of azd vuln scan info
-func (handler *Handler) getPodContainersVulnerabilityScanInfoAnnotationsOperation(pod *corev1.Pod) (*jsonpatch.JsonPatchOperation, error) {
-	tracer := handler.tracerProvider.GetTracer("getPodContainersVulnerabilityScanInfoAnnotationsOperation")
-	handler.metricSubmitter.SendMetric(len(pod.Spec.Containers)+len(pod.Spec.InitContainers), webhookmetric.NewHandlerNumOfContainersPerPodMetric())
+// getWorkLoadResourceContainersVulnerabilityScanInfoAnnotationsOperation receives a workLoadResource to generate a vuln scan annotation add operation
+// Get vuln scan infor from azdSecInfo provider, then create a json annotation for it on workLoadResources custom annotations of azd vuln scan info
+func (handler *Handler) getWorkLoadResourceContainersVulnerabilityScanInfoAnnotationsOperation(workloadResource *admisionrequest.WorkloadResource) (*jsonpatch.JsonPatchOperation, error) {
+	tracer := handler.tracerProvider.GetTracer("getWorkLoadResourceContainersVulnerabilityScanInfoAnnotationsOperation")
+	handler.metricSubmitter.SendMetric(len(workloadResource.Spec.Containers)+len(workloadResource.Spec.InitContainers), webhookmetric.NewHandlerNumOfContainersPerworkLoadResourceMetric())
 
-	// Get pod's containers vulnerability scan info
-	vulnSecInfoContainers, err := handler.azdSecInfoProvider.GetContainersVulnerabilityScanInfo(&pod.Spec, &pod.ObjectMeta, &pod.TypeMeta)
+	// Get workLoadResource's containers vulnerability scan info
+	vulnSecInfoContainers, err := handler.azdSecInfoProvider.GetContainersVulnerabilityScanInfo(workloadResource)
 	if err != nil {
 		wrappedError := errors.Wrap(err, "Handler failed to GetContainersVulnerabilityScanInfo")
 		tracer.Error(wrappedError, "Handler.AzdSecInfoProvider.GetContainersVulnerabilityScanInfo")
@@ -239,7 +239,7 @@ func (handler *Handler) getPodContainersVulnerabilityScanInfoAnnotationsOperatio
 	tracer.Info("vulnSecInfoContainers", "vulnSecInfoContainers", vulnSecInfoContainers)
 
 	// Create the annotations add json patch operation
-	vulnerabilitySecAnnotationsPatch, err := annotations.CreateContainersVulnerabilityScanAnnotationPatchAdd(vulnSecInfoContainers, pod)
+	vulnerabilitySecAnnotationsPatch, err := annotations.CreateContainersVulnerabilityScanAnnotationPatchAdd(vulnSecInfoContainers, workloadResource)
 	if err != nil {
 		wrappedError := errors.Wrap(err, "Handler failed to CreateContainersVulnerabilityScanAnnotationPatchAdd")
 		tracer.Error(wrappedError, "Handler.annotations.CreateContainersVulnerabilityScanAnnotationPatchAdd")
@@ -288,13 +288,14 @@ func (handler *Handler) shouldRequestBeFiltered(req admission.Request) (bool, re
 		return true, _noSelfManagementReason
 	}
 
-	// Filter if the kind is not pod.
-	if req.Kind.Kind != admisionrequest.PodKind {
-		tracer.Info("Request filtered out due to the request is not supported kind.", "ReqKind", req.Kind.Kind)
+	// Filter if the kind is not workload resource
+	tracer.Info("SupportedKubernetesWorkloadResources: ","array", handler.configuration.SupportedKubernetesWorkloadResources,"type",reflect.TypeOf(handler.configuration.SupportedKubernetesWorkloadResources[0]).Kind())
+	if !utils.StringInSlice(req.Kind.Kind, handler.configuration.SupportedKubernetesWorkloadResources) {
+		tracer.Info("Request filtered out due to the request is not supported kind: ", "ReqKind", req.Kind.Kind)
 		return true, _noMutationForKindReason
 	}
 
-	// Filter if the operation is not Create
+	// Filter if the operation is not Create or update
 	if !isOperationAllowed(&req.Operation) {
 		tracer.Info("Request filtered out due to the request is not supported operation.", "ReqOperation", req.Operation)
 		return true, _noMutationForOperationReason

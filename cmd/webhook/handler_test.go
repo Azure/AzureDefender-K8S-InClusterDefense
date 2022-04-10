@@ -6,6 +6,7 @@ package webhook
 import (
 	"context"
 	"encoding/json"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/cmd/webhook/admisionrequest"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/azdsecinfo/contracts"
 	azdsecinfoMocks "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/azdsecinfo/mocks"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/instrumentation"
@@ -28,14 +29,29 @@ import (
 const (
 	_expectedTestAddPatchOperation   = "add"
 	_expectedTestAnnotationPatchPath = "/metadata/annotations"
-	_annotationTestKeyOne = "cluster-autoscaler.kubernetes.io/safe-to-evict"
-	_annotationTestValueOne = "true"
-	_annotationTestKeyTwo = "container.seccomp.security.alpha.kubernetes.io/manager"
-	_annotationTestValueTwo = "runtime/default"
+	_annotationTestKeyOne            = "cluster-autoscaler.kubernetes.io/safe-to-evict"
+	_annotationTestValueOne          = "true"
+	_annotationTestKeyTwo            = "container.seccomp.security.alpha.kubernetes.io/manager"
+	_annotationTestValueTwo          = "runtime/default"
 )
 
 var (
 	_containers = []corev1.Container{
+		{
+			Name:  "containerTest1",
+			Image: "image1.com",
+		},
+		{
+			Name:  "containerTest2",
+			Image: "image2.com",
+		},
+		{
+			Name:  "containerTest3",
+			Image: "image3.com",
+		},
+	}
+
+	_containersAdmision = []*admisionrequest.Container{
 		{
 			Name:  "containerTest1",
 			Image: "image1.com",
@@ -55,23 +71,24 @@ var (
 
 	_expectedPatchForErrorEncountered1 = jsonpatch.Operation{
 		Operation: "add",
-		Path: _expectedTestAnnotationPatchPath,
+		Path:      _expectedTestAnnotationPatchPath,
 		Value: map[string]string{
-			_annotationTestKeyOne : _annotationTestValueOne,
-			_annotationTestKeyTwo : _annotationTestValueTwo,
+			_annotationTestKeyOne: _annotationTestValueOne,
+			_annotationTestKeyTwo: _annotationTestValueTwo,
 		},
 	}
 
 	_expectedPatchForErrorEncountered2 = jsonpatch.Operation{
 		Operation: "add",
-		Path: _expectedTestAnnotationPatchPath,
-		Value: map[string]string{},
+		Path:      _expectedTestAnnotationPatchPath,
+		Value:     map[string]string{},
 	}
 )
 
 type TestSuite struct {
 	suite.Suite
 	azdSecProviderMock *azdsecinfoMocks.IAzdSecInfoProvider
+	extractor          admisionrequest.IExtractor
 }
 
 // This will run before each test in the suite
@@ -80,17 +97,21 @@ func (suite *TestSuite) SetupTest() {
 	utils.UpdateDeploymentForTests(&utils.DeploymentConfiguration{Namespace: "kube-system"})
 	// Mock
 	suite.azdSecProviderMock = &azdsecinfoMocks.IAzdSecInfoProvider{}
+	extractorConfig := admisionrequest.ExtractorConfiguration{SupportedKubernetesWorkloadResources: []string{"Pod", "Deployment",
+		"ReplicaSet", "StatefulSet", "DaemonSet", "Job", "CronJob", "ReplicationController"}}
+	suite.extractor = admisionrequest.NewExtractor(instrumentation.NewNoOpInstrumentationProvider(), &extractorConfig)
 }
 
 func (suite *TestSuite) Test_Handle_DryRunTrue_ShouldNotPatched() {
 	// Setup
-	containers := []corev1.Container{_containers[0]}
-	pod := createPodForTests(containers, nil)
+	pod := createPodForTests([]corev1.Container{_containers[0]}, nil)
+	resource := createWorkloadResourceForTests([]*admisionrequest.Container{_containersAdmision[0]}, nil)
 	req := createRequestForTests(pod)
 	expectedInfo := []*contracts.ContainerVulnerabilityScanInfo{_firstContainerVulnerabilityScanInfo}
-	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", &pod.Spec, &pod.ObjectMeta, &pod.TypeMeta).Return(expectedInfo, nil).Once()
+	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", resource).Return(expectedInfo, nil).Once()
 
-	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: true}, instrumentation.NewNoOpInstrumentationProvider())
+	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: true,SupportedKubernetesWorkloadResources: []string{"Pod", "Deployment",
+		"ReplicaSet", "StatefulSet", "DaemonSet", "Job", "CronJob", "ReplicationController"}}, instrumentation.NewNoOpInstrumentationProvider(), suite.extractor)
 	// Act
 	resp := handler.Handle(context.Background(), *req)
 	// Test
@@ -101,16 +122,17 @@ func (suite *TestSuite) Test_Handle_DryRunTrue_ShouldNotPatched() {
 
 func (suite *TestSuite) Test_Handle_DryRunFalse_ShouldPatched() {
 	// Setup
-	containers := []corev1.Container{_containers[0]}
-	pod := createPodForTests(containers, nil)
+	pod := createPodForTests([]corev1.Container{_containers[0]}, nil)
+	resource := createWorkloadResourceForTests([]*admisionrequest.Container{_containersAdmision[0]}, nil)
 	req := createRequestForTests(pod)
 	expected := []*contracts.ContainerVulnerabilityScanInfo{
 		_firstContainerVulnerabilityScanInfo,
 	}
 
-	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", &pod.Spec, &pod.ObjectMeta, &pod.TypeMeta).Return(expected, nil).Once()
+	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", resource).Return(expected, nil).Once()
 
-	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider())
+	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false,SupportedKubernetesWorkloadResources: []string{"Pod", "Deployment",
+		"ReplicaSet", "StatefulSet", "DaemonSet", "Job", "CronJob", "ReplicationController"}}, instrumentation.NewNoOpInstrumentationProvider(), suite.extractor)
 	// Act
 	resp := handler.Handle(context.Background(), *req)
 	// Test
@@ -130,7 +152,8 @@ func (suite *TestSuite) Test_Handle_RequestKindIsNotPod_ShouldNotPatched() {
 	req := createRequestForTests(pod)
 	req.Kind.Kind = "NotPodKind"
 
-	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider())
+	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false,SupportedKubernetesWorkloadResources: []string{"Pod", "Deployment",
+		"ReplicaSet", "StatefulSet", "DaemonSet", "Job", "CronJob", "ReplicationController"}}, instrumentation.NewNoOpInstrumentationProvider(), suite.extractor)
 	// Act
 	resp := handler.Handle(context.Background(), *req)
 	// Test
@@ -146,7 +169,8 @@ func (suite *TestSuite) Test_Handle_RequestDeleteOperation_ShouldNotPatched() {
 	req := createRequestForTests(pod)
 	req.Operation = admissionv1.Delete
 
-	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider())
+	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false,SupportedKubernetesWorkloadResources: []string{"Pod", "Deployment",
+		"ReplicaSet", "StatefulSet", "DaemonSet", "Job", "CronJob", "ReplicationController"}}, instrumentation.NewNoOpInstrumentationProvider(), suite.extractor)
 	// Act
 	resp := handler.Handle(context.Background(), *req)
 	// Test
@@ -162,7 +186,8 @@ func (suite *TestSuite) Test_Handle_RequestConnectOperation_ShouldNotPatched() {
 	req := createRequestForTests(pod)
 	req.Operation = admissionv1.Connect
 
-	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider())
+	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false,SupportedKubernetesWorkloadResources: []string{"Pod", "Deployment",
+		"ReplicaSet", "StatefulSet", "DaemonSet", "Job", "CronJob", "ReplicationController"}}, instrumentation.NewNoOpInstrumentationProvider(), suite.extractor)
 	// Act
 	resp := handler.Handle(context.Background(), *req)
 	// Test
@@ -173,17 +198,18 @@ func (suite *TestSuite) Test_Handle_RequestConnectOperation_ShouldNotPatched() {
 
 func (suite *TestSuite) Test_Handle_RequestUpdateOperation_ShouldPatched() {
 	// Setup
-	containers := []corev1.Container{_containers[0]}
-	pod := createPodForTests(containers, nil)
+	pod := createPodForTests([]corev1.Container{_containers[0]}, nil)
+	resource := createWorkloadResourceForTests([]*admisionrequest.Container{_containersAdmision[0]}, nil)
 	req := createRequestForTests(pod)
 	req.Operation = admissionv1.Update
 	expected := []*contracts.ContainerVulnerabilityScanInfo{
 		_firstContainerVulnerabilityScanInfo,
 	}
 
-	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", &pod.Spec, &pod.ObjectMeta, &pod.TypeMeta).Return(expected, nil).Once()
+	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", resource).Return(expected, nil).Once()
 
-	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider())
+	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false, SupportedKubernetesWorkloadResources: []string{"Pod", "Deployment",
+		"ReplicaSet", "StatefulSet", "DaemonSet", "Job", "CronJob", "ReplicationController"}}, instrumentation.NewNoOpInstrumentationProvider(), suite.extractor)
 	// Act
 	resp := handler.Handle(context.Background(), *req)
 	// Test
@@ -198,17 +224,18 @@ func (suite *TestSuite) Test_Handle_RequestUpdateOperation_ShouldPatched() {
 
 func (suite *TestSuite) Test_Handle_OneContainerZeroInitContainer_ShouldPatchedOne() {
 	// Setup
-	containers := []corev1.Container{_containers[0]}
-	pod := createPodForTests(containers, nil)
+	pod := createPodForTests([]corev1.Container{_containers[0]}, nil)
+	resource := createWorkloadResourceForTests([]*admisionrequest.Container{_containersAdmision[0]}, nil)
 	req := createRequestForTests(pod)
 	expectedInfo := []*contracts.ContainerVulnerabilityScanInfo{_firstContainerVulnerabilityScanInfo}
-	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", &pod.Spec, &pod.ObjectMeta, &pod.TypeMeta).Return(expectedInfo, nil).Once()
+	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", resource).Return(expectedInfo, nil).Once()
 
 	expected := []*contracts.ContainerVulnerabilityScanInfo{
 		_firstContainerVulnerabilityScanInfo,
 	}
 
-	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider())
+	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false, SupportedKubernetesWorkloadResources: []string{"Pod", "Deployment",
+		"ReplicaSet", "StatefulSet", "DaemonSet", "Job", "CronJob", "ReplicationController"}}, instrumentation.NewNoOpInstrumentationProvider(), suite.extractor)
 
 	// Act
 	resp := handler.Handle(context.Background(), *req)
@@ -224,13 +251,14 @@ func (suite *TestSuite) Test_Handle_OneContainerZeroInitContainer_ShouldPatchedO
 
 func (suite *TestSuite) Test_Handle_TwoContainerZeroInitContainer_ShouldPatchedTwo() {
 	// Setup
-	containers := []corev1.Container{_containers[0], _containers[1]}
-	pod := createPodForTests(containers, nil)
+	pod := createPodForTests([]corev1.Container{_containers[0], _containers[1]}, nil)
+	resource := createWorkloadResourceForTests([]*admisionrequest.Container{_containersAdmision[0], _containersAdmision[1]}, nil)
 	req := createRequestForTests(pod)
 	expectedInfo := []*contracts.ContainerVulnerabilityScanInfo{_firstContainerVulnerabilityScanInfo, _secondContainerVulnerabilityScanInfo}
-	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", &pod.Spec, &pod.ObjectMeta, &pod.TypeMeta).Return(expectedInfo, nil).Once()
+	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", resource).Return(expectedInfo, nil).Once()
 
-	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider())
+	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false,SupportedKubernetesWorkloadResources: []string{"Pod", "Deployment",
+		"ReplicaSet", "StatefulSet", "DaemonSet", "Job", "CronJob", "ReplicationController"}}, instrumentation.NewNoOpInstrumentationProvider(), suite.extractor)
 
 	// Act
 	resp := handler.Handle(context.Background(), *req)
@@ -244,14 +272,15 @@ func (suite *TestSuite) Test_Handle_TwoContainerZeroInitContainer_ShouldPatchedT
 
 func (suite *TestSuite) Test_Handle_ZeroContainerOneInitContainer_ShouldPatchedOne() {
 	// Setup
-	containers := []corev1.Container{_containers[0]}
-	pod := createPodForTests(nil, containers)
+	pod := createPodForTests(nil, []corev1.Container{_containers[0]})
+	resource := createWorkloadResourceForTests(nil, []*admisionrequest.Container{_containersAdmision[0]})
 	req := createRequestForTests(pod)
 
 	expectedInfo := []*contracts.ContainerVulnerabilityScanInfo{_firstContainerVulnerabilityScanInfo}
-	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", &pod.Spec, &pod.ObjectMeta, &pod.TypeMeta).Return(expectedInfo, nil).Once()
+	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", resource).Return(expectedInfo, nil).Once()
 
-	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider())
+	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false, SupportedKubernetesWorkloadResources: []string{"Pod", "Deployment",
+		"ReplicaSet", "StatefulSet", "DaemonSet", "Job", "CronJob", "ReplicationController"}}, instrumentation.NewNoOpInstrumentationProvider(), suite.extractor)
 
 	//Act
 	resp := handler.Handle(context.Background(), *req)
@@ -266,14 +295,15 @@ func (suite *TestSuite) Test_Handle_ZeroContainerOneInitContainer_ShouldPatchedO
 
 func (suite *TestSuite) Test_Handle_ZeroContainerTwoInitContainer_ShouldPatchedTwo() {
 	// Setup
-	containers := []corev1.Container{_containers[0], _containers[1]}
-	pod := createPodForTests(nil, containers)
+	pod := createPodForTests(nil, []corev1.Container{_containers[0], _containers[1]})
+	resource := createWorkloadResourceForTests(nil, []*admisionrequest.Container{_containersAdmision[0], _containersAdmision[1]})
 	req := createRequestForTests(pod)
 
 	expectedInfo := []*contracts.ContainerVulnerabilityScanInfo{_firstContainerVulnerabilityScanInfo, _secondContainerVulnerabilityScanInfo}
-	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", &pod.Spec, &pod.ObjectMeta, &pod.TypeMeta).Return(expectedInfo, nil).Once()
+	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", resource).Return(expectedInfo, nil).Once()
 
-	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider())
+	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false, SupportedKubernetesWorkloadResources: []string{"Pod", "Deployment",
+		"ReplicaSet", "StatefulSet", "DaemonSet", "Job", "CronJob", "ReplicationController"}}, instrumentation.NewNoOpInstrumentationProvider(), suite.extractor)
 
 	//Act
 	resp := handler.Handle(context.Background(), *req)
@@ -289,14 +319,15 @@ func (suite *TestSuite) Test_Handle_ZeroContainerTwoInitContainer_ShouldPatchedT
 
 func (suite *TestSuite) Test_Handle_OneContainerOneInitContainer_ShouldPatchedTwo() {
 	// Setup
-	containers := []corev1.Container{_containers[0], _containers[1]}
-	pod := createPodForTests(nil, containers)
+	pod := createPodForTests(nil, []corev1.Container{_containers[0], _containers[1]})
+	resource := createWorkloadResourceForTests(nil, []*admisionrequest.Container{_containersAdmision[0], _containersAdmision[1]})
 	req := createRequestForTests(pod)
 
 	expectedInfo := []*contracts.ContainerVulnerabilityScanInfo{_firstContainerVulnerabilityScanInfo, _secondContainerVulnerabilityScanInfo}
-	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", &pod.Spec, &pod.ObjectMeta, &pod.TypeMeta).Return(expectedInfo, nil).Once()
+	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", resource).Return(expectedInfo, nil).Once()
 
-	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider())
+	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false, SupportedKubernetesWorkloadResources: []string{"Pod", "Deployment",
+		"ReplicaSet", "StatefulSet", "DaemonSet", "Job", "CronJob", "ReplicationController"}}, instrumentation.NewNoOpInstrumentationProvider(), suite.extractor)
 
 	// Act
 	resp := handler.Handle(context.Background(), *req)
@@ -310,21 +341,20 @@ func (suite *TestSuite) Test_Handle_OneContainerOneInitContainer_ShouldPatchedTw
 
 func (suite *TestSuite) Test_Handle_Error_AllowedTrueWithError_PodNoAnnotations() {
 	// Setup
-	containers := []corev1.Container{_containers[0]}
-	pod := createPodForTests(nil, containers)
+	pod := createPodForTests(nil, []corev1.Container{_containers[0]})
+	resource := createWorkloadResourceForTests(nil, []*admisionrequest.Container{_containersAdmision[0]})
 	req := createRequestForTests(pod)
 
 	err := errors.New("MockError!!")
 
-	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", &pod.Spec, &pod.ObjectMeta, &pod.TypeMeta).Return(nil, err).Once()
+	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", resource).Return(nil, err).Once()
 
-	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider())
+	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false, SupportedKubernetesWorkloadResources: []string{"Pod", "Deployment",
+		"ReplicaSet", "StatefulSet", "DaemonSet", "Job", "CronJob", "ReplicationController"}}, instrumentation.NewNoOpInstrumentationProvider(), suite.extractor)
 
 	// Act
 	resp := handler.Handle(context.Background(), *req)
 	// Test
-
-
 
 	suite.Equal(int32(http.StatusInternalServerError), resp.Result.Code)
 	suite.NotEmpty(resp.Result.Message)
@@ -332,27 +362,26 @@ func (suite *TestSuite) Test_Handle_Error_AllowedTrueWithError_PodNoAnnotations(
 	// Super important
 	suite.True(resp.Allowed)
 	suite.Equal(0, len(resp.Patches))
-	suite.Nil( resp.Patches)
+	suite.Nil(resp.Patches)
 	suite.azdSecProviderMock.AssertExpectations(suite.T())
 }
 
 func (suite *TestSuite) Test_Handle_Error_AllowedTrueWithError_PodWithAnnotations() {
 	// Setup
-	containers := []corev1.Container{_containers[0]}
-	pod := createPodForTestsWithAnnotations(nil, containers)
+	pod := createPodForTestsWithAnnotations(nil, []corev1.Container{_containers[0]})
+	resource := createWorkloadResourceForTestsWithAnnotations(nil, []*admisionrequest.Container{_containersAdmision[0]})
 	req := createRequestForTests(pod)
 
 	err := errors.New("MockError!!")
 
-	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", &pod.Spec, &pod.ObjectMeta, &pod.TypeMeta).Return(nil, err).Once()
+	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", resource).Return(nil, err).Once()
 
-	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider())
+	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false, SupportedKubernetesWorkloadResources: []string{"Pod", "Deployment",
+		"ReplicaSet", "StatefulSet", "DaemonSet", "Job", "CronJob", "ReplicationController"}}, instrumentation.NewNoOpInstrumentationProvider(), suite.extractor)
 
 	// Act
 	resp := handler.Handle(context.Background(), *req)
 	// Test
-
-
 
 	suite.Equal(int32(http.StatusInternalServerError), resp.Result.Code)
 	suite.NotEmpty(resp.Result.Message)
@@ -360,27 +389,26 @@ func (suite *TestSuite) Test_Handle_Error_AllowedTrueWithError_PodWithAnnotation
 	// Super important
 	suite.True(resp.Allowed)
 	suite.Equal(0, len(resp.Patches))
-	suite.Nil( resp.Patches)
+	suite.Nil(resp.Patches)
 	suite.azdSecProviderMock.AssertExpectations(suite.T())
 }
 
 func (suite *TestSuite) Test_Handle_Error_AllowedTrueWithError_PodWithAzdAnnotations() {
 	// Setup
-	containers := []corev1.Container{_containers[0]}
-	pod := createPodForTestsWithAzdAnnotations(nil, containers)
+	pod := createPodForTestsWithAzdAnnotations(nil, []corev1.Container{_containers[0]})
+	resource := createWorkloadResourceForTestsWithAzdAnnotations(nil, []*admisionrequest.Container{_containersAdmision[0]})
 	req := createRequestForTests(pod)
 
 	err := errors.New("MockError!!")
 
-	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", &pod.Spec, &pod.ObjectMeta, &pod.TypeMeta).Return(nil, err).Once()
+	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", resource).Return(nil, err).Once()
 
-	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider())
+	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false, SupportedKubernetesWorkloadResources: []string{"Pod", "Deployment",
+		"ReplicaSet", "StatefulSet", "DaemonSet", "Job", "CronJob", "ReplicationController"}}, instrumentation.NewNoOpInstrumentationProvider(), suite.extractor)
 
 	// Act
 	resp := handler.Handle(context.Background(), *req)
 	// Test
-
-
 
 	suite.Equal(int32(http.StatusInternalServerError), resp.Result.Code)
 	suite.Equal(1, len(resp.Patches))
@@ -391,20 +419,20 @@ func (suite *TestSuite) Test_Handle_Error_AllowedTrueWithError_PodWithAzdAnnotat
 
 func (suite *TestSuite) Test_Handle_Error_AllowedTrueWithError_PodWithOnlyAzdAnnotations() {
 	// Setup
-	containers := []corev1.Container{_containers[0]}
-	pod := createPodForTestsWithOnlyAzdAnnotations(nil, containers)
+	pod := createPodForTestsWithOnlyAzdAnnotations(nil, []corev1.Container{_containers[0]})
+	resource := createWorkloadResourceForTestsWithOnlyAzdAnnotations(nil, []*admisionrequest.Container{_containersAdmision[0]})
 	req := createRequestForTests(pod)
 
 	err := errors.New("MockError!!")
 
-	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", &pod.Spec, &pod.ObjectMeta, &pod.TypeMeta).Return(nil, err).Once()
+	suite.azdSecProviderMock.On("GetContainersVulnerabilityScanInfo", resource).Return(nil, err).Once()
 
-	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false}, instrumentation.NewNoOpInstrumentationProvider())
+	handler := NewHandler(suite.azdSecProviderMock, &HandlerConfiguration{DryRun: false, SupportedKubernetesWorkloadResources: []string{"Pod", "Deployment",
+		"ReplicaSet", "StatefulSet", "DaemonSet", "Job", "CronJob", "ReplicationController"}}, instrumentation.NewNoOpInstrumentationProvider(), suite.extractor)
 
 	// Act
 	resp := handler.Handle(context.Background(), *req)
 	// Test
-
 
 	suite.Equal(int32(http.StatusInternalServerError), resp.Result.Code)
 	suite.Equal(1, len(resp.Patches))
@@ -481,18 +509,48 @@ func createPodForTests(containers []corev1.Container, initContainers []corev1.Co
 	}
 }
 
+func createWorkloadResourceForTests(containers []*admisionrequest.Container, initContainers []*admisionrequest.Container) *admisionrequest.WorkloadResource {
+	return &admisionrequest.WorkloadResource{
+		Metadata: &admisionrequest.ObjectMetadata{
+			Name:      "podTest",
+			Namespace: "default",
+		},
+		Spec: &admisionrequest.PodSpec{
+			Containers:     containers,
+			InitContainers: initContainers,
+		},
+	}
+}
+
 func createPodForTestsWithAnnotations(containers []corev1.Container, initContainers []corev1.Container) *corev1.Pod {
 	return &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "podTest",
 			Namespace: "default",
 			Annotations: map[string]string{
-				_annotationTestKeyOne : _annotationTestValueOne,
-				_annotationTestKeyTwo : _annotationTestValueTwo,
+				_annotationTestKeyOne: _annotationTestValueOne,
+				_annotationTestKeyTwo: _annotationTestValueTwo,
 			},
 		},
 		TypeMeta: metav1.TypeMeta{},
 		Spec: corev1.PodSpec{
+			Containers:     containers,
+			InitContainers: initContainers,
+		},
+	}
+}
+
+func createWorkloadResourceForTestsWithAnnotations(containers []*admisionrequest.Container, initContainers []*admisionrequest.Container) *admisionrequest.WorkloadResource {
+	return &admisionrequest.WorkloadResource{
+		Metadata: &admisionrequest.ObjectMetadata{
+			Name:      "podTest",
+			Namespace: "default",
+			Annotations: map[string]string{
+				_annotationTestKeyOne: _annotationTestValueOne,
+				_annotationTestKeyTwo: _annotationTestValueTwo,
+			},
+		},
+		Spec: &admisionrequest.PodSpec{
 			Containers:     containers,
 			InitContainers: initContainers,
 		},
@@ -505,13 +563,31 @@ func createPodForTestsWithAzdAnnotations(containers []corev1.Container, initCont
 			Name:      "podTest",
 			Namespace: "default",
 			Annotations: map[string]string{
-				_annotationTestKeyOne : _annotationTestValueOne,
-				_annotationTestKeyTwo : _annotationTestValueTwo,
+				_annotationTestKeyOne: _annotationTestValueOne,
+				_annotationTestKeyTwo: _annotationTestValueTwo,
 				contracts.ContainersVulnerabilityScanInfoAnnotationName: "some value",
 			},
 		},
 		TypeMeta: metav1.TypeMeta{},
 		Spec: corev1.PodSpec{
+			Containers:     containers,
+			InitContainers: initContainers,
+		},
+	}
+}
+
+func createWorkloadResourceForTestsWithAzdAnnotations(containers []*admisionrequest.Container, initContainers []*admisionrequest.Container) *admisionrequest.WorkloadResource {
+	return &admisionrequest.WorkloadResource{
+		Metadata: &admisionrequest.ObjectMetadata{
+			Name:      "podTest",
+			Namespace: "default",
+			Annotations: map[string]string{
+				_annotationTestKeyOne: _annotationTestValueOne,
+				_annotationTestKeyTwo: _annotationTestValueTwo,
+				contracts.ContainersVulnerabilityScanInfoAnnotationName: "some value",
+			},
+		},
+		Spec: &admisionrequest.PodSpec{
 			Containers:     containers,
 			InitContainers: initContainers,
 		},
@@ -529,6 +605,22 @@ func createPodForTestsWithOnlyAzdAnnotations(containers []corev1.Container, init
 		},
 		TypeMeta: metav1.TypeMeta{},
 		Spec: corev1.PodSpec{
+			Containers:     containers,
+			InitContainers: initContainers,
+		},
+	}
+}
+
+func createWorkloadResourceForTestsWithOnlyAzdAnnotations(containers []*admisionrequest.Container, initContainers []*admisionrequest.Container) *admisionrequest.WorkloadResource {
+	return &admisionrequest.WorkloadResource{
+		Metadata: &admisionrequest.ObjectMetadata{
+			Name:      "podTest",
+			Namespace: "default",
+			Annotations: map[string]string{
+				contracts.ContainersVulnerabilityScanInfoAnnotationName: "some value",
+			},
+		},
+		Spec: &admisionrequest.PodSpec{
 			Containers:     containers,
 			InitContainers: initContainers,
 		},

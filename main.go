@@ -6,6 +6,7 @@ import (
 	"github.com/Azure/ASC-go-libs/pkg/config"
 	tivanInstrumentation "github.com/Azure/ASC-go-libs/pkg/instrumentation"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/cmd/webhook"
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/cmd/webhook/admisionrequest"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/azdsecinfo"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/dataproviders/arg"
 	argqueries "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/dataproviders/arg/queries"
@@ -56,6 +57,7 @@ func main() {
 	certRotatorConfiguration := new(webhook.CertRotatorConfiguration)
 	serverConfiguration := new(webhook.ServerConfiguration)
 	handlerConfiguration := new(webhook.HandlerConfiguration)
+	extractorConfiguration := new(admisionrequest.ExtractorConfiguration)
 	tivanInstrumentationConfiguration := new(tivanInstrumentation.InstrumentationConfiguration)
 	metricSubmitterConfiguration := new(tivan.MetricSubmitterConfiguration)
 	tracerConfiguration := new(trace.TracerConfiguration)
@@ -82,6 +84,7 @@ func main() {
 		"webhook.certRotatorConfiguration":                        certRotatorConfiguration,
 		"webhook.serverConfiguration":                             serverConfiguration,
 		"webhook.handlerConfiguration":                            handlerConfiguration,
+		"webhook.extractorConfiguration":						   extractorConfiguration,
 		"instrumentation.tivan.tivanInstrumentationConfiguration": tivanInstrumentationConfiguration,
 		"instrumentation.trace.tracerConfiguration":               tracerConfiguration,
 		"azdIdentity.envAzureAuthorizerConfiguration":             azdIdentityEnvAzureAuthorizerConfiguration,
@@ -219,7 +222,7 @@ func main() {
 		log.Fatal("main.NewArgBaseClientWrapper", err)
 	}
 
-	argClientRetryPolicy:= retrypolicy.NewRetryPolicy(instrumentationProvider, argBaseClientRetryPolicyConfiguration)
+	argClientRetryPolicy := retrypolicy.NewRetryPolicy(instrumentationProvider, argBaseClientRetryPolicyConfiguration)
 	argClient := arg.NewARGClient(instrumentationProvider, argBaseClient, argClientConfiguration, argClientRetryPolicy)
 	argQueryGenerator, err := argqueries.CreateARGQueryGenerator(instrumentationProvider)
 	if err != nil {
@@ -228,10 +231,13 @@ func main() {
 	argDataProviderCacheClient := arg.NewARGDataProviderCacheClient(instrumentationProvider, persistentCacheClient, argDataProviderConfiguration)
 	argDataProvider := arg.NewARGDataProvider(instrumentationProvider, argClient, argQueryGenerator, argDataProviderCacheClient, argDataProviderConfiguration)
 
+	// Create Extractor
+	extractor := admisionrequest.NewExtractor(instrumentationProvider, extractorConfiguration)
+
 	// Handler and azdSecinfoProvider
 	azdSecInfoProviderCacheClient := azdsecinfo.NewAzdSecInfoProviderCacheClient(instrumentationProvider, persistentCacheClient, azdSecInfoProviderConfiguration)
 	azdSecInfoProvider := azdsecinfo.NewAzdSecInfoProvider(instrumentationProvider, argDataProvider, tag2digestResolver, getContainersVulnerabilityScanInfoTimeoutDuration, azdSecInfoProviderCacheClient)
-	handler := webhook.NewHandler(azdSecInfoProvider, handlerConfiguration, instrumentationProvider)
+	handler := webhook.NewHandler(azdSecInfoProvider, handlerConfiguration, instrumentationProvider, extractor)
 
 	// Manager and server
 	managerFactory := webhook.NewManagerFactory(managerConfiguration, instrumentationProvider)

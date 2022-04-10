@@ -1,6 +1,7 @@
 package azdsecinfo
 
 import (
+	"github.com/Azure/AzureDefender-K8S-InClusterDefense/cmd/webhook/admisionrequest"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/azdsecinfo/contracts"
 	azdsecinfometrics "github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/azdsecinfo/metric"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/dataproviders/arg"
@@ -14,8 +15,6 @@ import (
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/infra/utils"
 	"github.com/Azure/AzureDefender-K8S-InClusterDefense/pkg/tag2digest"
 	"github.com/pkg/errors"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"time"
 )
 
@@ -32,7 +31,7 @@ const (
 // IAzdSecInfoProvider represents interface for providing azure defender security information
 type IAzdSecInfoProvider interface {
 	// GetContainersVulnerabilityScanInfo receives pod template spec containing containers list, and returns their fetched ContainersVulnerabilityScanInfo
-	GetContainersVulnerabilityScanInfo(podSpec *corev1.PodSpec, resourceMetadata *metav1.ObjectMeta, resourceKind *metav1.TypeMeta) ([]*contracts.ContainerVulnerabilityScanInfo, error)
+	GetContainersVulnerabilityScanInfo(workloadResource *admisionrequest.WorkloadResource) ([]*contracts.ContainerVulnerabilityScanInfo, error)
 }
 
 // AzdSecInfoProvider implements IAzdSecInfoProvider interface
@@ -97,12 +96,12 @@ func NewAzdSecInfoProvider(instrumentationProvider instrumentation.IInstrumentat
 // Otherwise return an error and don't block the request
 // If no timeout occurred - save the results in the cache, reset the timeout status and return the results
 // For more information - see README
-func (provider *AzdSecInfoProvider) GetContainersVulnerabilityScanInfo(podSpec *corev1.PodSpec, resourceMetadata *metav1.ObjectMeta, resourceKind *metav1.TypeMeta) ([]*contracts.ContainerVulnerabilityScanInfo, error) {
+func (provider *AzdSecInfoProvider) GetContainersVulnerabilityScanInfo(workloadResource *admisionrequest.WorkloadResource) ([]*contracts.ContainerVulnerabilityScanInfo, error) {
 	tracer := provider.tracerProvider.GetTracer("GetContainersVulnerabilityScanInfo")
-	tracer.Info("Received:", "podSpec", podSpec, "resourceMetadata", resourceMetadata, "resourceKind", resourceKind)
+	tracer.Info("Received:", "podSpec", &workloadResource.Spec, "resourceMetadata", &workloadResource.Metadata)
 
 	// Arguments validation
-	if podSpec == nil || resourceMetadata == nil || resourceKind == nil {
+	if &workloadResource.Spec == nil || &workloadResource.Metadata == nil {
 		err := errors.Wrap(utils.NilArgumentError, "AzdSecInfoProvider.GetContainersVulnerabilityScanInfo")
 		tracer.Error(err, "")
 		provider.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "AzdSecInfoProvider.GetContainersVulnerabilityScanInfo"))
@@ -110,7 +109,7 @@ func (provider *AzdSecInfoProvider) GetContainersVulnerabilityScanInfo(podSpec *
 	}
 
 	// The key to be set in cache for the pod spec (current request). Without prefix (timeout or ContainerVulnerabilityScanInfo)
-	podSpecCacheKey := provider.cacheClient.GetPodSpecCacheKey(podSpec)
+	podSpecCacheKey := provider.cacheClient.GetPodSpecCacheKey(workloadResource.Spec)
 
 	// Try to get ContainersVulnerabilityScanInfo from cache
 	// If error is not nil - There are two options: 1. missing key 2. functionality error from cache. In both cases continue to fetch results from provider.
@@ -119,9 +118,9 @@ func (provider *AzdSecInfoProvider) GetContainersVulnerabilityScanInfo(podSpec *
 	// 		2. The result is ContainerVulnerabilityScanInfo  -  no errors occurred in previous run. Return the results
 	ContainersVulnerabilityScanInfo, errorStoredInCache, err := provider.cacheClient.GetContainerVulnerabilityScanInfofromCache(podSpecCacheKey)
 	if err != nil { // failed to get results from cache - skip and get results from providers
-		if cache.IsMissingKeyCacheError(err){
+		if cache.IsMissingKeyCacheError(err) {
 			tracer.Info("Missing key. Couldn't get ContainerVulnerabilityScanInfo from cache")
-		}else{
+		} else {
 			err = errors.Wrap(err, "Couldn't get ContainersVulnerabilityScanInfo from cache: error encountered")
 			tracer.Error(err, "")
 			provider.metricSubmitter.SendMetric(1, util.NewErrorEncounteredMetric(err, "AzdSecInfoProvider.GetContainersVulnerabilityScanInfo"))
@@ -140,23 +139,23 @@ func (provider *AzdSecInfoProvider) GetContainersVulnerabilityScanInfo(podSpec *
 
 	// Try to get containers vulnerabilities in diff thread.
 	chanTimeout := make(chan *utils.ChannelDataWrapper, 1)
-	go provider.getContainersVulnerabilityScanInfoSyncWrapper(podSpec, resourceMetadata, resourceKind, chanTimeout, podSpecCacheKey)
+	go provider.getContainersVulnerabilityScanInfoSyncWrapper(workloadResource.Spec, workloadResource.Metadata, chanTimeout, podSpecCacheKey)
 
 	// Choose the first thread that finish.
 	select {
 	// No timeout case:
 	case channelData, isChannelOpen := <-chanTimeout:
-		return provider.noTimeoutEncounteredGetContainersVulnerabilityScanInfo(podSpec, chanTimeout, channelData, isChannelOpen, podSpecCacheKey)
+		return provider.noTimeoutEncounteredGetContainersVulnerabilityScanInfo(workloadResource.Spec, chanTimeout, channelData, isChannelOpen, podSpecCacheKey)
 	// Timeout case:
 	case <-time.After(provider.getContainersVulnerabilityScanInfoTimeoutDuration):
-		return provider.timeoutEncounteredGetContainersVulnerabilityScanInfo(podSpec, podSpecCacheKey)
+		return provider.timeoutEncounteredGetContainersVulnerabilityScanInfo(workloadResource.Spec, podSpecCacheKey)
 	}
 }
 
 // getContainersVulnerabilityScanInfoSyncWrapper runs getContainersVulnerabilityScanInfo and insert the result into the channel.
-func (provider *AzdSecInfoProvider) getContainersVulnerabilityScanInfoSyncWrapper(podSpec *corev1.PodSpec, resourceMetadata *metav1.ObjectMeta, resourceKind *metav1.TypeMeta, chanTimeout chan *utils.ChannelDataWrapper, podSpecCacheKey string) {
+func (provider *AzdSecInfoProvider) getContainersVulnerabilityScanInfoSyncWrapper(podSpec *admisionrequest.PodSpec, resourceMetadata *admisionrequest.ObjectMetadata, chanTimeout chan *utils.ChannelDataWrapper, podSpecCacheKey string) {
 	tracer := provider.tracerProvider.GetTracer("getContainersVulnerabilityScanInfoSyncWrapper")
-	containerVulnerabilityScanInfo, err := provider.getContainersVulnerabilityScanInfo(podSpec, resourceMetadata, resourceKind)
+	containerVulnerabilityScanInfo, err := provider.getContainersVulnerabilityScanInfo(podSpec, resourceMetadata)
 
 	// Set both ContainersVulnerabilityScanInfo and err in cache
 	// Set results in cache here and not in the upper function in order to set results in cache even if timeout has occurred.
@@ -209,7 +208,7 @@ func (provider *AzdSecInfoProvider) extractContainersVulnerabilityScanInfoFromCh
 }
 
 // getContainersVulnerabilityScanInfo try to get containers vulnerabilities scan info
-func (provider *AzdSecInfoProvider) getContainersVulnerabilityScanInfo(podSpec *corev1.PodSpec, resourceMetadata *metav1.ObjectMeta, resourceKind *metav1.TypeMeta) ([]*contracts.ContainerVulnerabilityScanInfo, error) {
+func (provider *AzdSecInfoProvider) getContainersVulnerabilityScanInfo(podSpec *admisionrequest.PodSpec, resourceMetadata *admisionrequest.ObjectMetadata) ([]*contracts.ContainerVulnerabilityScanInfo, error) {
 	tracer := provider.tracerProvider.GetTracer("getContainersVulnerabilityScanInfo")
 
 	// Convert pull secrets from reference object to strings
@@ -237,7 +236,7 @@ func (provider *AzdSecInfoProvider) getContainersVulnerabilityScanInfo(podSpec *
 
 // getVulnSecInfoContainers gets vulnSecInfoContainers array with the scan results of the given containers.
 // It runs each container scan in parallel and returns only when all the scans are finished and the array is updated
-func (provider *AzdSecInfoProvider) getVulnSecInfoContainers(podSpec *corev1.PodSpec, resourceCtx *tag2digest.ResourceContext) ([]*contracts.ContainerVulnerabilityScanInfo, error) {
+func (provider *AzdSecInfoProvider) getVulnSecInfoContainers(podSpec *admisionrequest.PodSpec, resourceCtx *tag2digest.ResourceContext) ([]*contracts.ContainerVulnerabilityScanInfo, error) {
 	tracer := provider.tracerProvider.GetTracer("getVulnSecInfoContainers")
 
 	// Initialize container vuln scan info list
@@ -255,10 +254,10 @@ func (provider *AzdSecInfoProvider) getVulnSecInfoContainers(podSpec *corev1.Pod
 	// Get container vulnerability scan information in parallel
 	// Each call send data to channel vulnerabilitySecInfoChannel
 	for i := range podSpec.InitContainers {
-		go provider.getSingleContainerVulnerabilityScanInfoSyncWrapper(&podSpec.InitContainers[i], resourceCtx, vulnerabilitySecInfoChannel)
+		go provider.getSingleContainerVulnerabilityScanInfoSyncWrapper(podSpec.InitContainers[i], resourceCtx, vulnerabilitySecInfoChannel)
 	}
 	for i := range podSpec.Containers {
-		go provider.getSingleContainerVulnerabilityScanInfoSyncWrapper(&podSpec.Containers[i], resourceCtx, vulnerabilitySecInfoChannel)
+		go provider.getSingleContainerVulnerabilityScanInfoSyncWrapper(podSpec.Containers[i], resourceCtx, vulnerabilitySecInfoChannel)
 	}
 
 	for i := 0; i < len(podSpec.InitContainers)+len(podSpec.Containers); i++ { // No deadlock as a result of the loop because the number of receivers is identical to the number of senders
@@ -301,13 +300,13 @@ func (provider *AzdSecInfoProvider) getVulnSecInfoContainers(podSpec *corev1.Pod
 
 //getSingleContainerVulnerabilityScanInfoSyncWrapper wrap getSingleContainerVulnerabilityScanInfo.
 // It sends getSingleContainerVulnerabilityScanInfo results to the channel
-func (provider *AzdSecInfoProvider) getSingleContainerVulnerabilityScanInfoSyncWrapper(container *corev1.Container, resourceCtx *tag2digest.ResourceContext, vulnerabilitySecInfoChannel chan *utils.ChannelDataWrapper) {
+func (provider *AzdSecInfoProvider) getSingleContainerVulnerabilityScanInfoSyncWrapper(container *admisionrequest.Container, resourceCtx *tag2digest.ResourceContext, vulnerabilitySecInfoChannel chan *utils.ChannelDataWrapper) {
 	info, err := provider.getSingleContainerVulnerabilityScanInfo(container, resourceCtx)
 	vulnerabilitySecInfoChannel <- utils.NewChannelDataWrapper(info, err)
 }
 
 // getSingleContainerVulnerabilityScanInfo receives a container, and it's belonged deployed resource context, and returns fetched ContainerVulnerabilityScanInfo
-func (provider *AzdSecInfoProvider) getSingleContainerVulnerabilityScanInfo(container *corev1.Container, resourceCtx *tag2digest.ResourceContext) (*contracts.ContainerVulnerabilityScanInfo, error) {
+func (provider *AzdSecInfoProvider) getSingleContainerVulnerabilityScanInfo(container *admisionrequest.Container, resourceCtx *tag2digest.ResourceContext) (*contracts.ContainerVulnerabilityScanInfo, error) {
 	tracer := provider.tracerProvider.GetTracer("getSingleContainerVulnerabilityScanInfo")
 	tracer.Info("Received:", "container image ref", container.Image, "resourceCtx", resourceCtx)
 
@@ -369,7 +368,7 @@ func (provider *AzdSecInfoProvider) getSingleContainerVulnerabilityScanInfo(cont
 }
 
 // buildContainerVulnerabilityScanInfoFromResult build the info object from data provided
-func (provider *AzdSecInfoProvider) buildContainerVulnerabilityScanInfoFromResult(container *corev1.Container, digest string, scanStatus contracts.ScanStatus, scanFindigs []*contracts.ScanFinding) *contracts.ContainerVulnerabilityScanInfo {
+func (provider *AzdSecInfoProvider) buildContainerVulnerabilityScanInfoFromResult(container *admisionrequest.Container, digest string, scanStatus contracts.ScanStatus, scanFindigs []*contracts.ScanFinding) *contracts.ContainerVulnerabilityScanInfo {
 	info := &contracts.ContainerVulnerabilityScanInfo{
 		Name: container.Name,
 		Image: &contracts.Image{
@@ -387,7 +386,7 @@ func (provider *AzdSecInfoProvider) buildContainerVulnerabilityScanInfoFromResul
 }
 
 // buildContainerVulnerabilityScanInfoFromResult build the info object from data provided
-func (provider *AzdSecInfoProvider) buildContainerVulnerabilityScanInfoUnScannedWithReason(container *corev1.Container, reason contracts.UnscannedReason) *contracts.ContainerVulnerabilityScanInfo {
+func (provider *AzdSecInfoProvider) buildContainerVulnerabilityScanInfoUnScannedWithReason(container *admisionrequest.Container, reason contracts.UnscannedReason) *contracts.ContainerVulnerabilityScanInfo {
 
 	info := &contracts.ContainerVulnerabilityScanInfo{
 		Name: container.Name,
@@ -410,12 +409,12 @@ func (provider *AzdSecInfoProvider) buildContainerVulnerabilityScanInfoUnScanned
 // got timeout (GetContainersVulnerabilityScanInfoTimeoutDuration) and returns list with one empty container with
 //unscanned status and contracts.GetContainersVulnerabilityScanInfoTimeoutUnscannedReason.
 // TODO In public preview, we should add timeout without empty container (bad UX) (should be changed also in the REGO).
-func (provider *AzdSecInfoProvider) buildListOfContainerVulnerabilityScanInfoWhenTimeout(podSpec *corev1.PodSpec) ([]*contracts.ContainerVulnerabilityScanInfo, error) {
-	var containerVulnerabilityScanInfoList[] *contracts.ContainerVulnerabilityScanInfo
+func (provider *AzdSecInfoProvider) buildListOfContainerVulnerabilityScanInfoWhenTimeout(podSpec *admisionrequest.PodSpec) ([]*contracts.ContainerVulnerabilityScanInfo, error) {
+	var containerVulnerabilityScanInfoList []*contracts.ContainerVulnerabilityScanInfo
 
 	// Iterate over all podSpec containers
 	containers := append(podSpec.InitContainers, podSpec.Containers...)
-	for _, container := range containers{
+	for _, container := range containers {
 		// For each container create info object containing the container name and image name with unscanned status.
 		info := &contracts.ContainerVulnerabilityScanInfo{
 			Name: container.Name,
@@ -443,14 +442,14 @@ func (provider *AzdSecInfoProvider) buildListOfContainerVulnerabilityScanInfoWhe
 // If it is the first or the second time, it adds the images to the cache and returns unscanned with metadata.
 // If it is the third time or there is an error in the communication with the cache, it returns an error.
 // TODO Add tests for this behavior.
-func (provider *AzdSecInfoProvider) timeoutEncounteredGetContainersVulnerabilityScanInfo(podSpec *corev1.PodSpec, podSpecCacheKey string) ([]*contracts.ContainerVulnerabilityScanInfo, error) {
+func (provider *AzdSecInfoProvider) timeoutEncounteredGetContainersVulnerabilityScanInfo(podSpec *admisionrequest.PodSpec, podSpecCacheKey string) ([]*contracts.ContainerVulnerabilityScanInfo, error) {
 	tracer := provider.tracerProvider.GetTracer("timeoutEncounteredGetContainersVulnerabilityScanInfo")
 
 	// Get the timeoutStatus from cache
 	timeoutStatus, err := provider.cacheClient.GetTimeOutStatus(podSpecCacheKey)
 	// If an error occurred while getting timeout status from cache return an error because we shouldn't block the pod request
 	if err != nil {
-		if cache.IsMissingKeyCacheError(err){
+		if cache.IsMissingKeyCacheError(err) {
 			tracer.Info("First timeout. Missing key. Couldn't get TimeOutStatus from cache.")
 			return nil, err
 		}
@@ -483,7 +482,7 @@ func (provider *AzdSecInfoProvider) timeoutEncounteredGetContainersVulnerability
 }
 
 // noTimeoutEncounteredGetContainersVulnerabilityScanInfo getting the scan results, set the results in the cache and reset timeout status
-func (provider *AzdSecInfoProvider) noTimeoutEncounteredGetContainersVulnerabilityScanInfo(podSpec *corev1.PodSpec, chanTimeout chan *utils.ChannelDataWrapper, channelData *utils.ChannelDataWrapper, isChannelOpen bool, podSpecCacheKey string) ([]*contracts.ContainerVulnerabilityScanInfo, error) {
+func (provider *AzdSecInfoProvider) noTimeoutEncounteredGetContainersVulnerabilityScanInfo(podSpec *admisionrequest.PodSpec, chanTimeout chan *utils.ChannelDataWrapper, channelData *utils.ChannelDataWrapper, isChannelOpen bool, podSpecCacheKey string) ([]*contracts.ContainerVulnerabilityScanInfo, error) {
 	tracer := provider.tracerProvider.GetTracer("noTimeoutEncounteredGetContainersVulnerabilityScanInfo")
 	// Check if channel is open
 	if !isChannelOpen {

@@ -6,7 +6,6 @@ import (
 	"testing"
 )
 
-var ()
 
 type K8sTestSuite struct {
 	suite.Suite
